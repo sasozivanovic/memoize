@@ -1,21 +1,23 @@
 \ProvidesPackage{memoize}
 \RequirePackage{pgfkeys}
 \RequirePackage{etoolbox}
-\RequirePackage{graphicx}
 
 \def\memoizeset#1{\pgfqkeys{/memoize}{#1}}
 \memoizeset{%
   copy command/.store in=\memoizeCopyCommand,
   memoize jobname/.store in=\memoizeJobname,
   split jobname prefix/.store in=\memoizeSplitJobnamePrefix,
-  system call/.store in=\memoizeSystemCall,
+  pdflatex system call/.store in=\memoizePdfLaTeXSystemCall,
+  pdftex system call/.store in=\memoizePdfTeXSystemCall,
 }
 \def\memoizeCopyCommand{}
 %\def\memoizeCopyCommand{cp "\source" "\target"}
 \def\memoizeJobname{\jobname}
 \def\memoizeSplitJobnamePrefix{\jobname.mmz.}
-\def\memoizeSystemCall{pdflatex -halt-on-error -interaction=batchmode
+\def\memoizePdfLaTexSystemCall{pdflatex -halt-on-error -interaction=batchmode
     -jobname "\detokenize\expandafter{\mmz@syscall@jobname}" "\detokenize\expandafter{\mmz@syscall@commands}"}
+\def\memoizePdfTeXSystemCall{pdftex -halt-on-error -interaction=batchmode
+  -jobname "\detokenize\expandafter{\mmz@syscall@jobname}" "\detokenize\expandafter{\mmz@syscall@commands}"}
 
 \newwrite\mmz@out
 \newbox\mmz@box
@@ -25,12 +27,15 @@
   \mmz@use@memoized@or{%
     \PackageInfo{memoize}{Memoizing \mmz@id\space on input line \the\inputlineno}%
     \setbox\mmz@box=\hbox{#1}%
-    \mmz@eject\mmz@box
+    {%
+      \mmz@eject{\copy\mmz@box}%
+    }%
     \immediate\write\mmz@out{%
       \noexpand\memoized{\mmz@id}{\memoizeJobname}{\the\mmz@realpage}{\the\dp\mmz@box}%
     }%
   }%
-  \leavevmode\box\mmz@box
+  % \quitvmode is pdftex's replacement for \leavevmode (8.21)
+  \quitvmode\box\mmz@box
 }
 
 \def\mmz@use@memoized@or{%
@@ -38,25 +43,22 @@
   \@input{\memoizeSplitJobnamePrefix\mmz@id}%
   \ifdef\mmz@filename{%
     \IfFileExists{\memoizeSplitJobnamePrefix\mmz@id.pdf}{%
-      \edef\mmz@marshal{%
-        \noexpand\includegraphics[page=\mmz@page]{\mmz@filename.pdf}%
-      }%
+      \pdfximage {\mmz@filename.pdf}%
       \PackageInfo{memoize}{Using \mmz@id\space on input line \the\inputlineno}%
-      \setbox\mmz@box=\hbox{\lower\mmz@dp\hbox{\mmz@marshal}}%
+      \setbox\mmz@box=\hbox{\lower\mmz@dp\hbox{\pdfrefximage \pdflastximage}}%
       \@gobble
     }{\@firstofone}}{\@firstofone}%
 }
 
 \def\mmz@eject#1{%
-  {% Leave it all to pdftex ... manual 8.1: \pgfpagewidth
-    \pdfpagewidth0pt
-    \pdfpageheight 0pt
-    \pdfhorigin 0pt
-    \pdfvorigin 0pt
-    \hoffset 0pt
-    \voffset 0pt
-    \shipout\copy#1%
-  }%
+  % Leave it all to pdftex ... manual 8.1: \pgfpagewidth
+  \pdfpagewidth 0pt
+  \pdfpageheight 0pt
+  \pdfhorigin 0pt
+  \pdfvorigin 0pt
+  \hoffset 0pt
+  \voffset 0pt
+  \shipout#1%
 }
 
 \let\mmz@orig@shipout\shipout
@@ -73,8 +75,13 @@
     \def\mmz@dp{#4}%
   }%
   \edef\mmz@syscall@jobname{\memoizeSplitJobnamePrefix#1}%
-  \def\mmz@syscall@commands{\documentclass{standalone}\usepackage{graphicx}\begin{document}\includegraphics[page=#3]{#2}\end{document}}%
-  \immediate\write18{\memoizeSystemCall}%
+  \expandafter\def\expandafter\mmz@syscall@commands\expandafter{%
+    \mmz@eject{\box0}\end}%
+  \preto\mmz@syscall@commands{%
+    \pdfximage page #3 {#2.pdf}%
+    \setbox0=\hbox{\pdfrefximage \pdflastximage}%
+  }%
+  \immediate\write18{\memoizePdfTeXSystemCall}%
   \immediate\openout\mmz@out=\mmz@syscall@jobname
   \immediate\write\mmz@out{\noexpand\memoized{#1}{\mmz@syscall@jobname}{1}{#4}}%
   \immediate\closeout\mmz@out
@@ -91,6 +98,10 @@
 
 \AtBeginDocument{\immediate\openout\mmz@out=\jobname.mmz}
 \AtEndDocument{\immediate\closeout\mmz@out}
+
+% ideas:
+% - could \pdfdraftmode be useful?
+% - ditto for \pdflastximagepages
 
 %%% Local Variables:
 %%% mode: latex
