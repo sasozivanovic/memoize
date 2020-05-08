@@ -48,15 +48,14 @@
 }
 
 \def\mmz@eject#1{%
-  {%
-    \dimen0\ht\mmz@box%
-    \advance\dimen0\dp\mmz@box
-    \pdfpagewidth=\wd\mmz@box
-    \pdfpageheight=\the\dimen0
+  {% Leave it all to pdftex ... manual 8.1: \pgfpagewidth
+    \pdfpagewidth0pt
+    \pdfpageheight 0pt
     \pdfhorigin 0pt
     \pdfvorigin 0pt
-    \setbox0=\copy#1%
-    \shipout\box0
+    \hoffset 0pt
+    \voffset 0pt
+    \shipout\copy#1%
   }%
 }
 
