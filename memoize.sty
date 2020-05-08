@@ -2,16 +2,19 @@
 \RequirePackage{pgfkeys}
 \RequirePackage{etoolbox}
 
+% UI
 \def\memoizeset#1{\pgfqkeys{/memoize}{#1}}
 \memoizeset{%
-  copy command/.store in=\memoizeCopyCommand,
   memoize jobname/.store in=\memoizeJobname,
+  % where do we put the piecemal files; todo: #1 (#1,#2 -- deps!) interface
   split jobname prefix/.store in=\memoizeSplitJobnamePrefix,
+  % todo: better interface for switching the engine and format; can the engige
+  % be automatic?
   pdflatex system call/.store in=\memoizePdfLaTeXSystemCall,
   pdftex system call/.store in=\memoizePdfTeXSystemCall,
+  % todo: option "active"
 }
-\def\memoizeCopyCommand{}
-%\def\memoizeCopyCommand{cp "\source" "\target"}
+% todo: test memoizing in a different pdf; explain the meaning of various \jobnames.
 \def\memoizeJobname{\jobname}
 \def\memoizeSplitJobnamePrefix{\jobname.mmz.}
 \def\memoizePdfLaTexSystemCall{pdflatex -halt-on-error -interaction=batchmode
@@ -19,37 +22,64 @@
 \def\memoizePdfTeXSystemCall{pdftex -halt-on-error -interaction=batchmode
   -jobname "\detokenize\expandafter{\mmz@syscall@jobname}" "\detokenize\expandafter{\mmz@syscall@commands}"}
 
+% Registers and such
 \newwrite\mmz@out
 \newbox\mmz@box
+\newcount\mmz@realpage
 
+% manual memoization: #1 is the code to be memoized
 \def\memoize#1{%
+  % Compute the MD5 sum of the code.
   \edef\mmz@id{\expandafter\pdfmdfivesum\expandafter{\detokenize{#1}}}%
+  % Try using memoized data.
   \mmz@use@memoized@or{%
+    % If there was no memoized data:
     \PackageInfo{memoize}{Memoizing \mmz@id\space on input line \the\inputlineno}%
+    % Typeset the code.
     \setbox\mmz@box=\hbox{#1}%
     {%
+      % Can I store the depth information in the PDF?
+      % \edef\mmz@marshal{\noexpand\pdfpageattr{%
+      %     /ArtBox [0 \mmz@tonumber{-\dp\mmz@box} \mmz@tonumber{\wd\mmz@box} \mmz@tonumber{\ht\mmz@box}]%
+      %   }}\mmz@marshal
+      % Debug PDF:
+      % \pdfcompresslevel=0
+      % \pdfobjcompresslevel=0
+      % 
+      % Memoize the box.
       \mmz@eject{\copy\mmz@box}%
     }%
+    % Store memoized data.
+    % todo: immediately store in \jobname.\mmz@id.tex
     \immediate\write\mmz@out{%
       \noexpand\memoized{\mmz@id}{\memoizeJobname}{\the\mmz@realpage}{\the\dp\mmz@box}%
+      % todo: an option to write out the memoized code, for debugging or manual
+      % inspection.
     }%
   }%
   % \quitvmode is pdftex's replacement for \leavevmode (8.21)
   \quitvmode\box\mmz@box
 }
 
+% Is there memoized data for \mmz@id?
 \def\mmz@use@memoized@or{%
+  % If inputing <id>.mmz sets the filename, we found it!
   \undef\mmz@filename
   \@input{\memoizeSplitJobnamePrefix\mmz@id}%
   \ifdef\mmz@filename{%
+    % Well ... if that file exists.
     \IfFileExists{\memoizeSplitJobnamePrefix\mmz@id.pdf}{%
+      % Yes, use it. We employ pdftex's primitives here.
       \pdfximage {\mmz@filename.pdf}%
       \PackageInfo{memoize}{Using \mmz@id\space on input line \the\inputlineno}%
       \setbox\mmz@box=\hbox{\lower\mmz@dp\hbox{\pdfrefximage \pdflastximage}}%
+      % We don't need the memoization code in \memoize.
       \@gobble
+      % No:
     }{\@firstofone}}{\@firstofone}%
 }
 
+% Write the box to PDF. #1 should be \boxN or \copyN
 \def\mmz@eject#1{%
   % Leave it all to pdftex ... manual 8.1: \pgfpagewidth
   \pdfpagewidth 0pt
@@ -61,19 +91,23 @@
   \shipout#1%
 }
 
+% Hijack TeX's \shipout. We only need this to count pages. Can it be done
+% otherwise?
 \let\mmz@orig@shipout\shipout
-\newcount\mmz@realpage
 \def\shipout{%
   \global\advance\mmz@realpage1
   \mmz@orig@shipout
 }
+% Actually, this could be used to supress normal output as well.
 
-\def\memoized#1#2#3#4{%
-  \csdef{mmz@@#1}{%
-    \def\mmz@filename{#2}%
-    \def\mmz@page{#3}%
-    \def\mmz@dp{#4}%
-  }%
+
+% A .mmz file consists of a series of calls to \mmz containing, for each md5
+% id, the memoized information and the link to the correct page of the PDF.
+% 
+% Used to process .mmz to split the resulting bit PDF into individual
+% externalized pictures.
+\def\memoized@split#1#2#3#4{%
+  % Prepare the pdftex call.
   \edef\mmz@syscall@jobname{\memoizeSplitJobnamePrefix#1}%
   \expandafter\def\expandafter\mmz@syscall@commands\expandafter{%
     \mmz@eject{\box0}\end}%
@@ -81,13 +115,22 @@
     \pdfximage page #3 {#2.pdf}%
     \setbox0=\hbox{\pdfrefximage \pdflastximage}%
   }%
+  % System call.
   \immediate\write18{\memoizePdfTeXSystemCall}%
+  % todo: Relink the id.mmz file to the new pdf.
   \immediate\openout\mmz@out=\mmz@syscall@jobname
   \immediate\write\mmz@out{\noexpand\memoized{#1}{\mmz@syscall@jobname}{1}{#4}}%
   \immediate\closeout\mmz@out
 }
+
+% Split.
+\let\memoized\memoized@split
 \@input{\jobname.mmz}%
+
+% This macro sets the memoized info for \mmz@id.
 \def\memoized#1#2#3#4{%
+  % todo: If there's several \memoized calls with the same md5 id, find the
+  % right one --- dependencies!
   \expandafter\ifstrequal\expandafter{\mmz@id}{#1}{}{%
     \PackageWarning{memoize}{mmz id mismatch: stored "\mmz@temp"\space does not equal the caller "\mmz@id". How did this happen?}%
   }%
@@ -96,8 +139,15 @@
   \def\mmz@dp{#4}%
 }
 
+% Open and close .mmz file.
 \AtBeginDocument{\immediate\openout\mmz@out=\jobname.mmz}
 \AtEndDocument{\immediate\closeout\mmz@out}
+
+% For /ArtBox.
+% {\catcode`\p=12\catcode`\t=12\gdef\mmz@geT#1pt{#1}}
+% \def\mmz@tonumber#1{\expandafter\mmz@geT\the\dimexpr#1\relax}
+
+
 
 % ideas:
 % - could \pdfdraftmode be useful?
