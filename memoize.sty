@@ -145,7 +145,7 @@
   % By using pdfpages, we don't care about the engine we use.  And we're bound
   % to LaTeX anyway ...
   \def\mmz@syscall@commands{%
-    \documentclass{article}
+    \documentclass{minimal}
     \usepackage{pdfpages}
     \begin{document}
     \includepdf[pages=#2,fitpaper]{#1}
@@ -185,12 +185,6 @@
     \noexpand\justmemoizedto{\memoizeTo.pdf}\@percentchar}%
 }
 \AtEndDocument{\immediate\closeout\mmz@main@out}
-
-% For /ArtBox.
-% {\catcode`\p=12\catcode`\t=12\gdef\mmz@geT#1pt{#1}}
-% \def\mmz@tonumber#1{\expandafter\mmz@geT\the\dimexpr#1\relax}
-
-
 
 % ideas:
 % - could \pdfdraftmode be useful?
