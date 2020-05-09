@@ -204,6 +204,56 @@
 }
 \AtEndDocument{\immediate\closeout\mmz@main@out}
 
+
+%%%% Automatically memoizing commands and environments
+
+% A lighter approach (without xparse) for easy stuff:
+% handlers
+% \memoizeset{%
+%   def/.code={\AtBeginDocument{%
+%       \cslet{\mmz@orig@string#1}#1%
+%       \def#1##1{\memoize{\mmz@orig#1{##1}}}%
+%     }},
+%   def 1/.style={def={#1}},
+%   prefixed def/.code 2 args={\AtBeginDocument{%
+%       \cslet{\mmz@orig@string#2}#2%
+%       #1\def#1##2{\memoize{\mmz@orig#2{##1}}}%
+%     }},
+%   newcommand/.code={\AtBeginDocument{%
+%       \cslet{\mmz@orig@string#1}#1%
+%       \reqnewcommand#1{\memoize{\mmz@orig#1{##1}}}%
+%     }},
+%   newcommand[1]/.style={newcommand={#1}},
+%   newcommand[][2]/.code 2 args={\AtBeginDocument{%
+%       \cslet{\mmz@orig@string#2}#2%
+%       \renewcommand#2[2][#1]{\memoize{\mmz@orig#2[##1]{##2}}}%
+%     }},
+% }
+
+\def\mmz@orig#1{mmz@orig\string#1}
+\def\mmz@repl#1{mmz@repl\string#1}
+
+\def\memoizeRenewDocumentCommand#1#2#3{%
+  \AtBeginDocument{\memoizeRenewDocumentCommandNow{#1}{#2}{#3}}}
+\def\memoizeRenewDocumentCommandNow#1#2#3{%
+  \cslet{\mmz@orig#1}#1%
+  \expandafter\NewDocumentCommand\csname\mmz@repl#1\endcsname{#2}{#3}%
+  \letcs#1{\mmz@repl#1}%
+}
+
+% Note: this switches off internal externalization.
+\def\mmz#1#2{%
+  \letcs#1{\mmz@orig#1}%
+  \memoize{#1#2}%
+  \letcs#1{\mmz@repl#1}%
+}
+
+% Predefined handlers
+\usepackage{xparse}
+\memoizeRenewDocumentCommand\tikz{O{} m}{\mmz\tikz{[#1]{#2}}}
+\memoizeRenewDocumentCommand\Forest{s D(){} m}{%
+  \IfBooleanT{#1}{\mmz\Forest{*(#2){#3}}}{\mmz\Forest{(#2){#3}}}}
+
 % ideas:
 % - could \pdfdraftmode be useful?
 % - ditto for \pdflastximagepages
