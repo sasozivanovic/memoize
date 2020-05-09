@@ -8,3 +8,4 @@
   \pdfhorigin 0pt \pdfvorigin 0pt
   \hoffset 0pt \voffset 0pt
 }%
+\def\mmz@latex@binary{pdflatex}

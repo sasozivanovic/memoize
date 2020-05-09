@@ -8,27 +8,45 @@
     \PackageError{memoize}{Support for this TeX engine is not implemented.}{}%
   }}
 
-% todo: \mmz@valueof etc
-
 % UI
 \def\memoizeset#1{\pgfqkeys{/memoize}{#1}}
+\def\mmz@valueof#1{\pgfkeysvalueof{/memoize/#1}}
 \memoizeset{%
-  memoize to/.store in=\memoizeTo,
-  % where do we put the piecemal files; todo: #1 (#1,#2 -- deps!) interface
-  % fragment filename/.store in=\mmz@fragment@filename,
-  fragment filename/.code={\def\mmz@fragment@filename##1{#1}},
-  fragment filename={\jobname.mmz.#1},
-  % todo: better interface for switching the engine and format; can the engige
+  % When the TeX job starts, \jobname contains the basename of the PDF that
+  % will
+  % be created.  If memoization is enabled, we store the name of this PDF
+  % (\jobname.pdf) into \memoize@output@pdf, and set \jobname using key "real
+  % job". This way, we will be using and writing the auxiliary files of the
+  % real
+  % job. In particular, we will create <real job>.mmz that contains info on
+  % what was just externalized.
+  real job/.code={%
+    \edef\memoize@output@pdf{\jobname.pdf}%
+    \edef\jobname{#1}%
+  },
+  % Default: We output to the real job output file.
+  real job=\jobname,
+  % 
+  % The key "fragments" tells the package where to store the separate
+  % externalized pictures.  For example, say "fragments={\jobname.mmz/#1}", to
+  % store them in the "\jobname.mmz" folder --- where \jobname is the name of the
+  % real job.
+  %
+  % todo: context dependency
+  fragments/.code={\def\mmz@fragment@filename##1{#1}},
+  % Default: We store the externalized files in the same folder, because we
+  % don't know if we can write elsewhere. The name is set so that it is easy to
+  % clean up: "rm <jobname>.mmz*" will remove all memoization info.
+  fragments={\jobname.mmz.#1},
+  % todo: better interface for switching the engine and format; can the engine
   % be automatic?
-  pdflatex system call/.store in=\memoizePdfLaTeXSystemCall,
+  latex system call/.initial={\mmz@latex@binary\space
+    -halt-on-error
+    -interaction=batchmode
+    -jobname "\detokenize\expandafter{\mmz@syscall@jobname}"
+    "\detokenize\expandafter{\mmz@syscall@commands}"},
   % todo: option "active"
 }
-
-% todo: test memoizing in a different pdf; explain the meaning of various \jobnames.
-\def\memoizeTo{\jobname}
-%\def\mmz@fragment@filename{\jobname.mmz.}
-\def\memoizePdfLaTeXSystemCall{xelatex -halt-on-error -interaction=batchmode
-    -jobname "\detokenize\expandafter{\mmz@syscall@jobname}" "\detokenize\expandafter{\mmz@syscall@commands}"}
 
 % Registers and such
 \newwrite\mmz@main@out
@@ -108,7 +126,7 @@
   % todo: immediately store in \jobname.\mmz@ID.tex
   \immediate\openout\mmz@fragment@out=\mmz@fragment@filename\mmz@ID
   \immediate\write\mmz@fragment@out{%
-    \noexpand\memoized{\mmz@ID}{\memoizeTo.pdf}{\the\mmz@realpage}{\the\dp\mmz@box}\@percentchar
+    \noexpand\memoized{\mmz@ID}{\memoize@output@pdf}{\the\mmz@realpage}{\the\dp\mmz@box}\@percentchar
     % todo: an option to write out the memoized code, for debugging or manual
     % inspection.
   }%
@@ -132,7 +150,7 @@
     \edef\mmz@marshal{%
       \noexpand\justmemoized@prepare@syscall@commands{\mmz@filename}{\mmz@page}%
     }\mmz@marshal
-    \immediate\write18{\memoizePdfLaTeXSystemCall}%
+    \immediate\write18{\mmz@valueof{latex system call}}%
     % Relink the fragment .mmz from the main pdf to the fragment pdf
     % (\mmz@fragment@filename#1.pdf)
     \immediate\openout\mmz@fragment@out=\mmz@syscall@jobname
@@ -182,7 +200,7 @@
 \AtBeginDocument{%
   \immediate\openout\mmz@main@out=\jobname.mmz
   \immediate\write\mmz@main@out{%
-    \noexpand\justmemoizedto{\memoizeTo.pdf}\@percentchar}%
+    \noexpand\justmemoizedto{\memoize@output@pdf}\@percentchar}%
 }
 \AtEndDocument{\immediate\closeout\mmz@main@out}
 

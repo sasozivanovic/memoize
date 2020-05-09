@@ -9,3 +9,4 @@
   \hoffset -1 true in
   \voffset -1 true in
 }%
+\def\mmz@latex@binary{xelatex}
