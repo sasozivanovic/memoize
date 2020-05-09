@@ -11,6 +11,13 @@
     \PackageError{memoize}{Support for this TeX engine is not implemented.}{}%
   }}
 
+% Registers and such
+\newif\ifmmz@active
+\newwrite\mmz@main@out
+\newwrite\mmz@fragment@out
+\newbox\mmz@box
+\newcount\mmz@realpage
+
 % UI
 \def\memoizeset#1{\pgfqkeys{/memoize}{#1}}
 \def\mmz@valueof#1{\pgfkeysvalueof{/memoize/#1}}
@@ -48,14 +55,8 @@
     -interaction=batchmode
     -jobname "\detokenize\expandafter{\mmz@syscall@jobname}"
     "\detokenize\expandafter{\mmz@syscall@commands}"},
-  % todo: option "active"
+  active/.is if=mmz@active,
 }
-
-% Registers and such
-\newwrite\mmz@main@out
-\newwrite\mmz@fragment@out
-\newbox\mmz@box
-\newcount\mmz@realpage
 
 % A .mmz file consists of a series of calls to \memoized containing, for each
 % md5 id, the memoized information and the link to the correct page of the PDF.
@@ -70,7 +71,10 @@
 
 % manual memoization: #2 is the code to be memoized; #2 is the memoization key,
 % the base for computing md5sum.
-\newcommand\memoize[2][]{%
+\def\memoize{\ifmmz@active\expandafter\memoize@active
+  \else\expandafter\memoize@inactive\fi}
+\newcommand\memoize@inactive[2][]{#2}% should we introduce a group here, so that the situation is the same as with active memoization?
+\newcommand\memoize@active[2][]{%
   \ifstrempty{#1}{%
     \edef\mmz@ID{\expandafter\mmz@mdfivesum\expandafter{\detokenize{#2}}}%
   }{%
@@ -118,7 +122,9 @@
   % If there was no memoized data:
   \PackageInfo{memoize}{Memoizing \mmz@ID\space on input line \the\inputlineno}%
   % Typeset the code.
+  \mmz@activefalse
   \setbox\mmz@box=\hbox{#1}% todo: smuggle \mmz@toks and \mmz@global@toks!
+  \mmz@activetrue
   {%
     % Debug PDF: \pdfcompresslevel=0 \pdfobjcompresslevel=0
     \mmz@prepare@fragment@page
@@ -244,12 +250,9 @@
 
 \def\memoizeNewHandler#1#2#3{%
   \expandafter\NewDocumentCommand\csname\mmz@repl{#1}\endcsname{#2}{%
-    \memoizeUninstallCommandHandler{#1}%
     #3%
-    \memoizeInstallCommandHandler{#1}%
   }%
 }
-
 
 \def\memoizeInstallCommandHandler#1{%
   \cslet{\mmz@orig{#1}}#1%
@@ -257,35 +260,64 @@
 \def\memoizeUninstallCommandHandler#1{%
   \letcs#1{\mmz@orig{#1}}}
 
+% \def\memoizeInstallEnvironmentHandler{%
+%   \mmz@install@env@handler\collect@body}
+% \def\memoizeInstallLongEnvironmentHandler{%
+%   \mmz@install@env@handler\Collect@Body}
+% \def\mmz@install@env@handler#1#2{%
+%   % #1 = collect@body or Collect@Body
+%   % #2 = env name
+%   \csletcs{\mmz@orig{#2}}{#2}%
+%   \csletcs{\mmz@orig{end#2}}{end#2}%
+%   \csdef{#2}{%
+%     \def\mmz@marshal{\mmz@handle@environment{#2}}%
+%     #1\mmz@marshal
+%   }%
+%   \csdef{end#2}{}%
+% }
+% \def\mmz@handle@environment#1#2{% environment, body
+%   \memoize[{\begin{#1}#2\end{#1}}]{%
+%     \csname #1\endcsname
+%     #2%
+%     \csname end#1\endcsname
+%   }%
+% }
+% \def\memoizeUninstallEnvironmentHandler#1{%
+%   \csletcs{#1}{\mmz@orig{#1}}%
+%   \csletcs{end#1}{\mmz@orig{end#1}}%
+% }
 
-\def\memoizeInstallEnvironmentHandler{%
-  \mmz@install@env@handler\collect@body}
-\def\memoizeInstallLongEnvironmentHandler{%
-  \mmz@install@env@handler\Collect@Body}
-\def\mmz@install@env@handler#1#2{%
-  % #1 = collect@body / #1 = Collect@Body
-  % #2 = env name
-  \csletcs{\mmz@orig{#2}}{#2}%
-  \csletcs{\mmz@orig{end#2}}{end#2}%
-  \csdef{#2}{%
-    \def\mmz@marshal{\mmz@handle@environment{#2}}%
-    #1\mmz@marshal
-  }%
-  \csdef{end#2}{}%
+% todo: environment hooks (etoolbox)
+\DeclareRobustCommand\mmz@begin{%
+  \ifmmz@active
+    \expandafter\mmz@begin@active
+  \else
+    \expandafter\mmz@orig@begin
+  \fi
 }
-\def\mmz@handle@environment#1#2{% environment, body
-  \memoizeUninstallEnvironmentHandler{#1}%
-  \memoize[{\begin{#1}#2\end{#1}}]{%
-    \csname #1\endcsname
-    #2%
-    \csname end#1\endcsname
-  }%
-  \memoizeInstallEnvironmentHandler{#1}%
+\def\mmz@begin@active#1{%
+  \ifnum0\csuse{\mmz@env{#1}}=1
+    \expandafter\mmz@begin@active@b
+  \else
+    \expandafter\mmz@orig@begin
+  \fi
+  {#1}%
 }
-\def\memoizeUninstallEnvironmentHandler#1{%
-  \csletcs{#1}{\mmz@orig{#1}}%
-  \csletcs{end#1}{\mmz@orig{end#1}}%
+\def\mmz@begin@active@a#1{%
+  \def\mmz@marshal{\mmz@begin@active@b{#1}}%
+  \Collect@Body\mmz@marshal
 }
+\def\mmz@begin@active@b#1#2\end#3{%
+  \memoize{\begin{#1}#2\end{#1}}%
+}
+\AtBeginDocument{%
+  \mmz@activetrue
+  \let\mmz@orig@begin\begin
+  \let\begin\mmz@begin
+}
+\def\mmz@env#1{mmz@env@#1}
+\def\memoizeEnableEnvironment#1{\csdef{\mmz@env{#1}}{1}}
+\def\memoizeDisableEnvironment#1{\csdef{\mmz@env{#1}}{0}}
 
 % Predefined handlers
 
@@ -300,11 +332,10 @@
 
 % Install handlers
 %\memoizeInstallCommandHandler\tikz
-\memoizeInstallLongEnvironmentHandler{tikzpicture}
-
+%\memoizeEnableEnvironment{tikzpicture}
 
 % \memoizeInstallCommandHandler\Forest
-% \memoizeInstallEnvironmentHandler{forest}
+\memoizeEnableEnvironment{forest}
 
 
 % ideas:
