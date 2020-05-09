@@ -1,6 +1,12 @@
 \ProvidesPackage{memoize}
 \RequirePackage{pgfkeys}
 \RequirePackage{etoolbox}
+\RequirePackage{graphics}
+
+\ifdef\pdftexversion{\input memoize-pdftex.def}{%
+  \ifdef\XeTeXversion{\input memoize-xetex.def}{%
+    \PackageError{memoize}{Support for this TeX engine is not implemented.}{}%
+  }}
 
 % todo: \mmz@valueof etc
 
@@ -15,17 +21,14 @@
   % todo: better interface for switching the engine and format; can the engige
   % be automatic?
   pdflatex system call/.store in=\memoizePdfLaTeXSystemCall,
-  pdftex system call/.store in=\memoizePdfTeXSystemCall,
   % todo: option "active"
 }
 
 % todo: test memoizing in a different pdf; explain the meaning of various \jobnames.
 \def\memoizeTo{\jobname}
 %\def\mmz@fragment@filename{\jobname.mmz.}
-\def\memoizePdfLaTexSystemCall{pdflatex -halt-on-error -interaction=batchmode
+\def\memoizePdfLaTeXSystemCall{xelatex -halt-on-error -interaction=batchmode
     -jobname "\detokenize\expandafter{\mmz@syscall@jobname}" "\detokenize\expandafter{\mmz@syscall@commands}"}
-\def\memoizePdfTeXSystemCall{pdftex -halt-on-error -interaction=batchmode
-  -jobname "\detokenize\expandafter{\mmz@syscall@jobname}" "\detokenize\expandafter{\mmz@syscall@commands}"}
 
 % Registers and such
 \newwrite\mmz@main@out
@@ -47,9 +50,8 @@
 % manual memoization: #1 is the code to be memoized
 \def\memoize#1{%
   % Compute the MD5 sum of the code.
-  \edef\mmz@ID{\expandafter\pdfmdfivesum\expandafter{\detokenize{#1}}}%
-  % \quitvmode is pdftex's replacement for \leavevmode (8.21)
-  \quitvmode
+  \edef\mmz@ID{\expandafter\mmz@mdfivesum\expandafter{\detokenize{#1}}}%
+  \mmz@leavevmode
   % Use or create?
   \mmz@ifmemoized{\mmz@use@memoized}{\mmz@memoize{#1}}%
   % In both cases, we are left with \mmz@box
@@ -79,11 +81,11 @@
     }{\@secondoftwo}}{\@secondoftwo}%
 }
 
-% We employ pdftex's primitives here.
+% We use the "graphics" package, so we don't have to deal with various TeX
+% engines.
 \def\mmz@use@memoized{%
-  \pdfximage {\mmz@filename}%
   \PackageInfo{memoize}{Using \mmz@id\space on input line \the\inputlineno}%
-  \setbox\mmz@box=\hbox{\lower\mmz@dp\hbox{\pdfrefximage \pdflastximage}}%
+  \setbox\mmz@box=\hbox{\lower\mmz@dp\hbox{\includegraphics{\mmz@filename}}}%
 }
 
 % Memoize and leave the box in \mmz@box.
@@ -93,49 +95,26 @@
   % Typeset the code.
   \setbox\mmz@box=\hbox{#1}%
   {%
-    % Can I store the depth information in the PDF?
-    % \edef\mmz@marshal{\noexpand\pdfpageattr{%
-    % /ArtBox [0 \mmz@tonumber{-\dp\mmz@box} \mmz@tonumber{\wd\mmz@box} \mmz@tonumber{\ht\mmz@box}]%
-    % }}\mmz@marshal
-    %   Debug PDF:
-    %   \pdfcompresslevel=0
-    %   \pdfobjcompresslevel=0
-    %   
-    %   Memoize the box.
-    \mmz@eject{\copy\mmz@box}%
+    % Debug PDF: \pdfcompresslevel=0 \pdfobjcompresslevel=0
+    \mmz@prepare@fragment@page
+    % Use the original \shipout here, otherwise we can get in trouble with other
+    % packages like pdfpages.  Let's just hope that (i) some other package
+    % doesn't count shipouts as well (then, they are in trouble), or (ii) doesn't
+    % use the primitive \shioput (then, we are in trouble).
+    \global\advance\mmz@realpage1
+    \mmz@primitive\shipout\copy\mmz@box
   }%
   % Store memoized data.
   % todo: immediately store in \jobname.\mmz@ID.tex
   \immediate\openout\mmz@fragment@out=\mmz@fragment@filename\mmz@ID
   \immediate\write\mmz@fragment@out{%
-    \noexpand\memoized{\mmz@ID}{\memoizeTo.pdf}{\the\mmz@realpage}{\the\dp\mmz@box}%
+    \noexpand\memoized{\mmz@ID}{\memoizeTo.pdf}{\the\mmz@realpage}{\the\dp\mmz@box}\@percentchar
     % todo: an option to write out the memoized code, for debugging or manual
     % inspection.
   }%
   \immediate\closeout\mmz@fragment@out
-  \immediate\write\mmz@main@out{\noexpand\justmemoized{\mmz@ID}}%
+  \immediate\write\mmz@main@out{\noexpand\justmemoized{\mmz@ID}\@percentchar}%
 }
-
-% Write the box to PDF. #1 should be \boxN or \copyN
-\def\mmz@eject#1{%
-  % Leave it all to pdftex ... manual 8.1: \pgfpagewidth
-  \pdfpagewidth 0pt
-  \pdfpageheight 0pt
-  \pdfhorigin 0pt
-  \pdfvorigin 0pt
-  \hoffset 0pt
-  \voffset 0pt
-  \shipout#1%
-}
-
-% Hijack TeX's \shipout. We only need this to count pages. Can it be done
-% otherwise?
-\let\mmz@orig@shipout\shipout
-\def\shipout{%
-  \global\advance\mmz@realpage1
-  \mmz@orig@shipout
-}
-% Actually, this could be used to supress normal output as well.
 
 % Used to process .mmz to split the resulting bit PDF into individual
 % externalized pictures.
@@ -149,20 +128,30 @@
   \ifdef\mmz@filename{%
     % Split the relevant page off to the fragment pdf.
     \edef\mmz@syscall@jobname{\mmz@fragment@filename{#1}}%
-    % test: \mmz@filename matches \mmz@justmemoizedto?
-    \edef\mmz@syscall@commands{%
-      \pdfximage page \mmz@page\space {\mmz@filename}%
-      \setbox0=\hbox{\pdfrefximage\pdflastximage}%
-      \expandonce{\mmz@eject{\box0}}\noexpand\end}%
-    \immediate\write18{\memoizePdfTeXSystemCall}%
+    % todo: test: \mmz@filename matches \mmz@justmemoizedto?
+    \edef\mmz@marshal{%
+      \noexpand\justmemoized@prepare@syscall@commands{\mmz@filename}{\mmz@page}%
+    }\mmz@marshal
+    \immediate\write18{\memoizePdfLaTeXSystemCall}%
     % Relink the fragment .mmz from the main pdf to the fragment pdf
     % (\mmz@fragment@filename#1.pdf)
     \immediate\openout\mmz@fragment@out=\mmz@syscall@jobname
     \immediate\write\mmz@fragment@out{%
-      \noexpand\memoized{#1}{\mmz@syscall@jobname.pdf}{1}{\mmz@dp}}%
+      \noexpand\memoized{#1}{\mmz@syscall@jobname.pdf}{1}{\mmz@dp}\@percentchar}%
     \immediate\closeout\mmz@fragment@out
   }{\justmemoized@error}%
 }
+\def\justmemoized@prepare@syscall@commands#1#2{%
+  % By using pdfpages, we don't care about the engine we use.  And we're bound
+  % to LaTeX anyway ...
+  \def\mmz@syscall@commands{%
+    \documentclass{article}
+    \usepackage{pdfpages}
+    \begin{document}
+    \includepdf[pages=#2,fitpaper]{#1}
+    \end{document}
+  }%
+}%
 
 \def\justmemoized@error{%
   \PackageWarning{memoize}{Cannot find \mmz@fragment@filename\mmz@ID,
@@ -173,11 +162,27 @@
 % Split.
 \@input{\jobname.mmz}%
 
+% Hijack TeX's \shipout. Do it at the beginning of the document, in case some
+% other package mucked with it as well.
+\def\memoizePatchShipout{%
+  \let\mmz@orig@shipout\shipout
+  \def\shipout{%
+    \global\advance\mmz@realpage1
+    \mmz@orig@shipout
+  }%
+}
+% todo: For funky situation: an option to not do it, and instruct the user to
+% use \memoizePatchShipout in an appropriate place instead.
+\AtBeginDocument{\memoizePatchShipout}
+% We only need this to count pages. Can it be done otherwise?
+% Actually, this could be used to supress normal output as well.
+
+
 % Open and close .mmz file.
 \AtBeginDocument{%
   \immediate\openout\mmz@main@out=\jobname.mmz
   \immediate\write\mmz@main@out{%
-    \noexpand\justmemoizedto{\memoizeTo.pdf}}%
+    \noexpand\justmemoizedto{\memoizeTo.pdf}\@percentchar}%
 }
 \AtEndDocument{\immediate\closeout\mmz@main@out}
 

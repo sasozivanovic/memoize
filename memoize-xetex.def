@@ -1,0 +1,11 @@
+\let\mmz@mdfivesum\mdfivesum
+\let\mmz@primitive\primitive
+\let\mmz@leavevmode\leavevmode
+\def\mmz@prepare@fragment@page{%
+  \pdfpagewidth \wd\mmz@box
+  \dimen0 \ht\mmz@box
+  \advance\dimen0 \dp\mmz@box
+  \pdfpageheight \dimen0
+  \hoffset -1 true in
+  \voffset -1 true in
+}%
