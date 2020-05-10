@@ -247,10 +247,16 @@
 
 \def\mmz@orig#1{mmz@orig@\string#1}
 \def\mmz@repl#1{mmz@repl@\string#1}
+\def\mmz@args#1{mmz@args@\string#1}
 
 \def\memoizeNewHandler#1#2#3{%
   \expandafter\NewDocumentCommand\csname\mmz@repl{#1}\endcsname{#2}{%
-    #3%
+    \edef\mmz@temp{#3}%
+    \edef\mmz@marshal{%
+      \noexpand\memoize
+        [{\noexpand#1\expandonce{\mmz@temp}}]%
+        {\expandonce{\csname\mmz@orig{#1}\endcsname}\expandonce{\mmz@temp}}%
+    }\mmz@marshal
   }%
 }
 
@@ -259,6 +265,20 @@
   \letcs#1{\mmz@repl{#1}}}
 \def\memoizeUninstallCommandHandler#1{%
   \letcs#1{\mmz@orig{#1}}}
+
+
+
+% Predefined handlers
+
+% \memoizeNewHandler\tikz{O{} m}{\memoize{\tikz[#1]{#2}}}
+\memoizeNewHandler\tikz{O{} m}{[\unexpanded{#1}]{\unexpanded{#2}}}
+
+% \memoizeNewHandler\Forest{s D(){} m}{%
+%   \IfBooleanTF{#1}{*(#2){#3}}{#2){#3}}
+\memoizeNewHandler\Forest{s D(){} m}{%
+  \IfBooleanTF{#1}{*}{}(\unexpanded{#2}){\unexpanded{#3}}%
+}
+
 
 % \def\memoizeInstallEnvironmentHandler{%
 %   \mmz@install@env@handler\collect@body}
@@ -319,22 +339,15 @@
 \def\memoizeEnableEnvironment#1{\csdef{\mmz@env{#1}}{1}}
 \def\memoizeDisableEnvironment#1{\csdef{\mmz@env{#1}}{0}}
 
-% Predefined handlers
-
-\memoizeNewHandler\tikz{O{} m}{\memoize{\tikz[#1]{#2}}}
-
-\memoizeNewHandler\Forest{s D(){} m}{%
-  \IfBooleanTF{#1}{\memoize{\Forest*(#2){#3}}}{\memoize{\Forest(#2){#3}}}}
-
 
 % idea: preinstall only env handlers, so that the user has a easy choice to
 % "enable" or "disable" externalization
 
 % Install handlers
-%\memoizeInstallCommandHandler\tikz
-%\memoizeEnableEnvironment{tikzpicture}
+\memoizeInstallCommandHandler\tikz
+\memoizeEnableEnvironment{tikzpicture}
 
-% \memoizeInstallCommandHandler\Forest
+\memoizeInstallCommandHandler\Forest
 \memoizeEnableEnvironment{forest}
 
 
