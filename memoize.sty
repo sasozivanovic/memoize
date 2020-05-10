@@ -193,7 +193,7 @@
 }
 
 % Split.
-\@input{\jobname.mmz}%
+\AtEndPreamble{\@input{\jobname.mmz}}
 
 % Hijack TeX's \shipout. Do it at the beginning of the document, in case some
 % other package mucked with it as well.
