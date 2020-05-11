@@ -1,10 +1,5 @@
 % todo:
-% \item fragment .mmz -> .memo
-% \item not .memo.tex
 % \item readonly
-% \item 
-
-
 
 \ProvidesPackage{memoize}
 
@@ -46,16 +41,15 @@
   real job=\jobname,
   % 
   % The key "memo filename" tells the package where to store the separate
-  % externalized pictures.  For example, say "memo={\jobname.mmz/#1}", to
-  % store them in the "\jobname.mmz" folder --- where \jobname is the name of the
+  % externalized pictures.  For example, say "memo={\jobname.memo.dir/#1}", to
+  % store them in the "\jobname.memo.dir" folder --- where \jobname is the name of the
   % real job.
   %
   % todo: context dependency
   memo filename/.code={\def\mmz@memo@filename##1{#1}},
   % Default: We store the externalized files in the same folder, because we
-  % don't know if we can write elsewhere. The name is set so that it is easy to
-  % clean up: "rm <jobname>.mmz*" will remove all memoization info.
-  memo filename={\jobname.mmz.#1},
+  % don't know if we can write elsewhere.
+  memo filename={\jobname.#1.memo},
   % todo: better interface for switching the engine and format; can the engine
   % be automatic?
   latex system call/.initial={\mmz@latex@binary\space
@@ -66,7 +60,7 @@
   active/.is if=mmz@active,
 }
 
-% A .mmz file consists of a series of calls to \memoized containing, for each
+% A .memo file consists of a series of calls to \memoized containing, for each
 % md5 id, the memoized information and the link to the correct page of the PDF.
 \def\memoized#1#2#3#4{%
   % todo: If there's several \memoized calls with the same md5 id, find the
@@ -100,7 +94,7 @@
 % \memoized) and execute {true code}. If no, \mmz@filename will be undefined
 % and we run {false code}.
 \def\mmz@ifmemoized{%
-  % If inputing <id>.mmz sets the filename, we found it!
+  % If inputing <id>.memo sets the filename, we found it!
   \undef\mmz@filename
   \@input{\mmz@memo@filename\mmz@ID}%
   \ifdef\mmz@filename{%
@@ -155,7 +149,7 @@
   \immediate\write\mmz@main@out{\noexpand\justmemoized{\mmz@ID}\@percentchar}%
 }
 
-% Used to process .mmz to split the resulting bit PDF into individual
+% Used to process .mmz to split the resulting big PDF into individual
 % externalized pictures.
 
 \def\justmemoizedto#1{\def\mmz@justmemoizedto{#1}}
@@ -172,7 +166,7 @@
       \noexpand\justmemoized@prepare@syscall@commands{\mmz@filename}{\mmz@page}%
     }\mmz@marshal
     \immediate\write18{\mmz@valueof{latex system call}}%
-    % Relink the memo .mmz from the main pdf to the memo pdf
+    % Relink the memo .memo from the \jobname pdf to the memo pdf.
     % (\mmz@memo@filename{#1})
     \IfFileExists{\mmz@memo@filename{#1}}{%
       \immediate\openout\mmz@memo@out=\mmz@syscall@jobname
