@@ -69,15 +69,20 @@
   % .mmz file.
   mmz filename/.initial={\jobname.mmz},
   % 
-  % The key "memo filename" tells the package where to store the separate
-  % externalized pictures (memos).  "#1" in the value will be replaced by the
-  % md5sum of the memoized code.  For example, say
-  % "memo={\jobname.memo.dir/#1}", to store memos in the "\jobname.memo.dir"
-  % folder --- where \jobname is the name of the real job.
-  memo filename/.code={\def\mmz@memo@filename##1{#1}},
-  % Default: We store the externalized files in the same folder, because we
-  % don't know if we can write elsewhere.
-  memo filename={\jobname.#1.memo},
+  % The keys "memo filename prefix/suffix" tell the package where to store the
+  % separate externalized pictures (memos).  
+  %
+  % For example, say "memo filename prefix={\jobname.memo.dir/}" --- DON'T
+  % FORGET THE SLASH AND THE BRACES --- to store memos in the
+  % "\jobname.memo.dir" folder --- where \jobname is the name of the real job.
+  % You need to create the folder by hand.
+  %
+  % Default: We store the externalized files in the same folder (filename of
+  % form \jobname.<md5sum>.memo), because we don't know if we can write
+  % elsewhere.
+  memo filename prefix/.initial={\jobname.},
+  memo filename suffix/.initial={.memo},
+  %
   % System call for embedded *La*TeX compilations. The engine (pdftex, xetex
   % etc.) is chosen automatically.
   latex system call/.initial={\mmz@latex@binary\space
@@ -95,6 +100,11 @@
   % When we say "readonly" (or "readonly=true"), we will use whatever is
   % already memoized, but not memoize any new stuff.
   readonly/.is if=mmz@readonly,
+}
+\def\mmz@memo@filename#1{%
+  \mmz@valueof{memo filename prefix}%
+  #1%
+  \mmz@valueof{memo filename suffix}%
 }
 
 % manual memoization: \memoize[memoization key]{the code to be memoized}.  In a
