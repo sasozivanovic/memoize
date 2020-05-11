@@ -27,7 +27,7 @@
 \newbox\mmz@box
 \newcount\mmz@realpage
 
-% UI
+%%%%%%%%%%%%%%%%%%%%% UI
 \def\memoizeset#1{\pgfqkeys{/memoize}{#1}}
 \def\mmz@valueof#1{\pgfkeysvalueof{/memoize/#1}}
 \memoizeset{%
@@ -62,51 +62,51 @@
     \mmz@valueof{latex system call options}\space
     -jobname "\detokenize\expandafter{\mmz@syscall@jobname}"
     "\detokenize\expandafter{\mmz@syscall@commands}"},
+  % Additional options for the LaTeX system call
   latex system call options/.initial={},
-  latex system call options={},
+  % "active=false" disables memoization
   active/.is if=mmz@active,
+  % When we say "readonly" (or "readonly=true"), we will use whatever is
+  % already memoized, but not memoize any new stuff.
   readonly/.is if=mmz@readonly,
 }
 
-% A .memo file consists of a series of calls to \memoized containing, for each
-% md5 id, the memoized information and the link to the correct page of the PDF.
-\def\memoized#1#2#3#4{%
-  % todo: If there's several \memoized calls with the same md5 id, find the
-  % right one --- dependencies!
-  \def\mmz@id{#1}%
-  \def\mmz@filename{#2}%
-  \def\mmz@page{#3}%
-  \def\mmz@dp{#4}%
-}
-
-% manual memoization: #2 is the code to be memoized; #1 is the memoization key
-% (what md5sum is computed from).  We introduce a group here, so that the
-% situation is the same as when memoization is active.
-\def\memoize{\ifmmz@active\expandafter\memoize@active
-  \else\expandafter\memoize@inactive\fi}
-\newcommand\memoize@inactive[2][]{%
-  \begingroup
-  \mmz@activefalse
-  #2%
-  \endgroup
-}
-\newcommand\memoize@active[2][]{%
-  \ifstrempty{#1}{%
-    \edef\mmz@ID{\expandafter\mmz@mdfivesum\expandafter{\detokenize{#2}}}%
-  }{%
-    \edef\mmz@ID{\expandafter\mmz@mdfivesum\expandafter{\detokenize{#1}}}%
-  }%
+% manual memoization: \memoize[memoization key]{the code to be memoized}.  In a
+% manual invocation, the optional argument should usually be unnecessary.  So,
+% #1 is the memoization key (what md5sum is computed from), and #2 is the code
+% to be executed for memoization.
+\newcommand\memoize[2][]{%
   \mmz@leavevmode
-  % Use or create?
-  \mmz@ifmemoized{\mmz@use@memoized}{%
-    \ifmmz@readonly
-      \memoize@inactive{#2}%
-    \else
-      \mmz@memoize{#2}%
-    \fi
-  }%
-  % In both cases, we are left with \mmz@box
+  \ifmmz@active
+    \ifstrempty{#1}{%
+      \edef\mmz@ID{\expandafter\mmz@mdfivesum\expandafter{\detokenize{#2}}}%
+    }{%
+      \edef\mmz@ID{\expandafter\mmz@mdfivesum\expandafter{\detokenize{#1}}}%
+    }%
+    \mmz@ifmemoized{%
+      \let\mmz@next\mmz@use@memoized
+    }{%
+      \ifmmz@readonly
+        \let\mmz@next\memoize@compile
+      \else
+        \let\mmz@next\mmz@memoize
+      \fi
+    }%
+  \else
+    \let\mmz@next\memoize@compile
+  \fi
+  \mmz@next{#2}%
+  % In all cases, we are left with \mmz@box.
   \box\mmz@box
+}% todo: flexibility, optimization
+
+%%%%%%%%%%%%%%%%%%%% The core
+
+\def\memoize@compile#1{%
+  % We compile in a \hbox, so that the situation is the same as when
+  % memoization is active --- both in terms of the typeset output and the
+  % content of registers etc.
+  \setbox\mmz@box=\hbox{\mmz@activefalse#1}%
 }
 
 % \mmz@ifmemoized{true code}{false code}
@@ -134,7 +134,7 @@
 
 % We use the "graphics" package, so we don't have to deal with various TeX
 % engines.
-\def\mmz@use@memoized{%
+\def\mmz@use@memoized#1{%
   \PackageInfo{memoize}{Using \mmz@id\space on input line \the\inputlineno}%
   \setbox\mmz@box=\hbox{\lower\mmz@dp\hbox{\includegraphics{\mmz@filename}}}%
 }
@@ -166,6 +166,19 @@
   }%
   \immediate\closeout\mmz@memo@out
   \immediate\write\mmz@main@out{\noexpand\justmemoized{\mmz@ID}\@percentchar}%
+}
+
+%%%%%%%%%%%%%%%%%%%%% Commands used in generated files
+
+% A .memo file consists of a series of calls to \memoized containing, for each
+% md5 id, the memoized information and the link to the correct page of the PDF.
+\def\memoized#1#2#3#4{%
+  % todo: If there's several \memoized calls with the same md5 id, find the
+  % right one --- dependencies!
+  \def\mmz@id{#1}%
+  \def\mmz@filename{#2}%
+  \def\mmz@page{#3}%
+  \def\mmz@dp{#4}%
 }
 
 % Used when processing .mmz to split the resulting big PDF into individual
