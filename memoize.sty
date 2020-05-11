@@ -1,5 +1,11 @@
 % todo:
 % \item readonly
+% \item context dependency
+% \item named memos
+% \item error handling
+% \item An option to remove memo pages from the \jobname.pdf after splitting
+%   --- no recompilation of the main document, but no hyperlinks
+%   either. (\pdfdraftmode and \pdflastximagepages will be useful here.)
 
 \ProvidesPackage{memoize}
 
@@ -26,13 +32,12 @@
 \def\mmz@valueof#1{\pgfkeysvalueof{/memoize/#1}}
 \memoizeset{%
   % When the TeX job starts, \jobname contains the basename of the PDF that
-  % will
-  % be created.  If memoization is enabled, we store the name of this PDF
+  % will be created.  If memoization is enabled, we store the name of this PDF
   % (\jobname.pdf) into \memoize@output@pdf, and set \jobname using key "real
   % job". This way, we will be using and writing the auxiliary files of the
-  % real
-  % job. In particular, we will create <real job>.mmz that contains info on
-  % what was just externalized.
+  % real job. In particular, we will create <real job>.mmz that contains a
+  % record of what was just externalized (so that we know which file to split
+  % in the next pass).
   real job/.code={%
     \edef\memoize@output@pdf{\jobname.pdf}%
     \edef\jobname{#1}%
@@ -41,22 +46,24 @@
   real job=\jobname,
   % 
   % The key "memo filename" tells the package where to store the separate
-  % externalized pictures.  For example, say "memo={\jobname.memo.dir/#1}", to
-  % store them in the "\jobname.memo.dir" folder --- where \jobname is the name of the
-  % real job.
-  %
-  % todo: context dependency
+  % externalized pictures (memos).  "#1" in the value will be replaced by the
+  % md5sum of the memoized code.  For example, say
+  % "memo={\jobname.memo.dir/#1}", to store memos in the "\jobname.memo.dir"
+  % folder --- where \jobname is the name of the real job.
   memo filename/.code={\def\mmz@memo@filename##1{#1}},
   % Default: We store the externalized files in the same folder, because we
   % don't know if we can write elsewhere.
   memo filename={\jobname.#1.memo},
-  % todo: better interface for switching the engine and format; can the engine
-  % be automatic?
+  % System call for embedded *La*TeX compilations. The engine (pdftex, xetex
+  % etc.) is chosen automatically.
   latex system call/.initial={\mmz@latex@binary\space
     -halt-on-error
     -interaction=batchmode
+    \mmz@valueof{latex system call options}\space
     -jobname "\detokenize\expandafter{\mmz@syscall@jobname}"
     "\detokenize\expandafter{\mmz@syscall@commands}"},
+  latex system call options/.initial={},
+  latex system call options={},
   active/.is if=mmz@active,
 }
 
@@ -71,8 +78,8 @@
   \def\mmz@dp{#4}%
 }
 
-% manual memoization: #2 is the code to be memoized; #2 is the memoization key,
-% the base for computing md5sum.
+% manual memoization: #2 is the code to be memoized; #1 is the memoization key
+% (what md5sum is computed from).
 \def\memoize{\ifmmz@active\expandafter\memoize@active
   \else\expandafter\memoize@inactive\fi}
 \newcommand\memoize@inactive[2][]{#2}% should we introduce a group here, so that the situation is the same as with active memoization?
@@ -138,7 +145,6 @@
     \mmz@primitive\shipout\copy\mmz@box
   }%
   % Store memoized data.
-  % todo: immediately store in \jobname.\mmz@ID.tex
   \immediate\openout\mmz@memo@out=\mmz@memo@filename\mmz@ID
   \immediate\write\mmz@memo@out{%
     \noexpand\memoized{\mmz@ID}{\memoize@output@pdf}{\the\mmz@realpage}{\the\dp\mmz@box}\@percentchar
@@ -149,11 +155,9 @@
   \immediate\write\mmz@main@out{\noexpand\justmemoized{\mmz@ID}\@percentchar}%
 }
 
-% Used to process .mmz to split the resulting big PDF into individual
+% Used when processing .mmz to split the resulting big PDF into individual
 % externalized pictures.
-
 \def\justmemoizedto#1{\def\mmz@justmemoizedto{#1}}
-
 \def\justmemoized#1{%
   \def\mmz@ID{#1}%
   \undef\mmz@filename
@@ -166,8 +170,8 @@
       \noexpand\justmemoized@prepare@syscall@commands{\mmz@filename}{\mmz@page}%
     }\mmz@marshal
     \immediate\write18{\mmz@valueof{latex system call}}%
-    % Relink the memo .memo from the \jobname pdf to the memo pdf.
-    % (\mmz@memo@filename{#1})
+    % Relink the memo .memo from the previous "\jobname pdf" to the memo pdf
+    % (\mmz@memo@filename{#1}.pdf).
     \IfFileExists{\mmz@memo@filename{#1}}{%
       \immediate\openout\mmz@memo@out=\mmz@syscall@jobname
       \immediate\write\mmz@memo@out{%
@@ -213,7 +217,6 @@
 % We only need this to count pages. Can it be done otherwise?
 % Actually, this could be used to supress normal output as well.
 
-
 % Open and close .mmz file.
 \AtBeginDocument{%
   \immediate\openout\mmz@main@out=\jobname.mmz
@@ -224,35 +227,14 @@
 
 
 %%%% Automatically memoizing commands and environments
-
-% A lighter approach (without xparse) for easy stuff:
-% handlers
-% \memoizeset{%
-%   def/.code={\AtBeginDocument{%
-%       \cslet{\mmz@orig@string#1}#1%
-%       \def#1##1{\memoize{\mmz@orig#1{##1}}}%
-%     }},
-%   def 1/.style={def={#1}},
-%   prefixed def/.code 2 args={\AtBeginDocument{%
-%       \cslet{\mmz@orig@string#2}#2%
-%       #1\def#1##2{\memoize{\mmz@orig#2{##1}}}%
-%     }},
-%   newcommand/.code={\AtBeginDocument{%
-%       \cslet{\mmz@orig@string#1}#1%
-%       \reqnewcommand#1{\memoize{\mmz@orig#1{##1}}}%
-%     }},
-%   newcommand[1]/.style={newcommand={#1}},
-%   newcommand[][2]/.code 2 args={\AtBeginDocument{%
-%       \cslet{\mmz@orig@string#2}#2%
-%       \renewcommand#2[2][#1]{\memoize{\mmz@orig#2[##1]{##2}}}%
-%     }},
-% }
+% todo: a lighter approach (without xparse) for easy stuff
 
 \def\mmz@orig#1{mmz@orig@\string#1}
 \def\mmz@repl#1{mmz@repl@\string#1}
 \def\mmz@args#1{mmz@args@\string#1}
 
-\def\memoizeNewHandler#1#2#3{%
+% Commands:
+\def\memoizeNewCommandHandler#1#2#3{%
   \expandafter\NewDocumentCommand\csname\mmz@repl{#1}\endcsname{#2}{%
     \edef\mmz@temp{#3}%
     \edef\mmz@marshal{%
@@ -262,55 +244,14 @@
     }\mmz@marshal
   }%
 }
-
 \def\memoizeInstallCommandHandler#1{%
   \cslet{\mmz@orig{#1}}#1%
   \letcs#1{\mmz@repl{#1}}}
 \def\memoizeUninstallCommandHandler#1{%
   \letcs#1{\mmz@orig{#1}}}
 
-
-
-% Predefined handlers
-
-% \memoizeNewHandler\tikz{O{} m}{\memoize{\tikz[#1]{#2}}}
-\memoizeNewHandler\tikz{O{} m}{[\unexpanded{#1}]{\unexpanded{#2}}}
-
-% \memoizeNewHandler\Forest{s D(){} m}{%
-%   \IfBooleanTF{#1}{*(#2){#3}}{#2){#3}}
-\memoizeNewHandler\Forest{s D(){} m}{%
-  \IfBooleanTF{#1}{*}{}(\unexpanded{#2}){\unexpanded{#3}}%
-}
-
-
-% \def\memoizeInstallEnvironmentHandler{%
-%   \mmz@install@env@handler\collect@body}
-% \def\memoizeInstallLongEnvironmentHandler{%
-%   \mmz@install@env@handler\Collect@Body}
-% \def\mmz@install@env@handler#1#2{%
-%   % #1 = collect@body or Collect@Body
-%   % #2 = env name
-%   \csletcs{\mmz@orig{#2}}{#2}%
-%   \csletcs{\mmz@orig{end#2}}{end#2}%
-%   \csdef{#2}{%
-%     \def\mmz@marshal{\mmz@handle@environment{#2}}%
-%     #1\mmz@marshal
-%   }%
-%   \csdef{end#2}{}%
-% }
-% \def\mmz@handle@environment#1#2{% environment, body
-%   \memoize[{\begin{#1}#2\end{#1}}]{%
-%     \csname #1\endcsname
-%     #2%
-%     \csname end#1\endcsname
-%   }%
-% }
-% \def\memoizeUninstallEnvironmentHandler#1{%
-%   \csletcs{#1}{\mmz@orig{#1}}%
-%   \csletcs{end#1}{\mmz@orig{end#1}}%
-% }
-
-% todo: environment hooks (etoolbox)
+% Environments:
+% \item todo: environment hooks (etoolbox)
 \DeclareRobustCommand\mmz@begin{%
   \ifmmz@active
     \expandafter\mmz@begin@active
@@ -342,24 +283,19 @@
 \def\memoizeEnableEnvironment#1{\csdef{\mmz@env{#1}}{1}}
 \def\memoizeDisableEnvironment#1{\csdef{\mmz@env{#1}}{0}}
 
-
+% Predefined command handlers:
+\memoizeNewCommandHandler\tikz{O{} m}{%
+  [\unexpanded{#1}]{\unexpanded{#2}}}
+\memoizeNewCommandHandler\Forest{s D(){} m}{%
+  \IfBooleanTF{#1}{*}{}(\unexpanded{#2}){\unexpanded{#3}}}
 % idea: preinstall only env handlers, so that the user has a easy choice to
 % "enable" or "disable" externalization
 
-% Install handlers
+% Install handlers:
 \memoizeInstallCommandHandler\tikz
 \memoizeEnableEnvironment{tikzpicture}
-
 \memoizeInstallCommandHandler\Forest
 \memoizeEnableEnvironment{forest}
-
-
-% ideas:
-% - could \pdfdraftmode be useful?
-% - ditto for \pdflastximagepages
-
-% todo: error handling
-
 
 %%% Local Variables:
 %%% mode: latex
