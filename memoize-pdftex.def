@@ -2,7 +2,7 @@
 \let\mmz@primitive\pdfprimitive
 % \quitvmode is pdftex's replacement for \leavevmode (8.21)
 \let\mmz@leavevmode\quitvmode
-\def\mmz@prepare@fragment@page{%
+\def\mmz@prepare@memo@page{%
   % Leave it all to pdftex ... manual 8.1: \pgfpagewidth
   \pdfpagewidth 0pt \pdfpageheight 0pt
   \pdfhorigin 0pt \pdfvorigin 0pt

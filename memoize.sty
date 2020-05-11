@@ -1,3 +1,11 @@
+% todo:
+% \item fragment .mmz -> .memo
+% \item not .memo.tex
+% \item readonly
+% \item 
+
+
+
 \ProvidesPackage{memoize}
 
 \RequirePackage{pgfkeys} % for UI
@@ -14,7 +22,7 @@
 % Registers and such
 \newif\ifmmz@active
 \newwrite\mmz@main@out
-\newwrite\mmz@fragment@out
+\newwrite\mmz@memo@out
 \newbox\mmz@box
 \newcount\mmz@realpage
 
@@ -37,17 +45,17 @@
   % Default: We output to the real job output file.
   real job=\jobname,
   % 
-  % The key "fragments" tells the package where to store the separate
-  % externalized pictures.  For example, say "fragments={\jobname.mmz/#1}", to
+  % The key "memo filename" tells the package where to store the separate
+  % externalized pictures.  For example, say "memo={\jobname.mmz/#1}", to
   % store them in the "\jobname.mmz" folder --- where \jobname is the name of the
   % real job.
   %
   % todo: context dependency
-  fragments/.code={\def\mmz@fragment@filename##1{#1}},
+  memo filename/.code={\def\mmz@memo@filename##1{#1}},
   % Default: We store the externalized files in the same folder, because we
   % don't know if we can write elsewhere. The name is set so that it is easy to
   % clean up: "rm <jobname>.mmz*" will remove all memoization info.
-  fragments={\jobname.mmz.#1},
+  memo filename={\jobname.mmz.#1},
   % todo: better interface for switching the engine and format; can the engine
   % be automatic?
   latex system call/.initial={\mmz@latex@binary\space
@@ -94,7 +102,7 @@
 \def\mmz@ifmemoized{%
   % If inputing <id>.mmz sets the filename, we found it!
   \undef\mmz@filename
-  \@input{\mmz@fragment@filename\mmz@ID}%
+  \@input{\mmz@memo@filename\mmz@ID}%
   \ifdef\mmz@filename{%
     % Well ... if that file exists.
     \IfFileExists{\mmz@filename}{%
@@ -102,7 +110,7 @@
       \edef\mmz@marshal{\noexpand\ifstrequal{\mmz@id}{\mmz@ID}}%
       \mmz@marshal{}{%
         \PackageWarning{memoize}{Something is wrong here. I found
-          data for "\mmz@id" in file "\mmz@fragment@filename\mmz@ID"}%
+          data for "\mmz@id" in file "\mmz@memo@filename\mmz@ID"}%
       }%
       % Yes:
       \@firstoftwo
@@ -127,7 +135,7 @@
   \mmz@activetrue
   {%
     % Debug PDF: \pdfcompresslevel=0 \pdfobjcompresslevel=0
-    \mmz@prepare@fragment@page
+    \mmz@prepare@memo@page
     % Use the original \shipout here, otherwise we can get in trouble with other
     % packages like pdfpages.  Let's just hope that (i) some other package
     % doesn't count shipouts as well (then, they are in trouble), or (ii) doesn't
@@ -137,13 +145,13 @@
   }%
   % Store memoized data.
   % todo: immediately store in \jobname.\mmz@ID.tex
-  \immediate\openout\mmz@fragment@out=\mmz@fragment@filename\mmz@ID
-  \immediate\write\mmz@fragment@out{%
+  \immediate\openout\mmz@memo@out=\mmz@memo@filename\mmz@ID
+  \immediate\write\mmz@memo@out{%
     \noexpand\memoized{\mmz@ID}{\memoize@output@pdf}{\the\mmz@realpage}{\the\dp\mmz@box}\@percentchar
     % todo: an option to write out the memoized code, for debugging or manual
     % inspection.
   }%
-  \immediate\closeout\mmz@fragment@out
+  \immediate\closeout\mmz@memo@out
   \immediate\write\mmz@main@out{\noexpand\justmemoized{\mmz@ID}\@percentchar}%
 }
 
@@ -155,22 +163,22 @@
 \def\justmemoized#1{%
   \def\mmz@ID{#1}%
   \undef\mmz@filename
-  \@input{\mmz@fragment@filename\mmz@ID}%
+  \@input{\mmz@memo@filename\mmz@ID}%
   \ifdef\mmz@filename{%
-    % Split the relevant page off to the fragment pdf.
-    \edef\mmz@syscall@jobname{\mmz@fragment@filename{#1}}%
+    % Split the relevant page off to the memo pdf.
+    \edef\mmz@syscall@jobname{\mmz@memo@filename{#1}}%
     % todo: test: \mmz@filename matches \mmz@justmemoizedto?
     \edef\mmz@marshal{%
       \noexpand\justmemoized@prepare@syscall@commands{\mmz@filename}{\mmz@page}%
     }\mmz@marshal
     \immediate\write18{\mmz@valueof{latex system call}}%
-    % Relink the fragment .mmz from the main pdf to the fragment pdf
-    % (\mmz@fragment@filename{#1})
-    \IfFileExists{\mmz@fragment@filename{#1}}{%
-      \immediate\openout\mmz@fragment@out=\mmz@syscall@jobname
-      \immediate\write\mmz@fragment@out{%
+    % Relink the memo .mmz from the main pdf to the memo pdf
+    % (\mmz@memo@filename{#1})
+    \IfFileExists{\mmz@memo@filename{#1}}{%
+      \immediate\openout\mmz@memo@out=\mmz@syscall@jobname
+      \immediate\write\mmz@memo@out{%
         \noexpand\memoized{#1}{\mmz@syscall@jobname.pdf}{1}{\mmz@dp}\@percentchar}%
-      \immediate\closeout\mmz@fragment@out
+      \immediate\closeout\mmz@memo@out
     }{}%
   }{\justmemoized@error}%
 }
@@ -188,9 +196,9 @@
 }%
 
 \def\justmemoized@error{%
-  \PackageWarning{memoize}{Cannot find \mmz@fragment@filename\mmz@ID,
+  \PackageWarning{memoize}{Cannot find \mmz@memo@filename\mmz@ID,
     which I supposedly generated in the previous run, or
-    \mmz@fragment@filename\mmz@ID.pdf, which I should have created just now.}%
+    \mmz@memo@filename\mmz@ID.pdf, which I should have created just now.}%
 }
 
 % Split.
