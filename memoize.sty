@@ -135,14 +135,14 @@
 % We use the "graphics" package, so we don't have to deal with various TeX
 % engines.
 \def\mmz@use@memoized#1{%
-  \PackageInfo{memoize}{Using \mmz@id\space on input line \the\inputlineno}%
+  \PackageInfo{memoize}{Using \mmz@id\space}%
   \setbox\mmz@box=\hbox{\lower\mmz@dp\hbox{\includegraphics{\mmz@filename}}}%
 }
 
 % Memoize and leave the box in \mmz@box.
 \def\mmz@memoize#1{%
   % If there was no memoized data:
-  \PackageInfo{memoize}{Memoizing \mmz@ID\space on input line \the\inputlineno}%
+  \PackageInfo{memoize}{Memoizing \mmz@ID\space}%
   % Typeset the code.
   \mmz@activefalse
   \setbox\mmz@box=\hbox{#1}% todo: smuggle \mmz@toks and \mmz@global@toks!
