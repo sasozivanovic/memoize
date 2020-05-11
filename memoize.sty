@@ -1,5 +1,4 @@
 % todo:
-% \item readonly
 % \item context dependency
 % \item named memos
 % \item error handling
@@ -22,6 +21,7 @@
 
 % Registers and such
 \newif\ifmmz@active
+\newif\ifmmz@readonly
 \newwrite\mmz@main@out
 \newwrite\mmz@memo@out
 \newbox\mmz@box
@@ -65,6 +65,7 @@
   latex system call options/.initial={},
   latex system call options={},
   active/.is if=mmz@active,
+  readonly/.is if=mmz@readonly,
 }
 
 % A .memo file consists of a series of calls to \memoized containing, for each
@@ -79,10 +80,16 @@
 }
 
 % manual memoization: #2 is the code to be memoized; #1 is the memoization key
-% (what md5sum is computed from).
+% (what md5sum is computed from).  We introduce a group here, so that the
+% situation is the same as when memoization is active.
 \def\memoize{\ifmmz@active\expandafter\memoize@active
   \else\expandafter\memoize@inactive\fi}
-\newcommand\memoize@inactive[2][]{#2}% should we introduce a group here, so that the situation is the same as with active memoization?
+\newcommand\memoize@inactive[2][]{%
+  \begingroup
+  \mmz@activefalse
+  #2%
+  \endgroup
+}
 \newcommand\memoize@active[2][]{%
   \ifstrempty{#1}{%
     \edef\mmz@ID{\expandafter\mmz@mdfivesum\expandafter{\detokenize{#2}}}%
@@ -91,7 +98,13 @@
   }%
   \mmz@leavevmode
   % Use or create?
-  \mmz@ifmemoized{\mmz@use@memoized}{\mmz@memoize{#2}}%
+  \mmz@ifmemoized{\mmz@use@memoized}{%
+    \ifmmz@readonly
+      \memoize@inactive{#2}%
+    \else
+      \mmz@memoize{#2}%
+    \fi
+  }%
   % In both cases, we are left with \mmz@box
   \box\mmz@box
 }
