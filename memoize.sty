@@ -2,9 +2,14 @@
 % \item context dependency
 % \item named memos
 % \item error handling
+%   \begin{itemize}
+%   \item delete .mmz after right now, it seeem we try to split twice if there was an error
+%   \end{itemize}
 % \item An option to remove memo pages from the \jobname.pdf after splitting
 %   --- no recompilation of the main document, but no hyperlinks
 %   either. (\pdfdraftmode and \pdflastximagepages will be useful here.)
+
+
 
 \ProvidesPackage{memoize}
 
@@ -26,24 +31,43 @@
 \newwrite\mmz@memo@out
 \newbox\mmz@box
 \newcount\mmz@realpage
+\def\mmz@valueof#1{\pgfkeysvalueof{/memoize/#1}}
 
 %%%%%%%%%%%%%%%%%%%%% UI
+% There are two UI commands, \memoizeset for settings and \memoize for manual
+% memoization. 
+% 
+% If you are writing a package or a complicated preamble, and you want to be
+% able to comment out \usepackage{memoize} at will, define the stubs for these
+% two commands as follows.
+% 
+% \ProvideDocumentCommand\memoize{om}{{#2}}
+% \ProvideDocumentCommand\memoizeset{m}{}
+% or
+% \providecommand\memoize[2][]{{#2}}
+% \providecommand\memoizeset[1][]{}
+%
+\let\memoizeset\relax
 \def\memoizeset#1{\pgfqkeys{/memoize}{#1}}
-\def\mmz@valueof#1{\pgfkeysvalueof{/memoize/#1}}
 \memoizeset{%
   % When the TeX job starts, \jobname contains the basename of the PDF that
   % will be created.  If memoization is enabled, we store the name of this PDF
   % (\jobname.pdf) into \memoize@output@pdf, and set \jobname using key "real
-  % job". This way, we will be using and writing the auxiliary files of the
-  % real job. In particular, we will create <real job>.mmz that contains a
-  % record of what was just externalized (so that we know which file to split
-  % in the next pass).
+  % job". This way, LaTeX will be using and writing the auxiliary files of the
+  % real job.  By default, real job equals \jobname, i.e. we memoize "inline".
   real job/.code={%
     \edef\memoize@output@pdf{\jobname.pdf}%
     \edef\jobname{#1}%
   },
-  % Default: We output to the real job output file.
   real job=\jobname,
+  % 
+  % After each compilation, this file will contain the list of memoized
+  % stuff. On the next run, tex will split the memo PDFs off the big PDF we
+  % have generated in the first compilation.  For example, if we have a setup
+  % where we can compile individual chapters of a book, this option should be
+  % set so that both book and chapter compilations read and write to the same
+  % .mmz file.
+  mmz filename/.initial={\jobname.mmz},
   % 
   % The key "memo filename" tells the package where to store the separate
   % externalized pictures (memos).  "#1" in the value will be replaced by the
@@ -64,8 +88,10 @@
     "\detokenize\expandafter{\mmz@syscall@commands}"},
   % Additional options for the LaTeX system call
   latex system call options/.initial={},
-  % "active=false" disables memoization
-  active/.is if=mmz@active,
+  % Enable (default) / disable memoization:
+  enable/.code=\AfterPreamble{\mmz@activetrue},
+  disable/.code=\AfterPreamble{\mmz@activefalse},
+  enable,
   % When we say "readonly" (or "readonly=true"), we will use whatever is
   % already memoized, but not memoize any new stuff.
   readonly/.is if=mmz@readonly,
@@ -75,6 +101,7 @@
 % manual invocation, the optional argument should usually be unnecessary.  So,
 % #1 is the memoization key (what md5sum is computed from), and #2 is the code
 % to be executed for memoization.
+\let\memoize\relax
 \newcommand\memoize[2][]{%
   \mmz@leavevmode
   \ifmmz@active
@@ -226,7 +253,7 @@
 }
 
 % Split.
-\AtEndPreamble{\@input{\jobname.mmz}}
+\AtEndPreamble{\@input{\mmz@valueof{mmz filename}}}
 
 % Hijack TeX's \shipout. Do it at the beginning of the document, in case some
 % other package mucked with it as well.
@@ -245,7 +272,7 @@
 
 % Open and close .mmz file.
 \AtBeginDocument{%
-  \immediate\openout\mmz@main@out=\jobname.mmz
+  \immediate\openout\mmz@main@out=\mmz@valueof{mmz filename}
   \immediate\write\mmz@main@out{%
     \noexpand\justmemoizedto{\memoize@output@pdf}\@percentchar}%
 }
@@ -301,7 +328,6 @@
   \memoize{\begin{#1}#2\end{#1}}%
 }
 \AtBeginDocument{%
-  \mmz@activetrue
   \let\mmz@orig@begin\begin
   \let\begin\mmz@begin
 }
