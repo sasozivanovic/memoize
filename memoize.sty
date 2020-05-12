@@ -241,28 +241,29 @@
 % includes the "link" to the externalized picture (todo: picture*s*). Like
 % this:
 % 
-% \memoized{md5sum}{pdf filename}{pdf page number}{width}{height}{depth} {todo:
-% context}{todo: code, input file, input line (if verbose) --- check currfile
-% package}
+% \memoized{md5sum}{pdf filename}{pdf page number}{width}{height}{depth}
+% 
+% \item todo: context
+% \item todo: code, input file, input line (if verbose) --- maybe check
+%   currfile package?
 % 
 % The pdf filename is a path to the pdf relative to the location of the .memo
 % file.
 % 
-% A complex .memo file will contain a series of calls to \memoize.  Memoization
-% always produces a complex .memo file, which is then split into several
-% "<md5sum>.memo" files, each with a corresponding "<md5sum>.memo.pdf".
-% However, the idea is to also support inclusion of externalized graphics from
-% a single .memo -- .memo.pdf pair (probably slower, but easier to share). This
-% is why \memoized simply skips entries with a wrong md5sum.
+% A complex .memo file will contain a series of calls to \memoized.  A .mmz
+% file is really a complex .memo file.  The different suffix indicates the
+% different function.  .mmz files are transitory, the idea is to split them
+% into several .memo files, one for each \memoize(d).  ".memo" files are
+% permanent, their filenames contain md5sum.
 % 
-% A .mmz file has the same structure as a .memo file.  The different suffix
-% indicates the different function.  .mmz files are transitory, the idea is to
-% split them into several .memo files, one for each \memoize(d).  ".memo"
-% files are permanent, their filenames contain md5sum.
-
-% \memoized@search will only store the information when the md5sum argument
-% (#1) matches \mmz@ID.  The idea is to \undef something, like \mmz@filename,
-% and test it with \ifdef after inputting the .memo file.
+% Memoization always produces a complex .memo file (.mmz), which is then split
+% into several "<md5sum>.memo" files, each with a corresponding
+% "<md5sum>.memo.pdf".  However, the idea is to also support inclusion of
+% externalized graphics from a single .memo -- .memo.pdf pair (probably slower,
+% but easier to share). This is why \memoized@search below skips entries with a
+% wrong md5sum, i.e.  \memoized@search will only store the information when the
+% md5sum argument (#1) matches \mmz@ID.  (The idea is to \undef something, like
+% \mmz@filename, and test it with \ifdef after inputting the .memo file.)
 \def\memoized@search#1{%
   \def\mmz@id{#1}%
   \ifdefstrequal\mmz@id\mmz@ID{%
@@ -282,7 +283,6 @@
   \memoized@next
 }
 \def\memoized@skip#1#2#3#4#5{}
-
 
 
 % Split, then clear .mmz
@@ -351,13 +351,15 @@
     \mmz@orig@shipout
   }%
 }
-% todo: For funky situation: an option to not do it, and instruct the user to
+% todo: For funky situations: an option to not do it, and instruct the user to
 % use \memoizePatchShipout in an appropriate place instead.
 \AtBeginDocument{\memoizePatchShipout}
-% We only need this to count pages. Can it be done otherwise?
-% Actually, this could be used to supress normal output as well.
+% We only need this to count pages. Can it be done otherwise?  Actually, this
+% could be used to supress normal output as well, producing a pdf containing
+% only memoized graphics.
 
-%%%% Automatically memoizing commands and environments
+
+%%%% Automemoizing commands and environments
 % todo: a lighter approach (without xparse) for easy stuff
 
 \def\mmz@orig#1{mmz@orig@\string#1}
