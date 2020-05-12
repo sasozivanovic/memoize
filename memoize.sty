@@ -27,8 +27,7 @@
 \newif\ifmmz@active
 \newif\ifmmz@readonly
 \newif\ifmmz@temp
-\newwrite\mmz@main@out
-\newwrite\mmz@memo@out
+\newwrite\mmz@out
 \newbox\mmz@box
 \newcount\mmz@realpage
 \def\mmz@valueof#1{\pgfkeysvalueof{/memoize/#1}}
@@ -228,7 +227,7 @@
     \mmz@primitive\shipout\copy\mmz@box
   }%
   % Store memoized data and the link to the .pdf in to .mmz file.
-  \immediate\write\mmz@main@out{\noexpand\memoized{\mmz@ID}%
+  \immediate\write\mmz@out{\noexpand\memoized{\mmz@ID}%
     {\jobbasename.pdf}{\the\mmz@realpage}%
     {\the\wd\mmz@box}{\the\ht\mmz@box}{\the\dp\mmz@box}%
     \@percentchar
@@ -292,14 +291,14 @@
   \mmz@split@filename{\mmz@valueof{memo filename prefix}\noexpand\@empty}%
     \mmz@temp\mmz@memo@basenameprefix
   \@input{\jobname.mmz}%
-  \immediate\openout\mmz@main@out=\jobname.mmz
+  \immediate\openout\mmz@out=\jobname.mmz
   % Prefix and suffix info can be used by the external splitting tool.
-  \immediate\write\mmz@main@out{\@percentchar\space
+  \immediate\write\mmz@out{\@percentchar\space
     memo filename prefix={\mmz@valueof{memo filename prefix}}}%
-  \immediate\write\mmz@main@out{\@percentchar\space
+  \immediate\write\mmz@out{\@percentchar\space
     memo filename suffix={\mmz@valueof{memo filename suffix}}}%
 }
-\AtEndDocument{\immediate\closeout\mmz@main@out}
+\AtEndDocument{\immediate\closeout\mmz@out}
 
 \def\memoized@split#1{%
   \def\mmz@id{#1}%
@@ -315,13 +314,13 @@
   \immediate\write18{\mmz@valueof{latex system call}}%
   % Write the .memo file.
   \IfFileExists{\mmz@syscall@jobname.pdf}{%
-    \immediate\openout\mmz@memo@out=\mmz@syscall@jobname
-    \immediate\write\mmz@memo@out{%
+    \immediate\openout\mmz@out=\mmz@syscall@jobname
+    \immediate\write\mmz@out{%
       \noexpand\memoized{\mmz@id}%
         {\mmz@memo@basenameprefix\mmz@id\mmz@valueof{memo filename suffix}.pdf}{1}%
         {\mmz@wd}{\mmz@ht}{\mmz@dp}\@percentchar
     }%
-    \immediate\closeout\mmz@memo@out
+    \immediate\closeout\mmz@out
   }{\justmemoized@error}%
 }
 \def\justmemoized@prepare@syscall@commands#1#2{%
