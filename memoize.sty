@@ -8,6 +8,9 @@
 % \item An option to remove memo pages from the \jobname.pdf after splitting
 %   --- no recompilation of the main document, but no hyperlinks
 %   either. (\pdfdraftmode and \pdflastximagepages will be useful here.)
+% \item Investigate interaction with -no-pdf / \pdfdraftmode
+% \item Safety belt: don't include/split off a memoized page if the size does
+%   not match the recorded values
 
 
 
@@ -27,6 +30,7 @@
 % Registers and such
 \newif\ifmmz@active
 \newif\ifmmz@readonly
+\newif\ifmmz@temp
 \newwrite\mmz@main@out
 \newwrite\mmz@memo@out
 \newbox\mmz@box
@@ -49,28 +53,50 @@
 %
 \let\memoizeset\relax
 \def\memoizeset#1{\pgfqkeys{/memoize}{#1}}
+
+% Copied (with rename) from pgfutil-common.tex, for self-containment
+\newif\ifmmzutil@in@
+\def\mmzutil@in@#1#2{%
+  \def\mmzutil@in@@##1#1##2##3\mmzutil@in@@{%
+    \ifx\mmzutil@in@##2\mmzutil@in@false\else\mmzutil@in@true\fi}%
+  \mmzutil@in@@#2#1\mmzutil@in@\mmzutil@in@@}
+  
+\def\mmz@split@filename#1#2#3{%
+  % input: #1 = filename (absolute, relative, with or without path component)
+  % output: #2 = path, #3 = name
+  \edef\pgfkeyscurrentkey{#1}%
+  \expandafter\mmzutil@in@\expandafter/\expandafter{\pgfkeyscurrentkey}%
+  \ifmmzutil@in@
+    \pgfkeys@split@path
+    \edef#2{\pgfkeyscurrentpath/}%
+    \let#3\pgfkeyscurrentname
+  \else
+    \def#2{}%
+    \def#3{#1}%
+  \fi
+}
+
+%\tracingall
 \memoizeset{%
   % When the TeX job starts, \jobname contains the basename of the PDF that
   % will be created.  If memoization is enabled, we store the name of this PDF
   % (\jobname.pdf) into \memoize@output@pdf, and set \jobname using key "real
   % job". This way, LaTeX will be using and writing the auxiliary files of the
   % real job.  By default, real job equals \jobname, i.e. we memoize "inline".
+  % Include the path, but don't add ".tex" here.
   real job/.code={%
-    \edef\memoize@output@pdf{\jobname.pdf}%
     \edef\jobname{#1}%
+    \mmz@split@filename\jobname\jobpath\jobbasename
   },
   real job=\jobname,
   % 
-  % After each compilation, this file will contain the list of memoized
+  % After each compilation, "\jobname.mmz" will contain the list of memoized
   % stuff. On the next run, tex will split the memo PDFs off the big PDF we
-  % have generated in the first compilation.  For example, if we have a setup
-  % where we can compile individual chapters of a book, this option should be
-  % set so that both book and chapter compilations read and write to the same
-  % .mmz file.
-  mmz filename/.initial={\jobname.mmz},
+  % have generated in the first compilation.
   % 
   % The keys "memo filename prefix/suffix" tell the package where to store the
-  % separate externalized pictures (memos).  
+  % separate externalized pictures (memos).  The prefix can contain the path,
+  % which must be relative to real job folder.
   %
   % For example, say "memo filename prefix={\jobname.memo.dir/}" --- DON'T
   % FORGET THE SLASH AND THE BRACES --- to store memos in the
@@ -80,7 +106,7 @@
   % Default: We store the externalized files in the same folder (filename of
   % form \jobname.<md5sum>.memo), because we don't know if we can write
   % elsewhere.
-  memo filename prefix/.initial={\jobname.},
+  memo filename prefix/.initial={\jobbasename.},
   memo filename suffix/.initial={.memo},
   %
   % System call for embedded *La*TeX compilations. The engine (pdftex, xetex
@@ -101,7 +127,9 @@
   % already memoized, but not memoize any new stuff.
   readonly/.is if=mmz@readonly,
 }
+
 \def\mmz@memo@filename#1{%
+  \jobpath
   \mmz@valueof{memo filename prefix}%
   #1%
   \mmz@valueof{memo filename suffix}%
@@ -151,29 +179,36 @@
 % \memoized) and execute {true code}. If no, \mmz@filename will be undefined
 % and we run {false code}.
 \def\mmz@ifmemoized{%
-  % If inputing <id>.memo sets the filename, we found it!
+  % If inputing .memo sets the filename, we found it!
+  \let\memoized\memoized@search
   \undef\mmz@filename
   \@input{\mmz@memo@filename\mmz@ID}%
   \ifdef\mmz@filename{%
-    % Well ... if that file exists.
+    % Well ... if that file exists.  First, we prefix the correct folder:
+    \mmz@split@filename{\jobpath\mmz@valueof{memo filename prefix}\noexpand\@empty}%
+      \mmz@memo@path\mmz@temp
+    \epreto\mmz@filename\mmz@memo@path
     \IfFileExists{\mmz@filename}{%
-      % Yes! Unless ...
-      \edef\mmz@marshal{\noexpand\ifstrequal{\mmz@id}{\mmz@ID}}%
-      \mmz@marshal{}{%
-        \PackageWarning{memoize}{Something is wrong here. I found
-          data for "\mmz@id" in file "\mmz@memo@filename\mmz@ID"}%
-      }%
-      % Yes:
-      \@firstoftwo
-      % No:
-    }{\@secondoftwo}}{\@secondoftwo}%
+      \@firstoftwo % yes!
+    }{\@secondoftwo}}{\@secondoftwo}% no
 }
 
 % We use the "graphics" package, so we don't have to deal with various TeX
 % engines.
-\def\mmz@use@memoized#1{%
+\def\mmz@precision{0.01pt}
+\def\mmz@use@memoized#1{% todo: mark inclusion in .mmz
   \PackageInfo{memoize}{Using \mmz@id\space}%
   \setbox\mmz@box=\hbox{\lower\mmz@dp\hbox{\includegraphics{\mmz@filename}}}%
+  \mmz@tempfalse
+  \mmz@if@roughly@equal{\mmz@wd}{\wd\mmz@box}{%
+    \mmz@if@roughly@equal{\mmz@ht}{\ht\mmz@box}{%
+      % no need to check \dp, we have just set it
+      \mmz@temptrue
+    }{}}{}%
+  \ifmmz@temp\else
+    \PackageWarning{memoize}{Wrong dimensions of externalized graphics \mmz@id.
+      Did something go wrong?}%
+  \fi
 }
 
 % Memoize and leave the box in \mmz@box.
@@ -195,52 +230,92 @@
     \mmz@primitive\shipout\copy\mmz@box
   }%
   % Store memoized data.
-  \immediate\openout\mmz@memo@out=\mmz@memo@filename\mmz@ID
-  \immediate\write\mmz@memo@out{%
-    \noexpand\memoized{\mmz@ID}{\memoize@output@pdf}{\the\mmz@realpage}{\the\dp\mmz@box}\@percentchar
-    % todo: an option to write out the memoized code, for debugging or manual
-    % inspection.
+  \immediate\write\mmz@main@out{\noexpand\memoized{\mmz@ID}%
+    {\jobbasename.pdf}{\the\mmz@realpage}%
+    {\the\wd\mmz@box}{\the\ht\mmz@box}{\the\dp\mmz@box}%
+    \@percentchar
   }%
-  \immediate\closeout\mmz@memo@out
-  \immediate\write\mmz@main@out{\noexpand\justmemoized{\mmz@ID}\@percentchar}%
 }
 
 %%%%%%%%%%%%%%%%%%%%% Commands used in generated files
 
-% A .memo file consists of a series of calls to \memoized containing, for each
-% md5 id, the memoized information and the link to the correct page of the PDF.
-\def\memoized#1#2#3#4{%
-  % todo: If there's several \memoized calls with the same md5 id, find the
-  % right one --- dependencies!
-  \def\mmz@id{#1}%
-  \def\mmz@filename{#2}%
-  \def\mmz@page{#3}%
-  \def\mmz@dp{#4}%
-}
+% A simple .memo file consists of a call to \memoized containing the
+% information memoized at a call to \memoize.  Crucially, this information
+% includes the "link" to the externalized picture (todo: picture*s*). Like
+% this:
+% 
+% \memoized{md5sum}{pdf filename}{pdf page number}{width}{height}{depth} {todo:
+% context}{todo: code, input file, input line (if verbose) --- check currfile
+% package}
+% 
+% The pdf filename is a path to the pdf relative to the location of the .memo
+% file.
+% 
+% A complex .memo file will contain a series of calls to \memoize.  Memoization
+% always produces a complex .memo file, which is then split into several
+% "<md5sum>.memo" files, each with a corresponding "<md5sum>.memo.pdf".
+% However, the idea is to also support inclusion of externalized graphics from
+% a single .memo -- .memo.pdf pair (probably slower, but easier to share). This
+% is why \memoized simply skips entries with a wrong md5sum.
+% 
+% A .mmz file has the same structure as a .memo file.  The different suffix
+% indicates the different function.  .mmz files are transitory, the idea is to
+% split them into several .memo files, one for each \memoize(d).  ".memo"
+% files are permanent, their filenames contain md5sum.
 
-% Used when processing .mmz to split the resulting big PDF into individual
-% externalized pictures.
-\def\justmemoizedto#1{\def\mmz@justmemoizedto{#1}}
-\def\justmemoized#1{%
-  \def\mmz@ID{#1}%
-  \undef\mmz@filename
-  \@input{\mmz@memo@filename\mmz@ID}%
-  \ifdef\mmz@filename{%
-    % Split the relevant page off to the memo pdf.
-    \edef\mmz@syscall@jobname{\mmz@memo@filename{#1}}%
-    % todo: test: \mmz@filename matches \mmz@justmemoizedto?
-    \edef\mmz@marshal{%
-      \noexpand\justmemoized@prepare@syscall@commands{\mmz@filename}{\mmz@page}%
-    }\mmz@marshal
-    \immediate\write18{\mmz@valueof{latex system call}}%
-    % Relink the memo .memo from the previous "\jobname pdf" to the memo pdf
-    % (\mmz@memo@filename{#1}.pdf).
-    \IfFileExists{\mmz@memo@filename{#1}}{%
-      \immediate\openout\mmz@memo@out=\mmz@syscall@jobname
-      \immediate\write\mmz@memo@out{%
-        \noexpand\memoized{#1}{\mmz@syscall@jobname.pdf}{1}{\mmz@dp}\@percentchar}%
-      \immediate\closeout\mmz@memo@out
-    }{}%
+% \memoized@search will only store the information when the md5sum argument
+% (#1) matches \mmz@ID.  The idea is to \undef something, like \mmz@filename,
+% and test it with \ifdef after inputting the .memo file.
+\def\memoized@search#1{%
+  \def\mmz@id{#1}%
+  \ifdefstrequal\mmz@id\mmz@ID{%
+    \let\memoized@next\endinput
+    \memoized@found
+  }{%
+    \let\memoized@next\skip
+    \memoized@skip
+  }%
+}
+\def\memoized@found#1#2#3#4#5{%
+  \def\mmz@filename{#1}%
+  \def\mmz@page{#2}%
+  \def\mmz@wd{#3}%
+  \def\mmz@ht{#4}%
+  \def\mmz@dp{#5}%
+  \memoized@next
+}
+\def\memoized@skip#1#2#3#4#5{}
+
+
+
+%%%%%%%%%%%%%%%% Split.
+\AtEndPreamble{%
+  \let\memoized\memoized@split
+  \mmz@split@filename{\mmz@valueof{memo filename prefix}\noexpand\@empty}%
+    \mmz@temp\mmz@memo@basenameprefix
+  \@input{\jobname.mmz}%
+}
+\def\memoized@split#1{%
+  \def\mmz@id{#1}%
+  \let\memoized@next\memoized@split@a
+  \memoized@found
+}
+\def\memoized@split@a{%
+  % Split the relevant page off to the memo .pdf.
+  \edef\mmz@syscall@jobname{\mmz@memo@filename\mmz@id}%
+  \edef\mmz@marshal{%
+    \noexpand\justmemoized@prepare@syscall@commands{\jobpath\mmz@filename}{\mmz@page}%
+  }\mmz@marshal
+  \immediate\write18{\mmz@valueof{latex system call}}%
+  % Write the .memo file.
+  \IfFileExists{\mmz@syscall@jobname.pdf}{%
+    \immediate\openout\mmz@memo@out=\mmz@syscall@jobname
+    \immediate\write\mmz@memo@out{%
+      \noexpand\memoized{\mmz@id}%
+        {\mmz@memo@basenameprefix\mmz@id\mmz@valueof{memo filename suffix}.pdf}{1}%
+        {\mmz@wd}{\mmz@ht}{\mmz@dp}\@percentchar
+    }%
+    \immediate\closeout\mmz@memo@out
   }{\justmemoized@error}%
 }
 \def\justmemoized@prepare@syscall@commands#1#2{%
@@ -255,15 +330,12 @@
     \end{document}
   }%
 }%
-
 \def\justmemoized@error{%
-  \PackageWarning{memoize}{Cannot find \mmz@memo@filename\mmz@ID,
-    which I supposedly generated in the previous run, or
-    \mmz@memo@filename\mmz@ID.pdf, which I should have created just now.}%
-}
+  \PackageError{memoize}{Failed to extract page \mmz@page\space of
+    "\jobpath\mmz@filename" to "\mmz@syscall@jobname.pdf".}{}}
 
-% Split.
-\AtEndPreamble{\@input{\mmz@valueof{mmz filename}}}
+
+
 
 % Hijack TeX's \shipout. Do it at the beginning of the document, in case some
 % other package mucked with it as well.
@@ -282,9 +354,12 @@
 
 % Open and close .mmz file.
 \AtBeginDocument{%
-  \immediate\openout\mmz@main@out=\mmz@valueof{mmz filename}
-  \immediate\write\mmz@main@out{%
-    \noexpand\justmemoizedto{\memoize@output@pdf}\@percentchar}%
+  \immediate\openout\mmz@main@out=\jobname.mmz
+  % Prefix and suffix info can be used by the external splitting tool.
+  \immediate\write\mmz@main@out{\@percentchar\space
+    memo filename prefix={\mmz@valueof{memo filename prefix}}}%
+  \immediate\write\mmz@main@out{\@percentchar\space
+    memo filename suffix={\mmz@valueof{memo filename suffix}}}%
 }
 \AtEndDocument{\immediate\closeout\mmz@main@out}
 

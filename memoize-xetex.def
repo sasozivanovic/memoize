@@ -1,6 +1,17 @@
 \let\mmz@mdfivesum\mdfivesum
 \let\mmz@primitive\primitive
 \let\mmz@leavevmode\leavevmode
+\def\mmz@if@roughly@equal#1#2{%
+  \begingroup
+  \@tempdima=\dimexpr#1-#2\relax
+  \ifdim\@tempdima<0pt \@tempdima=-\@tempdima\relax\fi
+  \expandafter\expandafter\expandafter\endgroup
+  \ifdim\@tempdima<\mmz@precision\relax
+    \expandafter\@firstoftwo
+  \else
+    \expandafter\@secondoftwo
+  \fi
+}
 \def\mmz@prepare@memo@page{%
   \pdfpagewidth \wd\mmz@box
   \dimen0 \ht\mmz@box

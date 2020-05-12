@@ -1,5 +1,13 @@
 \let\mmz@mdfivesum\pdfmdfivesum
 \let\mmz@primitive\pdfprimitive
+\let\ifmmz@absdim\ifpdfabsdim
+\def\mmz@if@roughly@equal#1#2{%
+  \ifpdfabsdim\dimexpr#1-#2\relax<\mmz@precision\relax
+    \expandafter\@firstoftwo
+  \else
+    \expandafter\@secondoftwo
+  \fi
+}  
 % \quitvmode is pdftex's replacement for \leavevmode (8.21)
 \let\mmz@leavevmode\quitvmode
 \def\mmz@prepare@memo@page{%

@@ -1,63 +1,80 @@
 #!/bin/env python
 
-import argparse, fileinput, re
+from IPython import embed
+
+import argparse, fileinput, os, os.path, re
 from pdfrw import PdfReader, PdfWriter
 
 parser = argparse.ArgumentParser(description='Split the memos off the main pdf.')
 parser.add_argument('mmz', help='.mmz file')
-parser.add_argument('rest_filename', nargs = '?', help='Where to save the rest (empty means inline)')
 parser.add_argument('--prefix', help='memo filename prefix')
 parser.add_argument('--suffix', help='memo filename suffix')
-parser.add_argument('--rest', action = 'store_true',
-                    help='Should we save the rest as well?')
+parser.add_argument('--prune', action = 'store_true',
+                    help='Should we prune the original file?')
 parser.add_argument('--pdf', help='main pdf')
+parser.add_argument('--verbose', '-v', action = 'store_true')
 
 args = parser.parse_args()
-print(args)
 
+mmz_path = os.path.dirname(args.mmz)
+prefix = args.prefix
+suffix = args.suffix
 
-justmemoizedto_re = re.compile(r'\\justmemoizedto {(.*?)}%')
-justmemoized_re = re.compile(r'\\justmemoized {(.*?)}%')
-memoized_re = re.compile(r'\\memoized {(.*?)}{(.*?)}{(.*?)}{(.*?)}%')
+memoized_re = re.compile(r'\\memoized {(.*?)}{(.*?)}{(.*?)}{(.*?)}{(.*?)}{(.*?)}%')
+prefix_re = re.compile(r'% *memo filename prefix *= *{(.*?)} *')
+suffix_re = re.compile(r'% *memo filename suffix *= *{(.*?)} *')
+
+class Pages(dict):
+    def __missing__(self, filename):
+        temp = self[filename] = (PdfReader(filename).pages, set())
+        return temp
+pages = Pages()
 
 with fileinput.input(args.mmz) as mmz:
-    justmemoizedto = justmemoizedto_re.match(next(mmz))[1]
-    justmemoizedto = args.pdf if args.pdf else justmemoizedto
-    # todo: get these from .mmz
-    prefix = args.prefix
-    suffix = args.suffix
-
-    pages = PdfReader(justmemoizedto).pages
-    memos = set()
     for mmz_line in mmz:
-        justmemoized = justmemoized_re.match(mmz_line)[1]
-        basename = prefix + justmemoized + suffix
-        updated_memo = []
-        with open(basename) as memo:
-            for memo_line in memo:
-                md5, pdf_filename, page_n, dpth = \
-                    memoized_re.match(memo_line).group(1,2,3,4)
-                assert justmemoized == md5
-                # assert justmemoizedto == pdf_filename
-                page_n = int(page_n) - 1
+        if memoized := memoized_re.match(mmz_line):
+            md5, pdf_filename, page_n, wd, ht, dp = \
+                memoized_re.match(mmz_line).groups()
+            page_n = int(page_n) - 1
+            out_basename = os.path.join(mmz_path, prefix + md5 + suffix)
 
-                print(justmemoizedto, page_n, '-->', basename + ".pdf")
+            if args.verbose:
+                print(os.path.join(mmz_path, pdf_filename), page_n + 1,
+                      '-->', out_basename + ".pdf")
                 
-                memo_pdf = PdfWriter(basename + '.pdf')
-                memo_pdf.addpage(pages[page_n])
-                memo_pdf.write()
-                memos.add(page_n)
-
-                updated_memo.append(fr'\memoized {{{md5}}}{{{"chapters/" + basename + ".pdf"}}}{{{1}}}{{{dpth}}}%')
-
-
-        with open(basename, 'w') as memo:
-            for memo_line in updated_memo:
-                print(memo_line, file = memo)
+            memo_pdf = PdfWriter(out_basename + '.pdf')
+            memo_pdf.addpage(pages[pdf_filename][0][page_n])
+            memo_pdf.write()
+            pages[pdf_filename][1].add(page_n)
             
-    if args.rest:
-        out_pdf = PdfWriter(args.rest_filename if args.rest_filename else justmemoizedto)
-        for n, page in enumerate(pages):
-            if n not in memos:
-               out_pdf.addpage(pages[n])
+            with open(out_basename, 'w') as memo:
+                print(fr'\memoized {{{md5}}}'
+                      fr'{{{prefix_basename + md5 + suffix + ".pdf"}}}{{{1}}}'
+                      fr'{{{wd}}}{{{ht}}}{{{dp}}}%', file = memo)
+
+        elif affix := prefix_re.match(mmz_line):
+            prefix = affix[1]
+            prefix_basename = os.path.basename(prefix)
+        elif affix := suffix_re.match(mmz_line):
+            suffix = affix[1]
+
+        else:
+            raise RuntimeError(mmz_line)
+
+if args.prune:
+    for filename, (reader_pages, extracted_pages) in pages.items():
+        if args.verbose:
+            print(f'Pruning', filename, '-- keeping pages: ', end = '')
+        out_pdf = PdfWriter(filename)
+        for n, page in enumerate(reader_pages):
+            if n not in extracted_pages:
+               out_pdf.addpage(reader_pages[n])
+               if args.verbose:
+                   print(f'{n+1}, ', end = '')
         out_pdf.write()
+        if args.verbose:
+            print()
+
+if args.verbose:
+    print(f'{args.mmz} is empty now, backup in {args.mmz+".bak"}')
+os.rename(args.mmz, args.mmz + '.bak')
