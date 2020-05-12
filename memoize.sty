@@ -288,13 +288,21 @@
 
 
 
-%%%%%%%%%%%%%%%% Split.
+% Split, then clear .mmz
 \AtEndPreamble{%
   \let\memoized\memoized@split
   \mmz@split@filename{\mmz@valueof{memo filename prefix}\noexpand\@empty}%
     \mmz@temp\mmz@memo@basenameprefix
   \@input{\jobname.mmz}%
+  \immediate\openout\mmz@main@out=\jobname.mmz
+  % Prefix and suffix info can be used by the external splitting tool.
+  \immediate\write\mmz@main@out{\@percentchar\space
+    memo filename prefix={\mmz@valueof{memo filename prefix}}}%
+  \immediate\write\mmz@main@out{\@percentchar\space
+    memo filename suffix={\mmz@valueof{memo filename suffix}}}%
 }
+\AtEndDocument{\immediate\closeout\mmz@main@out}
+
 \def\memoized@split#1{%
   \def\mmz@id{#1}%
   \let\memoized@next\memoized@split@a
@@ -351,18 +359,6 @@
 \AtBeginDocument{\memoizePatchShipout}
 % We only need this to count pages. Can it be done otherwise?
 % Actually, this could be used to supress normal output as well.
-
-% Open and close .mmz file.
-\AtBeginDocument{%
-  \immediate\openout\mmz@main@out=\jobname.mmz
-  % Prefix and suffix info can be used by the external splitting tool.
-  \immediate\write\mmz@main@out{\@percentchar\space
-    memo filename prefix={\mmz@valueof{memo filename prefix}}}%
-  \immediate\write\mmz@main@out{\@percentchar\space
-    memo filename suffix={\mmz@valueof{memo filename suffix}}}%
-}
-\AtEndDocument{\immediate\closeout\mmz@main@out}
-
 
 %%%% Automatically memoizing commands and environments
 % todo: a lighter approach (without xparse) for easy stuff
