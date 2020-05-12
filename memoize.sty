@@ -1,19 +1,15 @@
-% todo:
-% \item context dependency
+% TODO:
+% \item context dependency, including label--ref support
 % \item named memos
-% \item error handling
-%   \begin{itemize}
-%   \item delete .mmz after right now, it seeem we try to split twice if there was an error
-%   \end{itemize}
+% \item how robust are we? do we ever lose any data due to a compilation error?
+%   (not necessarily ours!)
 % \item An option to remove memo pages from the \jobname.pdf after splitting
 %   --- no recompilation of the main document, but no hyperlinks
 %   either. (\pdfdraftmode and \pdflastximagepages will be useful here.)
 % \item Investigate interaction with -no-pdf / \pdfdraftmode
-% \item Safety belt: don't include/split off a memoized page if the size does
-%   not match the recorded values
-
-
-
+% \item option to run memoize-split.py from the compilation
+% \item verbosity levels
+  
 \ProvidesPackage{memoize}
 
 \RequirePackage{pgfkeys} % for UI
@@ -76,7 +72,6 @@
   \fi
 }
 
-%\tracingall
 \memoizeset{%
   % When the TeX job starts, \jobname contains the basename of the PDF that
   % will be created.  If memoization is enabled, we store the name of this PDF
@@ -84,6 +79,8 @@
   % job". This way, LaTeX will be using and writing the auxiliary files of the
   % real job.  By default, real job equals \jobname, i.e. we memoize "inline".
   % Include the path, but don't add ".tex" here.
+  % 
+  % todo: where is \memoize@output@pdf !?
   real job/.code={%
     \edef\jobname{#1}%
     \mmz@split@filename\jobname\jobpath\jobbasename
@@ -92,7 +89,8 @@
   % 
   % After each compilation, "\jobname.mmz" will contain the list of memoized
   % stuff. On the next run, tex will split the memo PDFs off the big PDF we
-  % have generated in the first compilation.
+  % have generated in the first compilation. (The second step can also be
+  % achieved by the external tool "memoize-split.py")
   % 
   % The keys "memo filename prefix/suffix" tell the package where to store the
   % separate externalized pictures (memos).  The prefix can contain the path,
@@ -119,7 +117,8 @@
     "\detokenize\expandafter{\mmz@syscall@commands}"},
   % Additional options for the LaTeX system call
   latex system call options/.initial={},
-  % Enable (default) / disable memoization:
+  % Enable (default) / disable memoization --- either in the preamble or in the
+  % document.
   enable/.code=\AfterPreamble{\mmz@activetrue},
   disable/.code=\AfterPreamble{\mmz@activefalse},
   enable,
@@ -135,7 +134,7 @@
   \mmz@valueof{memo filename suffix}%
 }
 
-% manual memoization: \memoize[memoization key]{the code to be memoized}.  In a
+% Manual memoization: \memoize[memoization key]{the code to be memoized}.  In a
 % manual invocation, the optional argument should usually be unnecessary.  So,
 % #1 is the memoization key (what md5sum is computed from), and #2 is the code
 % to be executed for memoization.
@@ -179,7 +178,7 @@
 % \memoized) and execute {true code}. If no, \mmz@filename will be undefined
 % and we run {false code}.
 \def\mmz@ifmemoized{%
-  % If inputing .memo sets the filename, we found it!
+  % If inputing <md5sum>.memo sets the filename, we found it!
   \let\memoized\memoized@search
   \undef\mmz@filename
   \@input{\mmz@memo@filename\mmz@ID}%
@@ -188,8 +187,7 @@
     \mmz@split@filename{\jobpath\mmz@valueof{memo filename prefix}\noexpand\@empty}%
       \mmz@memo@path\mmz@temp
     \epreto\mmz@filename\mmz@memo@path
-    \IfFileExists{\mmz@filename}{%
-      \@firstoftwo % yes!
+    \IfFileExists{\mmz@filename}{\@firstoftwo % yes!
     }{\@secondoftwo}}{\@secondoftwo}% no
 }
 
@@ -199,21 +197,21 @@
 \def\mmz@use@memoized#1{% todo: mark inclusion in .mmz
   \PackageInfo{memoize}{Using \mmz@id\space}%
   \setbox\mmz@box=\hbox{\lower\mmz@dp\hbox{\includegraphics{\mmz@filename}}}%
+  % Safety belt: Warn if we include a page of unexpected dimensions.
   \mmz@tempfalse
   \mmz@if@roughly@equal{\mmz@wd}{\wd\mmz@box}{%
     \mmz@if@roughly@equal{\mmz@ht}{\ht\mmz@box}{%
       % no need to check \dp, we have just set it
       \mmz@temptrue
     }{}}{}%
-  \ifmmz@temp\else
-    \PackageWarning{memoize}{Wrong dimensions of externalized graphics \mmz@id.
-      Did something go wrong?}%
-  \fi
+  \ifmmz@temp\else\mmz@use@memoized@warning\fi
 }
+\def\mmz@use@memoized@warning{%
+  \PackageWarning{memoize}{Wrong dimensions of externalized graphics \mmz@id.
+    Did something go wrong?}}
 
 % Memoize and leave the box in \mmz@box.
 \def\mmz@memoize#1{%
-  % If there was no memoized data:
   \PackageInfo{memoize}{Memoizing \mmz@ID\space}%
   % Typeset the code.
   \mmz@activefalse
@@ -225,11 +223,11 @@
     % Use the original \shipout here, otherwise we can get in trouble with other
     % packages like pdfpages.  Let's just hope that (i) some other package
     % doesn't count shipouts as well (then, they are in trouble), or (ii) doesn't
-    % use the primitive \shioput (then, we are in trouble).
+    % use the primitive \shipout (then, we are in trouble).
     \global\advance\mmz@realpage1
     \mmz@primitive\shipout\copy\mmz@box
   }%
-  % Store memoized data.
+  % Store memoized data and the link to the .pdf in to .mmz file.
   \immediate\write\mmz@main@out{\noexpand\memoized{\mmz@ID}%
     {\jobbasename.pdf}{\the\mmz@realpage}%
     {\the\wd\mmz@box}{\the\ht\mmz@box}{\the\dp\mmz@box}%
