@@ -205,7 +205,7 @@
 % engines.  And then, we actually use "graphicsx", because I have no idea how
 % trim the padding without it.
 \def\mmz@precision{0.01pt}
-\def\mmz@use@memoized#1{% todo: mark inclusion in .mmz
+\def\mmz@use@memoized#1{%
   \PackageInfo{memoize}{Using \mmz@@id\space}%
   \setbox\mmz@box=\hbox{\lower\mmz@@dp\hbox{\includegraphics[trim=%
         {\mmz@@padding@left} {\mmz@@padding@bottom}
@@ -224,6 +224,12 @@
       \mmz@temptrue
     }{}}{}%
   \ifmmz@temp\else\mmz@use@memoized@warning\fi
+  \immediate\write\mmz@out{\noexpand\usedmemoized{\mmz@@id}%
+    {\mmz@@filename}{\mmz@@page}%
+    {\mmz@@wd}{\mmz@@ht}{\mmz@@dp}%
+    {\mmz@@padding@left}{\mmz@@padding@bottom}{\mmz@@padding@right}{\mmz@@padding@top}%
+    \@percentchar
+  }%
 }
 \def\mmz@use@memoized@warning{%
   \PackageWarning{memoize}{Wrong dimensions of externalized graphics \mmz@@id.
@@ -329,7 +335,7 @@
   \memoized@next
 }
 \def\memoized@skip#1#2#3#4#5#6#7#8#9{}
-
+\def\usedmemoized#1{\memoized@skip}
 
 % Split, then clear .mmz
 \AtEndPreamble{%
