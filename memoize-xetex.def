@@ -12,15 +12,6 @@
     \expandafter\@secondoftwo
   \fi
 }
-% If we are compiling by xelatex, using \documentclass{minimal} and if the
-% first \shipout is our externalization shipout, then we get a weird error: all
-% the pages of the document have the same size as our first shipout. Our own
-% shipouts have the size set correctly.  Pdflatex does not exhibit this
-% behaviour.
-\def\mmz@prepare@memo@page{%
-  \hoffset\dimexpr\mmz@padding@left -1true in
-  \voffset\dimexpr\mmz@padding@top -1true in
-  \pdfpagewidth\dimexpr\mmz@padding@left + \wd\mmz@box + \mmz@padding@right\relax
-  \pdfpageheight\dimexpr\mmz@padding@top + \ht\mmz@box + \dp\mmz@box + \mmz@padding@bottom\relax
-}%
+\def\pdfhorigin{1true in}
+\def\pdfvorigin{1true in}
 \def\mmz@latex@binary{xelatex}

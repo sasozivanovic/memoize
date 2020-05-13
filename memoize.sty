@@ -133,7 +133,7 @@
   padding y/.style={padding top=#1, padding bottom=#1},
   padding/.style={padding x=#1, padding y=#1},
   no padding/.style={padding=0pt},
-  default padding/.style={padding=1true in}, % equals \pdfhorigin and \pdfhorigin
+  default padding/.style={padding x=\pdfhorigin, padding y=\pdfvorigin},
   default padding,
 }
 
@@ -242,8 +242,21 @@
     \edef\width{\the\wd\mmz@box}%
     \edef\height{\the\ht\mmz@box}%
     \edef\depth{\the\dp\mmz@box}%
+    % Set the dimensions of the page: \mmz@box + padding
+    \hoffset\dimexpr\mmz@padding@left - \pdfhorigin\relax
+    \voffset\dimexpr\mmz@padding@top - \pdfvorigin\relax
+    \pdfpagewidth\dimexpr\mmz@padding@left + \wd\mmz@box + \mmz@padding@right\relax
+    \pdfpageheight\dimexpr\mmz@padding@top + \ht\mmz@box +
+    \dp\mmz@box+ \mmz@padding@bottom\relax
+    %
+    % If we are compiling by xelatex, using \documentclass{minimal} and if the
+    % first \shipout is our externalization shipout, we get a weird error:
+    % all the pages of the document have the same size as our first
+    % shipout.  Our own shipouts have the size set correctly.  Pdflatex does
+    % not exhibit this behaviour.
+    % 
     % Debug PDF: \pdfcompresslevel=0 \pdfobjcompresslevel=0
-    \mmz@prepare@memo@page
+    % 
     % Use the original \shipout here, otherwise we can get in trouble with other
     % packages like pdfpages.  Let's just hope that (i) some other package
     % doesn't count shipouts as well (then, they are in trouble), or (ii) doesn't
