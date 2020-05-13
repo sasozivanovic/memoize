@@ -142,9 +142,9 @@
   \mmz@leavevmode
   \ifmmz@active
     \ifstrempty{#1}{%
-      \edef\mmz@ID{\expandafter\mmz@mdfivesum\expandafter{\detokenize{#2}}}%
+      \edef\mmz@id{\expandafter\mmz@mdfivesum\expandafter{\detokenize{#2}}}%
     }{%
-      \edef\mmz@ID{\expandafter\mmz@mdfivesum\expandafter{\detokenize{#1}}}%
+      \edef\mmz@id{\expandafter\mmz@mdfivesum\expandafter{\detokenize{#1}}}%
     }%
     \mmz@ifmemoized{%
       \let\mmz@next\mmz@use@memoized
@@ -173,20 +173,20 @@
 }
 
 % \mmz@ifmemoized{true code}{false code}
-% Is there memoized data for \mmz@ID? If yes, leave it in various macros (see
-% \memoized) and execute {true code}. If no, \mmz@filename will be undefined
+% Is there memoized data for \mmz@id? If yes, leave it in various macros (see
+% \memoized) and execute {true code}. If no, \mmz@@filename will be undefined
 % and we run {false code}.
 \def\mmz@ifmemoized{%
   % If inputing <md5sum>.memo sets the filename, we found it!
   \let\memoized\memoized@search
-  \undef\mmz@filename
-  \@input{\mmz@memo@filename\mmz@ID}%
-  \ifdef\mmz@filename{%
+  \undef\mmz@@filename
+  \@input{\mmz@memo@filename\mmz@id}%
+  \ifdef\mmz@@filename{%
     % Well ... if that file exists.  First, we prefix the correct folder:
     \mmz@split@filename{\jobpath\mmz@valueof{memo filename prefix}\noexpand\@empty}%
       \mmz@memo@path\mmz@temp
-    \epreto\mmz@filename\mmz@memo@path
-    \IfFileExists{\mmz@filename}{\@firstoftwo % yes!
+    \epreto\mmz@@filename\mmz@memo@path
+    \IfFileExists{\mmz@@filename}{\@firstoftwo % yes!
     }{\@secondoftwo}}{\@secondoftwo}% no
 }
 
@@ -194,24 +194,24 @@
 % engines.
 \def\mmz@precision{0.01pt}
 \def\mmz@use@memoized#1{% todo: mark inclusion in .mmz
-  \PackageInfo{memoize}{Using \mmz@id\space}%
-  \setbox\mmz@box=\hbox{\lower\mmz@dp\hbox{\includegraphics{\mmz@filename}}}%
+  \PackageInfo{memoize}{Using \mmz@@id\space}%
+  \setbox\mmz@box=\hbox{\lower\mmz@@dp\hbox{\includegraphics{\mmz@@filename}}}%
   % Safety belt: Warn if we include a page of unexpected dimensions.
   \mmz@tempfalse
-  \mmz@if@roughly@equal{\mmz@wd}{\wd\mmz@box}{%
-    \mmz@if@roughly@equal{\mmz@ht}{\ht\mmz@box}{%
+  \mmz@if@roughly@equal{\mmz@@wd}{\wd\mmz@box}{%
+    \mmz@if@roughly@equal{\mmz@@ht}{\ht\mmz@box}{%
       % no need to check \dp, we have just set it
       \mmz@temptrue
     }{}}{}%
   \ifmmz@temp\else\mmz@use@memoized@warning\fi
 }
 \def\mmz@use@memoized@warning{%
-  \PackageWarning{memoize}{Wrong dimensions of externalized graphics \mmz@id.
+  \PackageWarning{memoize}{Wrong dimensions of externalized graphics \mmz@@id.
     Did something go wrong?}}
 
 % Memoize and leave the box in \mmz@box.
 \def\mmz@memoize#1{%
-  \PackageInfo{memoize}{Memoizing \mmz@ID\space}%
+  \PackageInfo{memoize}{Memoizing \mmz@id\space}%
   % Typeset the code.
   \mmz@activefalse
   \setbox\mmz@box=\hbox{#1}% todo: smuggle \mmz@toks and \mmz@global@toks!
@@ -227,7 +227,7 @@
     \mmz@primitive\shipout\copy\mmz@box
   }%
   % Store memoized data and the link to the .pdf in to .mmz file.
-  \immediate\write\mmz@out{\noexpand\memoized{\mmz@ID}%
+  \immediate\write\mmz@out{\noexpand\memoized{\mmz@id}%
     {\jobbasename.pdf}{\the\mmz@realpage}%
     {\the\wd\mmz@box}{\the\ht\mmz@box}{\the\dp\mmz@box}%
     \@percentchar
@@ -262,11 +262,13 @@
 % externalized graphics from a single .memo -- .memo.pdf pair (probably slower,
 % but easier to share). This is why \memoized@search below skips entries with a
 % wrong md5sum, i.e.  \memoized@search will only store the information when the
-% md5sum argument (#1) matches \mmz@ID.  (The idea is to \undef something, like
-% \mmz@filename, and test it with \ifdef after inputting the .memo file.)
+% md5sum argument (#1) matches \mmz@id.  (The idea is to \undef something, like
+% \mmz@@filename, and test it with \ifdef after inputting the .memo file.)
+% 
+% The following macros store the info from .memo file into \mmz@@... macros.
 \def\memoized@search#1{%
-  \def\mmz@id{#1}%
-  \ifdefstrequal\mmz@id\mmz@ID{%
+  \def\mmz@@id{#1}%
+  \ifdefstrequal\mmz@@id\mmz@id{%
     \let\memoized@next\endinput
     \memoized@found
   }{%
@@ -275,11 +277,11 @@
   }%
 }
 \def\memoized@found#1#2#3#4#5{%
-  \def\mmz@filename{#1}%
-  \def\mmz@page{#2}%
-  \def\mmz@wd{#3}%
-  \def\mmz@ht{#4}%
-  \def\mmz@dp{#5}%
+  \def\mmz@@filename{#1}%
+  \def\mmz@@page{#2}%
+  \def\mmz@@wd{#3}%
+  \def\mmz@@ht{#4}%
+  \def\mmz@@dp{#5}%
   \memoized@next
 }
 \def\memoized@skip#1#2#3#4#5{}
@@ -301,24 +303,25 @@
 \AtEndDocument{\immediate\closeout\mmz@out}
 
 \def\memoized@split#1{%
-  \def\mmz@id{#1}%
+  \def\mmz@@id{#1}%
   \let\memoized@next\memoized@split@a
   \memoized@found
 }
 \def\memoized@split@a{%
   % Split the relevant page off to the memo .pdf.
-  \edef\mmz@syscall@jobname{\mmz@memo@filename\mmz@id}%
+  \edef\mmz@syscall@jobname{\mmz@memo@filename\mmz@@id}%
   \edef\mmz@marshal{%
-    \noexpand\justmemoized@prepare@syscall@commands{\jobpath\mmz@filename}{\mmz@page}%
+    \noexpand\justmemoized@prepare@syscall@commands{\jobpath\mmz@@filename}{\mmz@@page}%
   }\mmz@marshal
   \immediate\write18{\mmz@valueof{latex system call}}%
   % Write the .memo file.
   \IfFileExists{\mmz@syscall@jobname.pdf}{%
     \immediate\openout\mmz@out=\mmz@syscall@jobname
     \immediate\write\mmz@out{%
-      \noexpand\memoized{\mmz@id}%
-        {\mmz@memo@basenameprefix\mmz@id\mmz@valueof{memo filename suffix}.pdf}{1}%
-        {\mmz@wd}{\mmz@ht}{\mmz@dp}\@percentchar
+      \noexpand\memoized{\mmz@@id}%
+        {\mmz@memo@basenameprefix\mmz@@id\mmz@valueof{memo filename suffix}.pdf}{1}%
+        {\mmz@@wd}{\mmz@@ht}{\mmz@@dp}%
+        \@percentchar
     }%
     \immediate\closeout\mmz@out
   }{\justmemoized@error}%
@@ -336,8 +339,8 @@
   }%
 }%
 \def\justmemoized@error{%
-  \PackageError{memoize}{Failed to extract page \mmz@page\space of
-    "\jobpath\mmz@filename" to "\mmz@syscall@jobname.pdf".}{}}
+  \PackageError{memoize}{Failed to extract page \mmz@@page\space of
+    "\jobpath\mmz@@filename" to "\mmz@syscall@jobname.pdf".}{}}
 
 
 
