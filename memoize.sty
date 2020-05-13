@@ -14,7 +14,7 @@
 
 \RequirePackage{pgfkeys} % for UI
 \RequirePackage{etoolbox}
-\RequirePackage{graphics} % for including externalized graphics
+\RequirePackage{graphicx} % for including externalized graphics
 \RequirePackage{xparse} % for command handler definitions
 \RequirePackage{environ} % for environment handler definitions
 
@@ -124,6 +124,17 @@
   % When we say "readonly" (or "readonly=true"), we will use whatever is
   % already memoized, but not memoize any new stuff.
   readonly/.is if=mmz@readonly,
+  % padding
+  padding left/.store in=\mmz@padding@left,
+  padding right/.store in=\mmz@padding@right,
+  padding top/.store in=\mmz@padding@top,
+  padding bottom/.store in=\mmz@padding@bottom,
+  padding x/.style={padding left=#1, padding right=#1},
+  padding y/.style={padding top=#1, padding bottom=#1},
+  padding/.style={padding x=#1, padding y=#1},
+  no padding/.style={padding=0pt},
+  default padding/.style={padding=1true in}, % equals \pdfhorigin and \pdfhorigin
+  default padding,
 }
 
 \def\mmz@memo@filename#1{%
@@ -191,11 +202,20 @@
 }
 
 % We use the "graphics" package, so we don't have to deal with various TeX
-% engines.
+% engines.  And then, we actually use "graphicsx", because I have no idea how
+% trim the padding without it.
 \def\mmz@precision{0.01pt}
 \def\mmz@use@memoized#1{% todo: mark inclusion in .mmz
   \PackageInfo{memoize}{Using \mmz@@id\space}%
-  \setbox\mmz@box=\hbox{\lower\mmz@@dp\hbox{\includegraphics{\mmz@@filename}}}%
+  \setbox\mmz@box=\hbox{\lower\mmz@@dp\hbox{\includegraphics[trim=%
+        {\mmz@@padding@left} {\mmz@@padding@bottom}
+        {\mmz@@padding@right} {\mmz@@padding@top}]{\mmz@@filename}}}%
+  % I have no idea why this doesn't work.
+  % \setbox\mmz@box=\hbox{\lower\mmz@@dp\hbox{\includegraphics
+  %     [\mmz@@padding@left,\mmz@@padding@bottom]%
+  %     [\dimexpr\mmz@@padding@left+\mmz@@wd\relax,%
+  %       \dimexpr\mmz@@padding@bottom+\mmz@@dp+\mmz@@ht\relax]%
+  %     {\mmz@@filename}}}%
   % Safety belt: Warn if we include a page of unexpected dimensions.
   \mmz@tempfalse
   \mmz@if@roughly@equal{\mmz@@wd}{\wd\mmz@box}{%
@@ -217,6 +237,11 @@
   \setbox\mmz@box=\hbox{#1}% todo: smuggle \mmz@toks and \mmz@global@toks!
   \mmz@activetrue
   {%
+    % So that the user can define padding in terms of the size of the
+    % externalized graphics:
+    \edef\width{\the\wd\mmz@box}%
+    \edef\height{\the\ht\mmz@box}%
+    \edef\depth{\the\dp\mmz@box}%
     % Debug PDF: \pdfcompresslevel=0 \pdfobjcompresslevel=0
     \mmz@prepare@memo@page
     % Use the original \shipout here, otherwise we can get in trouble with other
@@ -225,12 +250,14 @@
     % use the primitive \shipout (then, we are in trouble).
     \global\advance\mmz@realpage1
     \mmz@primitive\shipout\copy\mmz@box
-  }%
-  % Store memoized data and the link to the .pdf in to .mmz file.
-  \immediate\write\mmz@out{\noexpand\memoized{\mmz@id}%
-    {\jobbasename.pdf}{\the\mmz@realpage}%
-    {\the\wd\mmz@box}{\the\ht\mmz@box}{\the\dp\mmz@box}%
-    \@percentchar
+    % Store memoized data and the link to the .pdf in to .mmz file.
+    \immediate\write\mmz@out{\noexpand\memoized{\mmz@id}%
+      {\jobbasename.pdf}{\the\mmz@realpage}%
+      {\the\wd\mmz@box}{\the\ht\mmz@box}{\the\dp\mmz@box}%
+      % order as in graphicx:
+      {\mmz@padding@left}{\mmz@padding@bottom}{\mmz@padding@right}{\mmz@padding@top}%
+      \@percentchar
+    }%
   }%
 }
 
@@ -276,15 +303,19 @@
     \memoized@skip
   }%
 }
-\def\memoized@found#1#2#3#4#5{%
+\def\memoized@found#1#2#3#4#5#6#7#8#9{%
   \def\mmz@@filename{#1}%
   \def\mmz@@page{#2}%
   \def\mmz@@wd{#3}%
   \def\mmz@@ht{#4}%
   \def\mmz@@dp{#5}%
+  \def\mmz@@padding@left{#6}%
+  \def\mmz@@padding@bottom{#7}%
+  \def\mmz@@padding@right{#8}%
+  \def\mmz@@padding@top{#9}%
   \memoized@next
 }
-\def\memoized@skip#1#2#3#4#5{}
+\def\memoized@skip#1#2#3#4#5#6#7#8#9{}
 
 
 % Split, then clear .mmz
@@ -321,6 +352,7 @@
       \noexpand\memoized{\mmz@@id}%
         {\mmz@memo@basenameprefix\mmz@@id\mmz@valueof{memo filename suffix}.pdf}{1}%
         {\mmz@@wd}{\mmz@@ht}{\mmz@@dp}%
+        {\mmz@@padding@left}{\mmz@@padding@bottom}{\mmz@@padding@right}{\mmz@@padding@top}%
         \@percentchar
     }%
     \immediate\closeout\mmz@out
@@ -332,6 +364,7 @@
   \def\mmz@syscall@commands{%
     \documentclass{minimal}
     \nofiles
+    % Debug PDF: \pdfcompresslevel=0 \pdfobjcompresslevel=0
     \usepackage{pdfpages}
     \begin{document}
     \includepdf[pages=#2,fitpaper]{#1}

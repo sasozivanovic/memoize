@@ -11,9 +11,14 @@
 % \quitvmode is pdftex's replacement for \leavevmode (8.21)
 \let\mmz@leavevmode\quitvmode
 \def\mmz@prepare@memo@page{%
-  % Leave it all to pdftex ... manual 8.1: \pgfpagewidth
-  \pdfpagewidth 0pt \pdfpageheight 0pt
-  \pdfhorigin 0pt \pdfvorigin 0pt
-  \hoffset 0pt \voffset 0pt
+  % pdftex docs insist that these should be set to the standard value of 1 true
+  % inch:
+  \pdfhorigin 1true in \pdfvorigin 1true in
+  % I hope that negative values here don't violate the pdftex instructions.
+  \hoffset\dimexpr\mmz@padding@left - \pdfhorigin\relax
+  \voffset\dimexpr\mmz@padding@top - \pdfvorigin\relax
+  \pdfpagewidth\dimexpr\mmz@padding@left + \wd\mmz@box + \mmz@padding@right\relax
+  \pdfpageheight\dimexpr\mmz@padding@top + \ht\mmz@box +
+    \dp\mmz@box+ \mmz@padding@bottom\relax
 }%
 \def\mmz@latex@binary{pdflatex}
