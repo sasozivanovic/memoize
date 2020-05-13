@@ -37,12 +37,13 @@ def process_mmz(mmz, args):
         prefix = args.prefix
         suffix = args.suffix
         for mmz_line in mmz:
-            if memoized := memoized_re.match(mmz_line):
+            memoized = memoized_re.match(mmz_line)
+            if memoized:
                 yield Memoized(memoized.groups(), prefix, suffix)
-            elif affix := prefix_re.match(mmz_line):
-                prefix = affix[1]
-            elif affix := suffix_re.match(mmz_line):
-                suffix = affix[1]
+            elif prefix_re.match(mmz_line):
+                prefix = prefix_re.match(mmz_line)[1]
+            elif suffix_re.match(mmz_line):
+                suffix = suffix_re.match(mmz_line)[1]
             else:
                 raise RuntimeError(mmz_line)
 
