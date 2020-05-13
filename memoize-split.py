@@ -33,8 +33,7 @@ pages = Pages()
 with fileinput.input(args.mmz) as mmz:
     for mmz_line in mmz:
         if memoized := memoized_re.match(mmz_line):
-            md5, pdf_filename, page_n, wd, ht, dp = \
-                memoized_re.match(mmz_line).groups()
+            md5, pdf_filename, page_n, wd, ht, dp = memoized.groups()
             page_n = int(page_n) - 1
             out_basename = os.path.join(mmz_path, prefix + md5 + suffix)
 
