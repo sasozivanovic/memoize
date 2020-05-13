@@ -10,7 +10,7 @@
 % \item option to run memoize-split.py from the compilation
 % \item verbosity levels
   
-\ProvidesPackage{memoize}
+\ProvidesPackage{memoize}[2020/05/13 Memoization, including externalization]
 
 \RequirePackage{pgfkeys} % for UI
 \RequirePackage{etoolbox}
@@ -20,6 +20,7 @@
 
 \ifdef\pdftexversion{\input memoize-pdftex.def}{%
   \ifdef\XeTeXversion{\input memoize-xetex.def}{%
+    % LuaTeX is coming up as soon as I figure out how to load md5sum library.
     \PackageError{memoize}{Support for this TeX engine is not implemented.}{}%
   }}
 
@@ -32,7 +33,6 @@
 \newcount\mmz@realpage
 \def\mmz@valueof#1{\pgfkeysvalueof{/memoize/#1}}
 
-%%%%%%%%%%%%%%%%%%%%% UI
 % There are two UI commands, \memoizeset for settings and \memoize for manual
 % memoization. 
 % 
@@ -70,6 +70,8 @@
     \def#3{#1}%
   \fi
 }
+
+%%%%%%%%%%%%%%%%%%%%% UI
 
 \memoizeset{%
   % When the TeX job starts, \jobname contains the basename of the PDF that
