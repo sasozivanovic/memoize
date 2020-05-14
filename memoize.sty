@@ -1,22 +1,38 @@
-% TODO:
-% \item context dependency, including label--ref support
-% \item named memos
-% \item how robust are we? do we ever lose any data due to a compilation error?
-%   (not necessarily ours!)
-% \item An option to remove memo pages from the \jobname.pdf after splitting
-%   --- no recompilation of the main document, but no hyperlinks
-%   either. (\pdfdraftmode and \pdflastximagepages will be useful here.)
-% \item Investigate interaction with -no-pdf / \pdfdraftmode
-% \item option to run memoize-split.py from the compilation
-% \item verbosity levels
-  
+% memoize.sty
+% 
+% Memoize is a LaTeX package for externalization of graphics and memoization of
+% compilation results in general.
+%
+% Copyright (c) 2020 Saso Zivanovic <saso.zivanovic@guest.arnes.si>
+%                    (Sa\v{s}o \v{Z}ivanovi\'{c})
+%
+% This work may be distributed and/or modified under the conditions of the
+% LaTeX Project Public License, either version 1.3 of this license or (at your
+% option) any later version.  The latest version of this license is in
+% 
+%   http://www.latex-project.org/lppl.txt
+%   
+% and version 1.3 or later is part of all distributions of LaTeX
+% version 2005/12/01 or later.
+%
+% This work is not yet published at CTAN.
+% 
+% This work consists of the following files:
+% - memoize.sty
+% - memoize-pdflatex.def
+% - memoize-xelatex.def
+% - memomanager.py
+% - README.md
+% 
 \ProvidesPackage{memoize}[2020/05/13 Memoization, including externalization]
 
 \RequirePackage{pgfkeys} % for UI
-\RequirePackage{etoolbox}
+\RequirePackage{etoolbox} % generally useful
 \RequirePackage{graphicx} % for including externalized graphics
-\RequirePackage{xparse} % for command handler definitions
+
+% For automemoization:
 \RequirePackage{environ} % for environment handler definitions
+\RequirePackage{xparse} % for command handler definitions
 
 \ifdef\pdftexversion{\input memoize-pdftex.def}{%
   \ifdef\XeTeXversion{\input memoize-xetex.def}{%
@@ -81,7 +97,7 @@
   % real job.  By default, real job equals \jobname, i.e. we memoize "inline".
   % Include the path, but don't add ".tex" here.
   % 
-  % todo: where is \memoize@output@pdf !?
+  % todo: This does not work!!! Where is \memoize@output@pdf!?!
   real job/.code={%
     \edef\jobname{#1}%
     \mmz@split@filename\jobname\jobpath\jobbasename
@@ -176,9 +192,9 @@
   \box\mmz@box
 }% todo: flexibility, optimization
 
-%%%%%%%%%%%%%%%%%%%% The core
+%%%%%%%%%%%%%%%%%%%% THE CORE
 
-\def\memoize@compile#1{%
+\long\def\memoize@compile#1{%
   % We compile in a \hbox, so that the situation is the same as when
   % memoization is active --- both in terms of the typeset output and the
   % content of registers etc.
@@ -207,7 +223,7 @@
 % engines.  And then, we actually use "graphicsx", because I have no idea how
 % trim the padding without it.
 \def\mmz@precision{0.01pt}
-\def\mmz@use@memoized#1{%
+\long\def\mmz@use@memoized#1{%
   \PackageInfo{memoize}{Using \mmz@@id\space}%
   \setbox\mmz@box=\hbox{\lower\mmz@@dp\hbox{\includegraphics[trim=%
         {\mmz@@padding@left} {\mmz@@padding@bottom}
@@ -238,7 +254,7 @@
     Did something go wrong?}}
 
 % Memoize and leave the box in \mmz@box.
-\def\mmz@memoize#1{%
+\long\def\mmz@memoize#1{%
   \PackageInfo{memoize}{Memoizing \mmz@id\space}%
   % Typeset the code.
   \mmz@activefalse
@@ -416,31 +432,12 @@
 % only memoized graphics.
 
 
-%%%% Automemoizing commands and environments
-% todo: a lighter approach (without xparse) for easy stuff
+% AUTO-MEMOIZATION
 
 \def\mmz@orig#1{mmz@orig@\string#1}
 \def\mmz@repl#1{mmz@repl@\string#1}
-\def\mmz@args#1{mmz@args@\string#1}
 
-% Commands:
-\def\memoizeNewCommandHandler#1#2#3{%
-  \expandafter\NewDocumentCommand\csname\mmz@repl{#1}\endcsname{#2}{%
-    \edef\mmz@temp{#3}%
-    \edef\mmz@marshal{%
-      \noexpand\memoize
-        [{\noexpand#1\expandonce{\mmz@temp}}]%
-        {\expandonce{\csname\mmz@orig{#1}\endcsname}\expandonce{\mmz@temp}}%
-    }\mmz@marshal
-  }%
-}
-\def\memoizeInstallCommandHandler#1{%
-  \cslet{\mmz@orig{#1}}#1%
-  \letcs#1{\mmz@repl{#1}}}
-\def\memoizeUninstallCommandHandler#1{%
-  \letcs#1{\mmz@orig{#1}}}
-
-% Environments:
+% Auto-memoization of environments:
 % \item todo: environment hooks (etoolbox)
 \DeclareRobustCommand\mmz@begin{%
   \ifmmz@active
@@ -462,31 +459,66 @@
   \def\@currenvir{#1}%
   \Collect@Body\mmz@marshal
 }
-\def\mmz@begin@active@b#1#2#3\end#4{%
+\long\def\mmz@begin@active@b#1#2#3\end#4{%
   \memoize{\begin{#2}#3\end{#2}}%
   \def\@currenvir{#1}%
-}
-\AtBeginDocument{%
-  \let\mmz@orig@begin\begin
-  \let\begin\mmz@begin
 }
 \def\mmz@env#1{mmz@env@#1}
 \def\memoizeEnableEnvironment#1{\csdef{\mmz@env{#1}}{1}}
 \def\memoizeDisableEnvironment#1{\csdef{\mmz@env{#1}}{0}}
+
+% Auto-memoization of commands:
+% \item todo: a lighter approach (without xparse) for easy stuff
+\def\memoizeNewCommandHandler#1#2#3{%
+  \expandafter\NewDocumentCommand\csname\mmz@repl{#1}\endcsname{#2}{%
+    \edef\mmz@temp{#3}%
+    \edef\mmz@marshal{%
+      \noexpand\memoize
+        [{\noexpand#1\expandonce{\mmz@temp}}]%
+        {\expandonce{\csname\mmz@orig{#1}\endcsname}\expandonce{\mmz@temp}}%
+    }\mmz@marshal
+  }%
+}
+\def\memoizeInstallCommandHandler#1{%
+  \cslet{\mmz@orig{#1}}#1%
+  \letcs#1{\mmz@repl{#1}}}
+\def\memoizeUninstallCommandHandler#1{%
+  \letcs#1{\mmz@orig{#1}}}
 
 % Predefined command handlers:
 \memoizeNewCommandHandler\tikz{O{} m}{%
   [\unexpanded{#1}]{\unexpanded{#2}}}
 \memoizeNewCommandHandler\Forest{s D(){} m}{%
   \IfBooleanTF{#1}{*}{}(\unexpanded{#2}){\unexpanded{#3}}}
-% idea: preinstall only env handlers, so that the user has a easy choice to
-% "enable" or "disable" externalization
 
-% Install handlers:
-\memoizeInstallCommandHandler\tikz
+% Enable auto-memoization of environments:
+\AtBeginDocument{%
+  \let\mmz@orig@begin\begin
+  \let\begin\mmz@begin
+}
 \memoizeEnableEnvironment{tikzpicture}
-\memoizeInstallCommandHandler\Forest
 \memoizeEnableEnvironment{forest}
+
+% By default, we only enable auto-memoization of environments, so that a
+% document author can easily indicate whether (s)he wants to have a picture
+% externalized or not.  For example, to externalize a tikz picture, use the
+% environment: \begin{tikzpicture}...\end{tikzpicture}, and to not externalize
+% it, use the command: \tikz{...}.
+% 
+% \memoizeInstallCommandHandler\tikz
+% \memoizeInstallCommandHandler\Forest
+
+
+% TODO:
+% 
+% * Investigate interaction with -no-pdf / \pdfdraftmode.
+% 
+% * Bug: \begin{dependency} ... \end{dependency} calls forest env, so memoize can't find it and mmz@id={}.  This gets into .mmz and all hell breaks loose.
+
+
+
+
+
 
 %%% Local Variables:
 %%% mode: latex
