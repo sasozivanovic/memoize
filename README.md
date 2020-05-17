@@ -70,7 +70,7 @@ details.
 
 # What works? #
 
-You might like the factt that TikZ `overlay`s are allowed, even though an
+You might like the fact that TikZ `overlay`s are allowed, even though an
 overlay which sticks out of the bounding box more than an inch requires (a
 one-time) manual intervention by setting one or more of the `padding ...`
 options.

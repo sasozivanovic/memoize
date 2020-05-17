@@ -110,7 +110,7 @@
   % real job.  By default, real job equals \jobname, i.e. we memoize "inline".
   % Include the path, but don't add ".tex" here.
   % 
-  % todo: This does not work!!! Where is \memoize@output@pdf!?!
+  % TODO: This does not work!!! Where is \memoize@output@pdf!?!
   real job/.code={%
     \edef\jobname{#1}%
     \mmz@split@filename\jobname\jobpath\jobbasename
@@ -196,6 +196,9 @@
   % In all cases, we are left with \mmz@box.
   \box\mmz@box
 }% todo: flexibility, optimization
+
+\newcommand\nomemoize[1]{{\memoizedisable#1}}
+
 
 %%%%%%%%%%%%%%%%%%%% THE CORE
 
@@ -368,7 +371,7 @@
     \memoized@skip
   }%
 }
-% todo: switch to pgfkeys interface for all but md5sum
+% TODO: switch to pgfkeys interface for all but md5sum
 \def\memoized@found#1#2#3#4#5#6#7#8#9{%
   \def\mmz@@filename{#1}%
   \def\mmz@@page{#2}%
@@ -456,23 +459,32 @@
 
 % UI:
 \memoizeset{
-  % \item without an argument: general \memoizeenable / \memoizedisable
+  % * without an argument: general \memoizeenable / \memoizedisable
   %   (prevent is not allowed)
-  % \item argument which starts with a control sequence: enable/disable/prevent
+  % * the argument is a control sequence: enable/disable/prevent
   %   memoizing a command
-  % \item otherwise: enable/disable/prevent memoizing an environment
+  % * otherwise: enable/disable/prevent memoizing an environment
   enable/.code={\def\mmz@handle@how{enable}\mmz@handle#1\mmz@end},
   disable/.code={\def\mmz@handle@how{disable}\mmz@handle#1\mmz@end},
   prevent/.code={\def\mmz@handle@how{prevent}\mmz@handle#1\mmz@end},
   enable/.default={},
   disable/.default={},
   prevent/.default={},
+  % Non-xparse-defined commands must be registered. Todo in docs: if you get
+  % "LaTeX3 Error: Command '\foo' not defined using xparse.", you forgot to
+  % register the command.
+  register command/.code 2 args={%
+    % #1 = the handled command
+    % #2 = the xparse argument specification of the handled command
+    \def\ArgumentSpecification{#2}%
+    \mmz@declare@handler#1%
+  },
   % Let #2 handle #1 (which can be either a command or an environment). The
   % user is responsible for correct argument structure in the case of #1 being
   % a command. If #1 is an environment, the handler should take two arguments,
   % the environment name and the environment body (long).  The handler is used
   % for both "enable" and "prevent" mode: when it is called, \MemoizeWrapper
-  % will be \let to either \memoize or \nomemoize
+  % will be \let to either \memoize or \nomemoize.  Todo: "extract" mode?
   handler/.code 2 args={\cslet{\mmz@repl@{#1}}#2},
   % 
   enable environments/.code={%
@@ -526,18 +538,12 @@
 % Prevent memoization within the command:
 \def\mmz@handle@cmd@prevent{\mmz@handle@cmd@ep\nomemoize}
 
-\def\mmz@handle@cmd@ep#1#2#3\mmz@end{%
+\def\mmz@handle@cmd@ep#1#2\mmz@end{%
   % #1 = the wrapper: \memoize / \nomemoize
   % #2 = the handled command
-  % #3 = the (optional) argument specification of the handled command
-  \ifstrempty{#3}{%
-    \ifcsdef{\mmz@repl@{#2}}{% We already have a handler for #2, use it.
-    }{% #2 is an xparse-defined command, extract the argspec.
-      \GetDocumentCommandArgSpec{#2}%
-      \mmz@declare@handler#2% "real" handler cs: \mmz@repl#2@
-    }%
-  }{% We define #2 to have argument structure given in #3.
-    \def\ArgumentSpecification{#3}%
+  \ifcsdef{\mmz@repl@{#2}}{% We already have a handler for #2, use it.
+  }{% #2 may only be an xparse-defined command, extract the argspec.
+    \GetDocumentCommandArgSpec{#2}%
     \mmz@declare@handler#2% "real" handler cs: \mmz@repl#2@
   }%
   \mmz@handler@init#2#1%
@@ -684,8 +690,8 @@
   \@ifpackageloaded{forest}{%
     \memoizeset{
       enable=forest,
-      % Forest loads xparse, so this will surely work.
-      enable=\Forest {s D(){} m},
+      % \Forest is defined by xparse, so no need to register it.
+      enable=\Forest,
     }%
   }{}%
   \memoizeset{
@@ -715,7 +721,7 @@
 \fi                       %%%%%%%%%%%%%%%% end not loadonly
 
 
-% TODO:
+% todo
 % 
 % Investigate interaction with -no-pdf / \pdfdraftmode.
 % 
