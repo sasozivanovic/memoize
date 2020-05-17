@@ -1,0 +1,14 @@
+\ProvidesPackage{nomemoize}[2020/05/17 A stub for memoize]
+% \RequirePackage{pgfopts}  % pgfkeys-based package options
+% \pgfqkeys{/memoize/package options}{
+%   loadonly/.code={},
+%   minimal/.code={},
+% }
+% \ProcessPgfPackageOptions{/memoize/package options}
+\providecommand\memoizeset[1]{}
+\providecommand\memoize[2][]{{#2}}
+\providecommand\nomemoize[1]{{#1}}
+\providecommand\memoizeenable{}
+\providecommand\memoizedisable{}
+\newif\ifmemoize
+\newif\ifmemoizing
