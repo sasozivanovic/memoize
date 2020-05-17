@@ -1,0 +1,38 @@
+\ProvidesPackage{xparse-arglist}
+
+% Given \ArgumentSpecification (xparse manual 3.4, \GetDocumentCommandArgSpec),
+% let \ArgumentList expand to a token list which, when fully expanded inside a
+% command with the given \ArgumentSpecification, will replicate the arguments
+% given to that command.
+% 
+% I know I should've used expl3 for this ... but plain TeX way is just faster.
+
+\def\ArgumentList{%
+  \expandafter\xp@arglist\expandafter0\ArgumentSpecification.%
+}
+
+\def\xp@arglist#1#2{%
+  \ifcsname xp@arglist@#2\endcsname
+    \csname xp@arglist@#2\expandafter\expandafter\expandafter\endcsname
+  \else
+    \expandafter\xp@arglist@error
+  \fi
+  \expandafter{\the\numexpr#1+1\relax}%
+}
+
+% \xp@arglist@...: #1 = the argument number
+\def\xp@arglist@m#1{\noexpand\unexpanded{{#####1}}\xp@arglist{#1}}
+\def\xp@arglist@r#1#2#3{\noexpand\unexpanded{#2#####1#3}\xp@arglist{#1}}
+\def\xp@arglist@R#1#2#3#4{\noexpand\unexpanded{#2#####1#3}\xp@arglist{#1}}
+\def\xp@arglist@v#1{{Handled commands with verbatim arguments are not
+    supported}\xp@arglist{#1}} % error
+\def\xp@arglist@b#1{{This is not the way to handle
+    environment}\xp@arglist{#1}} % error
+\def\xp@arglist@o#1{\noexpand\unexpanded{[#####1]}\xp@arglist{#1}}
+\def\xp@arglist@d#1#2#3{\noexpand\unexpanded{#2#####1#3}\xp@arglist{#1}}
+\def\xp@arglist@O#1#2{\noexpand\unexpanded{[#####1]}\xp@arglist{#1}}
+\def\xp@arglist@D#1#2#3#4{\noexpand\unexpanded{#2#####1#3}\xp@arglist{#1}}
+\def\xp@arglist@s#1{\noexpand\IfBooleanT{#####1}{*}\xp@arglist{#1}}
+\def\xp@arglist@t#1#2{\noexpand\IfBooleanT{#####1}{#2}\xp@arglist{#1}}
+\csdef{xp@arglist@.}#1{}
+\def\xp@arglist@error#1.{{Unknown argument type}}

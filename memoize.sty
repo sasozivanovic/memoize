@@ -30,9 +30,8 @@
 \RequirePackage{etoolbox} % generally useful
 \RequirePackage{graphicx} % for including externalized graphics
 
-% For automemoization:
-\RequirePackage{environ} % for environment handler definitions
-\RequirePackage{xparse} % for command handler definitions
+% For automemoization of environments:
+\RequirePackage{environ}
 
 \ifdef\pdftexversion{\input memoize-pdftex.def}{%
   \ifdef\XeTeXversion{\input memoize-xetex.def}{%
@@ -41,13 +40,18 @@
   }}
 
 % Registers and such
-\newif\ifmmz@active
+\newif\ifmemoize
+% todo: \newif\ifmemoizing
 \newif\ifmmz@readonly
 \newif\ifmmz@temp
 \newwrite\mmz@out
 \newbox\mmz@box
 \newcount\mmz@realpage
+\newtoks\mmz@temptoks
+
+% Some useful stuff.
 \def\mmz@valueof#1{\pgfkeysvalueof{/memoize/#1}}
+\def\apptotoks#1#2{\expandafter#1\expandafter{\the#1#2}}
 
 % There are two UI commands, \memoizeset for settings and \memoize for manual
 % memoization. 
@@ -134,15 +138,13 @@
     "\detokenize\expandafter{\mmz@syscall@commands}"},
   % Additional options for the LaTeX system call
   latex system call options/.initial={},
-  % Enable (default) / disable memoization --- either in the preamble or in the
-  % document.
-  enable/.code=\AfterPreamble{\mmz@activetrue},
-  disable/.code=\AfterPreamble{\mmz@activefalse},
-  enable,
+  % 
+  % enable and disable are defined later
+  % 
   % When we say "readonly" (or "readonly=true"), we will use whatever is
   % already memoized, but not memoize any new stuff.
   readonly/.is if=mmz@readonly,
-  % padding
+  % padding (for dealing with tikz overlays, \rlap and \llap etc.)
   padding left/.store in=\mmz@padding@left,
   padding right/.store in=\mmz@padding@right,
   padding top/.store in=\mmz@padding@top,
@@ -153,6 +155,7 @@
   no padding/.style={padding=0pt},
   default padding/.style={padding x=\pdfhorigin, padding y=\pdfvorigin},
   default padding,
+  % todo: page padding --- for "remember picture"
 }
 
 \def\mmz@memo@filename#1{%
@@ -169,7 +172,7 @@
 \let\memoize\relax
 \newcommand\memoize[2][]{%
   \mmz@leavevmode
-  \ifmmz@active
+  \ifmemoize
     \ifstrempty{#1}{%
       \edef\mmz@id{\expandafter\mmz@mdfivesum\expandafter{\detokenize{#2}}}%
     }{%
@@ -198,7 +201,7 @@
   % We compile in a \hbox, so that the situation is the same as when
   % memoization is active --- both in terms of the typeset output and the
   % content of registers etc.
-  \setbox\mmz@box=\hbox{\mmz@activefalse#1}%
+  \setbox\mmz@box=\hbox{\memoizefalse#1}%
 }
 
 % \mmz@ifmemoized{true code}{false code}
@@ -257,9 +260,9 @@
 \long\def\mmz@memoize#1{%
   \PackageInfo{memoize}{Memoizing \mmz@id\space}%
   % Typeset the code.
-  \mmz@activefalse
+  \memoizefalse
   \setbox\mmz@box=\hbox{#1}% todo: smuggle \mmz@toks and \mmz@global@toks!
-  \mmz@activetrue
+  \memoizetrue
   {%
     % So that the user can define padding in terms of the size of the
     % externalized graphics:
@@ -360,7 +363,7 @@
   \let\memoized\memoized@split
   \mmz@split@filename{\mmz@valueof{memo filename prefix}\noexpand\@empty}%
     \mmz@temp\mmz@memo@basenameprefix
-  \@input{\jobname.mmz}%
+  \@input{\jobname.mmz}% todo: and if we're disabled?
   \immediate\openout\mmz@out=\jobname.mmz
   % Prefix and suffix info can be used by the external splitting tool.
   \immediate\write\mmz@out{\@percentchar\space
@@ -434,86 +437,278 @@
 
 % AUTO-MEMOIZATION
 
-\def\mmz@orig#1{mmz@orig@\string#1}
-\def\mmz@repl#1{mmz@repl@\string#1}
+% UI:
+\memoizeset{
+  % \item without an argument: general \memoizeenable / \memoizedisable
+  %   (prevent is not allowed)
+  % \item argument which starts with a control sequence: enable/disable/prevent
+  %   memoizing a command
+  % \item otherwise: enable/disable/prevent memoizing an environment
+  enable/.code={\def\mmz@handle@how{enable}\mmz@handle#1\mmz@end},
+  disable/.code={\def\mmz@handle@how{disable}\mmz@handle#1\mmz@end},
+  prevent/.code={\def\mmz@handle@how{prevent}\mmz@handle#1\mmz@end},
+  enable/.default={},
+  disable/.default={},
+  prevent/.default={},
+  % Let #2 handle #1 (which can be either a command or an environment). The
+  % user is responsible for correct argument structure in the case of #1 being
+  % a command. If #1 is an environment, the handler should take two arguments,
+  % the environment name and the environment body (long).  The handler is used
+  % for both "enable" and "prevent" mode: when it is called, \MemoizeWrapper
+  % will be \let to either \memoize or \nomemoize
+  handler/.code 2 args={\cslet{\mmz@repl@{#1}}#2},
+}
 
-% Auto-memoization of environments:
+% Control sequences where we will store the handlers:
+\def\mmz@orig#1{mmz@orig@\string#1} % the original command
+\def\mmz@repl#1{mmz@repl@\string#1} % the initial part of the handler
+\def\mmz@repl@#1{mmz@repl@\string#1@} % the handler replacing the original commmand
+
+% End-of-arguments marker:
+\def\mmz@end{\mmz@end}
+
+% general, command or environment?
+\def\mmz@handle{\futurelet\mmz@temp\mmz@handle@a}
+\def\mmz@handle@a{%
+  \ifx\mmz@temp\mmz@end
+    \expandafter\mmz@handle@noarg  % general
+  \else
+    \ifcat\noexpand\mmz@temp\relax
+      \expandafter\expandafter\expandafter\mmz@handle@cmd
+    \else
+      \expandafter\expandafter\expandafter\mmz@handle@env
+    \fi
+  \fi
+}
+
+% General: 
+\def\mmz@handle@noarg\mmz@end{\csuse{memoize\mmz@handle@how}}
+\def\memoizeenable{\AfterPreamble{\memoizetrue}}
+\def\memoizedisable{\AfterPreamble{\memoizefalse}}
+\def\memoizeprevent{\PackageError{memoize}{"prevent" requires an argument}{}}
+
+% Command:
+\def\mmz@handle@cmd{\csname mmz@handle@cmd@\mmz@handle@how\endcsname}
+
+% Enable automemoizing the command:
+\def\mmz@handle@cmd@enable{\mmz@handle@cmd@ep\memoize}
+
+% Prevent memoization within the command:
+\def\mmz@handle@cmd@prevent{\mmz@handle@cmd@ep\nomemoize}
+
+\def\mmz@handle@cmd@ep#1#2#3\mmz@end{%
+  % #1 = the wrapper: \memoize / \nomemoize
+  % #2 = the handled command
+  % #3 = the (optional) argument specification of the handled command
+  \ifstrempty{#3}{%
+    \ifcsdef{\mmz@repl@{#2}}{% We already have a handler for #2, use it.
+    }{% #2 is an xparse-defined command, extract the argspec.
+      \GetDocumentCommandArgSpec{#2}%
+      \mmz@declare@handler#2% "real" handler cs: \mmz@repl#2@
+    }%
+  }{% We define #2 to have argument structure given in #3.
+    \def\ArgumentSpecification{#3}%
+    \mmz@declare@handler#2% "real" handler cs: \mmz@repl#2@
+  }%
+  \mmz@handler@init#2#1%
+}
+
+% Define the initial part of the handler for #1, and let it replace the
+% original command
+\def\mmz@handler@init#1#2{%
+  % Define the initial part: in that part, we check \ifmemoize without
+  % expanding any arguments, and \let \MemoizeWrapper
+  % #1 = handled command \cs
+  % #2 = \memoize / \nomemoize
+  \edef\mmz@marshal{%
+    \noexpand\DeclareRobustCommand
+      \expandonce{\csname\mmz@repl#1\endcsname}%
+      {%
+        \noexpand\ifmemoize
+          \let\noexpand\MemoizeWrapper\noexpand#2%
+          \noexpand\expandafter\expandonce{\csname \mmz@repl@#1\endcsname}%
+        \noexpand\else
+          \noexpand\expandafter\expandonce{\csname\mmz@orig#1\endcsname}%
+        \noexpand\fi
+      }%
+  }\mmz@marshal
+  % Save the original (handled) command, if we don't have it yet.
+  \ifcsmacro{\mmz@orig{#1}}{}{%
+    \cslet{\mmz@orig{#1}}#1%
+  }%
+  % Replace the original command with the handler.
+  \letcs#1{\mmz@repl{#1}}%
+}
+
+% Restore the original command:
+\def\mmz@handle@cmd@disable#1#2\mmz@end{%
+  \ifstrempty{#2}{}{\mmz@handle@cmd@disable@error#1}%
+  \ifcsdef{\mmz@orig{#1}}{%
+    \letcs#1{\mmz@orig{#1}}%
+    % \undef, so that subsequent enable/prevent can pick up a new original
+    \csundef{\mmz@orig{#1}}%
+  }{}%
+}
+\def\mmz@handle@cmd@disable@error#1{%
+  \PackageWarning{memoize}{Ignoring argument specification while disabling
+    \string#1}}
+
+% Environments: We only need to remember how environment #1 should be handled:
+% #1 = enable / disable / prevent, cs "\mmz@repl{#1}" is let to
+% \mmz@begin@enable/disable/prevent.  These are defined later.
+\def\mmz@handle@env#1\mmz@end{%
+  \csletcs{\mmz@repl{#1}}{mmz@begin@\mmz@handle@how}}
+
+% The real work is done by our redefinitions of \begin.
 % \item todo: environment hooks (etoolbox)
 \DeclareRobustCommand\mmz@begin{%
-  \ifmmz@active
-    \expandafter\mmz@begin@active
+  \ifmemoize
+    \expandafter\mmz@begin@a
   \else
     \expandafter\mmz@orig@begin
   \fi
 }
-\def\mmz@begin@active#1{%
-  \ifnum0\csuse{\mmz@env{#1}}=1
-    \expandafter\mmz@begin@active@a
-  \else
+
+% \mmz@repl@<envname> is \let to \mmz@begin@enable/disable/prevent
+\def\mmz@begin@a#1{%
+  \expandafter\ifx\csname\mmz@repl{#1}\endcsname\relax
     \expandafter\mmz@orig@begin
+  \else
+    \expandafter\mmz@begin@handled
   \fi
   {#1}%
 }
-\def\mmz@begin@active@a#1{%
-  \edef\mmz@marshal{\noexpand\mmz@begin@active@b{\@currenvir}{#1}}%
+
+% Automemoize an environment.
+\def\mmz@begin@handled#1{%
+  \edef\mmz@marshal{\noexpand\mmz@begin@handled@a{\@currenvir}{#1}}%
+  % We need to temporarily redefine \@currenvir for \Collect@Body to work.
   \def\@currenvir{#1}%
   \Collect@Body\mmz@marshal
 }
-\long\def\mmz@begin@active@b#1#2#3\end#4{%
-  \memoize{\begin{#2}#3\end{#2}}%
+\long\def\mmz@begin@handled@a#1#2#3\end#4{%
+  % #1 = the previous environment
+  % #2 = the handled environment name
+  % #3 = the handled environment body
+  % #4 = #2
+  \csuse{\mmz@repl{#2}}{#2}{#3}%
   \def\@currenvir{#1}%
 }
-\def\mmz@env#1{mmz@env@#1}
-\def\memoizeEnableEnvironment#1{\csdef{\mmz@env{#1}}{1}}
-\def\memoizeDisableEnvironment#1{\csdef{\mmz@env{#1}}{0}}
 
-% Auto-memoization of commands:
-% \item todo: a lighter approach (without xparse) for easy stuff
-\def\memoizeNewCommandHandler#1#2#3{%
-  \expandafter\NewDocumentCommand\csname\mmz@repl{#1}\endcsname{#2}{%
-    \edef\mmz@temp{#3}%
+% Environment handlers: 
+% #1 = environment name
+% #2 = environment code
+\long\def\mmz@begin@enable#1#2{%
+  \memoize{\begin{#1}#2\end{#1}}}
+\long\def\mmz@begin@prevent#1#2{%
+  \nomemoize{\begin{#1}#2\end{#1}}}
+\let\mmz@begin@disable\relax
+
+
+%%%%%%%%%%%%%%%% Automatically figure out the argument call from argument spec:
+
+\@ifpackageloaded{xparse}{%
+  \RequirePackage{xparse-arglist}
+  % Declare handler with argspec as given in \ArgumentSpecification:
+  % #1 = handled (original) \cs
+  \def\mmz@declare@handler#1{%
     \edef\mmz@marshal{%
-      \noexpand\memoize
-        [{\noexpand#1\expandonce{\mmz@temp}}]%
-        {\expandonce{\csname\mmz@orig{#1}\endcsname}\expandonce{\mmz@temp}}%
+      \noexpand\DeclareDocumentCommand
+        \expandonce{\csname \mmz@repl#1@\endcsname}%
+        {\expandonce{\ArgumentSpecification}}%
+        {%
+          \edef\noexpand\mmz@marshal{%
+          \noexpand\noexpand\noexpand\MemoizeWrapper{%
+            \noexpand\noexpand\expandonce{\csname\mmz@orig#1\endcsname}%
+              \ArgumentList
+          }%
+        }\noexpand\mmz@marshal
+      }%
     }\mmz@marshal
+  }
+}{%
+  \def\mmz@declare@handler#1{%
+    \PackageError{memoize}{Load package "xparse" to enable fancy command handling}{}%
+  }
+} % end of \@ifpackageloaded{xparse}
+
+\def\mmz@tikz{%
+  \mmz@temptoks={}%
+  \mmz@tikz@anim
+}
+\def\mmz@tikz@anim{%
+  \pgfutil@ifnextchar[{\mmz@tikz@opt}{%
+    \pgfutil@ifnextchar:{\mmz@tikz@anim@a}{%
+      \mmz@tikz@code}}%]
+}%
+\def\mmz@tikz@anim@a#1=#2{%
+  \apptotoks\mmz@temptoks{#1={#2}}%
+  \mmz@tikz@anim
+}%
+\def\mmz@tikz@opt[#1]{%
+  \appto\mmz@temptoks{[#1]}%
+  \mmz@tikz@code
+}
+\def\mmz@tikz@code{%
+  \pgfutil@ifnextchar\bgroup\mmz@tikz@braced\mmz@tikz@single
+}
+\def\mmz@tikz@braced#1{\apptotoks\mmz@temptoks{{#1}}\mmz@tikz@done}
+\def\mmz@tikz@single#1;{\apptotoks\mmz@temptoks{#1;}\mmz@tikz@done}
+\def\mmz@tikz@done{%
+  \expandafter\MemoizeWrapper\expandafter{%
+    \expandafter\tikz\the\mmz@temptoks
   }%
 }
-\def\memoizeInstallCommandHandler#1{%
-  \cslet{\mmz@orig{#1}}#1%
-  \letcs#1{\mmz@repl{#1}}}
-\def\memoizeUninstallCommandHandler#1{%
-  \letcs#1{\mmz@orig{#1}}}
 
-% Predefined command handlers:
-\memoizeNewCommandHandler\tikz{O{} m}{%
-  [\unexpanded{#1}]{\unexpanded{#2}}}
-\memoizeNewCommandHandler\Forest{s D(){} m}{%
-  \IfBooleanTF{#1}{*}{}(\unexpanded{#2}){\unexpanded{#3}}}
 
-% Enable auto-memoization of environments:
-\AtBeginDocument{%
-  \let\mmz@orig@begin\begin
-  \let\begin\mmz@begin
-}
-\memoizeEnableEnvironment{tikzpicture}
-\memoizeEnableEnvironment{forest}
+% todo: Should we?
+\memoizeenable
 
+% Should we do this? 
+% 
 % By default, we only enable auto-memoization of environments, so that a
 % document author can easily indicate whether (s)he wants to have a picture
 % externalized or not.  For example, to externalize a tikz picture, use the
 % environment: \begin{tikzpicture}...\end{tikzpicture}, and to not externalize
 % it, use the command: \tikz{...}.
 % 
-% \memoizeInstallCommandHandler\tikz
-% \memoizeInstallCommandHandler\Forest
+% Another reason for doing this is that \tikz command has a very weird argument
+% structure.
+
+% todo: move enable=forest into forest itself.
+\AtBeginDocument{%
+  % Enable auto-memoization of environments:
+  % todo? option to disable this
+  \let\mmz@orig@begin\begin
+  \let\begin\mmz@begin
+  % Enable auto-memoization for tikz and forest, if they are loaded:
+  \@ifpackageloaded{tikz}{%
+    \memoizeset{
+      enable=tikzpicture,
+      handler=\tikz\mmz@tikz,
+      enable=\tikz,
+    }%
+    \@ifpackageloaded{forest}{%
+      \memoizeset{
+        enable=forest,
+      }
+      \memoizeset{
+        % Forest loads xparse, so this will surely work.
+        enable=\Forest {s D(){} m},
+      }%
+    }{}%
+  }{}%
+}
+
 
 
 % TODO:
 % 
-% * Investigate interaction with -no-pdf / \pdfdraftmode.
+% Investigate interaction with -no-pdf / \pdfdraftmode.
 % 
-% * Bug: \begin{dependency} ... \end{dependency} calls forest env, so memoize can't find it and mmz@id={}.  This gets into .mmz and all hell breaks loose.
+% Bug: \begin{dependency} ... \end{dependency} calls forest env, so memoize
+% can't find it and mmz@id={}.  This gets into .mmz and all hell breaks loose.
+% Warn about this situation in the docs.
 
 
 
