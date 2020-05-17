@@ -1,11 +1,41 @@
 \ProvidesPackage{xparse-arglist}
 
-% Given \ArgumentSpecification (xparse manual 3.4, \GetDocumentCommandArgSpec),
-% let \ArgumentList expand to a token list which, when fully expanded inside a
-% command with the given \ArgumentSpecification, will replicate the arguments
-% given to that command.
+% This package provides a way to define an xparse-based command which is
+% "aware" of how it was called.  In other words, while executing the command,
+% we construct the argument list that was used to call it (or at least
+% something very close to, and functionally equivalent to this argument list).
 % 
-% I know I should've used expl3 for this ... but plain TeX way is just faster.
+% To construct the argument list, we need to provide \ArgumentSpecification,
+% either manually or by calling \GetDocumentCommandArgSpec (see xparse manual
+% 3.4) and then expand \ArgumentList in the following way:
+% 
+% \ArgumentList must be first fully expanded both when defining the command,
+% and the result must be then fully expanded while executing the command.
+% 
+% For example, to have \foo itself with the same arguments again :D define it
+% like this:
+% 
+% \edef\outermarshal{%
+%   \noexpand\NewDocumentCommand
+%     \noexpand\foo
+%     {\expandonce{\ArgumentSpecification}}%
+%     {%
+%       \unexpanded{...}%
+%       \edef\noexpand\innermarshal{%
+%         \noexpand\noexpand\noexpand\foo\ArgumentList
+%       }\innermarshal
+%       \noexpand\foo\ArgumentList
+%       \unexpanded{...}%
+%     }%
+% }\outermarshal
+%
+% This package was implemented during the development of "memoize", which
+% needs to compute the md5sum of a command plus its arguments, and then
+% (sometimes) execute the command.
+% 
+% Now maybe this exists somewhere in xparse, but I haven't been able to find
+% it. And I know I should've used expl3 for this ... but plain TeX way
+% compiles faster. ;-)
 
 \def\ArgumentList{%
   \expandafter\xp@arglist\expandafter0\ArgumentSpecification.%

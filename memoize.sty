@@ -24,14 +24,13 @@
 % - memomanager.py
 % - README.md
 % 
-\ProvidesPackage{memoize}[2020/05/13 Memoization, including externalization]
+\ProvidesPackage{memoize}[2020/05/17 Memoization, including externalization]
 
-\RequirePackage{pgfkeys} % for UI
+\RequirePackage{pgfopts}  % pgfkeys-based package options
+% \RequirePackage{pgfkeys} % for UI, loaded by pgfopts
 \RequirePackage{etoolbox} % generally useful
 \RequirePackage{graphicx} % for including externalized graphics
-
-% For automemoization of environments:
-\RequirePackage{environ}
+\RequirePackage{environ} % for automemoization of environments:
 
 \ifdef\pdftexversion{\input memoize-pdftex.def}{%
   \ifdef\XeTeXversion{\input memoize-xetex.def}{%
@@ -48,28 +47,22 @@
 \newbox\mmz@box
 \newcount\mmz@realpage
 \newtoks\mmz@temptoks
+\newif\ifmmz@loadonly
+\newif\ifmmz@minimal
+
+
+\pgfqkeys{/memoize/package options}{
+  loadonly/.is if=mmz@loadonly,   % disabled, no automemoization
+  minimal/.is if=mmz@minimal,     % without xparse
+}
+\ProcessPgfPackageOptions{/memoize/package options}
+
 
 % Some useful stuff.
 \def\mmz@valueof#1{\pgfkeysvalueof{/memoize/#1}}
 \def\apptotoks#1#2{\expandafter#1\expandafter{\the#1#2}}
 
-% There are two UI commands, \memoizeset for settings and \memoize for manual
-% memoization. 
-% 
-% If you are writing a package or a complicated preamble, and you want to be
-% able to comment out \usepackage{memoize} at will, define the stubs for these
-% two commands as follows.
-% 
-% \ProvideDocumentCommand\memoize{om}{{#2}}
-% \ProvideDocumentCommand\memoizeset{m}{}
-% or
-% \providecommand\memoize[2][]{{#2}}
-% \providecommand\memoizeset[1]{}
-%
-\let\memoizeset\relax
-\def\memoizeset#1{\pgfqkeys{/memoize}{#1}}
-
-% Copied (with rename) from pgfutil-common.tex, for self-containment
+% Copied from pgfutil-common.tex (and renamed), for self-containment
 \newif\ifmmzutil@in@
 \def\mmzutil@in@#1#2{%
   \def\mmzutil@in@@##1#1##2##3\mmzutil@in@@{%
@@ -90,6 +83,22 @@
     \def#3{#1}%
   \fi
 }
+
+% There are two UI commands, \memoizeset for settings and \memoize for manual
+% memoization. 
+% 
+% If you are writing a package or a complicated preamble, and you want to be
+% able to comment out \usepackage{memoize} at will, define the stubs for these
+% two commands as follows.
+% 
+% \ProvideDocumentCommand\memoize{om}{{#2}}
+% \ProvideDocumentCommand\memoizeset{m}{}
+% or
+% \providecommand\memoize[2][]{{#2}}
+% \providecommand\memoizeset[1]{}
+%
+\let\memoizeset\relax
+\def\memoizeset#1{\pgfqkeys{/memoize}{#1}}
 
 %%%%%%%%%%%%%%%%%%%%% UI
 
@@ -158,13 +167,6 @@
   % todo: page padding --- for "remember picture"
 }
 
-\def\mmz@memo@filename#1{%
-  \jobpath
-  \mmz@valueof{memo filename prefix}%
-  #1%
-  \mmz@valueof{memo filename suffix}%
-}
-
 % Manual memoization: \memoize[memoization key]{the code to be memoized}.  In a
 % manual invocation, the optional argument should usually be unnecessary.  So,
 % #1 is the memoization key (what md5sum is computed from), and #2 is the code
@@ -197,6 +199,13 @@
 
 %%%%%%%%%%%%%%%%%%%% THE CORE
 
+\def\mmz@memo@filename#1{%
+  \jobpath
+  \mmz@valueof{memo filename prefix}%
+  #1%
+  \mmz@valueof{memo filename suffix}%
+}
+
 \long\def\memoize@compile#1{%
   % We compile in a \hbox, so that the situation is the same as when
   % memoization is active --- both in terms of the typeset output and the
@@ -225,7 +234,7 @@
 % We use the "graphics" package, so we don't have to deal with various TeX
 % engines.  And then, we actually use "graphicsx", because I have no idea how
 % trim the padding without it.
-\def\mmz@precision{0.01pt}
+\def\mmz@tolerance{0.01pt}
 \long\def\mmz@use@memoized#1{%
   \PackageInfo{memoize}{Using \mmz@@id\space}%
   \setbox\mmz@box=\hbox{\lower\mmz@@dp\hbox{\includegraphics[trim=%
@@ -237,7 +246,7 @@
   %     [\dimexpr\mmz@@padding@left+\mmz@@wd\relax,%
   %       \dimexpr\mmz@@padding@bottom+\mmz@@dp+\mmz@@ht\relax]%
   %     {\mmz@@filename}}}%
-  % Safety belt: Warn if we include a page of unexpected dimensions.
+  % Safety net: Warn if we include a page of unexpected dimensions.
   \mmz@tempfalse
   \mmz@if@roughly@equal{\mmz@@wd}{\wd\mmz@box}{%
     \mmz@if@roughly@equal{\mmz@@ht}{\ht\mmz@box}{%
@@ -301,6 +310,22 @@
   }%
 }
 
+% Hijack TeX's \shipout. Do it at the beginning of the document, in case some
+% other package mucked with it as well.
+\memoizeset{
+  patch shipout/.code={%
+    \let\mmz@orig@shipout\shipout
+    \def\shipout{%
+      \global\advance\mmz@realpage1
+      \mmz@orig@shipout
+    }%
+  },
+}
+% We only need this to count pages. Can it be done otherwise?  Actually, this
+% could be used to supress normal output as well, producing a pdf containing
+% only memoized graphics.
+
+
 %%%%%%%%%%%%%%%%%%%%% Commands used in generated files
 
 % A simple .memo file consists of a call to \memoized containing the
@@ -343,6 +368,7 @@
     \memoized@skip
   }%
 }
+% todo: switch to pgfkeys interface for all but md5sum
 \def\memoized@found#1#2#3#4#5#6#7#8#9{%
   \def\mmz@@filename{#1}%
   \def\mmz@@page{#2}%
@@ -358,20 +384,30 @@
 \def\memoized@skip#1#2#3#4#5#6#7#8#9{}
 \def\usedmemoized#1{\memoized@skip}
 
-% Split, then clear .mmz
-\AtEndPreamble{%
-  \let\memoized\memoized@split
-  \mmz@split@filename{\mmz@valueof{memo filename prefix}\noexpand\@empty}%
-    \mmz@temp\mmz@memo@basenameprefix
-  \@input{\jobname.mmz}% todo: and if we're disabled?
-  \immediate\openout\mmz@out=\jobname.mmz
-  % Prefix and suffix info can be used by the external splitting tool.
-  \immediate\write\mmz@out{\@percentchar\space
-    memo filename prefix={\mmz@valueof{memo filename prefix}}}%
-  \immediate\write\mmz@out{\@percentchar\space
-    memo filename suffix={\mmz@valueof{memo filename suffix}}}%
+% Split, then clear .mmz.  We want to do this before aux files are opened, so
+% that we can even abort the compilation wants to split and prune (not
+% implemented yet).
+\memoizeset{
+  split/.code={%
+    \let\memoized\memoized@split
+    \mmz@split@filename{\mmz@valueof{memo filename prefix}\noexpand\@empty}%
+      \mmz@temp\mmz@memo@basenameprefix
+    \@input{\jobname.mmz}%
+  },
+  open mmz/.code={%
+    % We open a new .mmz right away, does this help with keeping .pdf and .mmz in
+    % sync?
+    \immediate\openout\mmz@out=\jobname.mmz
+    % Prefix and suffix info can be used by the external splitting tool.
+    \immediate\write\mmz@out{\@percentchar\space
+      memo filename prefix={\mmz@valueof{memo filename prefix}}}%
+    \immediate\write\mmz@out{\@percentchar\space
+      memo filename suffix={\mmz@valueof{memo filename suffix}}}%
+  },
+  close mmz/.code={%
+    \immediate\closeout\mmz@out
+  },
 }
-\AtEndDocument{\immediate\closeout\mmz@out}
 
 \def\memoized@split#1{%
   \def\mmz@@id{#1}%
@@ -416,25 +452,6 @@
     "\jobpath\mmz@@filename" to "\mmz@syscall@jobname.pdf".}{}}
 
 
-
-
-% Hijack TeX's \shipout. Do it at the beginning of the document, in case some
-% other package mucked with it as well.
-\def\memoizePatchShipout{%
-  \let\mmz@orig@shipout\shipout
-  \def\shipout{%
-    \global\advance\mmz@realpage1
-    \mmz@orig@shipout
-  }%
-}
-% todo: For funky situations: an option to not do it, and instruct the user to
-% use \memoizePatchShipout in an appropriate place instead.
-\AtBeginDocument{\memoizePatchShipout}
-% We only need this to count pages. Can it be done otherwise?  Actually, this
-% could be used to supress normal output as well, producing a pdf containing
-% only memoized graphics.
-
-
 % AUTO-MEMOIZATION
 
 % UI:
@@ -457,6 +474,19 @@
   % for both "enable" and "prevent" mode: when it is called, \MemoizeWrapper
   % will be \let to either \memoize or \nomemoize
   handler/.code 2 args={\cslet{\mmz@repl@{#1}}#2},
+  % 
+  enable environments/.code={%
+    \ifdefequal\mmz@orig@begin\relax{}{%
+      \let\mmz@orig@begin\begin
+      \let\begin\mmz@begin
+    }{}%
+  },
+  disable environments/.code={%
+    \ifdef\mmz@orig@begin{%
+      \let\begin\mmz@orig@begin
+      \let\mmz@orig@begin\relax
+    }{}%
+  },
 }
 
 % Control sequences where we will store the handlers:
@@ -605,101 +635,84 @@
 \let\mmz@begin@disable\relax
 
 
-%%%%%%%%%%%%%%%% Automatically figure out the argument call from argument spec:
 
-\@ifpackageloaded{xparse}{%
-  \RequirePackage{xparse-arglist}
-  % Declare handler with argspec as given in \ArgumentSpecification:
-  % #1 = handled (original) \cs
-  \def\mmz@declare@handler#1{%
-    \edef\mmz@marshal{%
-      \noexpand\DeclareDocumentCommand
-        \expandonce{\csname \mmz@repl#1@\endcsname}%
-        {\expandonce{\ArgumentSpecification}}%
-        {%
-          \edef\noexpand\mmz@marshal{%
-          \noexpand\noexpand\noexpand\MemoizeWrapper{%
-            \noexpand\noexpand\expandonce{\csname\mmz@orig#1\endcsname}%
-              \ArgumentList
-          }%
-        }\noexpand\mmz@marshal
-      }%
-    }\mmz@marshal
-  }
-}{%
-  \def\mmz@declare@handler#1{%
-    \PackageError{memoize}{Load package "xparse" to enable fancy command handling}{}%
-  }
-} % end of \@ifpackageloaded{xparse}
+\ifmmz@minimal            %%%%%%%%%%%%%%%% begin minimal
 
-\def\mmz@tikz{%
-  \mmz@temptoks={}%
-  \mmz@tikz@anim
+\def\mmz@declare@handler#1{%
+  \PackageError{memoize}{Load package "xparse" to enable fancy command handling}{}%
+
+\else                     %%%%%%%%%%%%%%%% begin non-minimal
+
+\RequirePackage{xparse-arglist}
+% Declare handler with argspec as given in \ArgumentSpecification
+% (Automatically figure out the argument call from argument spec) 
+% #1 = handled (original) \cs
+\def\mmz@declare@handler#1{%
+  \edef\mmz@marshal{%
+    \noexpand\DeclareDocumentCommand
+      \expandonce{\csname \mmz@repl#1@\endcsname}%
+      {\expandonce{\ArgumentSpecification}}%
+      {%
+        \edef\noexpand\mmz@marshal{%
+        \noexpand\noexpand\noexpand\MemoizeWrapper{%
+          \noexpand\noexpand\expandonce{\csname\mmz@orig#1\endcsname}%
+            \ArgumentList
+        }%
+      }\noexpand\mmz@marshal
+    }%
+  }\mmz@marshal
 }
-\def\mmz@tikz@anim{%
-  \pgfutil@ifnextchar[{\mmz@tikz@opt}{%
-    \pgfutil@ifnextchar:{\mmz@tikz@anim@a}{%
-      \mmz@tikz@code}}%]
-}%
-\def\mmz@tikz@anim@a#1=#2{%
-  \apptotoks\mmz@temptoks{#1={#2}}%
-  \mmz@tikz@anim
-}%
-\def\mmz@tikz@opt[#1]{%
-  \appto\mmz@temptoks{[#1]}%
-  \mmz@tikz@code
+
+\fi                       %%%%%%%%%%%%%%%% end non-minimal
+
+
+\unless\ifmmz@loadonly    %%%%%%%%%%%%%%%% begin not loadonly
+
+\memoizeenable
+
+\AtEndPreamble{%
+  % Enable auto-memoization for tikz, if it is loaded.
+  \@ifpackageloaded{tikz}{%
+    \input memoize-tikz    % Here we define and install \tikz handler.
+    \memoizeset{
+      enable=tikzpicture,
+      enable=\tikz,
+    }%
+  }{}%
+  % Enable auto-memoization for forest, if it is loaded.
+  % todo: Move this into forest itself.
+  \@ifpackageloaded{forest}{%
+    \memoizeset{
+      enable=forest,
+      % Forest loads xparse, so this will surely work.
+      enable=\Forest {s D(){} m},
+    }%
+  }{}%
+  \memoizeset{
+    split,
+    open mmz,
+  }
 }
-\def\mmz@tikz@code{%
-  \pgfutil@ifnextchar\bgroup\mmz@tikz@braced\mmz@tikz@single
-}
-\def\mmz@tikz@braced#1{\apptotoks\mmz@temptoks{{#1}}\mmz@tikz@done}
-\def\mmz@tikz@single#1;{\apptotoks\mmz@temptoks{#1;}\mmz@tikz@done}
-\def\mmz@tikz@done{%
-  \expandafter\MemoizeWrapper\expandafter{%
-    \expandafter\tikz\the\mmz@temptoks
+
+% We do the patching as late as possible.
+\AtBeginDocument{%
+  \memoizeset{
+    % Enable auto-memoization of environments. This patches \begin.
+    enable environments,
+    % todo: Instruct the user to "patch shipout" when "loadonly" was used ---
+    % otherwise, externalization won't work!  Maybe even disable \memoizeenable
+    % unless shipout is patched?
+    patch shipout,
   }%
 }
 
-
-% todo: Should we?
-\memoizeenable
-
-% Should we do this? 
-% 
-% By default, we only enable auto-memoization of environments, so that a
-% document author can easily indicate whether (s)he wants to have a picture
-% externalized or not.  For example, to externalize a tikz picture, use the
-% environment: \begin{tikzpicture}...\end{tikzpicture}, and to not externalize
-% it, use the command: \tikz{...}.
-% 
-% Another reason for doing this is that \tikz command has a very weird argument
-% structure.
-
-% todo: move enable=forest into forest itself.
-\AtBeginDocument{%
-  % Enable auto-memoization of environments:
-  % todo? option to disable this
-  \let\mmz@orig@begin\begin
-  \let\begin\mmz@begin
-  % Enable auto-memoization for tikz and forest, if they are loaded:
-  \@ifpackageloaded{tikz}{%
-    \memoizeset{
-      enable=tikzpicture,
-      handler=\tikz\mmz@tikz,
-      enable=\tikz,
-    }%
-    \@ifpackageloaded{forest}{%
-      \memoizeset{
-        enable=forest,
-      }
-      \memoizeset{
-        % Forest loads xparse, so this will surely work.
-        enable=\Forest {s D(){} m},
-      }%
-    }{}%
-  }{}%
+\AtEndDocument{%
+  \memoizeset{
+    close mmz,
+  }%
 }
 
+\fi                       %%%%%%%%%%%%%%%% end not loadonly
 
 
 % TODO:
@@ -709,7 +722,6 @@
 % Bug: \begin{dependency} ... \end{dependency} calls forest env, so memoize
 % can't find it and mmz@id={}.  This gets into .mmz and all hell breaks loose.
 % Warn about this situation in the docs.
-
 
 
 

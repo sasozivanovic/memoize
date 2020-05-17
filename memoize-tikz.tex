@@ -1,0 +1,41 @@
+% Command handler for tikz:
+
+\makeatletter % todo: this can't be here, if it's for plain TeX as well
+
+% \tikz <animation spec> [<options>] {<picture code>}
+% or
+% \tikz <animation spec> [<options>] <picture code>;
+% 
+% <animation spec> = :key={value}, ...
+
+\def\mmz@tikz{%
+  \mmz@temptoks={}%
+  \mmz@tikz@anim
+}
+\def\mmz@tikz@anim{%
+  \pgfutil@ifnextchar[{\mmz@tikz@opt}{%
+    \pgfutil@ifnextchar:{\mmz@tikz@anim@a}{%
+      \mmz@tikz@code}}%]
+}%
+\def\mmz@tikz@anim@a#1=#2{%
+  \apptotoks\mmz@temptoks{#1={#2}}%
+  \mmz@tikz@anim
+}%
+\def\mmz@tikz@opt[#1]{%
+  \appto\mmz@temptoks{[#1]}%
+  \mmz@tikz@code
+}
+\def\mmz@tikz@code{%
+  \pgfutil@ifnextchar\bgroup\mmz@tikz@braced\mmz@tikz@single
+}
+\def\mmz@tikz@braced#1{\apptotoks\mmz@temptoks{{#1}}\mmz@tikz@done}
+\def\mmz@tikz@single#1;{\apptotoks\mmz@temptoks{#1;}\mmz@tikz@done}
+\def\mmz@tikz@done{%
+  \expandafter\MemoizeWrapper\expandafter{%
+    \expandafter\tikz\the\mmz@temptoks
+  }%
+}
+
+\memoizeset{
+  handler=\tikz\mmz@tikz,
+}

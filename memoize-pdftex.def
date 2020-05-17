@@ -2,7 +2,7 @@
 \let\mmz@primitive\pdfprimitive
 \let\ifmmz@absdim\ifpdfabsdim
 \def\mmz@if@roughly@equal#1#2{%
-  \ifpdfabsdim\dimexpr#1-#2\relax<\mmz@precision\relax
+  \ifpdfabsdim\dimexpr#1-#2\relax<\mmz@tolerance\relax
     \expandafter\@firstoftwo
   \else
     \expandafter\@secondoftwo
