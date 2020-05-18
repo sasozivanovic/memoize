@@ -1,0 +1,103 @@
+\documentclass{article}
+
+% If you load "nomemoize", memoize will not be loaded, but \memoizeset
+% etc. will not yield errors.
+% \usepackage{nomemoize}
+
+% The order of packages can be important ... memoize must be loaded before
+% certain tikz libraries, like "shadows" used by "todonotes".
+\usepackage{memoize}
+
+\usepackage{geometry}
+\usepackage[linguistics]{forest}
+\usepackage{tikz}
+\usetikzlibrary{shapes}
+\usepackage{todonotes}
+
+% ***Splitting*** (and only splitting, i.e. the second stage of
+% externalization) would fail if memoize was loaded here ... bad blood with the
+% "shapes" library.  \usepackage{memoize}
+
+\memoizeset{
+  memo dir, % don't pollute the main dir
+  register=\todo{ O{} +m },  % what is the argument structure of \todo
+  prevent=\todo,    % don't memoize within \todo !
+  enable=minipage,  % automatically memoize minipages
+}
+
+
+\begin{document}
+
+First of all, {\tt \string\memoizeset\{disable\}} disables all memoization (for
+  the local \TeX\ group). And {\tt \string\memoizeset\{enable\}} brings it
+back.  There are also short forms {\tt \string\memoizedisable} and {\tt
+  \string\memoizeenable}.
+
+{% It is safer to use \memoizedisable within a group than a \memoizedisable --
+  % \memoizeenable pair --- what if we want to disable for the entire document?
+  \memoizedisable
+  
+  \begin{center}
+    \begin{forest} nice empty nodes%delay={where content={}{coordinate}{}}
+      [[[This] [tree]] [[is] [[not] [externalized]]]]
+    \end{forest}
+  \end{center}
+}
+
+
+We have three keys:
+\begin{itemize}
+\item {\tt enable}: The given environment or command will be automatically memoized.
+\item {\tt prevent}: Within the given environment or command, memoization is
+  switched off.
+\item {\tt disable}: Disable the effect of {\tt enable} or {\tt prevent} for
+  the given environment or command.
+\end{itemize}
+
+
+Externalized TikZ picture can be given either in the {\tt tikzpicture}
+environment or by the {\tt\string\tikz}.\todo{But I'm {\tt prevent}ed from
+  being externalized, even if I use TikZ behind the scenes!}
+
+\begin{tikzpicture}
+  \node[starburst,fill=yellow,draw=red,thick,font=\Huge]{externalized};
+\end{tikzpicture}
+% The \tikz command has two forms: 
+% braced "\tikz{...}" and single-command "\tikz ... ;". Both are supported.
+\tikz\node[starburst,fill=yellow,draw=red,thick,font=\Large]{externalized};
+
+% stop automatically memoizing \tikz command --- tikzpicture environment will
+% still be automemoized
+\memoizeset{
+  disable=\tikz,
+}
+
+But now we said {\tt disable=\string\tikz}, so the command is not externalized
+any more.
+
+\begin{tikzpicture}
+  \node[starburst,fill=yellow,draw=red,thick,font=\Huge]{externalized};
+\end{tikzpicture}  
+\tikz\node[cloud,aspect=5,fill=blue,text=white,thick,font=\large\bf]{not externalized};
+
+By the way, do you know that the pictures on the left above share the same
+memo? The same code, the same memo \dots\ {\tt
+  01B9F3FF1943DC0B0A1B62261CE9CD5E.memo.pdf}
+
+
+An externalized minipage:
+\fbox{\begin{minipage}[t]{0.6\linewidth}
+  A suggestion for an easy control over whether a TikZ picture gets
+  externalized or not: if you say
+  {\tt\string\memoizeset\{disable=\string\tikz\}}, {\tt tikzpicture} environments
+  get externalized, but {\tt\string\tikz} commands don't.  Easy and logical:
+  environments are for the big stuff, commands for little jobs.
+\end{minipage}}
+
+
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:

@@ -1,0 +1,35 @@
+\documentclass{article}
+
+\usepackage{memoize}
+\memoizeset{
+  memo filename prefix={book.memo.dir/},
+  readonly      % This can be a good idea when you work on pictures.
+}
+
+\usepackage{tikz}
+
+\begin{document}
+
+\section{Included}
+
+The code for this section was input by {\tt \string\input\{chapters/4-chapter\}}.
+
+\begin{flushleft}
+  \begin{tikzpicture}[pin distance=4em]
+    \node[align=left,text width=0.3\linewidth,draw,dashed,red,
+      pin={[align=left,text width=0.4\linewidth]east:
+        Delete the memo file ({\tt chapters/<md5sum>.memo.pdf})
+        between tests. This will force
+        recompilation.}]
+    {If you compile the included file (twice) first, the main file will pick up
+      this externalized picture.  And vice versa.};
+  \end{tikzpicture}
+\end{flushleft}
+
+\end{document}
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:

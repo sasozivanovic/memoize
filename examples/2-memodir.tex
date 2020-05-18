@@ -1,0 +1,55 @@
+\documentclass{article}
+\usepackage{forest}
+
+\usepackage{memoize}
+\memoizeset{memo dir}
+
+\begin{document}
+
+After loading the package with
+\begin{center}
+  {\tt \string\usepackage{memoize}}
+\end{center}
+we wrote
+\begin{center}
+  {\tt \string\memoizeset\{memo dir\}}
+\end{center}
+and now, the memo ({\tt B2E679FB208DD0D53C20B5017B4A8DAA.memo.pdf}) will appear
+in folder {\tt 2-memodir.memo.dir}.
+
+\begin{center}
+  \begin{forest}
+    [VP
+      [DP]
+      [V\rlap'
+        [V]
+        [DP]
+      ]
+    ]
+  \end{forest}
+\end{center}
+
+Most of user's interaction with Memoize is through macro {\tt
+  \string\memoizeset}.  It can be used anywhere in the document, but some keys
+only make sense in the preamble.  The effects of {\tt \string\memoizeset}
+persist until the end of the \TeX\ group.
+
+The argument of {\tt \string\memoizeset} is a {\tt pgfkeys} keylist.  In short:
+\begin{itemize}
+\item A keylist is a comma-separated list of {\tt <key>=<value>} pairs, where
+  the {\tt =<value>} part is not always mandatory.
+\item In the keylist, spaces around keys and values are stripped away. Newlines
+  inside a keylist are allowed, but empty lines are not.
+\item Characters {\tt ,}, {\tt =} and {\tt /} have special meaning in a
+  keylist.  If you want to include one of them in the value, surround the value
+  by braces, like this: {\tt <key>=\{<value>\}}
+\end{itemize}
+For details, see section 88 of the PGF/TikZ manual.
+
+\end{document}
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:

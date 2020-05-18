@@ -1,0 +1,74 @@
+\documentclass{article}
+\usepackage{tikz}
+\usetikzlibrary{positioning}
+\usepackage{forest}
+
+\usepackage{memoize}            % that's all folks!
+
+\begin{document}
+
+The use the package, just load it. By default, memoization is enabled and TikZ
+pictures and Forest trees will be ``automemoized.''
+
+\begin{figure}\centering
+  \begin{tikzpicture}
+    \node(atomic)[align=center]{atomically\\restricted};
+    \node(strong)[right=4em of atomic,align=center]{strongly\\restricted};
+    \node(weak)[right=3em of strong,align=center]{weakly\\restricted};
+    \node(atomic frame)[gray,fit=(atomic),inner xsep=1.5em,xshift=1em,inner ysep=0.333em,draw]{};
+    \node(strong frame)[gray,fit=(atomic frame)(strong),inner xsep=1.5em,inner ysep=1em,draw]{};
+    \node(weak frame)[gray,fit=(strong frame)(weak),inner xsep=1.5em,inner ysep=1em,draw]{};
+    \node(cons)[below=1em of weak frame]{conservative};
+    \node(cons frame)[gray,fit=(weak frame)(cons),inner xsep=1.5em,inner ysep=1em,draw]{};
+    \path (atomic.east) + (1em,0) node(atomic x)[circle,fill,inner sep=1pt]{};
+    \path (atomic x |- cons) node(cons x)[circle,fill,inner sep=1pt]{};
+    \draw [->] (cons x) -- node[right,pos=0.4]{$\sim$} (atomic x);
+  \end{tikzpicture}
+  \caption{Variants of restrictiveness}
+  \label{fig:rest-and-cons}
+\end{figure}
+
+\begin{center}
+  \begin{forest}
+    [VP
+      [DP]
+      [V\rlap'
+        [V]
+        [DP]
+      ]
+    ]
+  \end{forest}
+\end{center}
+
+If your {\tt -shell-escape} option (perhaps called {\tt--enable-write18}) is
+enabled (if it operates in restricted mode, {\tt pdflatex} must be allowed),
+things should ``just work.''
+
+\begin{enumerate}
+\item After the first compilation, you should get a document containing three
+  pages: the tikzpicture, the forest tree and the document itself.
+\item After the second compilation, the first two pages should disappear. You
+  should find the \emph{memos} in files
+  \begin{itemize}
+  \item {\tt 1-basic.5809A894D3808C95F53EEE848F9C3BBA.memo.pdf} and
+  \item {\tt 1-basic.B2E679FB208DD0D53C20B5017B4A8DAA.memo.pdf}.
+  \end{itemize}
+
+\end{enumerate}
+
+The long numbers in memo names are the md5sums of the code that produced
+them. Try changing the tikz or forest code and you will get a new memo file
+after two passes.
+
+\bigskip
+
+\emph{If something goes wrong, try deleting the memos --- this is always safe
+  to do --- and recompiling.}
+
+
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:

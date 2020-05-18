@@ -1,0 +1,69 @@
+\documentclass{article}
+\usepackage{docmute}
+\enlargethispage{1cm}
+\pagestyle{empty}
+
+\usepackage{memoize}
+\memoizeset{
+  memo filename prefix={chapters/book.memo.dir/}
+}
+
+\usepackage{tikz}
+
+\begin{document}
+
+\section{Introduction}
+
+When writing a longer document, it is often desirable to compile only a part of
+the document, and there are several ways to achieve that. This example uses the
+{\tt docmute} package to achieve that. But what we really want to know here is:
+Can we use pictures externalized when compiling the included files when we
+compile the main document, and vice versa?  Sure!
+
+The template for names of memo files is not fixed. It is composed of:
+\begin{enumerate}
+\item the prefix which you can set by memoize key {\tt memo filename prefix}, 
+\item the automatically computed md5sum, and
+\item the suffix which you can set by memoize key {\tt memo filename suffix}.
+\end{enumerate}
+Now crucially, the prefix can contain a path (which must exist, in the usual
+  setup TeX can't create folders for you). In this document, we have exploited
+this to set
+\begin{itemize}
+\item {\tt memo filename prefix=\{chapters/book.memo.dir/\}} in the main file
+  --- note the braces around the value, and the slash at the end! --- and
+\item {\tt memo filename prefix=\{book.memo.dir/\}} in the included file, which
+  resides in directory {\tt chapters}.
+\end{itemize}
+
+\input{chapters/4-chapter}
+
+\section{Readonly}
+
+When {\tt \string\memoize\{readonly\}} is in effect, memoize will use any
+pictures that were already externalized, but it will not externalize new stuff.
+This is great when we work on a picture, because we don't want to see it as an
+extra page all the time (and wait for the old version to be split off all the
+  time).
+
+One possible workflow is to say {\tt readonly} in the included file, as that is
+the file that you will be compiling over and over again when you work on it.
+Nothing will get externalized, but the compilation will be fast, because
+externalized pictures will be used.  Once you want to look at the whole book,
+you compile the main file (which contains no {\tt readonly}) and everything
+gets externalized.
+
+\section{Conclusion}
+
+Easy, right?
+
+
+
+
+
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:

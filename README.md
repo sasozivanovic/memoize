@@ -134,7 +134,8 @@ All this said, there's still lots of stuff to be done yet before this package
 is ripe for CTAN:
 
 * Proper documentation.  For now, there is only the comments in `memoize.sty`
-  --- but for once, they are plentiful.
+  --- but for once, they are plentiful --- and some examples (in the `examples`
+  directory).
 
 * Context dependency, including support for `\label`--`\ref` and beamer
   overlays.  Context dependency will be implemented like in Forest (which
