@@ -1,4 +1,5 @@
 \ProvidesPackage{xparse-arglist}
+\RequirePackage{xparse}
 
 % This package provides a way to define an xparse-based command which is
 % "aware" of how it was called.  In other words, while executing the command,
@@ -64,5 +65,8 @@
 \def\xp@arglist@D#1#2#3#4{\noexpand\unexpanded{#2#####1#3}\xp@arglist{#1}}
 \def\xp@arglist@s#1{\noexpand\IfBooleanT{#####1}{*}\xp@arglist{#1}}
 \def\xp@arglist@t#1#2{\noexpand\IfBooleanT{#####1}{#2}\xp@arglist{#1}}
+\csdef{xp@arglist@+}#1{\expandafter\xp@arglist\expandafter{\the\numexpr#1-1\relax}}%
 \csdef{xp@arglist@.}#1{}
+% e,E: Embellishments are not supported.
+% > Argument processors are not supported. And how could they be?
 \def\xp@arglist@error#1.{{Unknown argument type}}

@@ -550,7 +550,7 @@
   % Non-xparse-defined commands must be registered. Todo in docs: if you get
   % "LaTeX3 Error: Command '\foo' not defined using xparse.", you forgot to
   % register the command.
-  register command/.code 2 args={%
+  register/.code 2 args={%
     % #1 = the handled command
     % #2 = the xparse argument specification of the handled command
     \def\ArgumentSpecification{#2}%
