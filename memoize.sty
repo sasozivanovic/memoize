@@ -54,6 +54,7 @@
 \newif\ifmmz@loadonly
 \newif\ifmmz@light
 \newif\ifmmz@manual
+\newif\ifmmz@shipout@only@memoized
 
 \pgfqkeys{/memoize/package options}{
   loadonly/.is if=mmz@loadonly,   % disabled, no automemoization
@@ -110,6 +111,7 @@
 \let\memoizeset\relax
 \def\memoizeset#1{\pgfqkeys{/memoize}{#1}}
 
+% todo: preamble vs. all-the-time options --- redefine \memoizeset to another path!
 \memoizeset{%
   % When the TeX job starts, \jobname contains the basename of the PDF that
   % will be created.  If we set \jobname (using the below key) to some other
@@ -118,7 +120,7 @@
   % equals \jobname, i.e. we memoize "inline".
   % 
   % Include the path, but don't add ".tex" here.
-  jobname/.code={\edef\jobname{#1}},
+  jobname/.estore in=\jobname,
   % 
   % After each compilation, "\primitive\jobname.mmz" will contain the list of memoized
   % stuff. On the next run, tex will split the memo PDFs off the big PDF we
@@ -139,6 +141,8 @@
   % elsewhere.
   memo filename prefix/.initial={\mmz@jobbasename.},
   memo filename suffix/.initial={.memo},
+  % A shortcut for a .memo.dir
+  memo dir/.style={memo filename prefix={\mmz@jobbasename.memo.dir/}},
   %
   % System call for embedded *La*TeX compilations. The engine (pdftex, xetex
   % etc.) is chosen automatically.
@@ -177,6 +181,18 @@
     \ifmemoizing\pgfkeysalso{#1}\else\pgfkeysalso{#2}\fi},
   if manual/.code 2 args={
     \ifmmz@manual\pgfkeysalso{#1}\else\pgfkeysalso{#2}\fi},
+  shipout only memoized/.is if=mmz@shipout@only@memoized,
+}
+
+\def\mmz@updatefilenames{%
+  \mmz@split@filename
+    \jobname
+    \mmz@jobpath
+    \mmz@jobbasename
+  \mmz@split@filename
+    {\mmz@jobpath\mmz@valueof{memo filename prefix}\noexpand\@empty}%
+    \mmz@memo@path
+    \mmz@memo@basenameprefix
 }
 
 % Manual memoization: \memoize[memoization key]{the code to be memoized}.  In a
@@ -232,8 +248,6 @@
   \@input{\mmz@memo@filename\mmz@id}%
   \ifdef\mmz@@filename{%
     % Well ... if that file exists.  First, we prefix the correct folder:
-    \mmz@split@filename{\mmz@jobpath\mmz@valueof{memo filename prefix}\noexpand\@empty}%
-      \mmz@memo@path\mmz@temp
     \epreto\mmz@@filename\mmz@memo@path
     \IfFileExists{\mmz@@filename}{\@firstoftwo % yes!
     }{\@secondoftwo}}{\@secondoftwo}% no
@@ -263,9 +277,13 @@
     }{}}{}%
   \ifmmz@temp\else\mmz@use@memoized@warning\fi
   \immediate\write\mmz@out{\noexpand\usedmemoized{\mmz@@id}%
-    {\mmz@@filename}{\mmz@@page}%
-    {\mmz@@wd}{\mmz@@ht}{\mmz@@dp}%
-    {\mmz@@padding@left}{\mmz@@padding@bottom}{\mmz@@padding@right}{\mmz@@padding@top}%
+    {filename={\mmz@@filename}, page=\mmz@@page,
+      wd=\mmz@@wd, ht=\mmz@@ht, dp=\mmz@@dp,
+      padding left=\the\dimexpr\mmz@@padding@left,
+      padding bottom=\the\dimexpr\mmz@@padding@bottom,
+      padding right=\the\dimexpr\mmz@@padding@right,
+      padding top=\the\dimexpr\mmz@@padding@top%
+    }%
     \@percentchar
   }%
 }
@@ -309,10 +327,13 @@
     \mmz@primitive\shipout\copy\mmz@box
     % Store memoized data and the link to the .pdf in to .mmz file.
     \immediate\write\mmz@out{\noexpand\memoized{\mmz@id}%
-      {\mmz@primitivejobbasename.pdf}{\the\mmz@realpage}%
-      {\the\wd\mmz@box}{\the\ht\mmz@box}{\the\dp\mmz@box}%
-      % order as in graphicx:
-      {\mmz@padding@left}{\mmz@padding@bottom}{\mmz@padding@right}{\mmz@padding@top}%
+      {filename={\mmz@primitivejobbasename.pdf}, page=\the\mmz@realpage,
+        wd=\the\wd\mmz@box, ht=\the\ht\mmz@box, dp=\the\dp\mmz@box,
+        % order as in graphicx:
+        padding left=\the\dimexpr\mmz@padding@left,
+        padding bottom=\the\dimexpr\mmz@padding@bottom,
+        padding right=\the\dimexpr\mmz@padding@right,
+        padding top=\the\dimexpr\mmz@padding@top}%
       \@percentchar
     }%
   }%
@@ -361,20 +382,33 @@
     \memoized@skip
   }%
 }
-% TODO: switch to pgfkeys interface for all but md5sum
-\def\memoized@found#1#2#3#4#5#6#7#8#9{%
-  \def\mmz@@filename{#1}%
-  \def\mmz@@page{#2}%
-  \def\mmz@@wd{#3}%
-  \def\mmz@@ht{#4}%
-  \def\mmz@@dp{#5}%
-  \def\mmz@@padding@left{#6}%
-  \def\mmz@@padding@bottom{#7}%
-  \def\mmz@@padding@right{#8}%
-  \def\mmz@@padding@top{#9}%
+
+\pgfqkeys{/memoized}{
+  filename/.store in=\mmz@@filename,
+  page/.store in=\mmz@@page,
+  wd/.store in=\mmz@@wd,
+  ht/.store in=\mmz@@ht,
+  dp/.store in=\mmz@@dp,
+  padding left/.store in=\mmz@@padding@left,
+  padding bottom/.store in=\mmz@@padding@bottom,
+  padding right/.store in=\mmz@@padding@right,
+  padding top/.store in=\mmz@@padding@top,
+}
+
+\def\memoized@found#1{%
+  \def\mmz@@filename{}%
+  \def\mmz@@page{}%
+  \def\mmz@@wd{}%
+  \def\mmz@@ht{}%
+  \def\mmz@@dp{}%
+  \def\mmz@@padding@left{}%
+  \def\mmz@@padding@bottom{}%
+  \def\mmz@@padding@right{}%
+  \def\mmz@@padding@top{}%
+  \pgfqkeys{/memoized}{#1}%
   \memoized@next
 }
-\def\memoized@skip#1#2#3#4#5#6#7#8#9{}
+\def\memoized@skip#1{}
 \def\usedmemoized#1{\memoized@skip}
 
 % \jobname needs to be split into \mmz@jobpath and \mmz@jobbasename before
@@ -385,6 +419,7 @@
   #1%
   \mmz@valueof{memo filename suffix}%
 }
+
 
 \memoizeset{
   % This is the stuff we need to do before we can start memoizing.
@@ -400,27 +435,35 @@
   % containing only memoized graphics.
   initialize shipout/.code={%
     \let\mmz@orig@shipout\shipout
-    \def\shipout{%
-      \global\advance\mmz@realpage1
-      \mmz@orig@shipout
-    }%
+    \ifmmz@shipout@only@memoized
+      \def\shipout{%
+        \deadcycles=0
+        \setbox0=%
+      }
+    \else
+      \def\shipout{%
+        \global\advance\mmz@realpage1
+        \mmz@orig@shipout
+      }%
+    \fi
   },
   % Open the .mmz control file.  This needs to be done after splitting but
   % before the first externalization.  By default, we do it in
   % \AtBeginDocument,
   open mmz/.code={%
-    % In the default situation, the following line is redundant, because it was
-    % already done in "split".
-    \mmz@split@filename\jobname\mmz@jobpath\mmz@jobbasename
     % The .mmz has to sit next to the generated PDF, so \primitive\jobname!
     \edef\mmz@primitivejobname{\mmz@primitive\jobname}%
     \mmz@split@filename{\mmz@primitive\jobname}\mmz@temp\mmz@primitivejobbasename
     \immediate\openout\mmz@out=\mmz@primitive\jobname.mmz
-    % Prefix and suffix info can be used by the external splitting tool.
-    \immediate\write\mmz@out{\@percentchar\space
-      memo filename prefix={\mmz@valueof{memo filename prefix}}}%
-    \immediate\write\mmz@out{\@percentchar\space
-      memo filename suffix={\mmz@valueof{memo filename suffix}}}%
+    % Prefix and suffix info are used when splitting, either by an embedded
+    % call of from the external tool.
+    \immediate\write\mmz@out{%
+      \noexpand\memoizeset{%
+        memo filename prefix={\mmz@valueof{memo filename prefix}},
+        memo filename suffix={\mmz@valueof{memo filename suffix}},
+        jobname={\jobname}%
+      }%
+    }%
     % 
     % Close the .mmz file at the end.
     \AtEndDocument{\immediate\closeout\mmz@out}%
@@ -430,12 +473,17 @@
     \def\memoizeenable{\AfterPreamble{\memoizetrue}}%
   },
   % Split the .pdf generated in the previous compilation into ".memo.pdf"s
-  split/.code={% todo: prevent execution after the we start producing the pdf
-    \mmz@split@filename\jobname\mmz@jobpath\mmz@jobbasename
-    \mmz@split@filename{\mmz@valueof{memo filename prefix}\noexpand\@empty}%
-      \mmz@temp\mmz@memo@basenameprefix
+  split/.code={% todo: prevent execution after we start producing the pdf
     \let\memoized\memoized@split
-    \@input{\mmz@primitive\jobname.mmz}%
+    {% .mmz sets "jobname" and "memo filename prefix/suffix". We need them
+      % there because "split" is called before the user had the chance to ever
+      % call \memoizeset. But we don't want them to override anything, so we
+      % do the splitting in a group.
+      \def\memoizeset##1{\pgfqkeys{/memoize}{##1}\mmz@updatefilenames}%
+      \@input{\mmz@primitive\jobname.mmz}%
+    }%
+    % Disable afterwards, we really don't want to split twice!
+    \memoizeset{split/.code={}}%
   },
 }
 
@@ -456,9 +504,11 @@
     \immediate\openout\mmz@out=\mmz@syscall@jobname
     \immediate\write\mmz@out{%
       \noexpand\memoized{\mmz@@id}%
-        {\mmz@memo@basenameprefix\mmz@@id\mmz@valueof{memo filename suffix}.pdf}{1}%
-        {\mmz@@wd}{\mmz@@ht}{\mmz@@dp}%
-        {\mmz@@padding@left}{\mmz@@padding@bottom}{\mmz@@padding@right}{\mmz@@padding@top}%
+        {filename={\mmz@memo@basenameprefix\mmz@@id
+            \mmz@valueof{memo filename suffix}.pdf}, page=1,
+        wd=\mmz@@wd, ht=\mmz@@ht, dp=\mmz@@dp,
+        padding left=\mmz@@padding@left, padding bottom=\mmz@@padding@bottom,
+        padding right=\mmz@@padding@right, padding top=\mmz@@padding@top}%
         \@percentchar
     }%
     \immediate\closeout\mmz@out
@@ -602,6 +652,7 @@
       \expandonce{\csname \mmz@repl#1@\endcsname}%
       {\expandonce{\ArgumentSpecification}}%
       {%
+        % todo: add a hook for users setup; prevent user from changing \MemoizeWrapper?
         \edef\noexpand\mmz@marshal{%
         \noexpand\noexpand\noexpand\MemoizeWrapper{%
           \noexpand\noexpand\expandonce{\csname\mmz@orig#1\endcsname}%
@@ -708,6 +759,10 @@
 
 
 
+\AtEndPreamble{%
+  \mmz@updatefilenames    % even if loadonly!
+}
+
 \unless\ifmmz@loadonly    %%%%%%%%%%%%%%%% begin not loadonly
 
 \AtEndPreamble{%
@@ -731,14 +786,34 @@
   }{}%
   \fi                      %%%%%%%%%%%%%%%% end automemoization
   % 
-  \memoizeset{split}%
 }
 
 % We do the patching as late as possible.
 \AtBeginDocument{%
-  \memoizeset{initialize}%
+  \memoizeset{
+    initialize,
+    % We can't split while the new PDF is being produced.
+    split/.code={\PackageError{memoize}{Splitting is only allowed in the preamble}{}},
+  }%
   \memoizeenable
 }
+
+% We split while loading the package. Why? Some packages, when loaded, already
+% start producing the PDF, but we need the PDF from the previous compilation
+% intact to split! So splitting now makes it possible for the user to avoid
+% this problem by ordering memoize before any offending packages.
+% 
+% Obviously, this only affects splitting via an embedded system call.
+% 
+% This problem is also why we load memo filename prefix and suffix from ".mmz".
+% We can't include it among the package options, because of the spaces in the
+% key name (and we don't want a cryptic package key option). Plus, for the user
+% it makes sense that these affixes can be specified in the same location as
+% everything else.  Plus, loading it from .mmz is consistent with memomanager.
+% 
+% The list of stuff that should be loaded after "memoize" for splitting to
+% work: tikz library "shadows".
+\memoizeset{split}    %  todo: update memomanager to pdfkeys
 
 \fi                       %%%%%%%%%%%%%%%% end not loadonly
 
