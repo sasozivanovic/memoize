@@ -27,11 +27,9 @@ TikZ pictures and Forest trees? You wait for hours, that's what happens.[^1]
 
 Enter Memoize. The basic idea is very simple. A PDF can contain multiple pages,
 right?  So *why not externalize all the pictures in one go, and use them by
-including a specific page from a PDF?* Pure magic: the computational complexity
-drops from quadratic to linear. Or in plain English, those 5 hours turn into
-(less than) 5 minutes.
-
-# A bit of the how #
+including a specific page from the resulting PDF?* Pure magic: the
+computational complexity drops from quadratic to linear. Or in plain English,
+those 5 hours turn into (less than) 5 minutes.
 
 In more detail, memoization/externalization in Memoize works in two stages:
 
@@ -39,12 +37,17 @@ In more detail, memoization/externalization in Memoize works in two stages:
    document --- during the normal compilation of the document.
    
 2. When you compile the document again, all the externalized stuff is split off
-   the main document into separate files, called *memos*. (For this to work,
-   the shell escape option must be enabled.)
-   
+   the main document into separate files, called *memos*.
+
 A memo is identified by the md5 sum of the code that produced it, so if you
 change the code, the memo will be recompiled (in fact, a new memo will be
 produced).
+
+# Basic usage #
+
+If you want to externalize TikZ pictures and Forest trees, say
+`\usepackage{memoize}`. That's it. If your situation is more complicated, read
+on.
 
 What can be memoized and how do we specify what should be memoized?
 While PGF, TikZ and Forest can only externalize their respective products,
@@ -53,20 +56,29 @@ whatever is typeset by `<arbitrary code>`.
 
 Of course, we often want to memoize results of every invocation of certain
 environment or command, like all the TikZ pictures and/or all Forest trees.
-Memoize makes this easy: if you say `\memoizeEnableEnvironment{<environment
-name>}`, all instances of this environment will be externalized --- in fact,
+Memoize makes this easy: if you say `\memoizeset{enable=<environment name>}`,
+all instances of this environment will be externalized --- in fact,
 auto-memoization of environments `tikzpicture` and `forest` is enabled by
-default, so nothing needs to be done for those but loading Memoize. 
+default, so nothing needs to be done for those but loading Memoize.
 
 Auto-memoization of commands is a bit more complicated than auto-memoization of
 environments. It is (reasonably) clear where the end of an environment is, but
 a command can take any number of arguments, it can take various kinds of
 optional arguments and such.  We need to teach Memoize about the argument
 structure of a command we want to auto-memoize. This can be achieved by
-`\memoizeNewCommandHandler\command{<argument structure>}{<call>}`, which
-defines a *command handler* we then enable by
-`\memoizeInstallCommandHandler\command`. See the comments in `memoize.sty` for
-details.
+`\memoizeset{register=\command{<argument structure>}`, which defines a *command
+handler* we then enable by `\memoizeset{enable=\command}`.  The `<argument
+structure>` should be given in `xparse` syntax.  And don't worry about the
+`\tikz` command, it is registered and enabled by default.
+
+However, there might be exceptions. For example, maybe you want to externalize
+all TikZ pictures but not `\todo` notes of package Todonotes, which uses TikZ
+internally. (Those notes are usually short, plus they use the as-of-yet
+unsupported `remember picture` key.)  Solution: register the command and then
+prevent memoization within it: `\memoizeset{register=\todo{O{}+m},
+prevent=\todo}`. (The `prevent` key is hopefully transparent, but the xparse
+argument specification might not be: `O{}` means the optional argument with an
+empty default; `+m` means a long mandatory argument.)
 
 # What works? #
 
@@ -84,29 +96,45 @@ externalized during a normal compilation.
 
 # Different ways of doing it #
 
-In this early version of the package, the two steps are not very flexible
-yet. For example, the externalized graphics is always dumped in the middle of
-your document now, but there will be an option to dump it elsewhere.  There is
-already some flexibility in the second step, however. If we split off memos
-using TeX, we inevitably need a separate TeX invocation to produce each memo.
---- the familiar bottleneck, even if less dramatic. To remove it, Memoize
-includes a Python script (`memomanager`) which can perform the split-off step
-considerably faster (from 200 * 6s to 6s), as it needs to load the document
-only once.
+The two stages of operation outlined above are not set in stone.
+
+1. You can externalize the pictures in `document.tex` into a PDF other than
+   `document.pdf`, by invoking LaTeX with the `-jobname` option. But sensible
+   support for this is still lacking.
+   
+2. Out of the box, splitting is done by LaTeX, specifically by the `pdfpages`
+   package.  When you compile your document for the second time, Memoize
+   notices there is stuff to split off the existing PDF, and invokes an
+   embedded instance of LaTeX to do that. This means that the out-of-box
+   approach only works if your TeX has sufficient `-shell-escape` permissions.
+   
+   But we already know that TeX can only produce one PDF at a time. So our
+   outer compilation needs to execute a separate embedded compilation for every
+   externalized picture. While this is ok if we have only a few pictures, it
+   takes a while if you have many. (But it is still *much* faster than TikZ
+   externalization!) The solution offered by Memoize is an external splitting
+   tool. While TeX-based splitting needs to run TeX and the big PDF as many
+   times as there are externalized pictures, the included Python script
+   `memomanager` is executed once and spits out the memos in no time.
 
 Some other stuff is configurable as well, in particular the file structure. By
 allowing you to keep the memos where you need them, Memoize can be
 transparently used in complicated setups --- for example, you can (easily!) set
 it up so that a compilation of an individual chapter of a book will use the
-same memos as the compilation of the entire book (and vice versa).
+same memos as the compilation of the entire book (and vice versa).  To
+customize the landing site of your memos, use memoize keys `memo filename
+prefix` and `memo filename suffix`.  But if you only want to put the memos out
+of the way in a special directory, key `memo dir` will probably suffice --- if
+you are compiling `document.tex`, you fill find your memos in directory
+`document.memo.dir`, but note that *you have to create the directory yourself*.
 
 # The future #
 
 All this said, there's still lots of stuff to be done yet before this package
 is ripe for CTAN:
 
-* Proper documentation.  For now, I ask you to check out the examples and the
-  UI section of the `.sty`.
+* Proper documentation.  For now, there is only the comments in `memoize.sty`
+  --- but for once, they are plentiful.
 
 * Context dependency, including support for `\label`--`\ref` and beamer
   overlays.  Context dependency will be implemented like in Forest (which
@@ -114,18 +142,17 @@ is ripe for CTAN:
   to define a context, which can contain values of counters, definitions of
   macros etc., and reexternalize if that context changes.
 
-* General memoization. At the moment, only externalization works, and even that
-  is limited to externalizing a single picture per a piece of memoized code.
+* (Some kind of) support for TikZ pictures using `remember picture`.
 
 * Named memos (as in TikZ, see manual section 53.4.2).
 
 * Support for further TeX engines, in particular LuaTeX.  At the moment, the
   package supports PdfTeX and XeTeX.
 
-* Customizable workflow.  If `memomanager split` An option to remove memo pages
-  from the \jobname.pdf after splitting --- no recompilation of the main
-  document, but no hyperlinks either. (\pdfdraftmode and \pdflastximagepages
-  will be useful here.)  option to run memomanager" from the compilation
+* General memoization. At the moment, only externalization works, and even that
+  is limited to externalizing a single picture per a piece of memoized code.
+
+* More flexibility in the workflow.
 
 * Customizable verbosity level.
 
@@ -139,13 +166,13 @@ is ripe for CTAN:
 
 Some long-term ideas:
 
-* Externalize in formats other than PDF.
+* Externalize into formats other than PDF.
 
 * Support for TeX formats other than LaTeX --- in particular, Plain TeX and
   ConTeXt.
   
 
 [^1]: This is what happened to Stefan Müller when he was working on the [HPSG
-    Handbook](https://github.com/langsci/hpsg-handbook/).  We had a nice
-    symbiotic relatioship here: I save him time (at least in the long run),
-    and he finds my bugs.  Thanks, Stefan!
+    Handbook](https://github.com/langsci/hpsg-handbook/).  We have a nice
+    symbiotic relatioship here: I save him some time (at least in the long run,
+    I hope), and he finds my bugs.  Thanks, Stefan!
