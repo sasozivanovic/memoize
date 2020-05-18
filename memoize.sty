@@ -52,12 +52,13 @@
 \newcount\mmz@realpage
 \newtoks\mmz@temptoks
 \newif\ifmmz@loadonly
-\newif\ifmmz@minimal
-
+\newif\ifmmz@light
+\newif\ifmmz@manual
 
 \pgfqkeys{/memoize/package options}{
   loadonly/.is if=mmz@loadonly,   % disabled, no automemoization
-  minimal/.is if=mmz@minimal,     % without xparse
+  light/.is if=mmz@light,     % without xparse
+  manual/.is if=mmz@manual,
 }
 \ProcessPgfPackageOptions{/memoize/package options}
 
@@ -88,6 +89,11 @@
   \fi
 }
 
+
+%%%%%%%%%%%%%%%%%%%%% UI
+
+% todo: rewrite, we have further commands and nomemoize.sty now
+% 
 % There are two UI commands, \memoizeset for settings and \memoize for manual
 % memoization. 
 % 
@@ -100,28 +106,21 @@
 % or
 % \providecommand\memoize[2][]{{#2}}
 % \providecommand\memoizeset[1]{}
-%
+
 \let\memoizeset\relax
 \def\memoizeset#1{\pgfqkeys{/memoize}{#1}}
 
-%%%%%%%%%%%%%%%%%%%%% UI
-
 \memoizeset{%
   % When the TeX job starts, \jobname contains the basename of the PDF that
-  % will be created.  If memoization is enabled, we store the name of this PDF
-  % (\jobname.pdf) into \memoize@output@pdf, and set \jobname using key "real
-  % job". This way, LaTeX will be using and writing the auxiliary files of the
-  % real job.  By default, real job equals \jobname, i.e. we memoize "inline".
+  % will be created.  If we set \jobname (using the below key) to some other
+  % filename (without ".tex" suffix), we will fool LaTeX into using and
+  % writing the auxiliary files of the "real job".  By default, the real job
+  % equals \jobname, i.e. we memoize "inline".
+  % 
   % Include the path, but don't add ".tex" here.
+  jobname/.code={\edef\jobname{#1}},
   % 
-  % TODO: This does not work!!! Where is \memoize@output@pdf!?!
-  real job/.code={%
-    \edef\jobname{#1}%
-    \mmz@split@filename\jobname\jobpath\jobbasename
-  },
-  real job=\jobname,
-  % 
-  % After each compilation, "\jobname.mmz" will contain the list of memoized
+  % After each compilation, "\primitive\jobname.mmz" will contain the list of memoized
   % stuff. On the next run, tex will split the memo PDFs off the big PDF we
   % have generated in the first compilation. (The second step can also be
   % achieved by the external tool "memoize-split.py")
@@ -138,7 +137,7 @@
   % Default: We store the externalized files in the same folder (filename of
   % form \jobname.<md5sum>.memo), because we don't know if we can write
   % elsewhere.
-  memo filename prefix/.initial={\jobbasename.},
+  memo filename prefix/.initial={\mmz@jobbasename.},
   memo filename suffix/.initial={.memo},
   %
   % System call for embedded *La*TeX compilations. The engine (pdftex, xetex
@@ -169,6 +168,15 @@
   default padding/.style={padding x=\pdfhorigin, padding y=\pdfvorigin},
   default padding,
   % todo: page padding --- for "remember picture"
+  % 
+  if readonly/.code 2 args={
+    \ifmmz@readonly\pgfkeysalso{#1}\else\pgfkeysalso{#2}\fi},
+  if memoize/.code 2 args={
+    \ifmemoize\pgfkeysalso{#1}\else\pgfkeysalso{#2}\fi},
+  if memoizing/.code 2 args={
+    \ifmemoizing\pgfkeysalso{#1}\else\pgfkeysalso{#2}\fi},
+  if manual/.code 2 args={
+    \ifmmz@manual\pgfkeysalso{#1}\else\pgfkeysalso{#2}\fi},
 }
 
 % Manual memoization: \memoize[memoization key]{the code to be memoized}.  In a
@@ -206,13 +214,6 @@
 
 %%%%%%%%%%%%%%%%%%%% THE CORE
 
-\def\mmz@memo@filename#1{%
-  \jobpath
-  \mmz@valueof{memo filename prefix}%
-  #1%
-  \mmz@valueof{memo filename suffix}%
-}
-
 \long\def\memoize@compile#1{%
   % We compile in a \hbox, so that the situation is the same as when
   % memoization is active --- both in terms of the typeset output and the
@@ -231,7 +232,7 @@
   \@input{\mmz@memo@filename\mmz@id}%
   \ifdef\mmz@@filename{%
     % Well ... if that file exists.  First, we prefix the correct folder:
-    \mmz@split@filename{\jobpath\mmz@valueof{memo filename prefix}\noexpand\@empty}%
+    \mmz@split@filename{\mmz@jobpath\mmz@valueof{memo filename prefix}\noexpand\@empty}%
       \mmz@memo@path\mmz@temp
     \epreto\mmz@@filename\mmz@memo@path
     \IfFileExists{\mmz@@filename}{\@firstoftwo % yes!
@@ -308,7 +309,7 @@
     \mmz@primitive\shipout\copy\mmz@box
     % Store memoized data and the link to the .pdf in to .mmz file.
     \immediate\write\mmz@out{\noexpand\memoized{\mmz@id}%
-      {\jobbasename.pdf}{\the\mmz@realpage}%
+      {\mmz@primitivejobbasename.pdf}{\the\mmz@realpage}%
       {\the\wd\mmz@box}{\the\ht\mmz@box}{\the\dp\mmz@box}%
       % order as in graphicx:
       {\mmz@padding@left}{\mmz@padding@bottom}{\mmz@padding@right}{\mmz@padding@top}%
@@ -317,23 +318,8 @@
   }%
 }
 
-% Hijack TeX's \shipout. Do it at the beginning of the document, in case some
-% other package mucked with it as well.
-\memoizeset{
-  patch shipout/.code={%
-    \let\mmz@orig@shipout\shipout
-    \def\shipout{%
-      \global\advance\mmz@realpage1
-      \mmz@orig@shipout
-    }%
-  },
-}
-% We only need this to count pages. Can it be done otherwise?  Actually, this
-% could be used to supress normal output as well, producing a pdf containing
-% only memoized graphics.
 
-
-%%%%%%%%%%%%%%%%%%%%% Commands used in generated files
+%%%%%% Creating and reading .mmz and .memo files
 
 % A simple .memo file consists of a call to \memoized containing the
 % information memoized at a call to \memoize.  Crucially, this information
@@ -391,28 +377,65 @@
 \def\memoized@skip#1#2#3#4#5#6#7#8#9{}
 \def\usedmemoized#1{\memoized@skip}
 
-% Split, then clear .mmz.  We want to do this before aux files are opened, so
-% that we can even abort the compilation wants to split and prune (not
-% implemented yet).
+% \jobname needs to be split into \mmz@jobpath and \mmz@jobbasename before
+% calling this:
+\def\mmz@memo@filename#1{%  
+  \mmz@jobpath
+  \mmz@valueof{memo filename prefix}%
+  #1%
+  \mmz@valueof{memo filename suffix}%
+}
+
 \memoizeset{
-  split/.code={%
-    \let\memoized\memoized@split
-    \mmz@split@filename{\mmz@valueof{memo filename prefix}\noexpand\@empty}%
-      \mmz@temp\mmz@memo@basenameprefix
-    \@input{\jobname.mmz}%
+  % This is the stuff we need to do before we can start memoizing.
+  initialize/.style={
+    if readonly={}{initialize shipout},
+    open mmz,
+    if manual={}{enable environments},
+    define memoizeenable,
   },
+  % Hijack \shipout.
+  % We only need this to count pages. Can it be done otherwise?  Actually,
+  % this could be used to supress normal output as well, producing a pdf
+  % containing only memoized graphics.
+  initialize shipout/.code={%
+    \let\mmz@orig@shipout\shipout
+    \def\shipout{%
+      \global\advance\mmz@realpage1
+      \mmz@orig@shipout
+    }%
+  },
+  % Open the .mmz control file.  This needs to be done after splitting but
+  % before the first externalization.  By default, we do it in
+  % \AtBeginDocument,
   open mmz/.code={%
-    % We open a new .mmz right away, does this help with keeping .pdf and .mmz in
-    % sync?
-    \immediate\openout\mmz@out=\jobname.mmz
+    % In the default situation, the following line is redundant, because it was
+    % already done in "split".
+    \mmz@split@filename\jobname\mmz@jobpath\mmz@jobbasename
+    % The .mmz has to sit next to the generated PDF, so \primitive\jobname!
+    \edef\mmz@primitivejobname{\mmz@primitive\jobname}%
+    \mmz@split@filename{\mmz@primitive\jobname}\mmz@temp\mmz@primitivejobbasename
+    \immediate\openout\mmz@out=\mmz@primitive\jobname.mmz
     % Prefix and suffix info can be used by the external splitting tool.
     \immediate\write\mmz@out{\@percentchar\space
       memo filename prefix={\mmz@valueof{memo filename prefix}}}%
     \immediate\write\mmz@out{\@percentchar\space
       memo filename suffix={\mmz@valueof{memo filename suffix}}}%
+    % 
+    % Close the .mmz file at the end.
+    \AtEndDocument{\immediate\closeout\mmz@out}%
   },
-  close mmz/.code={%
-    \immediate\closeout\mmz@out
+  % Enable enabling memoization :D
+  define memoizeenable/.code={%
+    \def\memoizeenable{\AfterPreamble{\memoizetrue}}%
+  },
+  % Split the .pdf generated in the previous compilation into ".memo.pdf"s
+  split/.code={% todo: prevent execution after the we start producing the pdf
+    \mmz@split@filename\jobname\mmz@jobpath\mmz@jobbasename
+    \mmz@split@filename{\mmz@valueof{memo filename prefix}\noexpand\@empty}%
+      \mmz@temp\mmz@memo@basenameprefix
+    \let\memoized\memoized@split
+    \@input{\mmz@primitive\jobname.mmz}%
   },
 }
 
@@ -425,7 +448,7 @@
   % Split the relevant page off to the memo .pdf.
   \edef\mmz@syscall@jobname{\mmz@memo@filename\mmz@@id}%
   \edef\mmz@marshal{%
-    \noexpand\justmemoized@prepare@syscall@commands{\jobpath\mmz@@filename}{\mmz@@page}%
+    \noexpand\justmemoized@prepare@syscall@commands{\mmz@jobpath\mmz@@filename}{\mmz@@page}%
   }\mmz@marshal
   \immediate\write18{\mmz@valueof{latex system call}}%
   % Write the .memo file.
@@ -456,7 +479,7 @@
 }%
 \def\justmemoized@error{%
   \PackageError{memoize}{Failed to extract page \mmz@@page\space of
-    "\jobpath\mmz@@filename" to "\mmz@syscall@jobname.pdf".}{}}
+    "\mmz@jobpath\mmz@@filename" to "\mmz@syscall@jobname.pdf".}{}}
 
 
 % AUTO-MEMOIZATION
@@ -490,7 +513,9 @@
   % for both "enable" and "prevent" mode: when it is called, \MemoizeWrapper
   % will be \let to either \memoize or \nomemoize.  Todo: "extract" mode?
   handler/.code 2 args={\cslet{\mmz@repl@{#1}}#2},
-  % 
+  % Enable/disable auto-memoization of *all* environments. This patches \begin.
+  % By default, this is done in "initialize", unless option package option
+  % "manual" was given.
   enable environments/.code={%
     \ifdefequal\mmz@orig@begin\relax{}{%
       \let\mmz@orig@begin\begin
@@ -529,9 +554,11 @@
 
 % General: 
 \def\mmz@handle@noarg\mmz@end{\csuse{memoize\mmz@handle@how}}
-\def\memoizeenable{\AfterPreamble{\memoizetrue}}
+\def\memoizeenable{\PackageError{memoize}{You need to call
+    \string\memoizeset{initialize} before \string\memoizeenable}{}}
 \def\memoizedisable{\AfterPreamble{\memoizefalse}}
-\def\memoizeprevent{\PackageError{memoize}{"prevent" requires an argument}{}}
+\def\memoizeprevent{\PackageError{memoize}{Key "prevent" requires an argument
+    (environment or command name)}{}}
 
 % Command:
 \def\mmz@handle@cmd{\csname mmz@handle@cmd@\mmz@handle@how\endcsname}
@@ -542,16 +569,51 @@
 % Prevent memoization within the command:
 \def\mmz@handle@cmd@prevent{\mmz@handle@cmd@ep\nomemoize}
 
+% Enable automemoization / prevent memoization within the command
+% #1 = handled (original) \cs
 \def\mmz@handle@cmd@ep#1#2\mmz@end{%
   % #1 = the wrapper: \memoize / \nomemoize
   % #2 = the handled command
   \ifcsdef{\mmz@repl@{#2}}{% We already have a handler for #2, use it.
   }{% #2 may only be an xparse-defined command, extract the argspec.
-    \GetDocumentCommandArgSpec{#2}%
-    \mmz@declare@handler#2% "real" handler cs: \mmz@repl#2@
+    \mmz@handle@cmd@ep@heavy#2%
   }%
   \mmz@handler@init#2#1%
 }
+
+\ifmmz@light            %%%%%%%%%%%%%%%% begin light
+
+\def\mmz@handle@cmd@ep@heavy#1{\PackageError{memoize}{Handler for \string#1 is
+    not defined.}{If \string#1 was defined using package "xparse", you need to
+    remove package option "light" to handle it automatically.}{}}
+\def\mmz@declare@handler#1{\PackageError{memoize}{Fancy command handling with
+    package "xparse" is not available when package option "light" is given.}{}}
+  
+\else                     %%%%%%%%%%%%%%%% begin heavy
+
+\RequirePackage{xparse-arglist}
+\def\mmz@handle@cmd@ep@heavy#1{% #1 = the handled command
+  \GetDocumentCommandArgSpec{#1}%
+  \mmz@declare@handler#1%
+}
+\def\mmz@declare@handler#1{%
+  \edef\mmz@marshal{%
+    \noexpand\DeclareDocumentCommand
+      \expandonce{\csname \mmz@repl#1@\endcsname}%
+      {\expandonce{\ArgumentSpecification}}%
+      {%
+        \edef\noexpand\mmz@marshal{%
+        \noexpand\noexpand\noexpand\MemoizeWrapper{%
+          \noexpand\noexpand\expandonce{\csname\mmz@orig#1\endcsname}%
+            \ArgumentList
+        }%
+      }\noexpand\mmz@marshal
+    }%
+  }\mmz@marshal
+}
+
+\fi                       %%%%%%%%%%%%%%%% end light/heavy
+
 
 % Define the initial part of the handler for #1, and let it replace the
 % original command
@@ -646,41 +708,10 @@
 
 
 
-\ifmmz@minimal            %%%%%%%%%%%%%%%% begin minimal
-
-\def\mmz@declare@handler#1{%
-  \PackageError{memoize}{Load package "xparse" to enable fancy command handling}{}%
-
-\else                     %%%%%%%%%%%%%%%% begin non-minimal
-
-\RequirePackage{xparse-arglist}
-% Declare handler with argspec as given in \ArgumentSpecification
-% (Automatically figure out the argument call from argument spec) 
-% #1 = handled (original) \cs
-\def\mmz@declare@handler#1{%
-  \edef\mmz@marshal{%
-    \noexpand\DeclareDocumentCommand
-      \expandonce{\csname \mmz@repl#1@\endcsname}%
-      {\expandonce{\ArgumentSpecification}}%
-      {%
-        \edef\noexpand\mmz@marshal{%
-        \noexpand\noexpand\noexpand\MemoizeWrapper{%
-          \noexpand\noexpand\expandonce{\csname\mmz@orig#1\endcsname}%
-            \ArgumentList
-        }%
-      }\noexpand\mmz@marshal
-    }%
-  }\mmz@marshal
-}
-
-\fi                       %%%%%%%%%%%%%%%% end non-minimal
-
-
 \unless\ifmmz@loadonly    %%%%%%%%%%%%%%%% begin not loadonly
 
-\memoizeenable
-
 \AtEndPreamble{%
+  \unless\ifmmz@manual    %%%%%%%%%%%%%%%% begin automemoization
   % Enable auto-memoization for tikz, if it is loaded.
   \@ifpackageloaded{tikz}{%
     \input memoize-tikz    % Here we define and install \tikz handler.
@@ -698,40 +729,18 @@
       enable=\Forest,
     }%
   }{}%
-  \memoizeset{
-    split,
-    open mmz,
-  }
+  \fi                      %%%%%%%%%%%%%%%% end automemoization
+  % 
+  \memoizeset{split}%
 }
 
 % We do the patching as late as possible.
 \AtBeginDocument{%
-  \memoizeset{
-    % Enable auto-memoization of environments. This patches \begin.
-    enable environments,
-    % todo: Instruct the user to "patch shipout" when "loadonly" was used ---
-    % otherwise, externalization won't work!  Maybe even disable \memoizeenable
-    % unless shipout is patched?
-    patch shipout,
-  }%
-}
-
-\AtEndDocument{%
-  \memoizeset{
-    close mmz,
-  }%
+  \memoizeset{initialize}%
+  \memoizeenable
 }
 
 \fi                       %%%%%%%%%%%%%%%% end not loadonly
-
-
-% todo
-% 
-% Investigate interaction with -no-pdf / \pdfdraftmode.
-% 
-% Bug: \begin{dependency} ... \end{dependency} calls forest env, so memoize
-% can't find it and mmz@id={}.  This gets into .mmz and all hell breaks loose.
-% Warn about this situation in the docs.
 
 
 
