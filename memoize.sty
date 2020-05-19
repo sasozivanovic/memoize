@@ -44,7 +44,7 @@
 
 % Registers and such
 \newif\ifmemoize
-% todo: \newif\ifmemoizing
+\newif\ifmemoizing
 \newif\ifmmz@readonly
 \newif\ifmmz@temp
 \newwrite\mmz@out
@@ -294,9 +294,11 @@
 \long\def\mmz@memoize#1{%
   \PackageInfo{memoize}{Memoizing \mmz@id\space}%
   % Typeset the code.
-  \memoizefalse
-  \setbox\mmz@box=\hbox{#1}% todo: smuggle \mmz@toks and \mmz@global@toks!
-  \memoizetrue
+  \setbox\mmz@box=\hbox{%
+    \memoizefalse
+    \memoizingtrue
+    #1%
+  }% todo: smuggle \mmz@toks and \mmz@global@toks, once we have them!
   {%
     % So that the user can define padding in terms of the size of the
     % externalized graphics:
