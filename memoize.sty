@@ -93,22 +93,6 @@
 
 %%%%%%%%%%%%%%%%%%%%% UI
 
-% todo: rewrite, we have further commands and nomemoize.sty now
-% 
-% There are two UI commands, \memoizeset for settings and \memoize for manual
-% memoization. 
-% 
-% If you are writing a package or a complicated preamble, and you want to be
-% able to comment out \usepackage{memoize} at will, define the stubs for these
-% two commands as follows.
-% 
-% \ProvideDocumentCommand\memoize{om}{{#2}}
-% \ProvideDocumentCommand\memoizeset{m}{}
-% or
-% \providecommand\memoize[2][]{{#2}}
-% \providecommand\memoizeset[1]{}
-
-\let\memoizeset\relax
 \def\memoizeset#1{\pgfqkeys{/memoize}{#1}}
 
 % todo: preamble vs. all-the-time options --- redefine \memoizeset to another path!
@@ -198,7 +182,7 @@
 % manual invocation, the optional argument should usually be unnecessary.  So,
 % #1 is the memoization key (what md5sum is computed from), and #2 is the code
 % to be executed for memoization.
-\let\memoize\relax
+\let\memoize\relax  % we might need to redefine \memoize from "nomemoize.sty"
 \newcommand\memoize[2][]{%
   \mmz@leavevmode
   \ifmemoize

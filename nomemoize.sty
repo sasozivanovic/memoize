@@ -1,10 +1,18 @@
 \ProvidesPackage{nomemoize}[2020/05/17 A stub for memoize]
-% \RequirePackage{pgfopts}  % pgfkeys-based package options
-% \pgfqkeys{/memoize/package options}{
-%   loadonly/.code={},
-%   minimal/.code={},
-% }
-% \ProcessPgfPackageOptions{/memoize/package options}
+
+% This package allows us to switch off "memoize" but leave the memoize commands
+% in the document.
+% 
+% Packages with "memoize" support should \RequirePackage{nomemoize}. This way,
+% they can safely use memoize's commands without actually loading it.
+
+\RequirePackage{pgfopts}  % pgfkeys-based package options
+\pgfqkeys{/memoize/package options}{
+  loadonly/.code={},
+  minimal/.code={},
+}
+\ProcessPgfPackageOptions{/memoize/package options}
+
 \providecommand\memoizeset[1]{}
 \providecommand\memoize[2][]{{#2}}
 \providecommand\nomemoize[1]{{#1}}
