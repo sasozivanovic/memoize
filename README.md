@@ -115,7 +115,9 @@ The two stages of operation outlined above are not set in stone.
    externalization!) The solution offered by Memoize is an external splitting
    tool. While TeX-based splitting needs to run TeX and the big PDF as many
    times as there are externalized pictures, the included Python script
-   `memomanager` is executed once and spits out the memos in no time.
+   `memomanager` is executed once and spits out the memos in no
+   time. (MemoManager has been tested with Python 3.7 and requires packages
+   `pdfrw` and `pyparsing`.)
 
 Some other stuff is configurable as well, in particular the file structure. By
 allowing you to keep the memos where you need them, Memoize can be
