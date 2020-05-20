@@ -19,8 +19,6 @@
 % 
 % This work consists of the following files:
 % - memoize.sty
-% - memoize-pdflatex.def
-% - memoize-xelatex.def
 % - memomanager.py
 % - nomemoize.sty
 % - memoize-tikz.tex
@@ -35,12 +33,56 @@
 \RequirePackage{etoolbox} % generally useful
 \RequirePackage{graphicx} % for including externalized graphics
 \RequirePackage{environ} % for automemoization of environments:
+\RequirePackage{pdftexcmds} % unified access to pdf primitives across engines,
+                            % notably to md5sum in luatex
 
-\ifdef\pdftexversion{\input memoize-pdftex.def}{%
-  \ifdef\XeTeXversion{\input memoize-xetex.def}{%
-    % LuaTeX is coming up as soon as I figure out how to load md5sum library.
-    \PackageError{memoize}{Support for this TeX engine is not implemented.}{}%
-  }}
+% The def is here, because we will redefine this for xetex.
+\def\mmz@if@roughly@equal#1#2{%
+  \ifpdfabsdim\dimexpr#1-#2\relax<\mmz@tolerance\relax
+    \expandafter\@firstoftwo
+  \else
+    \expandafter\@secondoftwo
+  \fi
+}  
+
+% Some engine-specific stuff we have to define despite pdftexcmds.
+\ifdef\pdftexversion{%
+  \def\mmz@latex@binary{pdflatex}%
+}{%
+  % Only pdftex seems to have these:
+  \def\pdfhorigin{1true in}%
+  \def\pdfvorigin{1true in}%
+  \ifdef\XeTeXversion{%
+    \def\mmz@latex@binary{xelatex}%
+    % pdftex and luatex profide \quitvmode (replacement for \leavevmode, see pdftex
+    % manual 8.21), but xetex doesn't.
+    \let\quitvmode\leavevmode
+    % xetex does not have \if(pdf)absdim
+    \def\mmz@if@roughly@equal#1#2{%
+      \begingroup
+      \@tempdima=\dimexpr#1-#2\relax
+      \ifdim\@tempdima<0pt \@tempdima=-\@tempdima\relax\fi
+      \expandafter\expandafter\expandafter\endgroup
+      \ifdim\@tempdima<\mmz@tolerance\relax
+        \expandafter\@firstoftwo
+      \else
+        \expandafter\@secondoftwo
+      \fi
+    }
+  }{%
+    \ifdef\luatexversion{%
+      % Is there a way to shipout a memoized page to a new pdf, thereby
+      % avoiding the separate splitting stage?
+      \def\mmz@latex@binary{lualatex}%
+      \let\ifpdfabsdim\ifabsdim
+      \let\pdfpagewidth\pagewidth
+      \let\pdfpageheight\pageheight
+    }{%
+      \PackageError{memoize}{Support for this TeX engine is not implemented.}{}%
+    }%
+  }%
+}
+
 
 % Registers and such
 \newif\ifmemoize
@@ -128,8 +170,9 @@
   % A shortcut for a .memo.dir
   memo dir/.style={memo filename prefix={\mmz@jobbasename.memo.dir/}},
   %
-  % System call for embedded *La*TeX compilations. The engine (pdftex, xetex
-  % etc.) is chosen automatically.
+  % System call for embedded LaTeX compilations. The engine (pdftex, xetex
+  % etc.) is chosen automatically, but can be changed by "latex binary" key.
+  latex binary/.store in=\mmz@latex@binary,
   latex system call/.initial={\mmz@latex@binary\space
     -halt-on-error
     -interaction=batchmode
@@ -182,14 +225,16 @@
 % manual invocation, the optional argument should usually be unnecessary.  So,
 % #1 is the memoization key (what md5sum is computed from), and #2 is the code
 % to be executed for memoization.
-\let\memoize\relax  % we might need to redefine \memoize from "nomemoize.sty"
+% 
+% we might need to redefine \memoize from "nomemoize.sty":
+\let\memoize\relax
 \newcommand\memoize[2][]{%
-  \mmz@leavevmode
+  \quitvmode
   \ifmemoize
     \ifstrempty{#1}{%
-      \edef\mmz@id{\expandafter\mmz@mdfivesum\expandafter{\detokenize{#2}}}%
+      \edef\mmz@id{\expandafter\pdf@mdfivesum\expandafter{\detokenize{#2}}}%
     }{%
-      \edef\mmz@id{\expandafter\mmz@mdfivesum\expandafter{\detokenize{#1}}}%
+      \edef\mmz@id{\expandafter\pdf@mdfivesum\expandafter{\detokenize{#1}}}%
     }%
     \mmz@ifmemoized{%
       \let\mmz@next\mmz@use@memoized
@@ -309,10 +354,10 @@
     % doesn't count shipouts as well (then, they are in trouble), or (ii) doesn't
     % use the primitive \shipout (then, we are in trouble).
     \global\advance\mmz@realpage1
-    \mmz@primitive\shipout\copy\mmz@box
+    \pdf@primitive\shipout\copy\mmz@box
     % Store memoized data and the link to the .pdf in to .mmz file.
     \immediate\write\mmz@out{\noexpand\memoized{\mmz@id}%
-      {filename={\mmz@primitivejobbasename.pdf}, page=\the\mmz@realpage,
+      {filename={\pdf@primitivejobbasename.pdf}, page=\the\mmz@realpage,
         wd=\the\wd\mmz@box, ht=\the\ht\mmz@box, dp=\the\dp\mmz@box,
         % order as in graphicx:
         padding left=\the\dimexpr\mmz@padding@left,
@@ -414,10 +459,10 @@
     if manual={}{enable environments},
     define memoizeenable,
   },
-  % Hijack \shipout.
-  % We only need this to count pages. Can it be done otherwise?  Actually,
-  % this could be used to supress normal output as well, producing a pdf
-  % containing only memoized graphics.
+  % Hijack \shipout. If "shipout only memoized" is in effect, we prevent the
+  % shipout of (regular) pages.  Otherwise, we count how many pages were
+  % shipped out, so that we know which pages are ours --- can this be done
+  % otherwise, maybe by "total_pages" in LuaTeX?
   initialize shipout/.code={%
     \let\mmz@orig@shipout\shipout
     \ifmmz@shipout@only@memoized
@@ -437,9 +482,9 @@
   % \AtBeginDocument,
   open mmz/.code={%
     % The .mmz has to sit next to the generated PDF, so \primitive\jobname!
-    \edef\mmz@primitivejobname{\mmz@primitive\jobname}%
-    \mmz@split@filename{\mmz@primitive\jobname}\mmz@temp\mmz@primitivejobbasename
-    \immediate\openout\mmz@out=\mmz@primitive\jobname.mmz
+    \edef\pdf@primitivejobname{\pdf@primitive\jobname}%
+    \mmz@split@filename{\pdf@primitive\jobname}\mmz@temp\pdf@primitivejobbasename
+    \immediate\openout\mmz@out=\pdf@primitive\jobname.mmz
     % Prefix and suffix info are used when splitting, either by an embedded
     % call of from the external tool.
     \immediate\write\mmz@out{%
@@ -458,14 +503,14 @@
     \def\memoizeenable{\AfterPreamble{\memoizetrue}}%
   },
   % Split the .pdf generated in the previous compilation into ".memo.pdf"s
-  split/.code={% todo: prevent execution after we start producing the pdf
+  split/.code={%
     \let\memoized\memoized@split
     {% .mmz sets "jobname" and "memo filename prefix/suffix". We need them
       % there because "split" is called before the user had the chance to ever
       % call \memoizeset. But we don't want them to override anything, so we
       % do the splitting in a group.
       \def\memoizeset##1{\pgfqkeys{/memoize}{##1}\mmz@updatefilenames}%
-      \@input{\mmz@primitive\jobname.mmz}%
+      \@input{\pdf@primitive\jobname.mmz}%
     }%
     % Disable afterwards, we really don't want to split twice!
     \memoizeset{split/.code={}}%
@@ -483,7 +528,7 @@
   \edef\mmz@marshal{%
     \noexpand\justmemoized@prepare@syscall@commands{\mmz@jobpath\mmz@@filename}{\mmz@@page}%
   }\mmz@marshal
-  \immediate\write18{\mmz@valueof{latex system call}}%
+  \pdf@system{\mmz@valueof{latex system call}}%
   % Write the .memo file.
   \IfFileExists{\mmz@syscall@jobname.pdf}{%
     \immediate\openout\mmz@out=\mmz@syscall@jobname
@@ -798,7 +843,7 @@
 % 
 % The list of stuff that should be loaded after "memoize" for splitting to
 % work: tikz library "shadows".
-\memoizeset{split}    %  todo: update memomanager to pdfkeys
+\memoizeset{split}
 
 \fi                       %%%%%%%%%%%%%%%% end not loadonly
 
