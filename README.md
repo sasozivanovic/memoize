@@ -94,6 +94,10 @@ good news: preliminary experiments show that `\label`--`\ref` more or less just
 works, and this includes `\pageref`s.  This is so because the pictures are
 externalized during a normal compilation.
 
+Memoize supports PdfTeX, LuaTeX and XeTeX engine; they must be run in the PDF
+output mode. At the moment, only the LaTeX format is supported.
+
+
 # Different ways of doing it #
 
 The two stages of operation outlined above are not set in stone.
@@ -148,9 +152,6 @@ is ripe for CTAN:
 * (Some kind of) support for TikZ pictures using `remember picture`.
 
 * Named memos (as in TikZ, see manual section 53.4.2).
-
-* Support for further TeX engines, in particular LuaTeX.  At the moment, the
-  package supports PdfTeX and XeTeX.
 
 * General memoization. At the moment, only externalization works, and even that
   is limited to externalizing a single picture per a piece of memoized code.
