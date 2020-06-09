@@ -168,8 +168,10 @@
   % elsewhere.
   memo filename prefix/.initial={\mmz@jobbasename.},
   memo filename suffix/.initial={.memo},
-  % A shortcut for a .memo.dir
-  memo dir/.style={memo filename prefix={\mmz@jobbasename.memo.dir/}},
+  % A shortcut for a .memo.dir: without an argument, defaults to the job name,
+  % but any base name can be given.
+  memo dir/.style={memo filename prefix={#1.memo.dir/}},
+  memo dir/.default=\mmz@jobbasename,
   %
   % System call for embedded LaTeX compilations. The engine (pdftex, xetex
   % etc.) is chosen automatically, but can be changed by "latex binary" key.
