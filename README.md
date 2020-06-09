@@ -97,6 +97,10 @@ externalized during a normal compilation.
 Memoize supports PdfTeX, LuaTeX and XeTeX engine; they must be run in the PDF
 output mode. At the moment, only the LaTeX format is supported.
 
+Under texlive 2019 (or any distro using "graphics" package version "2017/06/25
+v1.2c") you will get error "Unknown graphics extension: .memo.pdf" with the
+default settings.  Workaround: "\usepackage{grffile}".  This error does not
+occur with texlive 2020 ("graphics" package version "2019/11/30 v1.4a").
 
 # Different ways of doing it #
 
