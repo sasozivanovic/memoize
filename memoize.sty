@@ -128,7 +128,8 @@
     \let#3\pgfkeyscurrentname
   \else
     \def#2{}%
-    \def#3{#1}%
+    % \edef here gets rid of \@empty used in \mmz@updatefilenames.
+    \edef#3{#1}%
   \fi
 }
 
@@ -216,6 +217,10 @@
     \mmz@jobpath
     \mmz@jobbasename
   \mmz@split@filename
+    % Split the "memo filename prefix" (relative to the job path) into path and
+    % basename.  The "\noexpand\@empty" below makes sure that \pgfkeys@split@path
+    % will work when "memo filename prefix" specifies a directory, i.e.\ when it
+    % ends with "/" --- this is the case when we use "memo dir".
     {\mmz@jobpath\mmz@valueof{memo filename prefix}\noexpand\@empty}%
     \mmz@memo@path
     \mmz@memo@basenameprefix
