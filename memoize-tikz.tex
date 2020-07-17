@@ -22,7 +22,7 @@
   \mmz@tikz@anim
 }%
 \def\mmz@tikz@opt[#1]{%
-  \appto\mmz@temptoks{[#1]}%
+  \apptotoks\mmz@temptoks{[#1]}%
   \mmz@tikz@code
 }
 \def\mmz@tikz@code{%
