@@ -73,14 +73,15 @@ def split(args):
         md5 = list(cc.arguments[0].keys())[0]
         m = cc.arguments[1]
         out_basename = os.path.join(args.mmz_path, unbrace(ms['memo filename prefix']) + md5 + unbrace(ms['memo filename suffix']))
-        if args.verbose:
-            print(os.path.join(args.mmz_path, unbrace(m['filename'])), m['page'],
-                  '-->', out_basename + ".pdf")
-        memo_pdf = PdfWriter(out_basename + '.pdf')
-        memo_pdf.addpage(pages[unbrace(m['filename'])][0][int(m['page'])-1])
-        memo_pdf.write()
-        pages[unbrace(m['filename'])][1].add(int(m['page'])-1)
-        m['filename'] = brace(os.path.basename(unbrace(ms['memo filename prefix'])) + md5 + unbrace(ms['memo filename suffix']) + ".pdf")
+        if 'disable' not in m:
+            if args.verbose:
+                print(os.path.join(args.mmz_path, unbrace(m['filename'])), m['page'],
+                      '-->', out_basename + ".pdf")
+            memo_pdf = PdfWriter(out_basename + '.pdf')
+            memo_pdf.addpage(pages[unbrace(m['filename'])][0][int(m['page'])-1])
+            memo_pdf.write()
+            pages[unbrace(m['filename'])][1].add(int(m['page'])-1)
+            m['filename'] = brace(os.path.basename(unbrace(ms['memo filename prefix'])) + md5 + unbrace(ms['memo filename suffix']) + ".pdf")
         with open(out_basename, 'w') as memo:
             print(cc, file = memo)
     if args.prune:

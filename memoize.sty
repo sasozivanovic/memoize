@@ -97,6 +97,7 @@
 \newif\ifmmz@light
 \newif\ifmmz@manual
 \newif\ifmmz@shipout@only@memoized
+\newif\ifmmz@cancel
 
 \pgfqkeys{/memoize/package options}{
   loadonly/.is if=mmz@loadonly,   % disabled, no automemoization
@@ -210,6 +211,8 @@
     \ifmemoizing\pgfkeysalso{#1}\else\pgfkeysalso{#2}\fi},
   if manual/.code 2 args={
     \ifmmz@manual\pgfkeysalso{#1}\else\pgfkeysalso{#2}\fi},
+  % This might need to go, as the regular output might define some stuff needed
+  % in the memoized output, see https://github.com/sasozivanovic/memoize/issues/1
   shipout only memoized/.is if=mmz@shipout@only@memoized,
 }
 
@@ -244,7 +247,11 @@
       \edef\mmz@id{\expandafter\pdf@mdfivesum\expandafter{\detokenize{#1}}}%
     }%
     \mmz@ifmemoized{%
-      \let\mmz@next\mmz@use@memoized
+      \ifmmz@@disabled
+        \let\mmz@next\memoize@compile
+      \else
+        \let\mmz@next\mmz@use@memoized
+      \fi
     }{%
       \ifmmz@readonly
         \let\mmz@next\memoize@compile
@@ -282,11 +289,20 @@
   \let\memoized\memoized@search
   \undef\mmz@@filename
   \@input{\mmz@memo@filename\mmz@id}%
-  \ifdef\mmz@@filename{%
-    % Well ... if that file exists.  First, we prefix the correct folder:
-    \epreto\mmz@@filename\mmz@memo@path
-    \IfFileExists{\mmz@@filename}{\@firstoftwo % yes!
-    }{\@secondoftwo}}{\@secondoftwo}% no
+  \let\mmz@next\@secondoftwo % not found
+  \ifmmz@@disabled
+    % disabled counts as found, so that we don't try to memoize again
+    \let\mmz@next\@firstoftwo
+  \else
+    \ifdef\mmz@@filename{%
+      % Well ... if that file exists.  First, we prefix the correct folder:
+      \epreto\mmz@@filename\mmz@memo@path
+      \IfFileExists{\mmz@@filename}%
+        {\let\mmz@next\@firstoftwo}% yes!
+        {}%
+    }{}%
+  \fi
+  \mmz@next
 }
 
 % We use the "graphics" package, so we don't have to deal with various TeX
@@ -334,46 +350,57 @@
   \setbox\mmz@box=\hbox{%
     \memoizefalse
     \memoizingtrue
+    % Detect whether memoization of this particular picture (id) should be disabled,
+    % e.g. if \pdfsavepos was used
+    \global\mmz@cancelfalse
+    \mmz@cancel@setup
     #1%
   }% todo: smuggle \mmz@toks and \mmz@global@toks, once we have them!
-  {%
-    % So that the user can define padding in terms of the size of the
-    % externalized graphics:
-    \edef\width{\the\wd\mmz@box}%
-    \edef\height{\the\ht\mmz@box}%
-    \edef\depth{\the\dp\mmz@box}%
-    % Set the dimensions of the page: \mmz@box + padding
-    \hoffset\dimexpr\mmz@padding@left - \pdfhorigin\relax
-    \voffset\dimexpr\mmz@padding@top - \pdfvorigin\relax
-    \pdfpagewidth\dimexpr\mmz@padding@left + \wd\mmz@box + \mmz@padding@right\relax
-    \pdfpageheight\dimexpr\mmz@padding@top + \ht\mmz@box +
-    \dp\mmz@box+ \mmz@padding@bottom\relax
-    %
-    % If we are compiling by xelatex, using \documentclass{minimal} and if the
-    % first \shipout is our externalization shipout, we get a weird error:
-    % all the pages of the document have the same size as our first
-    % shipout.  Our own shipouts have the size set correctly.  Pdflatex does
-    % not exhibit this behaviour.
-    % 
-    % Debug PDF: \pdfcompresslevel=0 \pdfobjcompresslevel=0
-    % 
-    % Use the original \shipout here, otherwise we can get in trouble with other
-    % packages like pdfpages.  Let's just hope that (i) some other package
-    % doesn't count shipouts as well (then, they are in trouble), or (ii) doesn't
-    % use the primitive \shipout (then, we are in trouble).
-    \global\advance\mmz@realpage1
-    \pdf@primitive\shipout\copy\mmz@box
-    % Store memoized data and the link to the .pdf in to .mmz file.
-    \immediate\write\mmz@out{\noexpand\memoized{\mmz@id}%
-      {filename={\pdf@primitivejobbasename.pdf}, page=\the\mmz@realpage,
-        wd=\the\wd\mmz@box, ht=\the\ht\mmz@box, dp=\the\dp\mmz@box,
-        % order as in graphicx:
-        padding left=\the\dimexpr\mmz@padding@left,
-        padding bottom=\the\dimexpr\mmz@padding@bottom,
-        padding right=\the\dimexpr\mmz@padding@right,
-        padding top=\the\dimexpr\mmz@padding@top}%
-      \@percentchar
-    }%
+  \ifmmz@cancel\mmz@memoize@no\else{\mmz@memoize@yes}\fi
+}
+\def\mmz@memoize@yes{%
+  % So that the user can define padding in terms of the size of the
+  % externalized graphics:
+  \edef\width{\the\wd\mmz@box}%
+  \edef\height{\the\ht\mmz@box}%
+  \edef\depth{\the\dp\mmz@box}%
+  % Set the dimensions of the page: \mmz@box + padding
+  \hoffset\dimexpr\mmz@padding@left - \pdfhorigin\relax
+  \voffset\dimexpr\mmz@padding@top - \pdfvorigin\relax
+  \pdfpagewidth\dimexpr\mmz@padding@left + \wd\mmz@box + \mmz@padding@right\relax
+  \pdfpageheight\dimexpr\mmz@padding@top + \ht\mmz@box +
+  \dp\mmz@box+ \mmz@padding@bottom\relax
+  %
+  % If we are compiling by xelatex, using \documentclass{minimal} and if the
+  % first \shipout is our externalization shipout, we get a weird error:
+  % all the pages of the document have the same size as our first
+  % shipout.  Our own shipouts have the size set correctly.  Pdflatex does
+  % not exhibit this behaviour.
+  % 
+  % Debug PDF: \pdfcompresslevel=0 \pdfobjcompresslevel=0
+  % 
+  % Use the original \shipout here, otherwise we can get in trouble with other
+  % packages like pdfpages.  Let's just hope that (i) some other package
+  % doesn't count shipouts as well (then, they are in trouble), or (ii) doesn't
+  % use the primitive \shipout (then, we are in trouble).
+  \global\advance\mmz@realpage1
+  \pdf@primitive\shipout\copy\mmz@box
+  % Store memoized data and the link to the .pdf in to .mmz file.
+  \immediate\write\mmz@out{\noexpand\memoized{\mmz@id}%
+    {filename={\pdf@primitivejobbasename.pdf}, page=\the\mmz@realpage,
+      wd=\the\wd\mmz@box, ht=\the\ht\mmz@box, dp=\the\dp\mmz@box,
+      % order as in graphicx:
+      padding left=\the\dimexpr\mmz@padding@left,
+      padding bottom=\the\dimexpr\mmz@padding@bottom,
+      padding right=\the\dimexpr\mmz@padding@right,
+      padding top=\the\dimexpr\mmz@padding@top}%
+    \@percentchar
+  }%
+}
+\def\mmz@memoize@no{%
+  \immediate\write\mmz@out{\noexpand\memoized{\mmz@id}%
+    {disable}%
+    \@percentchar
   }%
 }
 
@@ -421,6 +448,7 @@
   }%
 }
 
+\newif\ifmmz@@disabled
 \pgfqkeys{/memoized}{
   filename/.store in=\mmz@@filename,
   page/.store in=\mmz@@page,
@@ -431,6 +459,7 @@
   padding bottom/.store in=\mmz@@padding@bottom,
   padding right/.store in=\mmz@@padding@right,
   padding top/.store in=\mmz@@padding@top,
+  disable/.is if=mmz@@disabled,
 }
 
 \def\memoized@found#1{%
@@ -443,6 +472,7 @@
   \def\mmz@@padding@bottom{}%
   \def\mmz@@padding@right{}%
   \def\mmz@@padding@top{}%
+  \mmz@@disabledfalse
   \pgfqkeys{/memoized}{#1}%
   \memoized@next
 }
@@ -531,6 +561,9 @@
   \memoized@found
 }
 \def\memoized@split@a{%
+  \ifmmz@@disabled\memoized@split@disabled\else\memoized@split@b\fi
+}
+\def\memoized@split@b{%
   % Split the relevant page off to the memo .pdf.
   \edef\mmz@syscall@jobname{\mmz@memo@filename\mmz@@id}%
   \edef\mmz@marshal{%
@@ -568,6 +601,16 @@
 \def\justmemoized@error{%
   \PackageError{memoize}{Failed to extract page \mmz@@page\space of
     "\mmz@jobpath\mmz@@filename" to "\mmz@syscall@jobname.pdf".}{}}
+\def\memoized@split@disabled{%
+  \edef\mmz@syscall@jobname{\mmz@memo@filename\mmz@@id}%
+  \immediate\openout\mmz@out=\mmz@syscall@jobname
+  \immediate\write\mmz@out{%
+    \noexpand\memoized{\mmz@@id}%
+      {disable}%
+      \@percentchar
+  }%
+  \immediate\closeout\mmz@out
+}
 
 
 % AUTO-MEMOIZATION
@@ -616,7 +659,21 @@
       \let\mmz@orig@begin\relax
     }{}%
   },
+  cancel/.code={%
+    \ifstrempty{#1}{%
+      \def\mmz@cancel@setup{}%
+    }{%
+      \eappto\mmz@cancel@setup{%
+        \let\mmz@canc#1\noexpand#1%
+        \def\noexpand#1{\global\noexpand\mmz@canceltrue\mmz@canc#1}%
+      }%
+    }%
+  },
 }
+
+\def\mmz@cancel@setup{}%
+\def\mmz@canc#1{\expandonce{\csname mmz@canc@\string#1\endcsname}}
+
 
 % Control sequences where we will store the handlers:
 \def\mmz@orig#1{mmz@orig@\string#1} % the original command
@@ -825,6 +882,7 @@
   \fi                      %%%%%%%%%%%%%%%% end automemoization
   % 
 }
+\memoizeset{cancel=\pdfsavepos}
 
 % We do the patching as late as possible.
 \AtBeginDocument{%
