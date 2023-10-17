@@ -1,0 +1,31 @@
+%<*!lst>
+%<!att>\documentclass[varwidth]{standalone}
+%<att>\documentclass{article}
+
+\usepackage{tikz}
+\usepackage{memoize}
+%</!lst>
+%<att&c1>
+%<att&c1>% First compile this document twice to externalize the picture and
+%<att&c1>% extract the extern. If you then change "red" to "yellow" in the
+%<att&c1>% definition of style "emph", the emphasized node will remain red
+%<att&c1>% until you uncomment the "recompile" directive below for one
+%<att&c1>% compilation.
+%<att&c1>
+%<*c1,c2>
+\tikzset{
+%<c1>  emph/.style={fill=red, text=blue},
+%<c2>  emph/.style={fill=~yellow~, text=blue},
+}
+%</c1,c2>
+%<c3>\tikzset{emph/.style={fill=~yellow~, text=blue}}
+%<!lst>
+%<!lst>\begin{document}
+%<!lst>
+%<att&c1>% \mmznext{recompile}
+%<c3>\mmznext{~recompile~} % for one compilation
+\begin{tikzpicture}
+  \node[emph]{an emphasized node};
+\end{tikzpicture}
+%<!lst>
+%<!lst>\end{document}

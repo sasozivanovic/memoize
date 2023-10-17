@@ -1,0 +1,24 @@
+%<*!lst>
+%<!att>\documentclass[varwidth]{standalone}
+%<att>\documentclass{article}
+\usepackage{tikz}
+\usepackage{memoize}
+
+\tikzset{
+  every node/.style={
+    text width=7em, align=center,
+    fill,top color=white, bottom color=blue!20,
+    alias=last,
+  },
+  every picture/.style={baseline=(last.base)},
+}
+
+%</!lst>
+\mmzset{deactivate=\tikz}
+\newcommand{~\mmztikz~}[2][]{~\mmz~{%
+  \tikz[#1]{#2}%
+}}
+%<!lst>\begin{document}
+Compare ~\tikz~{\node{this picture which \emph{won't} be externalized};} to
+~\mmztikz~{\node{this picture which \emph{will} be externalized}}
+%<!lst>\end{document}

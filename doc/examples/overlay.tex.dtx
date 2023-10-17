@@ -1,0 +1,37 @@
+%<*!lst>
+%<!att>\documentclass[varwidth]{standalone}
+%<att>\documentclass{article}
+\usepackage{memoize}
+\usepackage{tikz,lipsum}
+\setlength{\textfloatsep}{2ex}
+
+\begin{document}
+
+%</!lst>
+%<c1>\mmznext{disable}
+%<c2>\mmznext{~padding=0pt~}
+%<c3>\mmznext{~padding=1in~} % this is the default
+%<c4>\mmznext{~padding right=1in+4em~}
+%<*!lst,c1>
+\begin{figure}
+  \centering
+  \begin{tikzpicture}
+    \node[align=center, text width=0.4\linewidth, draw=blue, thick, pin={
+        [~overlay~, pin edge={~overlay~}, green!50!black] east:an \texttt{overlay}ed pin}
+    ]{To horizontally center this node (rather than the entire picture),
+      we make \TeX{} ignore the pin by \texttt{overlay}ing it.};
+  \end{tikzpicture}  
+%<c1>  \caption{Without memoization}
+%<c2>  \caption{No padding}
+%<c3>  \caption{The default padding}
+%<c4>  \caption{With extra padding (on the right)}
+\end{figure}
+\lipsum[66]
+%</!lst,c1>
+%<!lst>
+%<!lst>\end{document}
+%<*lst&c2>
+\begin{tikzpicture}
+  % ...
+\end{tikzpicture}
+%</lst&c2>

@@ -1,0 +1,3 @@
+  \file{example.c1}{\from{example.dtx}{c1,t}}%
+  \file{example.c1.listing}{\from{example.dtx}{c1,lst,t}}%
+  \file{example.c1.attachment}{\from{example.dtx}{c1,att,t}}%

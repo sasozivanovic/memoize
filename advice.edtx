@@ -1,0 +1,1095 @@
+% \iffalse
+% 
+% advice.edtx (this is not a .dtx file; to produce a .dtx, process it with edtx2dtx)
+% 
+%% This file is a part of Advice, a TeX package implementing a generic
+%% framework for extending the functionality of selected commands and
+%% environments, available at https://ctan.org/pkg/advice and
+%% https://github.com/sasozivanovic/advice.
+%%
+%% Copyright (c) 2023- Saso Zivanovic <saso.zivanovic@guest.arnes.si>
+%%                     (Sa\v{s}o \v{Z}ivanovi\'{c})
+%%
+%% This work may be distributed and/or modified under the conditions of the
+%% LaTeX Project Public License, either version 1.3c of this license or (at
+%% your option) any later version.  The latest version of this license is in
+%% https://www.latex-project.org/lppl.txt and version 1.3c or later is part of
+%% all distributions of LaTeX version 2008 or later.
+%%
+%% This work has the LPPL maintenance status `maintained'.
+%% The Current Maintainer of this work is Saso Zivanovic.
+%% 
+%% The files belonging to this work and covered by LPPL are listed in `FILES`.
+% 
+% \fi
+% 
+%    \begin{macrocode}
+% 
+% \relax
+%
+%<*main>
+%<latex>\ProvidesPackage{advice}[2023/10/10 v1.0.0 Extend commands and environments]
+%<context>%D \module[
+%<context>%D         file=t-advice.tex,
+%<context>%D      version=1.0.0,
+%<context>%D        title=Advice,
+%<context>%D     subtitle=Extend commands and environments,
+%<context>%D       author=Saso Zivanovic,
+%<context>%D         date=2023-10-10,
+%<context>%D    copyright=Saso Zivanovic,
+%<context>%D      license=LPPL,
+%<context>%D ]
+%<context>\writestatus{loading}{ConTeXt User Module / advice}
+%<context>\unprotect
+%<context>\startmodule[advice]
+% \paragraph{Required packages}
+%<latex>\RequirePackage{collargs}
+%<plain>\input collargs
+%<context>\input t-collargs
+% 
+% \subsubsection{Installation into a keypath}
+% 
+% \begin{handlerskey}{.install advice}
+%   This handler installs the advising mechanism into the handled path, which
+%   we shall henceforth also call the (advice) namespace.
+\pgfkeys{
+  /handlers/.install advice/.code={%
+    \edef\auto@install@namespace{\pgfkeyscurrentpath}%
+    \def\advice@install@setupkey{advice}%
+    \def\advice@install@activation{immediate}%
+    \pgfqkeys{/advice/install}{#1}%
+    \expanded{\noexpand\advice@install
+      {\auto@install@namespace}%
+      {\advice@install@setupkey}%
+      {\advice@install@activation}%
+    }%
+  },
+% \end{handlerskey}
+% 
+% \begin{adviceinstallkey}{setup key,activation}
+%   These keys can be used in the argument of |.install advice| to configure
+%   the installation.  By default, the setup key is |advice| and |activation| is
+%   |immediate|.
+  /advice/install/.cd,
+  setup key/.store in=\advice@install@setupkey,
+  activation/.is choice,
+  activation/.append code=\def\advice@install@activation{#1},
+  activation/immediate/.code={},
+  activation/deferred/.code={},
+}
+% \end{adviceinstallkey}
+% 
+% |#1| is the installation keypath (in Memoize, |/mmz|); |#2| is the setup key
+% name (in Memoize, |auto|, and this is why we document it as such); |#3| is
+% the initial activation regime.
+\def\advice@install#1#2#3{%
+  % Switch to the installation keypath.
+  \pgfqkeys{#1}{%
+    % \begin{key}{auto, auto csname, auto key, auto', auto csname', auto key'}
+    %   These keys submit a command or environment to advising.  The
+    %   namespace is hard-coded into these keys via |#1|; their arguments are
+    %   the command/environment (cs)name, and setup keys belonging to path
+    %   \meta{installation keypath}|/\meta{setup key name}|.
+    #2/.code 2 args={%
+      % Call the internal setup macro, wrapping the received keylist into a
+      % |pgfkeys| invocation.
+      \AdviceSetup{#1}{#2}{##1}{\pgfqkeys{#1/#2}{##2}}%
+      % Activate if not already activated (this can happen when updating the
+      % configuration).  Note we don't call |\advice@activate| directly, but use
+      % the public keys; in this way, activation is automatically deferred if
+      % so requested. (We don't use |\pgfkeysalso| to allow |auto| being called
+      % from any path.)
+      \pgfqkeys{#1}{try activate, activate={##1}}%
+    },
+    % A variant without activation.
+    #2'/.code 2 args={%
+      \AdviceSetup{#1}{#2}{##1}{\pgfqkeys{#1/#2}{##2}}%
+    },
+    #2 csname/.style 2 args={
+      #2/.expand once=\expandafter{\csname ##1\endcsname}{##2},
+    },
+    #2 csname'/.style 2 args={
+      #2'/.expand once=\expandafter{\csname ##1\endcsname}{##2},
+    },
+    #2 key/.style 2 args={
+      #2/.expand once=%
+        \expandafter{\csname pgfk@##1/.@cmd\endcsname}%
+        {collector=\advice@pgfkeys@collector,##2},
+    },
+    #2 key'/.style 2 args={
+      #2'/.expand once=%
+        \expandafter{\csname pgfk@##1/.@cmd\endcsname}%
+        {collector=\advice@pgfkeys@collector,##2},
+    },
+    % \end{key}
+    % 
+    % \begin{key}{activation}
+    %   This key, residing in the installation keypath, forwards the request to
+    %   the |/advice| path |activation| subkeys, which define |activate| and
+    %   friends in the installation keypath.  Initially, the activation regime
+    %   is whatever the user has requested using the |.install advice| argument
+    %   (here |#3|).
+    activation/.style={/advice/activation/##1={#1}},
+    activation=#3,
+    % \end{key}
+    % 
+    % \begin{key}{activate deferred}
+    %   The deferred activations are collected in this style, see
+    %   section~ref{sec:code:advice:activation} for details.
+    activate deferred/.code={},
+    % \end{key}
+    % 
+    % \begin{key}{activate csname, deactivate csname}
+    %   For simplicity of implementation, the |csname| versions of |activate|
+    %   and |deactivate| accept a single \meta{csname}.  This way, they can be
+    %   defined right away, as they don't change with the type of activation
+    %   (immediate vs.\ deferred).
+    activate csname/.style={activate/.expand once={\csname##1\endcsname}},
+    deactivate csname/.style={activate/.expand once={\csname##1\endcsname}},
+    % \end{key}
+    % 
+    % \begin{key}{activate key, deactivate key}
+    %   (De)activation of |pgfkeys| keys. Accepts a list of key names, requires
+    %   full key names.
+    activate key/.style={activate@key={#1/activate}{##1}},
+    deactivate key/.style={activate@key={#1/deactivate}{##1}},
+    activate@key/.code n args=2{%
+      \def\advice@temp{}%
+      \def\advice@do####1{%
+        \eappto\advice@temp{,\expandonce{\csname pgfk@####1/.@cmd\endcsname}}}%
+      \forcsvlist\advice@do{##2}%
+      \pgfkeysalso{##1/.expand once=\advice@temp}%
+    },
+    % \end{key}
+    % 
+    % The rest of the keys defined below reside in the |auto| subfolder of the
+    % installation keypath.
+    #2/.cd,
+    % 
+    % \begin{mmzautokey}{run conditions, outer handler, bailout handler, collector,
+    %   args, collector options, clear collector options, raw collector options, 
+    %   clear raw collector options, inner handler, options, clear options}
+    %   These keys are used to setup the handling of the command or
+    %   environment.  The storage macros (|\AdviceRunConditions| etc.) have
+    %   public names as they also play a crucial role in the handler
+    %   definitions, see section~\ref{sec:code:advice:handle}. \indentmacrocode
+    run conditions/.store in=\AdviceRunConditions,
+    bailout handler/.store in=\AdviceBailoutHandler,
+    outer handler/.store in=\AdviceOuterHandler,
+    collector/.store in=\AdviceCollector,
+    collector options/.code={\appto\AdviceCollectorOptions{,##1}},
+    clear collector options/.code={\def\AdviceCollectorOptions{}},
+    raw collector options/.code={\appto\AdviceRawCollectorOptions{##1}},
+    clear raw collector options/.code={\def\AdviceRawCollectorOptions{}},
+    args/.store in=\AdviceArgs,
+    inner handler/.store in=\AdviceInnerHandler,
+    options/.code={\appto\AdviceOptions{,##1}},
+    clear options/.code={\def\AdviceOptions{}},
+    % \noindentmacrocode
+    % A user-friendly way to set |options|: any unknown key is an option.
+    .unknown/.code={%
+      \eappto{\AdviceOptions}{,\pgfkeyscurrentname={\unexpanded{##1}}}%
+    },
+    % The default values of the keys, which equal the initial values for
+    % commands, as assigned by |\advice@setup@init@command|.
+    run conditions/.default=\AdviceRuntrue,
+    bailout handler/.default=\relax,
+    outer handler/.default=\advice@default@outer@handler,
+    collector/.default=\advice@CollectArgumentsRaw,
+    collector options/.value required,
+    raw collector options/.value required,
+    args/.default=\advice@noargs,
+    inner handler/.default=\advice@error@noinnerhandler,
+    options/.value required,
+    % \end{mmzautokey}
+    % 
+    % \begin{mmzautokey}{reset}
+    %   This key resets the advice settings to their initial values, which
+    %   depend on whether we're handling a command or environment.
+    reset/.code={\csname\advice@setup@init@\AdviceType\endcsname},
+    % \end{mmzautokey}
+    % 
+    % \begin{mmzautokey}
+    %   The code given here will be executed once we exit the setup group.
+    %   |integrated driver| of Memoize uses it to declare a conditional.
+    after setup/.code={\appto\AdviceAfterSetup{##1}},
+    % \end{mmzautokey}
+    % 
+    % In \hologo{LaTeX}, we finish the installation by submitting |\begin|; the
+    % submission is funky, because the run conditions handler actually hacks
+    % the standard handling procedure.  Note that if |\begin| is not
+    % activated, environments will not be handled, and that the automatic
+    % activation might be deffered.
+    %<latex>#1/#2=\begin{run conditions=\advice@begin@rc},
+  }%
+}
+% 
+%
+% \subsubsection{Submitting a command or environment}
+% \label{sec:code:advice:setup}
+%
+% \begin{macro}{\AdviceSetup,\AdviceName,\AdviceType}
+%   Macro |\advice@setup| is called by key |auto| to submit a command or
+%   environment to advising.  It receives four arguments: |#1| is the
+%   installation keypath / storage namespace: |#2| is the name of the setup
+%   key; |#3| is the submitted command or environment; |#4| is the setup code
+%   (which is only grabbed by |\advice@setup@i|).
+% 
+%   Executing this macro defines macros |\AdviceName|, holding the control
+%   sequence of the submitted command or the environment name, and |\AdviceType|,
+%   holding |command| or |environment|; they are used to set up some initial
+%   values, and may be used by user-defined keys in the |auto| path, as well
+%   (see |/mmz/auto/noop| for an example).  The macro then performs internal
+%   initialization, and finally calls the second part, |\advice@setup@i|, with
+%   the command's \emph{storage} name as the first argument.
+% 
+%   This macro also serves as the programmer's interface to |auto|, the idea
+%   being that an advanced user may write code |#4| which defined the settings
+%   macros (|\AdviceOuterHandler| etc.) without deploying |pgfkeys|.  (Also note
+%   that activation at the end only occurs through the |auto| interface.)
+\def\AdviceSetup#1#2#3{%
+  % Open a group, so that we allow for embedded |auto| invocations.
+  \begingroup
+  \def\AdviceName{#3}%
+  % Command, complain, or environment?
+  \collargs@cs@cases{#3}{%
+    \def\AdviceType{command}%
+    \advice@setup@init@command
+    \advice@setup@i{#3}{#1}{#3}%
+  }{%
+    \advice@error@advice@notcs{#1/#2}{#3}%
+  }{%
+    \def\AdviceType{environment}%
+    \advice@setup@init@environment
+    %<latex>\advice@setup@i{#3}%
+    %<plain>\expandafter\advice@setup@i\expandafter{\csname #3\endcsname}%
+    %<context>\expandafter\advice@setup@i\expandafter{\csname start#3\endcsname}%
+      {#1}{#3}%
+  }%
+}
+% The arguments of |\advice@setup@i| are a bit different than for
+% |\advice@setup|, because we have inserted the storage name as |#1| above, and
+% we lost the setup key name |#2|.  Here, |#2| is the installation keypath /
+% storage namespace, |#3| is the submitted command or environment; and |#4| is
+% the setup code.
+% 
+% What is the difference between the storage name (|#1|) and the command\slash
+% environment name (|#3|, and also the contents of |\AdviceName|), and why do we
+% need both?  For commands, there is actually no difference; for example, when
+% submitting command |\foo|, we end up with |#1|=|#3|=|\foo|.  And there is
+% also no difference for \hologo{LaTeX} environments; when submitting
+% environment |foo|, we get |#1|=|#3|=|foo|.  But in \hologo{plainTeX},
+% |#1|=|\foo| and |#3|=|foo|, and in \hologo{ConTeXt}, |#1|=|\startfoo| and
+% |#3|=|foo| --- which should explain the guards and |\expandafter|s above.
+%
+% And why both |#1| and |#3|? When a handled command is executed, it loads its
+% configuration from a macro determined by the storage namespace and the
+% (|\string|ified) storage name, e.g.\ |/mmz| and |\foo|.  In \hologo{plainTeX}
+% and \hologo{ConTeXt}, each environment is started by a dedicated command,
+% |\foo| or |\startfoo|, so these control sequences (|\string|ified) must act
+% as storage names.  (Not so in \hologo{LaTeX}, where an environment
+% configuration is loaded by |\begin|'s handler, which can easily work with
+%   storage name |foo|.  Even more, having |\foo| as an environment storage
+%   name would conflict with the storage name for the (environment-internal)
+%   command |\foo| --- yes, we can submit either |foo| or |\foo|, or both, to
+%   advising.)
+\def\advice@setup@i#1#2#3#4{%
+  % Load the current configuration of the handled command or environment --- if
+  % it exists.
+  \advice@setup@init@i{#2}{#1}%
+  \advice@setup@init@I{#2}{#1}%
+  \def\AdviceAfterSetup{}%
+  % Apply the setup code/keys.
+  #4%
+  % Save the resulting configuration. This closes the group, because the config
+  % is saved outside it.
+  \advice@setup@save{#2}{#1}%
+}
+% \end{macro}
+% 
+% \paragraph{Initialize} the configuration of a command or environment.  Note
+% that the default values of the keys equal the initial values for commands.
+% Nothing would go wrong if these were not the same, but it's nice that the
+% end-user can easily revert to the initial values.
+\def\advice@setup@init@common{%
+  \def\AdviceRunConditions{\AdviceRuntrue}%
+  \def\AdviceBailoutHandler{\relax}%
+  \def\AdviceOuterHandler{\advice@default@outer@handler}%
+  \def\AdviceCollector{\advice@CollectArgumentsRaw}%
+  \def\AdviceCollectorOptions{}%
+  \def\AdviceInnerHandler{\advice@error@noinnerhandler}%
+  \def\AdviceOptions{}%  
+}
+\def\advice@setup@init@command{%
+  \advice@setup@init@common
+  \def\AdviceRawCollectorOptions{}%
+  \def\AdviceArgs{\advice@noargs}%
+}
+\def\advice@setup@init@environment{%
+  \advice@setup@init@common
+  \edef\AdviceRawCollectorOptions{%
+    \noexpand\collargsEnvironment{\AdviceName}%
+    % When grabbing an environment body, the end-tag will be included. This
+    % makes it possible to have the same inner handler for commands and
+    % environments.
+    \noexpand\collargsEndTagtrue
+  }%
+  \def\AdviceArgs{+b}%
+}
+% We need to initialize |\AdviceOuterHandler| etc.\ so that |\advice@setup@store|
+% will work.
+\advice@setup@init@command
+% 
+% \paragraph.{The configuration storage}
+% 
+% The remaining macros in this subsection deal with the configuration storage
+% space, which is set up in a way to facilitate fast loading during the
+% execution of handled commands and environments.
+% 
+% The configuration of a command or environment is stored in two parts: the
+% first stage settings comprise the run conditions, the bailout handler and the
+% outer handler; the second stage settings contain the rest.  When a handled
+% command is invoked, only the first stage settings are immediately loaded, for
+% speed; the second stage settings are only loaded if the run conditions are
+% satisfied.
+% 
+% \begin{macro}{\advice@init@i,\advice@init@I}
+%   The two-stage settings are stored in control sequences
+%   |\advice@i|\meta{namespace}|//|\meta{storage name} and
+%   |\advice@I|\meta{namespace}|//|\meta{storage name}, respectively, and
+%   accessed using macros |\advice@init@i| and |\advice@init@I|.
+% 
+%   Each setting storage macro contains a sequence of items, where each item is
+%   either of form |\def\AdviceSetting|\marg{value}.  This allows us store
+%   multiple settings in a single macro (rather than define each
+%   control-sequence-valued setting separately, which would use more string
+%   memory), and also has the consequence that we don't require the handlers to
+%   be defined when submitting a command (whether that's good or bad could be
+%   debated: as things stand, any typos in handler declarations will only yield
+%   an error once the handled command is executed).
+\def\advice@init@i#1#2{\csname advice@i#1//\string#2\endcsname}
+\def\advice@init@I#1#2{\csname advice@I#1//\string#2\endcsname}
+% We make a copy of these for setup; the originals might be swapped for
+% tracing purposes.
+\let\advice@setup@init@i\advice@init@i
+\let\advice@setup@init@I\advice@init@I
+% \end{macro}
+% 
+% \begin{macro}{\advice@setup@save}
+%   To save the configuration at the end of the setup, we construct the storage
+%   macros out of |\AdviceRunConditions| and friends.  Stage-one contains only
+%   |\AdviceRunConditions| and |\AdviceBailoutHandler|, so that
+%   |\advice@handle| can bail out as quickly as possible if the run conditions
+%   are not met.
+\def\advice@setup@save#1#2{%
+  \expanded{%
+    % Close the group before saving. Note that |\expanded| has already expanded
+    % the settings macros.
+    \endgroup
+    \noexpand\csdef{advice@i#1//\string#2}{%
+      \def\noexpand\AdviceRunConditions{\expandonce\AdviceRunConditions}%
+      \def\noexpand\AdviceBailoutHandler{\expandonce\AdviceBailoutHandler}%
+    }%
+    \noexpand\csdef{advice@I#1//\string#2}{%
+      \def\noexpand\AdviceOuterHandler{\expandonce\AdviceOuterHandler}%
+      \def\noexpand\AdviceCollector{\expandonce\AdviceCollector}%
+      \def\noexpand\AdviceRawCollectorOptions{\expandonce\AdviceRawCollectorOptions}%
+      \def\noexpand\AdviceCollectorOptions{\expandonce\AdviceCollectorOptions}%
+      \def\noexpand\AdviceArgs{\expandonce\AdviceArgs}%
+      \def\noexpand\AdviceInnerHandler{\expandonce\AdviceInnerHandler}%
+      \def\noexpand\AdviceOptions{\expandonce\AdviceOptions}%
+    }%
+    \expandonce{\AdviceAfterSetup}%
+  }%
+}
+% \end{macro}
+% \label{sec:code:advice:activation}
+% 
+% \begin{advicekey}{activation/immediate, activation/deferred}
+%   The two subkeys of |/advice/activation| install the immediate and the
+%   deferred activation code into the installation keypath.  They are invoked
+%   by \meta{installation keypath}|/activation=|\meta{type}.
+% 
+%   Under the deferred activation regime, the commands are not (de)activated
+%   right away.  Rather, the (de)activation calls are collected in style
+%   |activate deferred|, which should be executed by the installation keypath
+%   owner, if and when they so desire.  (Be sure to switch to
+%   |activation=immediate| before executing |activate deferred|, otherwise the
+%   activation will only be deferred once again.)
+\pgfkeys{
+  /advice/activation/deferred/.style={
+    #1/activate/.style={%
+      activate deferred/.append style={#1/activate={##1}}},
+    #1/deactivate/.style={%
+      activate deferred/.append style={#1/deactivate={##1}}},
+    #1/force activate/.style={%
+      activate deferred/.append style={#1/force activate={##1}}},
+    #1/try activate/.style={%
+      activate deferred/.append style={#1/try activate={##1}}},
+  },
+% \end{advicekey}
+% 
+% \begin{key}{activate, deactivate, force activate, try activate}
+%   The ``real,'' immediate |activate| and |deactivate| take a comma-separated
+%   list of commands or environments and (de)activate them.  If |try activate|
+%   is in effect, no error is thrown upon failure.  If |force activate| is in
+%   effect, activation proceeds even if we already had the original definition;
+%   it does not apply to deactivation.  These conditionals are set to false
+%   after every invocation of key |(de)activate|, so that they only apply to
+%   the immediately following |(de)activate|. (|#1| below is the
+%   \meta{namespace}; |##1| is the list of commands to be (de)activated.)
+  /advice/activation/immediate/.style={
+    #1/activate/.code={%
+      \forcsvlist{\advice@activate{#1}}{##1}%
+      \advice@activate@forcefalse
+      \advice@activate@tryfalse
+    },
+    #1/deactivate/.code={%
+      \forcsvlist{\advice@deactivate{#1}}{##1}%
+      \advice@activate@forcefalse
+      \advice@activate@tryfalse
+    },
+    #1/force activate/.is if=advice@activate@force,
+    #1/try activate/.is if=advice@activate@try,
+  },
+}
+\newif\ifadvice@activate@force
+\newif\ifadvice@activate@try
+% \end{key}
+%
+% \begin{macro}{\advice@original@csname,\advice@original@cs,\AdviceGetOriginal}
+%   Activation replaces the original meaning of the handled command with our
+%   definition.  We store the original definition into control sequence
+%   |\advice@o|\meta{namespace}|//|\meta{storage name} (with a |\string|ified
+%   \meta{storage name}).  Internally, during (de)activation and handling, we
+%   access it using |\advice@original@csname| and |\advice@original@cs|.  Publicly
+%   it should always be accessed by |\AdviceGetOriginal|, which returns the
+%   argument control sequence if that control sequence is not handled.
+%   
+%   Using the internal command outside the handling context, we could fall
+%   victim to scenario such as the following.  When we memoize something
+%   containing a |\label|, the produced cc-memo contains code eventually
+%   executing the original |\label|.  If we called the original |\label| via
+%   the internal macro there, and the user |deactivate|d |\label| on a
+%   subsequent compilation, the cc-memo would not call |\label| anymore, but
+%   |\relax|, resulting in a silent error. Using |\AdviceGetOriginal|, the
+%   original |\label| will be executed even when not activated.
+% 
+%   However, not all is bright with |\AdviceGetOriginal|.  Given an activated
+%   control sequence (|#2|), a typo in the namespace argument (|#1|) will lead
+%   to an infinite loop upon the execution of |\AdviceGetOriginal|.  In the
+%   manual, we recommend defining a namespace-specific macro to avoid such
+%   typos.
+\def\advice@original@csname#1#2{advice@o#1//\string#2}
+\def\advice@original@cs#1#2{\csname advice@o#1//\string#2\endcsname}
+\def\AdviceGetOriginal#1#2{%
+  \ifcsname advice@o#1//\string#2\endcsname
+    \csname advice@o#1//\string#2\expandafter\endcsname
+  \else
+    \expandafter#2%
+  \fi
+}
+% \end{macro}
+% 
+% \begin{macro}{\advice@activate,\advice@deactivate}
+%   These macros execute either the command, or the environment (de)activator.
+\def\advice@activate#1#2{%
+  \collargs@cs@cases{#2}%
+    {\advice@activate@cmd{#1}{#2}}%
+    {\advice@error@activate@notcsorenv{}{#1}}%
+    {\advice@activate@env{#1}{#2}}%
+}
+\def\advice@deactivate#1#2{%
+  \collargs@cs@cases{#2}%
+    {\advice@deactivate@cmd{#1}{#2}}%
+    {\advice@error@activate@notcsorenv{de}{#1}}%
+    {\advice@deactivate@env{#1}{#2}}%
+}
+% \end{macro}
+% 
+% \begin{macro}{\advice@activate@cmd}
+%   We are very careful when we're activating a command, because activating
+%   means rewriting its original definition.  Configuration by |auto| did not
+%   touch the original command; activation will.  So, the leitmotif of this
+%   macro: safety first.  (|#1| is the namespace, and |#2| is the command to be
+%   activated.)
+\def\advice@activate@cmd#1#2{%
+  % Is the command defined?
+  \ifdef{#2}{%
+    % Yes, the command is defined.  Let's see if it's safe to activate it.
+    % We'll do this by checking whether we have its original definition in our
+    % storage.  If we do, this means that we have already activated the
+    % command.  Activating it twice would lead to the loss of the original
+    % definition (because the second activation would store our own
+    % redefinition as the original definition) and consequently an infinite
+    % loop (because once --- well, if --- the handler tries to invoke the
+    % original command, it will execute itself all over).
+    \ifcsdef{\advice@original@csname{#1}{#2}}{%
+      % Yes, we have the original definition, so the safety check failed, and
+      % we shouldn't activate again.  Unless \dots\ how does its current
+      % definition look like?
+      \advice@if@our@definition{#1}{#2}{%
+        % Well, the current definition of the command matches what we would put
+        % there ourselves.  The command is definitely activated, and we refuse
+        % to activate again, as that would destroy the original definition.
+        \advice@activate@error@activated{#1}{#2}{Command}{already}%
+      }{%
+        % We don't recognize the current definition as our own code (despite
+        % the fact that we have surely activated the commmand before, given the
+        % result of the first safety check).  It appears that someone else was
+        % playing fast and loose with the same command, and redefined it after
+        % our activation.  (In fact, if that someone else was another instance
+        % of Advice, from another namespace, forcing the activation will result
+        % in the loss of the original definition and the infinite loop.)  So it
+        % \emph{should} be safe to activate it (again) \dots\ but we won't do
+        % it unless the user specifically requested this using |force
+        % activate|.  Note that without |force activate|, we would be stuck in
+        % this branch, as we could neither activate (again) nor deactivate the
+        % command.
+        \ifadvice@activate@force
+          \advice@activate@cmd@do{#1}{#2}%
+        \else
+          \advice@activate@error@activated{#1}{#2}{Command}{already}%
+        \fi
+      }%
+    }{%
+      % No, we don't have the command's original definition, so it was not yet
+      % activated, and we may activate it.
+      \advice@activate@cmd@do{#1}{#2}%
+    }%
+  }{%
+    \advice@activate@error@undefined{#1}{#2}{Command}{}%
+  }%
+}
+% \end{macro}
+% 
+% \begin{macro}{\advice@deactivate@cmd}
+%   The deactivation of a command follows the same template as activation, but
+%   with a different logic, and of course a different effect.  In order to
+%   deactivate a command, both safety checks discussed above must be satisfied:
+%   we must have the command's original definition, \emph{and} our redefinition
+%   must still reside in the command's control sequence --- the latter
+%   condition prevents overwriting someone else's redefinition with the
+%   original command.  As both conditions must be unavoidably fulfilled, |force
+%   activate| has no effect in deactivation (but |try activate| has).
+\def\advice@deactivate@cmd#1#2{%
+  \ifdef{#2}{%
+    \ifcsdef{\advice@original@csname{#1}{#2}}{%
+      \advice@if@our@definition{#1}{#2}{%
+        \advice@deactivate@cmd@do{#1}{#2}%
+      }{%
+        \advice@deactivate@error@changed{#1}{#2}%
+      }%
+    }{%
+      \advice@activate@error@activated{#1}{#2}{Command}{not yet}%
+    }%
+  }{%
+    \advice@activate@error@undefined{#1}{#2}{Command}{de}%
+  }%
+}
+% \end{macro}
+% 
+% \begin{macro}{\advice@if@our@definition}
+%   This macro checks whether control sequence |#2| was already activated (in
+%   namespace |#1|) in the sense that its current definition contains the code
+%   our activation would put there: |\advice@handle{#1}{#2}| (protected).
+\def\advice@if@our@definition#1#2{%
+  \protected\def\advice@temp{\advice@handle{#1}{#2}}%
+  \ifx#2\advice@temp
+    \expandafter\@firstoftwo
+  \else
+    \expandafter\@secondoftwo
+  \fi
+}
+% \end{macro}
+% 
+% \begin{macro}{\advice@activate@cmd@do}
+%   This macro saves the original command, and redefines its control sequence.
+%   Our redefinition must be |\protected| --- even if the original command
+%   wasn't fragile, our replacement certainly is.  (Note that as we require
+%   \hologo{eTeX} anyway, we don't have to pay attention to \hologo{LaTeX}'s
+%   robust commands by redefining their ``inner'' command.  Protecting our
+%   replacement suffices.)
+\def\advice@activate@cmd@do#1#2{%
+  \cslet{\advice@original@csname{#1}{#2}}#2%
+  \protected\def#2{\advice@handle{#1}{#2}}%
+  \PackageInfo{advice (#1)}{Activated command "\string#2"}%
+}
+% \end{macro}
+% 
+% \begin{macro}{\advice@deactivate@cmd@do}
+%   This macro restores the original command, and removes its definition from
+%   our storage --- this also serves as a signal that the command is not
+%   activated anymore.
+\def\advice@deactivate@cmd@do#1#2{%
+  \letcs#2{\advice@original@csname{#1}{#2}}%
+  \csundef{\advice@original@csname{#1}{#2}}%
+  \PackageInfo{advice (#1)}{Deactivated command "\string#2"}%
+}
+% \end{macro}
+% 
+% 
+% \subsubsection{Executing a handled command}
+% \label{sec:code:advice:handle}
+% 
+% \begin{macro}{\advice@handle}
+%   An invocation of this macro is what replaces the original command and runs
+%   the whole shebang.  The system is designed to bail out as quickly as
+%   necessary if the run conditions are not met (plus \hologo{LaTeX}'s |\begin|
+%     will receive a very special treatment for this reason).
+% 
+%   We first check the run conditions, and bail out if they are not satisfied.
+%   Note that only the stage-one config is loaded at this point.  It sets up
+%   the following macros (while they are public, neither the end user not the
+%   installation keypath owner should ever have to use them):
+%     
+%   \begin{itemize}
+%   \item \PrintMainMacro{\AdviceRunConditions} executes |\AdviceRuntrue| if the
+%     command should be handled; set by |run conditions|.
+%   \item \PrintMainMacro{\AdviceBailoutHandler} will be executed if the
+%     command will not be handled, after all; set by |bailout handler|.
+%   \end{itemize}
+\def\advice@handle#1#2{%
+  \advice@init@i{#1}{#2}%
+  \AdviceRunfalse
+  \AdviceRunConditions
+  \advice@handle@rc{#1}{#2}%
+}
+% \end{macro}
+% 
+% \begin{macro}{\advice@handle@rc}
+%   We continue the handling in a new macro, because this is the point where
+%   the handler for |\begin| will hack into the regular flow of events.
+\def\advice@handle@rc#1#2{%
+  \ifAdviceRun
+    \expandafter\advice@handle@outer
+  \else
+    % Bailout is simple: we first execute the handler, and then the original command.
+    \AdviceBailoutHandler
+    \expandafter\advice@original@cs
+  \fi
+  {#1}{#2}%
+}
+% \end{macro}
+% 
+% \begin{macro}{\advice@handle@outer}
+%   To actually handle the command, we first setup some macros:
+%   
+%   \begin{itemize}
+%   \item \PrintMainMacro{\AdviceNamespace} holds the installation keypath /
+%     storage name space.
+%   \item \PrintMainMacro{\AdviceName} holds the control sequence of the handled
+%     command, or the environment name.
+%   \item \PrintMainMacro{\AdviceReplaced} holds the ``substituted'' code.  For
+%     commands, this is the same as |\AdviceName|.  For environment |foo|, it
+%     equals |\begin{foo}| in \hologo{LaTeX}, |\foo| in \hologo{plainTeX} and
+%       |\startfoo| in \hologo{ConTeXt}.
+%     \item \PrintMainMacro{\AdviceOriginal} executes the original definition of
+%       the handled command or environment.
+%     \end{itemize}
+\def\advice@handle@outer#1#2{%
+  \def\AdviceNamespace{#1}%
+  \def\AdviceName{#2}%
+  \let\AdviceReplaced\AdviceName
+  \def\AdviceOriginal{\AdviceGetOriginal{#1}{#2}}%
+  % We then load the stage-two settings.  This defines the following macros:
+  % \begin{itemize}
+  % \item \PrintMainMacro{\AdviceOuterHandler} will effectively replace the
+  %   command, if it will be handled; set by |outer handler|.
+  % \item \PrintMainMacro{\AdviceCollector} collects the arguments of the handled
+  %   command, perhaps consulting |\AdviceArgs| to learn about its argument
+  %   structure.
+  % \item \PrintMainMacro{\AdviceRawCollectorOptions} contains the options which
+  %   will be passed to the argument collector, in the ``raw'' format.
+  % \item \PrintMainMacro{\AdviceCollectorOptions} contains the additional,
+  %   user-specified options which will be passed to the argument collector.
+  % \item \PrintMainMacro{\AdviceArgs} contains the |xparse|-style argument
+  %   specification of the command, or equals |\advice@noargs| to signal that
+  %   command was defined using |xparse| and that the argument specification
+  %   should be retrieved automatically.
+  % \item \PrintMainMacro{\AdviceInnerHandler} is called by the argument
+  %   collector once it finishes its work.  It receives all the collected
+  %   arguments as a single (braced) argument.
+  % \item \PrintMainMacro{\AdviceOptions} holds options which may be used by the
+  %   outer or the inner handler; Advice does not need or touch
+  %   them.
+  % \end{itemize}
+  \advice@init@I{#1}{#2}%
+  % All prepared, we execute the outer handler.
+  \AdviceOuterHandler
+}
+% \end{macro}
+% 
+% \begin{macro}{\ifAdviceRun}
+%     This conditional is set by the run conditions macro to signal whether we
+%     should run the outer (true) or the bailout (false) handler.
+\newif\ifAdviceRun
+% \end{macro}
+% 
+% \begin{macro}{\advice@default@outer@handler}
+%   The default outer handler merely executes the argument collector.  Note
+%   that it works for both commands and environments.
+\def\advice@default@outer@handler{%
+  \AdviceCollector
+}
+% \end{macro}
+% 
+% \begin{macro}{\advice@CollectArgumentsRaw}
+%   This is the default collector, which will collect the argument using
+%   CollArgs' command |\CollectArgumentsRaw|.  It will provide that command
+%   with:
+%   \begin{itemize}
+%   \item the collector options, given in the raw format: the caller
+%     (|\collargsCaller|), the raw options (|\AdviceRawCollectorOptions|) and the
+%     user options (|\AdviceRawCollectorOptions|, wrapped in |\collargsSet|;
+%   \item the argument specification |\AdviceArgs| of the handled command; and
+%   \item the inner handler |\AdviceInnerHandler| to execute after collecting the
+%     arguments; the inner handler receives the collected arguments as a single
+%     braced argument.
+%   \end{itemize}
+%   If the argument specification is not defined (either the user did not set
+%   it, or has reset it by writing |args| without a value), it is assumed that
+%   the handled command was defined by |xparse| and |\AdviceArgs| will be
+%   retrieved by |\GetDocumentCommandArgSpec|.
+%   \begin{listingregion}{_advice-CollectArgumentsRaw.tex}
+\def\advice@CollectArgumentsRaw{%
+  \AdviceIfArgs{}{%
+    \expandafter\GetDocumentCommandArgSpec\expandafter{\AdviceName}%
+    \let\AdviceArgs\ArgumentSpecification
+  }%
+  \expanded{%
+    \noexpand\CollectArgumentsRaw{%
+      \noexpand\collargsCaller{\expandonce\AdviceName}%
+      \expandonce\AdviceRawCollectorOptions
+      \ifdefempty\AdviceCollectorOptions{}{%
+        \noexpand\collargsSet{\expandonce\AdviceCollectorOptions}%
+      }%
+    }%
+    {\expandonce\AdviceArgs}%
+    {\expandonce\AdviceInnerHandler}%
+  }%
+}
+% \end{listingregion}
+% \end{macro}
+%
+% \begin{macro}{\AdviceIfArgs}
+%   If the value of |args| is ``real'', i.e.\ an |xparse| argument
+%   specification, execute the first argument.  If |args| was set to the
+%   special value |\advice@noargs|, signaling a command defined by
+%   |\NewDocumentCommand| or friends, execute the second argument.  (Ok, in
+%   reality anything other than |\advice@noargs| counts as real ``real''.)
+\def\advice@noargs@text{\advice@noargs}
+\def\AdviceIfArgs{%
+  \ifx\AdviceArgs\advice@noargs@text
+    \expandafter\@secondoftwo
+  \else
+    \expandafter\@firstoftwo
+  \fi
+}
+% \end{macro}
+% 
+% \begin{macro}{\advice@pgfkeys@collector}
+%   A |pgfkeys| collector is very simple: the sole argument of the any key
+%   macro, regardless of the argument structure of the key, is everything up to
+%   |\pgfeov|.
+\def\advice@pgfkeys@collector#1\pgfeov{%
+  \AdviceInnerHandler{#1}%
+}
+% \end{macro}
+% 
+% \subsubsection{Environments}
+% \label{sec:code:advice:environments}
+%
+% \begin{macro}{\advice@activate@env,\advice@deactivate@env}
+%   Things are simple in \hologo{TeX} and \hologo{ConTeXt}, as their environments
+%   are really commands.  So rather than activating environment name |#2|, we
+%   (de)activate command |\#2| or |\start#2|, depending on the format.
+%<*plain,context>
+\def\advice@activate@env#1#2{%
+  \expanded{%
+    \noexpand\advice@activate@cmd{#1}{\expandonce{\csname
+        %<context>start%
+        #2\endcsname}}%
+  }%
+}
+\def\advice@deactivate@env#1#2{%
+  \expanded{%
+    \noexpand\advice@deactivate@cmd{#1}{\expandonce{\csname
+        %<context>start%
+        #2\endcsname}}%
+  }%
+}
+%</plain,context>
+% 
+% We activate commands by redefining them; that's the only way to do it.  But
+% we won't activate a \hologo{LaTeX} environment |foo| by redefining command
+% |\foo|, where the user's definition for the start of the environment actually
+% resides, as such a redefinition would be executed too late, deep within the
+% group opened by |\begin|, following many internal operations and public
+%   hooks.  We handle \hologo{LaTeX} environments by defining an outer handler
+%   for |\begin| (consequently, \hologo{LaTeX} environment support can be
+%     (de)activated by the user by saying (|de|)|activate=\begin|), and
+%       activating an environment will be nothing but setting a mark, by
+%       defining a dummy control sequence |\advice@original@csname{#1}{#2}|,
+%       which that handler will inspect.  Note that |force activate| has no
+%       effect here.
+%<*latex>
+\def\advice@activate@env#1#2{%
+  \ifcsdef{\advice@original@csname{#1}{#2}}{%
+    \advice@activate@error@activated{#1}{#2}{Environment}{already}%
+  }{%
+    \csdef{\advice@original@csname{#1}{#2}}{}%
+  }%
+}
+\def\advice@deactivate@env#1#2{%
+  \ifcsdef{\advice@original@csname{#1}{#2}}{%
+    \csundef{\advice@original@csname{#1}{#2}}{}%
+  }{%
+    \advice@activate@error@activated{#1}{#2}{Environment}{not yet}%
+  }%
+}
+% \end{macro}
+% 
+% \begin{macro}{\advice@begin@rc}
+%   This is the handler for |\begin|.  It is very special, for speed.  It is
+%     meant to be declared as the run conditions component, and it hacks into
+%     the normal flow of handling.  It knows that after executing the run
+%     conditions macro, |\advice@handle| eventually (the tracing info may
+%     interrupt here as |#1|) continues by
+%     |\advice@handle@rc|\marg{namespace}\marg{handled control sequence}, so it
+%     grabs all these (|#2| is the \meta{namespace} and |#3| is the
+%     \meta{handled control sequence}, i.e.\ |\begin|) plus the environment
+%       name (|#4|).
+\def\advice@begin@rc#1\advice@handle@rc#2#3#4{%
+  % We check whether environment |#4| is activated (in namespace |#2|) by
+  % inspecting whether activation dummy is defined.  If it is not, we execute
+  % the original |\begin| (|\advice@original@cs{#2}{#3}|), followed by the
+  %   environment name (|#4|).  Note that we \emph{don't} execute the
+  %   environment's bailout handler here: we haven't checked its run conditions
+  %   yet, as the environment is simply not activated.
+  \ifcsname\advice@original@csname{#2}{#4}\endcsname
+    \expandafter\advice@begin@env@rc
+  \else
+    \expandafter\advice@original@cs
+  \fi
+  {#2}{#3}{#4}%
+}
+% \end{macro}
+% 
+% \begin{macro}{\advice@begin@env@rc}
+%   Starting from this point, we essentially replicate the workings of
+%   |\advice@handle|, adapted to \hologo{LaTeX} environments.
+\def\advice@begin@env@rc#1#2#3{%
+  % We first load the stage-one configuration for environment |#3| in namespace
+  % |#1|.  
+  \advice@init@i{#1}{#3}%
+  % This defined |\AdviceRunConditions| for the environment. We can now check its
+  % run conditions. If they are not satisfied, we bail out by executing the
+  % environment's bailout handler followed by the original |\begin|
+  %   (|\advice@original@cs{#1}{#2}|) plus the environment name (|#3|).
+  \AdviceRunConditions
+  \ifAdviceRun
+    \expandafter\advice@begin@env@outer
+  \else
+    \AdviceBailoutHandler
+    \expandafter\advice@original@cs
+  \fi
+  {#1}{#2}{#3}%
+}
+% \end{macro}
+% 
+% \begin{macro}{\advice@begin@env@outer}
+%   We define the macros expected by the outer handler, see
+%   |\advice@handle@outer|, load the second-stage configuration, and execute the
+%   environment's outer handler.
+\def\advice@begin@env@outer#1#2#3{%
+  \def\AdviceNamespace{#1}%
+  \def\AdviceName{#3}%
+  \def\AdviceReplaced{#2{#3}}%
+  \def\AdviceOriginal{\AdviceGetOriginal{#1}{#2}{#3}}%
+  \advice@init@I{#1}{#3}%
+  \AdviceOuterHandler
+}
+%</latex>
+% \end{macro}
+% 
+% 
+% \subsubsection{Error messages} 
+% 
+% Define error messages for the entire package.  Note that
+% |\advice@(de)activate@error@...| implement |try activate|.
+% 
+\def\advice@activate@error@activated#1#2#3#4{%
+  \ifadvice@activate@try
+  \else
+    \PackageError{advice (#1)}{#3 "\string#2" is #4 activated}{}%
+  \fi
+}
+\def\advice@activate@error@undefined#1#2#3#4{%
+  \ifadvice@activate@try
+  \else
+    \PackageError{advice (#1)}{%
+      #3 "\string#2" you are trying to #4activate is not defined}{}%
+  \fi
+}
+\def\advice@deactivate@error@changed#1#2{%
+  \ifadvice@activate@try
+  \else
+    \PackageError{advice (#1)}{The definition of "\string#2" has changed since we
+      have activated it. Has somebody overridden our command?}{If you have tried
+      to deactivate so that you could immediately reactivate, you may want to try
+      "force activate".}%
+  \fi
+}
+\def\advice@error@advice@notcs#1#2{%
+  \PackageError{advice}{The first argument of key "#1" should be either a single
+    control sequence or an environment name, not "#2"}{}%
+}
+\def\advice@error@activate@notcsorenv#1#2{%
+  \PackageError{advice}{Each item in the value of key "#1activate" should be
+    either a control sequence or an environment name, not "#2".}{}%
+}
+\def\advice@error@storecs@notcs#1#2{%
+  \PackageError{advice}{The value of key "#1" should be a single control sequence,
+    not "\string#2"}{}%
+}
+\def\advice@error@noinnerhandler#1{%
+  \PackageError{advice (\AdviceNamespace)}{The inner handler for
+    "\expandafter\string\AdviceName" is not defined}{}%
+}
+% \subsubsection{Tracing} 
+% 
+% \begin{macro}{\AdviceTracingOn,\AdviceTracingOff}
+%   We implement tracing by adding the tracing information to the handlers
+%   after we load them.  So it is the handlers themselves which, if and when
+%   they are executed, will print out that this is happening.
+\def\AdviceTracingOn{%
+  \let\advice@init@i\advice@trace@init@i
+  \let\advice@init@I\advice@trace@init@I
+}
+\def\AdviceTracingOff{%
+  \let\advice@init@i\advice@setup@init@i
+  \let\advice@init@I\advice@setup@init@I
+}
+% \end{macro}
+\def\advice@trace#1{\immediate\write16{[tracing advice] #1}}
+\def\advice@trace@init@i#1#2{%
+  \advice@trace{Advising \detokenize\expandafter{\string#2} (\detokenize{#1})}%
+  \advice@setup@init@i{#1}{#2}%
+  \edef\AdviceRunConditions{%
+    % We first execute the original run conditions, so that we can show the
+    % result.
+    \expandonce\AdviceRunConditions
+    \noexpand\advice@trace{\space\space
+      Executing run conditions:
+      \detokenize\expandafter{\AdviceRunConditions}
+      -->
+      \noexpand\ifAdviceRun true\noexpand\else false\noexpand\fi
+    }%
+  }%
+  \edef\AdviceBailoutHandler{%
+    \noexpand\advice@trace{\space\space
+      Executing bailout handler:
+      \detokenize\expandafter{\AdviceBailoutHandler}}%
+    \expandonce\AdviceBailoutHandler
+  }%
+}
+\def\advice@trace@init@I#1#2{%
+  \advice@setup@init@I{#1}{#2}%
+  \edef\AdviceOuterHandler{%
+    \noexpand\advice@trace{\space\space
+      Executing outer handler:
+      \detokenize\expandafter{\AdviceOuterHandler}}%
+    \expandonce\AdviceOuterHandler
+  }%
+  \edef\AdviceCollector{%
+    \noexpand\advice@trace{\space\space
+      Executing collector:
+      \detokenize\expandafter{\AdviceCollector}}%
+    \noexpand\advice@trace{\space\space\space\space
+      argument specification:
+      \detokenize\expandafter{\AdviceArgs}}%
+    \noexpand\advice@trace{\space\space\space\space
+      options:
+      \detokenize\expandafter{\AdviceCollectorOptions}}%
+    \noexpand\advice@trace{\space\space\space\space
+      raw options:
+      \detokenize\expandafter{\AdviceRawCollectorOptions}}%
+    \expandonce\AdviceCollector
+  }%
+  % The tracing inner handler must grab the provided argument, if it's to show
+  % what it is.
+  \edef\advice@inner@handler@trace##1{%
+    \noexpand\advice@trace{\space\space
+      Executing inner handler:
+      \detokenize\expandafter{\AdviceInnerHandler}}%
+    \noexpand\advice@trace{\space\space\space\space
+      Received arguments:
+      \noexpand\detokenize{##1}}%
+    \noexpand\advice@trace{\space\space\space\space
+      options:
+      \detokenize\expandafter{\AdviceOptions}}%
+    \expandonce{\AdviceInnerHandler}{##1}%
+  }%
+  \def\AdviceInnerHandler{\advice@inner@handler@trace}%
+}
+%<plain>\resetatcatcode
+%<context>\stopmodule
+%<context>\protect
+%</main>
+% 
+% \subsubsection{The \TikZ; collector}
+% \label{sec:code:advice:tikz}
+% 
+% In this section, we implement the argument collector for command |\tikz|,
+% which has idiosyncratic syntax, see \PGFmanual{12.2.2}:
+% \begin{itemize}
+% \item |\tikz|\meta{animation spec}|[|\meta{options}|]{|\meta{picture code}|}|
+% \item |\tikz|\meta{animation spec}|[|\meta{options}|]|\meta{picture command}|;|
+% \end{itemize}
+% where \meta{animation spec} =
+% (|:|\meta{key}|={|\meta{value}|}|)*.
+% 
+% The \TikZ; code resides in a special file.  It is meant to be |\input| at any
+% time, so we need to temporarily assign |@| category code 11.
+%<*tikz>
+\edef\mmzresetatcatcode{\catcode`\noexpand\@\the\catcode`\@\relax}%
+\catcode`\@=11
+\def\AdviceCollectTikZArguments{%
+% We initialize the token register which will hold the collected arguments, and
+% start the collection.  Nothing of note happens until \dots
+  \mmz@temptoks={}%
+  \mmz@tikz@anim
+}
+\def\mmz@tikz@anim{%
+  \pgfutil@ifnextchar[{\mmz@tikz@opt}{%
+      \pgfutil@ifnextchar:{\mmz@tikz@anim@a}{%
+        \mmz@tikz@code}}%]
+}
+\def\mmz@tikz@anim@a#1=#2{%
+  \toksapp\mmz@temptoks{#1={#2}}%
+  \mmz@tikz@anim
+}
+\def\mmz@tikz@opt[#1]{%
+  \toksapp\mmz@temptoks{[#1]}%
+  \mmz@tikz@code
+}
+\def\mmz@tikz@code{%
+  \pgfutil@ifnextchar\bgroup\mmz@tikz@braced\mmz@tikz@single
+}
+\long\def\mmz@tikz@braced#1{\toksapp\mmz@temptoks{{#1}}\mmz@tikz@done}
+\def\mmz@tikz@single#1;{\toksapp\mmz@temptoks{#1;}\mmz@tikz@done}
+% \dots\ we finish collecting the arguments, when we execute the inner handler,
+% with the (braced) collected arguments is its sole argument.
+\def\mmz@tikz@done{%
+  \expandafter\AdviceInnerHandler\expandafter{\the\mmz@temptoks}%
+}
+\mmzresetatcatcode
+%</tikz>
+%    \end{macrocode}
+%
+% Local Variables:
+% TeX-engine: luatex
+% TeX-master: "doc/memoize-code.tex"
+% TeX-auto-save: nil
+% End:

@@ -1,0 +1,25 @@
+\ProvidesPackage{poormansbox}
+\RequirePackage{pgfkeys}
+
+\newcommand~\pmbset~[1]{\pgfqkeys{/pmb}{#1}\ignorespaces}
+\newif\ifpmb@frame
+~\pmbset~{
+  frame/.is if=pmb@frame,
+  width/.store in=\pmb@width,   width=\linewidth,
+  before/.store in=\pmb@before, before=\vskip 2ex plus 1ex minus 1ex \centering,
+  after/.store in=\pmb@after,   after=\vskip 2ex plus 1ex minus 1ex,
+}
+
+\NewDocumentEnvironment{~poormansbox~}{
+  o  % the options
+  +b % the environment body
+}{%
+  \pmbset{#1}% apply the options
+  \pmb@before % execute the pre-code
+  \ifpmb@frame\expandafter\fbox\else\expandafter\@firstofone\fi{% add the frame, maybe
+    \begin{minipage}{\pmb@width}% create the minipage
+      #2
+    \end{minipage}%
+  }%
+  \pmb@after % execute the post-code
+}{}

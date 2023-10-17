@@ -1,0 +1,34 @@
+%<*!lst>
+\ProvidesPackage{poormansbox-memoizable}
+\RequirePackage{pgfkeys}
+
+\newcommand\pmbset[1]{\pgfqkeys{/pmb}{#1}\ignorespaces}
+\newif\ifpmb@frame
+\pmbset{
+  frame/.is if=pmb@frame,
+  width/.store in=\pmb@width,   width=\linewidth,
+  before/.store in=\pmb@before, before=\vskip 2ex plus 1ex minus 1ex \centering,
+  after/.store in=\pmb@after,   after=\vskip 2ex plus 1ex minus 1ex,
+}
+
+%</!lst>
+\NewDocumentEnvironment{poormansbox}{ o +b }{% the outer part of the definition
+  \pmbset{#1}%
+  \pmb@before
+  \@poormansbox[#1]{#2}%
+  \pmb@after
+}{}
+
+\newcommand~\@poormansbox~[2][]{% the inner part of the definition
+  \ifpmb@frame\expandafter\fbox\else\expandafter\@firstofone\fi{%
+    \begin{minipage}{\pmb@width}%
+      #2%
+    \end{minipage}%
+  }%
+}
+
+\mmzset{
+  auto=~\@poormansbox~{% submit the *inner* command to automemoization
+    args=om, memoize,
+  },
+}

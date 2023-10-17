@@ -1,0 +1,24 @@
+%<*!lst>
+%<!att>\documentclass[varwidth]{standalone}
+%<att>\documentclass{article}
+\usepackage{tikz}
+\usepackage{memoize}
+
+%</!lst>
+\mmzset{~context~={fsize={\csname f@size\endcsname}}}
+%<*!lst>
+
+\begin{document}
+
+%<c1>%\small                % uncomment for v2
+%</!lst>
+%<c2>~\small~
+\begin{tikzpicture}
+%<*!lst,c1>
+  \node[text width=8em, align=center, fill=yellow]
+  {This picture is sensitive to the current font size.};
+%</!lst,c1>
+%<lst&c2>  % ...
+\end{tikzpicture}
+
+%<!lst>\end{document}

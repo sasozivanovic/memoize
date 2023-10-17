@@ -1,0 +1,22 @@
+\documentclass{article}
+
+\usepackage{memoize}
+\mmzset{~memo dir=book~}
+
+\usepackage{tikz}
+
+\begin{document}
+
+\begin{tikzpicture}
+  \node[
+    text width=5cm,
+    align=flush left,
+  ]
+  {This picture can be externalized
+    by compiling the chapter (twice, 
+    as we need to extract it as well).
+    The extern will be picked up
+    when compiling the book.};
+\end{tikzpicture}
+
+\end{document}

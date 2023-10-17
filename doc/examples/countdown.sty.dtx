@@ -1,0 +1,71 @@
+%<att&c2>% This file should be saved as "countdown.sty".
+%<*!lst,c1> 
+\ProvidesPackage{countdown}
+\RequirePackage{memoizable}
+
+%<lst>% ...
+%<lst>
+%</!lst,c1>
+%<*!lst>%
+\newbox\countdownbox
+\newcount\countdowncount
+
+\def\countdown#1{%
+  \countdowncount=#1\relax
+  \edef\countdownpagetotal{\the\pagetotal}%
+  \countdowni
+}
+
+\def\countdowni{%
+  \ifnum\countdowncount=0
+    \countdowntypeset
+  \else
+    \expandafter\countdownii
+  \fi
+}
+
+\def\leaderfill{\leaders\hbox to 0.25em{\hss.\hss}\hfill}
+\def\countdownii{%
+  \setbox0=\hbox to \linewidth{\leaderfill\strut\the\countdowncount\leaderfill}%
+  \ifdim\dimexpr\ht\countdownbox+\dp\countdownbox+\ht0+\dp0\relax
+                   >\dimexpr\textheight-\countdownpagetotal\relax
+    \def\countdownpagetotal{0pt}%
+    \countdowntypeset
+  \fi
+  \setbox\countdownbox=\vbox{\unvbox\countdownbox\box0}%
+  \advance\countdowncount -1
+  \countdowni
+}
+
+%</!lst>
+%<c1>~\newif\ifmemoizingcountdown~
+\def\countdowntypeset{%
+%<c2>  ~\IfMemoizing~{countdown}{%
+%<c1>  ~\ifmemoizingcountdown~
+    \mmzExternalizeBox\countdownbox{\toks0}%
+    \xtoksapp\mmzCCMemo{\the\toks0}%
+%<c2>  }{}%
+%<c1>  \fi
+  \noindent\box\countdownbox\par
+}
+
+%<*c1>
+\def\countdowndriver#1{%
+  ~\memoizingcountdowntrue~
+  #1%
+}
+
+%</c1>
+\mmzset{
+%<!lst>% trace context, include context in ccmemo,
+  auto=\countdown{
+    args=m, memoize,
+%<c2>    ~integrated driver~=countdown,
+%<c1>    ~driver~=\countdowndriver,
+%<*!lst,c1>
+    context={fsize=\csname f@size\endcsname,textheight=\the\textheight},
+    options={context/.expanded={pagetotal=\the\pagetotal}},
+  },
+}
+%</!lst,c1>
+%<lst&c2>    % ...

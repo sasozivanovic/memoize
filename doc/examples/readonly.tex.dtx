@@ -1,0 +1,22 @@
+%<*!lst>
+%<!att>\documentclass[varwidth]{standalone}
+%<att>\documentclass{article}
+
+\usepackage{tikz}
+
+%</!lst>
+%<att&c1>% Use this for work in progress. No externs will be created.
+%<c1>\usepackage[~readonly~]{memoize}
+%<att&c1>
+%<att&c1>% Use this for the final version. Now the picture will be externalized.
+%<att&c1>% \usepackage{memoize}
+%<c2>\usepackage{memoize}
+%<lst>% ...
+%<!lst>
+%<!lst>\begin{document}
+%<!lst>
+%<c1>\tikz\node{work in progress};
+%<c2&!(lst,att)>\tikz\node{the final version\vphantom{g}};
+%<c2&(lst,att)>\tikz\node{the final version};
+
+%<!lst>\end{document}

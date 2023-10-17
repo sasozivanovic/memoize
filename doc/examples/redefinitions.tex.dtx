@@ -1,0 +1,49 @@
+%<*!lst>
+%<!att>\documentclass{standalone}
+%<att>\documentclass{article}
+
+\usepackage{tikz}
+\usepackage{memoize}
+
+\begin{document}
+
+%</!lst> 
+%<c1&!lst>% v1:
+%<c1>\tikzset{emph/.style={fill=red, text=blue}}
+%<c1>\tikz\node[emph]{an emphasized node};
+%<c2&!lst>\tikzset{emph/.style={fill=red, text=blue}}
+%<c2>\tikz\node[emph, ~font=\itshape~]{an emphasized node};
+%<c3>\tikzset{emph/.style={~fill=yellow~, text=blue}}
+%<c3>\tikz\node[emph, font=\itshape]{an emphasized node};
+%<c4>\mmznext{~recompile~} % only for one compilation!
+%<c4&!lst>\tikzset{emph/.style={~fill=yellow~, text=blue}}
+%<c4>\tikz\node[emph, font=\itshape]{an emphasized node};
+%<c5&!lst>\tikzset{emph/.style={~fill=yellow~, text=blue}}
+%<c5>\tikz\node[emph]{an emphasized node};
+%<c6&!lst>\tikzset{emph/.style={~fill=yellow~, text=blue}}
+%<c6>\mmznext{~recompile~} % only for one compilation!
+%<c6>\tikz\node[emph]{an emphasized node};
+%<c1&!lst>
+%<c1&!lst>% v2:
+%<c1&!lst>%\tikzset{emph/.style={fill=red, text=blue}}
+%<c1&!lst>%\tikz\node[emph, ~font=\itshape~]{an emphasized node};
+%<c1&!lst>
+%<c1&!lst>% v3:
+%<c1&!lst>%\tikzset{emph/.style={~fill=yellow~, text=blue}}
+%<c1&!lst>%\tikz\node[emph, font=\itshape]{an emphasized node};
+%<c1&!lst>
+%<c1&!lst>% v4:
+%<c1&!lst>%\mmznext{~recompile~} % uncomment only for one compilation!
+%<c1&!lst>%\tikzset{emph/.style={~fill=yellow~, text=blue}}
+%<c1&!lst>%\tikz\node[emph, font=\itshape]{an emphasized node};
+%<c1&!lst>
+%<c1&!lst>% v5:
+%<c1&!lst>%\tikzset{emph/.style={~fill=yellow~, text=blue}}
+%<c1&!lst>%\tikz\node[emph]{an emphasized node};
+%<c1&!lst>
+%<c1&!lst>% v6:
+%<c1&!lst>%\tikzset{emph/.style={~fill=yellow~, text=blue}}
+%<c1&!lst>%\mmznext{~recompile~} % uncomment only for one compilation!
+%<c1&!lst>%\tikz\node[emph]{an emphasized node};
+
+%<!lst>\end{document}

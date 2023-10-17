@@ -1,0 +1,15 @@
+\newout\mmzfilesout
+\mmzset{
+  record/files/begin/.code={
+    \immediate\openout\mmzfilesout{\jobname.files}%
+  },
+  record/files/new extern/.code={\immediate\write\mmzfilesout{#1}},
+  record/files/new cmemo/.code={\immediate\write\mmzfilesout{#1}},
+  record/files/new ccmemo/.code={\immediate\write\mmzfilesout{#1}},
+  record/files/used extern/.code={\immediate\write\mmzfilesout{#1}},
+  record/files/used cmemo/.code={\immediate\write\mmzfilesout{#1}},
+  record/files/used ccmemo/.code={\immediate\write\mmzfilesout{#1}},
+  record/files/end/.code={
+    \immediate\closeout\mmzfilesout
+  },
+}

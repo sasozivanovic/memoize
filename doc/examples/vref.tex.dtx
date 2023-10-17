@@ -1,0 +1,26 @@
+%<*!lst>
+\documentclass{article}
+
+\usepackage{varioref}
+\usepackage{memoize}
+
+%</!lst>
+\mmzset{auto=\vref{~ref~}}
+%<*!lst>
+
+\begin{document}
+
+\section{Introduction}
+\label{sec:intro}
+
+We will conclude the discussion in section~\mmz{\vref{sec:conclusion}}.
+
+%% \newpage
+%% \section{A new section}
+%% After uncommenting this, the reference above will (eventually) update.
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+\end{document}
+%</!lst>

@@ -1,0 +1,32 @@
+%<*!lst>
+%<!att>\documentclass[varwidth]{standalone}
+%<att>\documentclass{article}
+
+\usepackage{memoize}
+%</!lst>
+%<c7,(c1&!att)>\mmzset{auto=\ref{~force ref~}}
+%<*!lst>
+\usepackage[inline]{enumitem}
+\usepackage{tikzlings}
+
+\begin{document}
+%</!lst>
+%<*!lst,c3>
+Here's some Ti\emph{k}Zlings:
+\begin{nomemoize}
+  \tikzset{x=1.3ex, y=1.3ex, baseline=0.5ex}%
+%</!lst,c3>
+%<*!lst,c3,c4>
+  \begin{enumerate*}
+%<c4,c5,c6>  ~\item\label{item:owl} \tikz\owl;~
+%<att>  %\item\label{item:owl} \tikz\owl;         % uncomment for 4th compilation
+  \item\label{item:koala} \tikz\koala;
+  \item\label{item:penguin} \tikz\penguin;
+  \end{enumerate*}
+%</!lst,c3,c4>
+%<*!lst,c3>
+\end{nomemoize}
+Where's the penguin? In \ref{item:penguin}. Yes, in
+\tikz[baseline]\node[draw=red,thick,fill=yellow,anchor=base]{~\ref{item:penguin}~};
+%</!lst,c3>
+%<!lst>\end{document}

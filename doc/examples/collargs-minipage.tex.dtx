@@ -1,0 +1,13 @@
+%<att>\documentclass{article}
+%<att>\usepackage{collargs}
+\newcommand\PrintAndDoEnv[2]{%
+%<lst,att>  Executing environment ``#1'' with body ``\texttt{\detokenize{#2}}''
+%<!lst&!att>  Executing environment ``#1'' with body ``\code{\detokenize{#2}}''
+  yields \fbox{\begin{#1}#2\end{#1}}.\par
+}
+%<att>\begin{document}
+\CollectArguments[~environment=minipage~]{+~b~}{\PrintAndDoEnv{minipage}}[t]{6cm}
+  This forms the body of a minipage environment, even if it is not preceded by
+  \texttt{\string\begin\{minipage\}}.%
+\end{minipage}
+%<att>\end{document}

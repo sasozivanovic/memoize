@@ -1,0 +1,27 @@
+%<*!lst>
+%<!att>\documentclass[varwidth]{standalone}
+%<att>\documentclass{article}
+
+\usepackage{tikz}
+\usepackage{memoize}
+
+%</!lst>
+%<lst&c2>% Changing definition
+%<c1>\newcommand\answer{24}
+%<c2>\newcommand\answer{~42~}
+%<lst&c2>% and/or
+%<!lst,c1>\mmznext{~meaning to context~=\answer}
+%<!lst,c1>\tikzset{
+%<c1>  emph/.style={fill=red, text=blue},
+%<c2>  emph/.style={fill=~yellow~, text=blue},
+%<lst&c2>% leads to recompilation of the extern.
+%<!lst,c1>  emph/~.meaning to context~,
+%<!lst,c1>}
+%<!lst>
+%<!lst>\begin{document}
+%<*!lst,c1>
+\begin{tikzpicture}
+  \node[emph]{The answer is \answer!};
+\end{tikzpicture}
+%</!lst,c1>
+%<!lst>\end{document}

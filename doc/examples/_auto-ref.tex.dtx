@@ -1,0 +1,5 @@
+\mmzset{auto/ref.style={outer handler=\mmz@auto@ref, run if memoizing}}
+\def\mmz@auto@ref#1{%
+  \mmzNoRef{#1}%
+  \AdviceOriginal{#1}%
+}

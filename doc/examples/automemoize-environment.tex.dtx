@@ -1,0 +1,14 @@
+%<*!lst>
+%<!att>\documentclass[varwidth]{standalone}
+%<att>\documentclass{article}
+\usepackage{circuitikz}
+\usepackage{memoize}
+%</!lst>
+\mmzset{~auto={circuitikz}{memoize}~}
+%<!lst>\begin{document}
+%<lst>% ...
+\begin{circuitikz}
+  \draw (0,0) to[isource] (0,3) -- (2,3)
+  to[R] (2,0) -- (0,0);
+\end{circuitikz}
+%<!lst>\end{document}

@@ -1,0 +1,12 @@
+%<*!lst>
+%<!att>\documentclass[varwidth]{standalone}
+%<att>\documentclass{article}
+\documentclass[varwidth]{standalone}
+\usepackage{lipsum}
+\usepackage{memoize}
+\begin{document}
+%</!lst>
+%<c1>Here's some externalized text: ~\mmz~{\emph{\lipsum[66]}}
+%<c2>Here's some externalized text: \emph{\lipsum[66]}
+As you can see, the text is not integrated into the paragraph.
+%<!lst>\end{document}

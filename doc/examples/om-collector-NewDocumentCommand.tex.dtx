@@ -1,0 +1,19 @@
+%<*!lst>
+\documentclass{article}
+\usepackage{xcolor}
+\usepackage{memoize}
+
+%</!lst>
+\NewDocumentCommand\omCollector{om}{% the collector
+  \IfValueTF{#1}{\AdviceInnerHandler~{[#1]{#2}}}~{\AdviceInnerHandler~{{#2}}}~}
+%<*!lst>
+
+\newcommand\foo[2][green]{\textcolor{#1}{``#2''}\\}% the advised command
+\mmzset{auto=\foo{memoize, collector=\omCollector}}% the advice
+
+\begin{document}
+\foo[red]{red memoized text}
+\foo[green]{memoized text of the default color}
+\foo{memoized text of the default color}
+\end{document}
+%</!lst>

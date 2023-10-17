@@ -1,0 +1,18 @@
+%<*!lst>
+%<!att>\documentclass[varwidth]{standalone}
+%<att>\documentclass{article}
+
+\usepackage{pgfmath}
+\usepackage{memoize}
+
+%</!lst>
+\def\mmzPgfmathDriver#1{%
+  #1%
+  \xtoksapp\mmzCCMemo{\def\noexpand\pgfmathresult{\pgfmathresult}}%
+  \xappto\mmzAfterMemoizationExtra{\def\noexpand\pgfmathresult{\pgfmathresult}}%
+}
+%<!lst>
+%<!lst>\begin{document}
+\mmz[driver=\mmzPgfmathDriver]{\pgfmathparse{6*7}}%
+$6*7=\pgfmathresult$
+%<!lst>\end{document}

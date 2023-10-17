@@ -1,0 +1,12 @@
+%<*!lst>
+%<!att>\documentclass[varwidth]{standalone}
+%<att>\documentclass{article}
+\usepackage{qrcode}
+\usepackage{memoize}
+%</!lst>
+\mmzset{auto=\qrcode{memoize, ~args=om~}}
+%<lst>% ...
+%<!lst>\begin{document}
+\qrcode{https://ctan.org/pkg/memoize}
+\qrcode[height=1cm]{https://ctan.org/pkg/memoize}
+%<!lst>\end{document}

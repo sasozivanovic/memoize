@@ -1,0 +1,12 @@
+%<*!lst>
+%<!att>\documentclass[varwidth=0.2\linewidth]{standalone}
+%<att>\documentclass{article}
+\usepackage{progressbar}
+%</!lst>
+\usepackage[auto={progressbar}{memoize}]{memoize}
+%<lst>% ...
+%<!lst>\begin{document}
+\progressbar{0.85}
+\progressbarchange{roundnessr=0.5, filledcolor=red!30}
+\progressbar{0.85}
+%<!lst>\end{document}

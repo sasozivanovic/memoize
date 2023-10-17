@@ -1,0 +1,5 @@
+*.listing.attachment
+latexmkrc
+_fn.tex
+attachments.lst
+*idx.orig

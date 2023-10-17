@@ -1,0 +1,10 @@
+%<att>\documentclass{article}
+%<att>\usepackage{collargs}
+%<att>\usepackage{xcolor}
+%<!lst>\long\def\ShowArgs#1{Collected: ``{\color{red}\tt\detokenize{#1}}''}
+%<att>
+%<att>\begin{document}
+%<att>
+\CollectArguments[verbatim]{o}{\ShowArgs}~$~2^2=4$
+%<att>
+%<att>\end{document}

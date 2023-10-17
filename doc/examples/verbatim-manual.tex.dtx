@@ -1,0 +1,22 @@
+%<*!lst>
+%<!att>\documentclass[class=ltxdoc,varwidth]{standalone}
+%<att>\documentclass{ltxdoc}
+
+\usepackage{tcolorbox}
+\tcbuselibrary{listings}
+
+\usepackage{memoize}
+
+\begin{document}
+%</!lst>
+Use |\emph| to emphasize text:
+
+\begin{memoize}[~verbatim~]
+  \begin{tcblisting}{width=15em}
+This is an example
+\emph{within} an example.
+  \end{tcblisting}
+\end{memoize}
+
+Don't use |\textit| for emphasis!
+%<!lst>\end{document}

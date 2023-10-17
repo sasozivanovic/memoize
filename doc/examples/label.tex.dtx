@@ -1,0 +1,32 @@
+%<*!lst>
+%<!att>\documentclass[varwidth]{standalone}
+%<att>\documentclass{article}
+\usepackage{memoize}
+\usepackage{tikzlings}
+
+%<t>% Uncomment this if you dare!
+%<t>% \mmzset{
+%<t>%   recompile,          % for the first compilation
+%<t>%   deactivate=\label,
+%<t>% } 
+
+\begin{document}
+
+%</!lst>
+The titlepage Ti\emph{k}Zlings are:
+
+~\begin{memoize}~
+  \begin{minipage}{5em}
+    \tikzset{x=1.3ex, y=1.3ex, baseline=0.5ex}%
+    \begin{enumerate}
+    \item~\label{item:penguin}~ \tikz\penguin;
+    \item\label{item:koala} \tikz\koala;
+    \item\label{item:owl} \tikz\owl;
+    \end{enumerate}
+  \end{minipage}
+~\end{memoize}~
+
+%<!lst>\medskip
+The penguin lives in item ~\ref{item:penguin}~.
+
+%<!lst>\end{document}

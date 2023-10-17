@@ -1,0 +1,6 @@
+*
+!*.dtx
+!ins.begin
+!ins.mid
+!ins.end
+!*.gitignore

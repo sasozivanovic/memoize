@@ -1,0 +1,25 @@
+%<*!lst>
+%<!att>\documentclass[varwidth]{standalone}
+%<att>\documentclass{article}
+
+\usepackage{pgfmath}
+\usepackage{memoize}
+
+%</!lst>
+\def\mmzSmuggleOneDriver#1#2{% #1 = the macro to smuggle, #2 = the memoized code
+  #2%
+  \xtoksapp\mmzCCMemo{\def\noexpand#1{#1}}%
+  \xappto\mmzAfterMemoizationExtra{\the\mmzCCMemo}%
+}
+\mmzset{
+  auto=\pgfmathparse{
+    args=m, memoize,
+    clear context,
+    driver=\mmzSmuggleOneDriver\pgfmathresult,
+  },
+}
+%<!lst>
+%<!lst>\begin{document}
+\pgfmathparse{6*7}%
+$6*7=\pgfmathresult$
+%<!lst>\end{document}

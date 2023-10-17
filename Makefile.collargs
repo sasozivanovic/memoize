@@ -1,0 +1,32 @@
+# Prepare the CTAN submission.
+
+# This file is indented to be used from Memoize's source directory, which
+# should also contain collargs.edtx and collargs.ins.
+
+PACKAGE = collargs
+VERSION = 1.0.0
+YEAR = 2023
+MONTH = 10
+DAY = 10
+
+FORMAT = generic
+
+COMMON = collargs
+SOURCE = collargs.edtx collargs.ins
+
+README = doc/README.collargs.md
+INSTALL = doc/INSTALL.collargs.md
+MAKEFILE = Makefile.runtimes
+LICENCE = LICENCE
+
+ctan/$(PACKAGE).zip:
+	$(TDS-BEGIN)
+	$(TDS-END)
+	$(CTAN-BEGIN)
+	$(CTAN-END)
+
+version:
+	$(call EDIT-VERSION-LATEX,collargs.edtx,collargs,$(YEAR)/$(MONTH)/$(DAY) v$(VERSION))
+	$(call EDIT-VERSION-CONTEXT,collargs.edtx,$(YEAR)-$(MONTH)-$(DAY),$(VERSION))
+
+include Makefile.package

@@ -1,0 +1,202 @@
+# This Makefile must be included at the end of the including file.
+
+latex = $(COMMON:%=%.sty) $(LATEX)
+plain = $(COMMON:%=%.tex) $(PLAIN)
+context = $(COMMON:%=t-%.tex) $(CONTEXT)
+
+TEX = $(latex) $(plain) $(context) $(GENERIC)
+
+RUNTIME = $(TEX) $(SCRIPTS) $(MAN)
+
+ALL = $(RUNTIME) $(SOURCE) $(DOC) \
+      $(README) $(INSTALL) $(LICENCE) $(MAKEFILE)
+
+ctan/$(PACKAGE).zip: $(ALL)
+
+CTAN-DIR = ctan/$(PACKAGE)
+CTAN-DOC-DIR = ctan/$(PACKAGE)/doc
+
+TDS-DIR = texmf/$(PACKAGE).tds
+TDS-SCRIPTS-DIR = $(TDS-DIR)/scripts/$(PACKAGE)
+TDS-DOC-DIR = $(TDS-DIR)/doc/$(FORMAT)/$(PACKAGE)
+TDS-SOURCE-DIR = $(TDS-DIR)/source/$(FORMAT)/$(PACKAGE)
+TDS-MAN-DIR = $(TDS-DIR)/doc/man/man
+TDS-ALL-DIRS = $(TDS-SCRIPTS-DIR) $(TDS-SOURCE-DIR) $(TDS-DOC-DIR) \
+		$(TDS-DIR)/tex/{latex,plain,context,generic}/$(PACKAGE) \
+		$(TDS-MAN-DIR){1,2,3,4,5,6,7,8,9}
+
+readme?md = README$(findstring .md, $(suffix $(README)))
+install?md = INSTALL$(findstring .md, $(suffix $(INSTALL)))
+licence?md = LICENCE$(findstring .md, $(suffix $(LICENCE)))
+
+man1 = $(filter %.1,$(MAN))
+man2 = $(filter %.2,$(MAN))
+man3 = $(filter %.3,$(MAN))
+man4 = $(filter %.4,$(MAN))
+man5 = $(filter %.5,$(MAN))
+man6 = $(filter %.6,$(MAN))
+man7 = $(filter %.7,$(MAN))
+man8 = $(filter %.8,$(MAN))
+man9 = $(filter %.9,$(MAN))
+
+define MAKE-CTAN
+	$(CTAN-BEGIN)
+	$(CTAN-END)
+endef
+
+define CTAN-BEGIN
+	rm -rf $(CTAN-DIR) ctan/$(PACKAGE).zip
+	mkdir -p $(CTAN-DIR) $(CTAN-DOC-DIR)
+	$(call cp,$(SOURCE) $(SCRIPTS) $(CTAN),$(CTAN-DIR))
+	$(call cp,$(README),$(CTAN-DIR)/$(readme?md))
+	$(call cp,$(INSTALL),$(CTAN-DIR)/$(install?md))
+	$(call cp,$(LICENCE),$(CTAN-DIR)/$(licence?md))
+	$(call cp,$(MAKEFILE),$(CTAN-DIR)/Makefile)
+	$(call cp,$(DOC),$(CTAN-DOC-DIR))
+endef
+
+define CTAN-END
+	if [[ -d $(TDS-DIR) ]] ; then \
+		cd $(TDS-DIR) && \
+		zip -r $(PACKAGE).tds.zip * ; \
+	fi
+	if [[ -a $(TDS-DIR)/$(PACKAGE).tds.zip ]] ; then \
+		mv $(TDS-DIR)/$(PACKAGE).tds.zip $(CTAN-DIR) ; \
+	fi
+	if [[ -a $(TDS-DIR)/FILES ]] ; then cp $(TDS-DOC-DIR)/FILES $(CTAN-DIR) ; fi
+	rmdir -p --ignore-fail-on-non-empty `find $(CTAN-DIR) -type d`
+	cd ctan && zip -r $(PACKAGE).zip $(PACKAGE)
+endef
+
+define MAKE-TDS
+	$(TDS-BEGIN)
+	$(TDS-END)
+endef
+
+define TDS-BEGIN
+	rm -rf $(TDS-DIR)
+	$(TDS-MKDIR)
+	$(TDS-CP)
+endef
+define TDS-MKDIR
+	mkdir -p $(TDS-ALL-DIRS)
+endef
+define TDS-CP
+	$(call cp,$(latex),$(TDS-DIR)/tex/latex/$(PACKAGE))
+	$(call cp,$(plain),$(TDS-DIR)/tex/plain/$(PACKAGE))
+	$(call cp,$(context),$(TDS-DIR)/tex/context/$(PACKAGE))
+	$(call cp,$(GENERIC),$(TDS-DIR)/tex/generic/$(PACKAGE))
+	$(call cp,$(SCRIPTS),$(TDS-SCRIPTS-DIR))
+	$(call cp,$(SOURCE),$(TDS-SOURCE-DIR))
+	$(call cp,$(MAKEFILE),$(TDS-SOURCE-DIR)/Makefile)
+	$(call cp,$(DOC),$(TDS-DOC-DIR))
+	$(call cp,$(README),$(TDS-DOC-DIR)/$(readme?md))
+	$(call cp,$(INSTALL),$(TDS-DOC-DIR)/$(install?md))
+	$(call cp,$(LICENCE),$(TDS-DOC-DIR)/$(licence?md))
+	$(call cp,$(man1),$(TDS-MAN-DIR)1)
+	$(call cp,$(man2),$(TDS-MAN-DIR)2)
+	$(call cp,$(man3),$(TDS-MAN-DIR)3)
+	$(call cp,$(man4),$(TDS-MAN-DIR)4)
+	$(call cp,$(man5),$(TDS-MAN-DIR)5)
+	$(call cp,$(man6),$(TDS-MAN-DIR)6)
+	$(call cp,$(man7),$(TDS-MAN-DIR)7)
+	$(call cp,$(man8),$(TDS-MAN-DIR)8)
+	$(call cp,$(man9),$(TDS-MAN-DIR)9)
+endef
+
+define TDS-END
+	$(TDS-FILES)
+	$(TDS-PRUNE)
+endef
+define TDS-FILES
+	cd $(TDS-DIR) ; find . -type f | sed 's!^\./!!' \
+		> doc/$(FORMAT)/$(PACKAGE)/FILES
+endef
+define TDS-PRUNE
+	rmdir -p --ignore-fail-on-non-empty `find $(TDS-DIR) -type d`
+endef
+
+%.1: %.1.md
+	pandoc $< -s -t man -o $@
+%.2: %.2.md
+	pandoc $< -s -t man -o $@
+%.3: %.3.md
+	pandoc $< -s -t man -o $@
+%.4: %.4.md
+	pandoc $< -s -t man -o $@
+%.5: %.5.md
+	pandoc $< -s -t man -o $@
+%.6: %.6.md
+	pandoc $< -s -t man -o $@
+%.7: %.7.md
+	pandoc $< -s -t man -o $@
+%.8: %.8.md
+	pandoc $< -s -t man -o $@
+%.9: %.9.md
+	pandoc $< -s -t man -o $@
+
+.PHONY: link-runtimes unlink-runtimes version
+.IGNORE: unlink-runtimes
+
+cp=$(intcmp $(words $(1)),0,,,cp $(1) $(2))
+
+link-runtimes:
+	$(eval TDS-DIR=~/texmf)
+	$(eval cp=$$(intcmp $$(words $$(1)),0,,,ln -srf $$(1) $$(2)))
+	$(TDS-MKDIR)
+	$(TDS-CP)
+	$(TDS-PRUNE)
+	texconfig rehash
+
+unlink-runtimes:
+	$(eval TDS-DIR=~/texmf)
+	$(eval cp=$$(intcmp $$(words $$(1)),0,,,\
+		if [[ -d $$(2) ]] ; then rm -f $$(foreach f,$$(1),$$(2)/$$(notdir $$(f))) ; \
+		else rm -f $$(2) ; fi \
+	))
+	$(TDS-CP)
+	$(TDS-PRUNE)
+	texconfig rehash
+
+
+# $1 = source file, $2 = package name
+VERSION-LATEX = $(YEAR)/$(MONTH)/$(DAY) v$(VERSION)
+define EDIT-VERSION-LATEX
+	sed -Ei 's!\\ProvidesPackage\{$(2)\}\[[0-9]{4}/[0-9]{2}/[0-9]{2} v[0-9.]* !\\ProvidesPackage{$(2)}[$(VERSION-LATEX) !' $(1)
+endef
+
+# $1 = source file
+# This assumes that all the \modules in the file have the same date and version.
+VERSION-CONTEXT = $(VERSION)
+DATE-CONTEXT = $(YEAR)-$(MONTH)-$(DAY)
+define EDIT-VERSION-CONTEXT
+	sed -Ei 's!(%D *version=)[0-9.]*,!\1$(VERSION-CONTEXT),!;s!(%D *date=)[-0-9]*,!\1$(DATE-CONTEXT),!' $(1)
+endef
+
+# $1 = source .pl file, $2 = version
+VERSION-PERL = $(YEAR)/$(MONTH)/$(DAY) v$(VERSION)
+define EDIT-VERSION-PERL
+	sed -i "s!^my \$$VERSION = .*!my \$$VERSION = '$(VERSION-PERL)';!" $(1)
+endef
+
+# $1 = source .py file, $2 = version
+VERSION-PYTHON = $(YEAR)/$(MONTH)/$(DAY) v$(VERSION)
+define EDIT-VERSION-PYTHON
+	sed -i "s!^__version__ = .*!__version__ = '$(VERSION-PYTHON)'!" $(1)
+endef
+
+# $1 = source file
+VERSION-MAN = $(VERSION)
+DATE-MAN = $(shell LANG=en date -d '$(YEAR)-$(MONTH)-$(DAY)' +"%B %d, %Y")
+# This assumes that the source filename is file.<N>.md, because it strips away two suffixes.
+define EDIT-VERSION-MAN
+	sed -i '/^date:/c date: $(DATE-MAN)' $(1)
+	sed -i '/^footer:/c footer: $(basename $(basename $(notdir $(1)))) $(VERSION-MAN)' $(1)
+endef
+
+# $1 = source file, $2 = package name
+VERSION-PLAIN = $(VERSION-LATEX)
+define EDIT-VERSION-PLAIN
+	sed -Ei 's!^(%<[^\>]*>% Package $(2) ).*!\1$(VERSION-PLAIN)!' $(1)
+endef
+

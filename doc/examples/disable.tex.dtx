@@ -1,0 +1,23 @@
+%<*!lst>
+%<!att>\documentclass[varwidth=0.4\linewidth]{standalone}
+%<att>\documentclass{article}
+
+\usepackage{tikz}
+\usepackage{memoize}
+
+\begin{document}
+\small
+
+%</!lst>
+\tikz\node[draw=green]{An externalized node.};
+~{~
+  \mmzset{~disable~}
+  \tikz\node[draw=red]{
+    This node is not externalized.};
+  \tikz\node[draw=red]{
+    And neither is this one.};
+~}~
+\tikz\node[draw=green]{
+  Another externalized node};
+  
+%<!lst>\end{document}

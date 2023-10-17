@@ -1,0 +1,51 @@
+%<*!lst>
+\ProvidesPackage{poormansbox-driver}
+\RequirePackage{memoizable}
+
+\newcommand\pmbset[1]{\pgfqkeys{/pmb}{#1}}
+\pmbset{
+  width/.store in=\pmb@width,
+  frame/.is if=pmb@frame,
+  before/.store in=\pmb@before,
+  after/.store in=\pmb@after,
+}
+\def\pmb@width{\linewidth}
+\newif\ifpmb@frame
+\def\pmb@before{}
+\def\pmb@after{}
+
+%</!lst>
+\NewDocumentEnvironment{poormansbox}{% the environment
+  o % the options
+  +b % the environment body
+}{%
+  \poormansbox@outer{#1}{\poormansbox@inner{#1}{#2}}%
+}{}
+
+\def\poormansbox@outer#1#2{% the outer command
+  \pmbset{#1}% apply the options
+  \pmb@before % the pre-code
+  #2% this will be either the inner command, or |\mmzIncludeExtern|
+  \pmb@after % the post-code
+}
+\def\poormansbox@inner#1#2{% the inner command
+  \setbox0=\hbox{% typeset our product into a box
+    \ifpmb@frame\expandafter\fbox\else\expandafter\@firstofone\fi
+    {%
+      \begin{minipage}{\pmb@width}%
+        #2%
+      \end{minipage}%
+    }%
+  }%
+  \IfMemoizing[1]{pmb}{% if memoizing the this instance of poormansbox
+    \mmzExternalizeBox0{\toks0}% externalize the box
+    \xtoksapp\mmzCCMemo{% append to cc-memo
+      \noexpand\csuse{poormansbox@outer}% call the outer command
+      {\unexpanded{#1}}% the options
+      {\the\toks0}% the extern-inclusion code (|\mmzIncludeExtern...|)
+    }%
+  }{}%
+  \quitvmode
+  \box0 % put the extern box into the document
+}
+\mmzset{auto={poormansbox}{memoize, integrated driver=pmb}}

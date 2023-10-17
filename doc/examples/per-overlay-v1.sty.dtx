@@ -1,0 +1,13 @@
+\mmzset{
+  per overlay/.style={
+    /mmz/~context~={overlay=\csname ~beamer@overlaynumber~\endcsname},
+    /mmz/at begin memoization={%
+      \xtoksapp~\mmzCMemo~{%
+        \gdef\noexpand~\mmzBeamerOverlays~{\beamer@overlaynumber}%
+      }%
+      \gtoksapp~\mmzCCMemo~{%
+        \only<~\mmzBeamerOverlays~>{}%
+      }%
+    },
+  }
+}

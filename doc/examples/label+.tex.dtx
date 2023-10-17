@@ -1,0 +1,90 @@
+%<*!lst>
+%<!att>\documentclass[varwidth,margin={0pt 0pt 0pt 5pt}]{standalone}
+%<att>\documentclass{article}
+
+\makeatletter
+\newcounter{counti}
+\newenvironment{listi}{%
+  \setcounter{counti}{0}%
+  \def\item{%
+    \par\strut
+    \stepcounter{counti}%
+    \edef\@currentlabel{\thecounti}%
+    \thecounti. 
+  }%
+}{\par}
+
+\newcounter{countii}
+\gdef\thecountii{\alph{countii}}
+\newenvironment{listii}{%
+  \setcounter{countii}{0}%
+  \def\item{%
+    \par\strut
+    \stepcounter{countii}%
+%<!c5>    \edef\@currentlabel{\thecounti\thecountii}%
+%<c5>    \edef\@currentlabel{\unexpanded{\thecounti}\thecountii}%
+    \quad\thecountii)
+  }%
+}{\par}
+\makeatother
+
+\usepackage{memoize}
+%</!lst> 
+%<*!c2>
+\mmzset{
+  auto={listii}{memoize,
+%<lst&!c6>    % ...
+%<*c6,!lst>
+    capture=vbox,
+    at begin memoization={%
+      \csuse{par}\gtoksapp\mmzCCMemo{\csuse{par}}%
+%<*c6>
+      \AdviceSetup{/mmz}\label{%
+        \preto\AdviceOuterHandler{%
+          \gappto\mmzAtEndMemoizationExtra{\outerlabeltocontext}
+        }%
+      }%
+%</c6>
+    },
+%</c6,!lst>
+%<c4>    context={@currentlabel={\csuse{@currentlabel}}},
+  },
+}
+%<!lst>
+%<*c6>
+\def\outerlabeltocontext{%
+  \gtoksapp\mmzContextExtra{@currentlabel={\csuse{@currentlabel}}}%
+  \let\outerlabeltocontext\relax
+}
+%</c6>
+%</!c2>
+%<*!(c6&lst)>
+%<lst>% ...
+%<!lst>\begin{document}
+%<!lst>
+\begin{listi}
+%<!c3>\item pets:
+%<c3>\item\label{item:pets} pets:
+  \begin{listii}
+%<!c3>  \item\label{item:dog} dog
+%<c3>  \item\label{item:dog}\mmzNoRef{item:pets} dog
+%<lst>  % ...
+%<*!lst>
+  \item cat
+  \end{listii}
+\item domestic:
+  \begin{listii}
+  \item cow
+  \item sheep
+  \end{listii}
+\item wild:
+  \begin{listii}
+  \item tiger
+  \item lion
+  \end{listii}
+%</!lst>
+\end{listi}
+The dog can be found in (\ref{item:dog}).
+%<!lst>
+%<!lst>\end{document}
+%</!(c6&lst)>

@@ -1,0 +1,19 @@
+%<*!lst>
+%<!att>\documentclass[varwidth]{standalone}
+%<att>\documentclass{article}
+\usepackage{circuitikz}
+\usepackage{qrcode}
+\usepackage{memoize}
+
+\begin{document}
+%</!lst>
+~\begin{memoize}~
+  \begin{circuitikz}
+    \draw (0,0)
+          to[isource] (0,3) -- (2,3)
+          to[R] (2,0) -- (0,0);
+  \end{circuitikz}
+~\end{memoize}~
+%<lst>% ...
+~\mmz~{\qrcode{https://ctan.org/pkg/memoize}}
+%<!lst>\end{document}

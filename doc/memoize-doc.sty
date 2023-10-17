@@ -1,0 +1,711 @@
+%% memoize-doc.sty
+%% 
+%% This file is a part of Memoize, a TeX package for externalization of
+%% graphics and memoization of compilation results in general, available at
+%% https://ctan.org/pkg/memoize and https://github.com/sasozivanovic/memoize.
+%%
+%% Copyright (c) 2020- Saso Zivanovic <saso.zivanovic@guest.arnes.si>
+%%                     (Sa\v{s}o \v{Z}ivanovi\'{c})
+%%
+%% This work may be distributed and/or modified under the conditions of the
+%% LaTeX Project Public License, either version 1.3c of this license or (at
+%% your option) any later version.  The latest version of this license is in
+%% https://www.latex-project.org/lppl.txt and version 1.3c or later is part of
+%% all distributions of LaTeX version 2008 or later.
+%%
+%% This work has the LPPL maintenance status `maintained'.
+%% The Current Maintainer of this work is Saso Zivanovic.
+%% 
+%% The files belonging to this work and covered by LPPL are listed in
+%% (<texmf>/doc/generic/memoize/)FILES.
+
+% \usepackage{lstdoc} % this must be loaded before hyperref
+\usepackage{shortvrb}
+\AtBeginDocument{\MakeShortVerb{\|}}
+% \usepackage{hypdoc}
+\usepackage[hyperindex=false]{hyperref}
+\hypersetup{
+  colorlinks=true,
+  allcolors=black,
+  linkcolor=Hyperlink,
+}
+
+\usepackage{microtype}
+%\SetExpansion[context=sloppy,stretch=30,shrink=50,step=1]{encoding=*}{}%
+
+\usepackage{fnpct}
+\usepackage{memoize-doc-common}
+
+% explicitly load advice (and thereby collargs) for when we load nomemoize
+\usepackage{advice}
+
+\usepackage{forest}
+\useforestlibrary{edges}
+
+% \usepackage[extract=latex]{memoize}
+% \usepackage{memoize}
+\usepackage[infoshow]{tracefnt}
+
+\tcbuselibrary{xparse,breakable}
+
+\mmzset{
+  auto={tcolorbox}{memoize, options=verbatim},
+  auto={tcboxedraster}{memoize, options=verbatim},
+  auto={tcbraster}{memoize, options={verbatim,ignore spaces}},
+  auto={tcblisting}{memoize, options={verbatim,ignore spaces}},
+  auto csname={tcbinputexample code}{memoize, args=mmm+m, ignore spaces},
+  auto=\tcbinputlisting{memoize, args=m, options=ignore spaces},
+  % The following doesn't work perfectly, but it's good enough.
+  auto key={/tcb/breakable}{run if memoizing, outer handler=\makeunmemoizableunless{false}},
+  auto key={/tcb/float}{run if memoizing, outer handler=\makeunmemoizableunless{}},
+}
+
+\def\makeunmemoizableunless#1#2\pgfeov{%
+  \ifstrequal{#1}{#2}{}{\mmzUnmemoizable}%
+  \AdviceOriginal#1\pgfeov
+}
+
+\newcommand\introboxtitle[1]{\strut\textcolor{emphcolor}{\textbf{#1}}}
+
+\usepackage{fancyhdr}
+\usepackage[skip=0.3\baselineskip plus 2pt]{parskip}
+\usepackage[bottom]{footmisc}
+\usepackage{xparse}
+\usepackage{multicol}
+
+
+
+
+\usepackage{graphicx}
+
+\usepackage{cprotect}
+\setlist[description]{
+  itemsep=0.3\baselineskip plus 2pt minus 1pt,
+  parsep=0.3\baselineskip plus 2pt
+}
+\SetEnumitemKey{comma}{itemjoin={{, }}}
+\SetEnumitemKey{and}{itemjoin={{, }}, itemjoin*={{, and }}}
+
+% \usepackage{lstdoc} % this must be loaded before hyperref
+%\usepackage{lstautogobble} % todo: does not work!
+\def\listings@file@value@in@reset{}
+\tcbset{
+  listing file/.append code={%
+    \ifmemoizing
+      \ifstrequal{#1}{\jobname.listing}{%
+        % We're in tcolorbox's reset, do nothing
+      }{%
+        \mmzset{
+          context={%
+            listing file={#1},
+            md5sum=\csuse{pdf@filemdfivesum}{#1},
+          },
+        }%
+      }%
+    \fi
+  },
+  centering/.style={before=\centering},
+}
+\colorlet{pointcolor}{green!50!black}
+\def\pstyle{\color{pointcolor}}% todo: hyperlink?
+\setlength\textfloatsep{0.5\baselineskip plus 2pt minus 2pt}
+\tcbset{
+  top=1mm, bottom=1mm,
+  beforeafter skip balanced=0.5\baselineskip plus 2pt minus 2pt,
+  raster every box/.style={top=1mm, bottom=1mm},
+  before upper={\parskip0.3\baselineskip plus 2pt\relax},
+  every box on layer 1/.style={
+    fonttitle=\bfseries,
+  },
+  my listing options/.style={
+    listing options app={
+      moredelim={[is][\pstyle]{~}{~}},
+      commentstyle=\color{purple},
+      morekeywords={unexpanded,expanded,expandonce,NewDocumentCommand,IfValueTF},
+      breakindent=10pt,
+    },
+  },
+  my listing options,
+  % for listings inside a tcboxedraster ...
+  reset/.append style=my listing options,
+  % titles
+  attach shifted boxed title to top right/.style={
+    attach boxed title to top right={
+      xshift=1.5mm, yshift=-\tcboxedtitleheight/2, #1},
+  },
+  attach shifted boxed title to top right/.default={},
+  attach shifted boxed title to top left/.style={
+    attach boxed title to top left={
+      xshift=-1.5mm, yshift=-\tcboxedtitleheight/2, #1},
+  },
+  attach shifted boxed title to top left/.default={},
+  my boxed title/.style={
+    enhanced, title={#1},
+    fonttitle=\scriptsize,
+    boxed title style={size=small},
+  },
+  my boxed title/.value required,
+  extern page/.style={
+    my boxed title=extern page,
+    boxed title style={colback=blue!70!black, colframe=blue!25!white},
+    attach shifted boxed title to top right,
+  },
+  document page/.style={
+    my boxed title=document page,
+    boxed title style={colback=green!60!black, colframe=green!25!white},
+    attach shifted boxed title to top right,
+  },
+  % end titles
+  bad/.style={enhanced,
+    finish={
+      \begin{tcbclipinterior}
+        \draw[red!40!white, opacity=0.4, line width=1cm]
+        (interior.south west)--(interior.north east);
+      \end{tcbclipinterior}
+    },
+  },  
+  mark region/.style 2 args={
+    enhanced,
+    underlay={
+      \fill[pointcolor,opacity=0.1]
+      ([yshift=-\kvtcb@boxsep-\kvtcb@top-2.5ex*(#1-1)]interior.north west) rectangle ([yshift=-\kvtcb@boxsep-\kvtcb@top-2.5ex*#2]interior.north east);
+    },
+  },
+  warning/.style={colback=red!15},
+  to be continued on right/.style={
+    frame code={% line thickness is uniform and depends on tcolorbox's leftrule
+      \draw[color=tcbcolframe,
+        line width=2*\kvtcb@left@rule, rounded corners=2*\kvtcb@left@rule,
+      ]
+      (interior.north east)--(interior.north west)
+      --(interior.south west)--(interior.south east);
+    },
+    interior code app={
+      \draw[color=tcbcolframe,line width=\kvtcb@left@rule,dashed]
+        ([xshift=-0.5*\kvtcb@left@rule]interior.south east)
+        --([xshift=-0.5*\kvtcb@left@rule]interior.north east);
+    },
+  },
+}
+\def\examplepdfpath{\examplepath.c1.pdf}
+\NewDocumentCommand{\includeexamplepdf}{ O{} O{\examplepdfpath} D(){} m}{%
+  \mbox{%
+    \tcbincludegraphics[reset,capture=hbox,graphics options={clip,#4},#1]{#2}#3%
+  }%
+}%
+\def\ExampleName#1{\edef\examplename{#1}\ignorespaces}
+\def\makeexample#1{\pdfsystem{make -C \exampledir\space#1}\ignorespaces}
+% \def\makeexample#1{\pdfsystem{make -B -C \exampledir\space#1}}
+\def\examplepath{\exampledir\examplename}
+\RequirePackage{intopdf}
+\RequirePackage{fontawesome}
+\tcbset{
+  example title/.style={
+    enhanced,
+    % uniform height and (zero) depth
+    before title={\begingroup \setbox0\hbox\bgroup},
+    after title={\egroup\ht0 1.2ex \dp0 0pt \box0 \endgroup},
+    title={\texttt{#1}},
+    top=2mm,
+    attach shifted boxed title to top left,
+    fonttitle={\small\hypercolor{link}{white}},
+  },
+  example title/.default=\examplename.tex,
+  attachment/.estore in=\attachmentpath,
+  attachment name/.estore in=\attachmentname,
+  attachment name/.default=noname.tex,
+  no attachment/.style={attach/.style={}},
+  attachment=\jobname.listing.attachment,
+  attachment name,
+  % attach example/.style={
+  %   attachment/.expanded=\examplepath.tex.work,
+  %   attachment name/.expanded=\examplename.tex,
+  %   attach,
+  % },
+  attach/.style={
+    overlay app={%
+      \node at (frame.north east) [
+        fill=white, draw=gray, thick,
+        ellipse, inner xsep=-0.5mm, inner ysep=0, shift={(-2mm,-2mm)}, rotate=45,
+      ]{%
+        \pdfsystem{make -f examples/Makefile \attachmentpath}%
+        \expandafter\myattachandlink\expandafter[\attachmentname]{\attachmentpath}[application/x-tex]{Click here to open the code.}{\rotatebox{-45}{\faPaperclip}}
+      };
+    }
+  },
+  excerpt/.code 2 args={%
+    \makeexample{#2.excerpt SOURCE=#1}%
+  },
+}
+\NewDocumentCommand\attachexample{O{\examplename.tex} O{\examplepath.tex.c1.attachment}}{%
+  {\textsuperscript{\kern-0.25em \expandafter\myattachandlink\expandafter[#1]{#2}[application/x-tex]{Click here to open the code.}{\rotatebox{-45}{\faPaperclip}}\kern-0.25em \relax}}}
+\newcommand\myattachandlink[2][\filename]{%
+  \begingroup
+  \def\filename{#2}%
+  \immediate\write\attachments{#2 #1 ## line \the\inputlineno}%
+  \ifmemoizing
+    \xtoksapp\mmzCCMemo{%
+      \immediate\write\attachments{#2 #1 ## line \the\inputlineno}%
+    }%
+  \fi
+  \expanded{%
+    \endgroup
+    \noexpand\attachandlink[#1]{#2}%
+  }%
+}
+\newwrite\attachments
+\immediate\openout\attachments attachments.lst
+\AtEndDocument{\immediate\closeout\attachments}
+
+\NewTCBInputListing{\tcbinputexample}{
+  >{\edef\ProcessedArgument} D(){\examplename}  O{.tex} O{.c1} +m }
+{%
+  /mmz/context={dtxmd5sum=\csuse{pdf@filemdfivesum}{\exampledir#1#2.dtx}},
+  example title={#1#2},
+  % enlarge left by=\leftmargin,% this takes care of using this box in lists
+  listing and comment,
+  one file/.style={
+    listing file={\exampledir#1#2#3},
+    attachment={\exampledir#1#2#3},
+  },
+  listing file=\exampledir#1#2#3.listing,
+  /utils/exec={\edef\examplepdfpath{\exampledir#1#3.pdf}},%
+  attachment=\exampledir#1#2#3.attachment,
+  attachment name=#1#2,%
+  #4,
+  attach,
+}
+\nommzkeys{context}
+
+\tcbset{
+  full width/.style={grow to left by=\leftmargin},
+  listing and compile/.style={
+    listing and comment,
+    comment={%
+      \input\examplepath.tex.c#1
+    }
+  },
+  listing and compile/.default=1,
+}
+
+\pgfkeys{
+  /handlers/.detokenize/.style={\pgfkeyscurrentpath/.expand once=\detokenize{#1}},
+  /utils/typeout/.code={\typeout{#1}},
+}
+\let\pdfsystem\pdf@system
+\let\pdffilemdfivesum\pdf@filemdfivesum
+
+\usepackage{booktabs}
+\usepackage{tabularx}
+
+
+\usetikzlibrary{decorations.pathmorphing, arrows.meta}
+\usepackage{tikzlings-penguins,tikzlings-koalas,tikzlings-owls}
+\tikzset{
+  ->/.tip={Kite},
+  snake arrow/.style=
+  {->, decorate,
+    decoration={snake, amplitude=.4mm, segment length=2mm, post length=2mm},
+  },
+}
+
+% title page
+\renewcommand\abstractname{\vskip-\baselineskip}
+
+% sections
+\newtcbox{\section@box}[3]{tile,before=\noindent,after=,
+  fontupper=\normalfont#1\bfseries,capture=minipage,
+  colback=emphcolor,
+  boxsep=0mm,top=#2,bottom=#2,left=\oddsidemargin+1in,right=\oddsidemargin+1in,
+  spread sidewards,#3
+}
+
+\newif\ifsectionclearpage
+\sectionclearpagetrue
+\newif\ifsubsectionclearpage
+\subsectionclearpagetrue
+
+\renewcommand\section{%
+  \ifsectionclearpage\clearpage\fi
+  \@startsection{section}{1}{\z@}%
+  {5mm}{5mm}%
+  {\section@box{\Large}{4mm}{fuzzy halo=1mm with blue!50!gray}}}
+\renewcommand\subsection{%
+  \ifsubsectionclearpage\ifnum\c@subsection=0 \else\clearpage\fi\fi
+  \@startsection{subsection}{2}{\z@}%
+  {-3.25ex\@plus -1ex \@minus -.2ex}{1.5ex \@plus .2ex}%
+  {\section@box{\large}{2mm}{fuzzy halo=1mm with blue!50!gray}}}
+\renewcommand\subsubsection{%
+  \mmznext{disable}%
+  \@startsection{subsubsection}{2}{\z@}%
+  {-3.25ex\@plus -1ex \@minus -.2ex}{1.5ex \@plus .2ex}%
+  {\section@box{}{2mm}{}}}
+\newtcbox{\paragraph@box}{tile,before=,after=,capture=hbox,
+  fontupper=\normalfont\normalsize\bfseries\hypercolor{link}{black}\vphantom{dj},
+  box align=base,
+  boxsep=0mm,
+  left=\oddsidemargin+1in, enlarge left by=-\oddsidemargin-1in,
+  top=1.2mm, enlarge top by=-1.2mm,
+  bottom=1mm, enlarge bottom by=-1mm,
+  right=12mm, enlarge right by=-8mm, arc=0mm, rightrule=0mm,
+  interior style={left color=emphcolor, right color=white},
+}
+\let\oldparagraph\paragraph
+\def\paragraphskip{3.25ex \@plus1ex \@minus.2ex}
+\RenewDocumentCommand\paragraph{sm}{%
+  \mmznext{disable}%
+  \@startsection{paragraph}{4}{\z@}{\paragraphskip}{-1em}{\paragraph@box}{#2}%
+  \IfBooleanT{#1}{\hspace*{\dimexpr-8mm+0.5em}}%
+  \hskip 0pt plus .5em
+  \IfBooleanF{#1}{\nopagebreak}% % todo: this is bad, if the paragraph is long
+}
+
+\NewTotalTCBox{\Emph}{m}{my code box, fontupper=\rm}{#1}
+\NewTotalTCBox{\EmphTT}{m}{my code box}{#1}
+\NewTotalTCBox{\EmphVerbatim}{v}{my code box}{#1}
+\tikzset{
+  emphshade/.style={
+    opacity=0.6,
+    top color=#1, bottom color=#1, middle color=emphcolor,
+  },
+  emphshade/.default=white,
+}
+\tcbset{
+  my code box/.style={
+    reset, enhanced, verbatim,
+    boxsep=0pt, left=0.3ex,right=0.3ex, box align=base,
+    interior hidden, frame hidden,
+    overlay={\shade[emphshade]
+      ([yshift=0.7ex]frame.north west) rectangle ([yshift=-0.7ex]frame.south east);
+    },
+  },
+}
+
+% verbatim code in the implementation
+\lstdefinestyle{code}{style=tcblatex,xleftmargin=\leftmargin,aboveskip=\parskip}
+
+
+
+
+
+
+\newcommand\therefore{\ensuremath{\Rightarrow}}
+\newcommand\nohyphen{\discretionary{}{}{}}
+\let\gobble\@gobble
+
+\lstset{
+  rangebeginprefix=\ \ \%\%\%\ begin\ listing\ region:\ ,
+  rangebeginsuffix=,
+  rangeendprefix=\ \ \%\%\%\ end\ listing\ region:\ ,
+  rangeendsuffix=,
+  includerangemarker=false,
+  keepspaces=true,
+}
+
+\def\relaxmmzcommands{%
+  \let\mmzPrefix\gobble
+  \let\mmzNewCMemo\gobble
+  \let\mmzNewCCMemo\gobble
+  \def\mmzNewExtern##1##2##3##4##5{}%
+  \let\mmzUsedCMemo\gobble
+  \let\mmzUsedCCMemo\gobble
+  \let\mmzUsedExtern\gobble
+}
+
+\usepackage{xstring}
+\usepackage{placeins}
+
+\NewDocumentCommand\makeexcerpt{ m O{.tex} D(){../../memoize.edtx} }{%
+  \ExampleName{#1}%
+  \makeexample{#1#2.excerpt SOURCE=#3}%
+  \ignorespaces
+}
+
+\newcommand\sed[2]{%
+  \begingroup
+  \def\cmd##1{\noexpand\\##1}%
+  \def\0{\bslash0}%
+  \def\1{\bslash1}%
+  \def\2{\bslash2}%
+  \def\3{\bslash3}%
+  \def\4{\bslash4}%
+  \def\5{\bslash5}%
+  \def\6{\bslash6}%
+  \def\7{\bslash7}%
+  \def\8{\bslash8}%
+  \def\9{\bslash9}%
+  \def~{\noexpand~}%
+  \def\n{\string\n}%
+  \def\({\bslash(}%
+  \def\){\bslash)}%
+  \let\lbrace\sedlbrace
+  \let\rbrace\sedrbrace
+  \edef\nobrace{[^\sedlbrace\sedrbrace]}
+  \edef\marg{{[^\sedrbrace]*}}%
+  \def\repeat##1{\bslash\sedlbrace##1\bslash\sedrbrace}%
+  \pdfsystem{sed -i "#1" #2}%
+  \endgroup
+}
+\begingroup
+\catcode`\(=1
+\catcode`\)=2
+\catcode`\{=12
+\catcode`\}=12
+\gdef\sedlbrace({)%
+\gdef\sedrbrace(})%
+\endgroup
+
+\usepackage{pifont}
+\newcommand\yes{{\small\ding{51}}} % pifont
+\newcommand\no{{\small\ding{55}}} % pifont
+
+%\newcommand\oarg[1]{{\ttfamily[}\meta{#1}{\ttfamily]}}
+
+\definecolor{Option}{rgb}{0.118,0.546,0.222}
+\definecolor{Definition}{rgb}{0.784,0.06,0.176}
+\definecolor{ExampleFrame}{rgb}{0.628,0.705,0.942}
+\definecolor{ExampleBack}{rgb}{0.963,0.971,0.994}
+\definecolor{Hyperlink}{rgb}{0.281,0.275,0.485}
+\definecolor{Fade}{rgb}{0.5,0.5,0.5}
+\definecolor{EasyDefinition}{rgb}{0.06,0.784,0.176}
+
+{\catcode`\|=\z@ \catcode`\\=12
+|gdef|bslash{\}}
+\DeclareRobustCommand\cs[1]{\texttt{\bslash\detokenize{#1}}}%
+\DeclareRobustCommand\env[1]{\texttt{#1}}%
+%\def\marg#1{{\ttfamily\char`\{}\meta{#1}{\ttfamily\char`\}}}
+\def\marg#1{\hskip 0pt plus 1pt{\ttfamily\char`\{}\meta{#1}{\ttfamily\char`\}}}
+\def\oarg#1{\hskip 0pt plus 1pt{\ttfamily[}\meta{#1}{\ttfamily]}}
+\def\bracestt#1{\hskip 0pt plus 1pt{\ttfamily\char`\{#1\char`\}}}
+\def\braces#1{\hskip 0pt plus 1pt{\ttfamily\char`\{}#1{\ttfamily\char`\}}}
+\def\bracketstt#1{\hskip 0pt plus 1pt{\ttfamily[#1]}}
+\def\brackets#1{\hskip 0pt plus 1pt{\ttfamily[}#1{\ttfamily]}}
+\DeclareRobustCommand\meta[1]{%
+  \ensuremath\langle
+  \ifmmode \expandafter \nfss@text \fi
+  {%
+    \meta@font@select
+    \edef\meta@hyphen@restore{\hyphenchar\the\font\the\hyphenchar\font}%
+    \hyphenchar\font\m@ne
+    \language\l@nohyphenation
+    #1\/%
+    \meta@hyphen@restore
+  }%
+  \ensuremath\rangle
+}
+\def\meta@font@select{\rm\itshape}
+\DeclareRobustCommand\metabf[1]{%
+  \begingroup
+  \def\meta@font@select{\rm\itshape\bfseries}%
+  \meta{#1}%
+  \endgroup
+}
+{\catcode`\%=12 \gdef\percentchar{%}}
+\def\coloredpercentchar{\hbox{\textcolor{purple}{\percentchar}}}
+\newcommand\alt{\ensuremath{\vert}}% without space around, unlike \Alt
+\newcommand\code[1]{\texttt{\spaceskip 0.5em plus 0.2em minus 0.2em #1}}
+\newcommand\Arg[1]{\texttt{\##1}}
+
+\def\TikZ{\href{https://ctan.org/pkg/pgf}{{\rm Ti\emph{k}Z}}\xspace}
+\def\PGF{\href{https://ctan.org/pkg/pgf}{PGF}\xspace}
+\def\Emacs{\href{https://www.gnu.org/software/emacs}{Emacs}\xspace}
+\def\AucTeX{\href{https://www.gnu.org/software/auctex}{AUC\hologo{TeX}}\xspace}
+
+% collargs reference, pi = programmer's interface
+% Shrink the glyphs in the footnote if necessary.
+\tcbset{
+  pi/.style={
+    overlay={%
+      \node at (frame.north east) [anchor=north west, inner sep=0] {\footnotemark};
+    },
+    after app={%
+      \footnotetext{%
+        % \adjustspacing=2 % already 2 ... microtype?
+        \myfontexpansionon
+        \yadocset{before/.code={\cspreto{yadoc@name@prefix}{\myfontexpansionon}}}%
+        \mbox{The programmer's interface:} #1.%
+      }%
+    },
+  },
+}
+\DeclareRobustCommand\myfontexpansionon{%
+  \directlua{font.setexpansion(font.current(),50,50,1)}%
+}
+\DeclareRobustCommand\myfontexpansionoff{%
+  \directlua{font.setexpansion(font.current(),0,0,1)}%
+}
+
+\AtBeginDocument{%
+  \setbox0=\hbox{%
+    \footnotesize\ttfamily
+    \directlua{ninettfont=font.current()}%
+  }%
+}
+
+% \AtBeginDocument{%
+%   \setbox0=\hbox{%
+%     \footnotesize\ttfamily
+%     \global\expandafter\let\expandafter\fnttfont\font@name
+%     %\expandglyphsinfont\fnttfont 30 500 1 autoexpand
+%   }%
+% }
+
+\usepackage{yadoc}
+\newif\ifyadoc@short
+\newif\ifyadoc@long
+\yadocset{
+  name color=Definition,
+  before body=\parskip 0.3\baselineskip plus 2pt,
+  % after body=\medskip,
+  head/.style={
+    interior style={fill, left color=red!5,right color=red!5!black!2}, 
+  },
+  easy/.style={
+    name color=green!50!black,
+    head/.style={
+      interior style={fill, left color=green!5,right color=black!5}, 
+    },
+  },
+  keypath color opacity=30,
+  index encapsulator={`},
+  index annotation font=\color{gray},
+  def options/.append style={index page number format=colorhyperpage{red}},
+  aux options/.append style={index page number format=colorhyperpage{red}},
+  ref options/.append style={index page number format=hyperpage},
+  par/.style={parameters={#1}},
+  desc/.style={description={#1}},
+  keypath=/mmz,
+  xparse modifier item/.style={
+    index annotation=\texttt{xparse} modifier,
+    label prefix=xparse,
+  },
+  xparse type item/.style={
+    index annotation=\texttt{xparse} type,
+    label prefix=xparse,
+  },
+  script item/.style={
+    index annotation=script,
+    label prefix=script,
+    parameters prefix=\space,
+  },
+  key path item/.style={
+    index annotation=keypath,
+    label prefix:=keypath:/,
+    name prefix=/,
+    description=keypath,
+  },
+  option item/.style={
+    name prefix={\ifdefempty\yadoc@short@name{}{-\yadoc@short@name\,\Alt\,}--},
+    ref prefix={\protect\ifyadoc@short-\yadoc@short@name\protect\else--},
+    ref suffix={\protect\fi},
+    index prefix={--},
+    index suffix={\ifdefempty\yadoc@short@name{}{\Alt-\yadoc@short@name}},
+    parameters prefix=\ ,
+    label prefix:={\yadoc@of--},
+    index annotation=option of {\docref[into index=false,link color=gray]{\yadoc@of}},
+  },
+  short name/.store in=\yadoc@short@name,
+  short/.is if=yadoc@short,
+  long/.is if=yadoc@long,
+  conditional/.style={
+    parameters={\texttt{true}\Alt\texttt{false}},
+    /utils/exec={%
+      \appto\yadoc@description{default \texttt{true}, initially \texttt{#1}}%
+    },
+  },
+  conditional/.value required,
+  package item/.style={
+    index annotation=package,
+    label prefix=pkg,
+    description=package,
+  },
+  pkg/.style={
+    after/.style={index annotation/.append={\space of package \pkg{#1}}}
+  },
+  hook item/.style={
+    label prefix=hook,
+    index annotation=hook,
+  },
+  pdfvariable item/.style={
+    label prefix=pdfvar,
+    index annotation={\hologo{LuaTeX}'s \refcmd{pdfvariable} register},
+  },
+  pdfcmd item/.style={
+    label prefix=cmd,
+    name prefix={%
+      \textbackslash
+      \protect\ifyadoc@short
+      \protect\else
+        \protect\ifyadoc@long
+          pdf%
+        \protect\else
+          % todo: revert to the real original font rather than just say \rmfamily
+          \rmfamily(\ttfamily pdf\rmfamily)\ttfamily
+        \protect\fi
+      \protect\fi
+    },
+    index prefix=\textbackslash,
+  },
+}
+\def\colorhyperpage#1#2{%
+  \begingroup
+  \hypercolor{link}{#1}%
+  \hyperpage{#2}%
+  \endgroup
+}
+
+\patchcmd{\@setref}{??}{#3??}{}{}
+\patchcmd{\real@setref}{??}{#3??}{}{}
+
+\mmzset{
+  auto={tcb@manual@entry}{nomemoize},
+  auto={doc}{nomemoize},
+}
+
+\DeclareRobustCommand\refkey[2][]{\docref[#1]{key:#2}}
+\DeclareRobustCommand\refmmz[2][]{\docref[#1]{key:/mmz/#2}}
+\DeclareRobustCommand\refmmzauto[2][]{\docref[#1]{key:/mmz/auto/#2}}
+\DeclareRobustCommand\refmmzpath[2][]{\docref[#1]{key:/mmz/path/#2}}
+\DeclareRobustCommand\refcollargs[2][]{\docref[#1]{key:/collargs/#2}}
+\DeclareRobustCommand\refenv[2][]{\docref[#1]{env:#2}}
+\DeclareRobustCommand\refcmd[2][]{\docref[#1]{cmd:#2}}
+\DeclareRobustCommand\reffile[2][]{\docref[#1]{file:#2}}
+\DeclareRobustCommand\refkeypath[2][]{\docref[#1]{keypath:#2}}
+\DeclareRobustCommand\refpkg[2][]{\docref[#1]{pkg:#2}}
+\DeclareRobustCommand\refscript[2][]{\docref[#1]{script:#2}}
+
+\usepackage{xspace}
+\newcommand\dmmz{\docref{file:mmz}\xspace}
+
+\newcommand\hreftt[2]{\href{#1}{\texttt{#2}}}
+
+\ifcsname ifregion\endcsname
+  \ifregion{%
+      \AddToHook{begindocument/before}{%
+        \makeatletter
+        \InputIfFileExists{memoize.aux}{}{}%
+        \makeatother
+      }%
+      \AddToHook{enddocument}{%
+        \printindex
+      }%
+    }
+\fi
+    
+\AddToHook{begindocument}{%
+  \robustify\hyperref
+  \robustify\hologo
+  \robustify\Alt
+}
+
+\newcommand\noprint[1]{\setbox0=\hbox{#1}}
+\usepackage{wrapfig}
+
+
+% \usepackage{caption}
+% \captionsetup{labelformat=empty}
+
+% Local Variables:
+% TeX-master: "memoize.tex"
+% TeX-engine: luatex
+% End:

@@ -1,0 +1,11 @@
+%<att>\documentclass{article}
+%<att>\usepackage{collargs}
+%<att>\usepackage{verbatim}
+\newcommand\PrintAndDoEnv[1]{%
+  Executing \texttt{#1} yields this: ~\scantokens~{#1}
+}
+%<att>\begin{document}
+\CollectArguments[environment=verbatim, ~verbatim~, ~tags~]{+b}{\PrintAndDoEnv}
+  Here is some \LaTeX{} code.
+\end{verbatim}
+%<att>\end{document}

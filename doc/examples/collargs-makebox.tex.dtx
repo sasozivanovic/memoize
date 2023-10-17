@@ -1,0 +1,11 @@
+%<att>\documentclass{article}
+%<att>\usepackage{collargs}
+\newcommand\PrintAndDo[2]{%
+  Executing \texttt{\string#1} with arguments ``\texttt{\detokenize{#2}}''
+  yields ``#1#2''.\par
+}
+%<att>\begin{document}
+~\CollectArguments~{oom}{\PrintAndDo\makebox}[5em][r]{text}
+~\CollectArguments~{oom}{\PrintAndDo\makebox}[5em]{text}
+~\CollectArguments~{oom}{\PrintAndDo\makebox}{text}
+%<att>\end{document}

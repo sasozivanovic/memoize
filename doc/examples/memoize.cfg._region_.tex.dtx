@@ -1,0 +1,23 @@
+%<att>% The contents of this file belong into "memoize.cfg".
+\edef\regionfilename{\detokenize{_region_}}
+\def\ifregion{%
+  \edef\jobfilename{\jobname}%
+  \ifx\jobfilename\regionfilename
+    \expandafter\@firstoftwo
+  \else
+    \expandafter\@secondoftwo
+  \fi
+}
+\ifregion{%
+  \mmzset{readonly}%
+%<att>  % Automatically adapt "memo dir" to the real document:
+%<att>  % (This assumes that "memo dir" is in effect for that document!)
+  \begingroup
+  \openin0{\regionfilename.tex}\readline0 to \regionheader  \closein0
+  \edef\temp{##1\detokenize{(}##2\detokenize{.tex)}##3}%
+  \expandafter\def\expandafter\parseregionheader\temp\endregionheader{%
+    \endgroup
+    \mmzset{memo dir=#2}%
+  }%
+  \expandafter\parseregionheader\regionheader\endregionheader
+}{}

@@ -1,0 +1,8 @@
+.PRECIOUS: %.dtx
+
+%.dtx: %.edtx
+	edtx2dtx $< > $@
+
+%.sty %.tex t-%.tex &: %.ins %.dtx
+	tex $<
+	sed -i -s -e 's/\\\(un\)\?expanded/\\normal\1expanded/g;' t-$*.tex

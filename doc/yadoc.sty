@@ -1,0 +1,491 @@
+%% yadoc.sty
+%% 
+%% This file is a part of Memoize, a TeX package for externalization of
+%% graphics and memoization of compilation results in general, available at
+%% https://ctan.org/pkg/memoize and https://github.com/sasozivanovic/memoize.
+%%
+%% Copyright (c) 2020- Saso Zivanovic <saso.zivanovic@guest.arnes.si>
+%%                     (Sa\v{s}o \v{Z}ivanovi\'{c})
+%%
+%% This work may be distributed and/or modified under the conditions of the
+%% LaTeX Project Public License, either version 1.3c of this license or (at
+%% your option) any later version.  The latest version of this license is in
+%% https://www.latex-project.org/lppl.txt and version 1.3c or later is part of
+%% all distributions of LaTeX version 2008 or later.
+%%
+%% This work has the LPPL maintenance status `maintained'.
+%% The Current Maintainer of this work is Saso Zivanovic.
+%% 
+%% The files belonging to this work and covered by LPPL are listed in
+%% (<texmf>/doc/generic/memoize/)FILES.
+
+\RequirePackage{tcolorbox}
+%\tcbuselibrary{listings,documentation,xparse,raster,hooks,breakable}
+\tcbuselibrary{raster,skins}
+
+\RequirePackage{etoolbox}
+
+\newif\ifyadoc@into@index
+\newif\ifyadoc@index@gather
+\newif\ifyadoc@index@colorize@names
+\newif\ifyadoc@ref@page
+\newif\ifyadoc@show@keypath
+
+\newcommand\yadocset[1]{\pgfqkeys{/yadoc}{#1}\ignorespaces}
+
+\yadocset{
+  cmd item/.style={
+    name prefix=\textbackslash,
+    label prefix=cmd,
+  },
+  key item/.style={
+    name prefix={\ifdefempty{\yadoc@keypath}{}{%
+        \ifyadoc@show@keypath
+          \textcolor
+          {\yadoc@name@color!\yadoc@keypath@color@opacity}%
+          {\yadoc@keypath/}%
+        \fi
+      }%
+    },
+    ref prefix={\protect\ifyadoc@show@keypath\yadoc@keypath/\protect\fi},
+    index prefix=,
+    parameters prefix={\texttt{=}},
+    label prefix:=key:\yadoc@keypath@label/,
+    index annotation={key\ifdefempty{\yadoc@keypath}{}{ in \texttt{\yadoc@keypath}}},
+  },
+  env item/.style={
+    head prefix={\texttt{\cs{begin}\{}},
+    head infix={\}},
+    head suffix={%
+      \par\strut{\ttfamily\nobreakspace\nobreakspace}\meta{environment body}%
+      \par\strut\texttt{\cs{end}\{\yadoc@do@name\}}},
+    index annotation=environment,
+    label prefix=env,
+  },
+  register item/.style={
+    name prefix=\textbackslash,
+    label prefix=reg,
+    index annotation=register,
+  },
+  file item/.style={
+    index annotation=file,
+    label prefix=file,
+  },
+  value item/.style={
+    index annotation={value of
+      {\docref[show keypath,into index=false,link color=gray]{\yadoc@of}}},
+    label prefix:={\yadoc@of=},
+  },
+  scope/.code={%
+    \begingroup
+    \pgfkeysalso{#1}%
+    \endgroup
+  },
+  generic item/.style={
+    label prefix:=,
+  },
+  %
+  raster options/.style={},
+  before body/.store in=\yadoc@before@body,
+  after body/.store in=\yadoc@after@body,
+  left/.dimstore in=\yadoc@left,
+  right/.dimstore in=\yadoc@right,
+  left indent/.dimstore in=\kvtcb@doc@indentleft,
+  right indent/.dimstore in=\kvtcb@doc@indentright,
+  name/.store in=\yadoc@name,
+  name/.append style={label={#1}, index={#1}, sort index={#1}},
+  parameters/.store in=\yadoc@parameters,
+  description/.store in=\yadoc@description,
+  label/.store in=\yadoc@label,
+  label prefix:/.store in=\yadoc@label@prefix,
+  label prefix/.style={label prefix:={#1:}},
+  name font/.store in=\yadoc@name@font,
+  name color/.store in=\yadoc@name@color,
+  name prefix/.store in=\yadoc@name@prefix,
+  name suffix/.store in=\yadoc@name@suffix,
+  name prefix/.append style={index prefix={#1}, ref prefix={#1}},
+  name suffix/.append style={index suffix={#1}, ref suffix={#1}},
+  parameters font/.store in=\yadoc@parameters@font,
+  parameters prefix/.store in=\yadoc@parameters@prefix,
+  parameters suffix/.store in=\yadoc@parameters@suffix,
+  keypath/.store in=\yadoc@keypath,
+  keypath label/.store in=\yadoc@keypath@label,
+  keypath/.append style={keypath label={#1}},
+  keypath color opacity/.store in=\yadoc@keypath@color@opacity,
+  show keypath/.is if=yadoc@show@keypath,
+  index/.store in=\yadoc@index,
+  index prefix/.store in=\yadoc@index@prefix,
+  index suffix/.store in=\yadoc@index@suffix,
+  index annotation/.initial=,
+  index font/.store in=\yadoc@index@font,
+  index annotation font/.store in=\yadoc@index@annotation@font,
+  sort index/.store in=\yadoc@sort@index,
+  index colorize names/.is if=yadoc@index@colorize@names,
+  index page number format/.store in=\yadoc@index@page@number@format,
+  index gather/.is if=yadoc@index@gather,
+  index command/.store in=\yadoc@index@command,
+  index actual/.store in=\yadoc@index@actual,
+  index quote/.store in=\yadoc@index@quote,
+  index level/.store in=\yadoc@index@level,
+  index encapsulator/.store in=\yadoc@index@encapsulator,
+  see/.initial=,
+  ref font/.store in=\yadoc@ref@font,
+  ref prefix/.store in=\yadoc@ref@prefix,
+  ref suffix/.store in=\yadoc@ref@suffix,
+  head prefix/.store in=\yadoc@head@prefix,
+  head infix/.store in=\yadoc@head@infix,
+  head suffix/.store in=\yadoc@head@suffix,
+  phrases/.code={\pgfqkeys{/yadoc/phrases}{#1}},
+  phrases/.unknown/.code={\csdef{yadoc@phrases@\pgfkeyscurrentname}{#1}},
+  ref page/.is if=yadoc@ref@page,
+  of/.store in=\yadoc@of,  
+  link color/.code={\hypercolor{link}{#1}},
+  long description/.style={% for do/def
+    head/.append style={
+      sidebyside gap=1em,
+      lefthand ratio=#1,
+    },
+  },
+  long description/.default=0.6,
+  %
+  .unknown/.code={%
+    \pgfkeysifdefined{/yadoc/\pgfkeyscurrentname\space item/.@cmd}{%
+      \begingroup
+      \expandafter\pgfkeysalso\expandafter{%
+        \pgfkeyscurrentname\space item,
+        before,#1,after,
+        do
+      }%
+      \endgroup
+    }{%
+      \PackageError{yadoc}{Unknown item "\pgfkeyscurrentname"}%
+      {Perhaps you have misspelled an option name?}%
+    }%
+  },
+  before/.code={},
+  after/.code={},
+  do/.is choice,
+  ref options/.style={
+    show keypath=false,
+  },
+  def options/.style={
+    show keypath,
+  },
+  aux options/.style={
+    show keypath=false,
+  },
+  foreign options/.style={
+    show keypath=false,
+    cmd item/.append style={index annotation=command},
+  },
+  index options/.code=,
+  into index/.is if=yadoc@into@index,
+  print/.is if=yadoc@printref,
+}
+
+\NewDocumentEnvironment{doc}{O{}m}{%
+  \begin{list}{}{%
+      \setlength{\leftmargin}{\yadoc@left}%
+      \setlength{\itemindent}{0pt}%
+      \setlength{\itemsep}{0pt}%
+      \setlength{\parsep}{0pt}%
+      \setlength{\rightmargin}{\yadoc@right}%
+    }%
+  \item
+    \begin{tcboxedraster}[
+        raster columns=1,
+        raster row skip=0pt,
+        raster before skip=0pt,
+        raster after skip=0pt,
+        raster force size=false,
+        /yadoc/raster options
+      ]{blankest,
+        before skip=1\baselineskip plus 6\baselineskip minus .5\baselineskip,
+        after skip=0pt plus 2pt minus .5\baselineskip,%
+        #1%
+      }%
+      \yadocset{do/.default=def,def options,#2}%
+    \end{tcboxedraster}
+    \nopagebreak
+    \yadoc@before@body\relax
+    \nopagebreak
+    \ignorespaces
+}{%
+    \ifvmode\else\unskip\fi
+    \yadoc@after@body\relax
+  \end{list}%
+}
+
+\newcommand\docaux[2]{%
+  \begingroup
+  \yadocset{do/.default=aux,aux options,#1={name={#2}}}%
+  \endgroup
+}
+
+\newcommand\docAux[1]{%
+  \begingroup
+  \yadocset{do/.default=aux,aux options,#1}%
+  \endgroup
+}
+
+\newcommand\docForeign[1]{%
+  \begingroup
+  \yadoc@hyperreffalse
+  \yadocset{do/.default=foreign,foreign options,#1}%
+  \endgroup
+}
+
+\newcommand\docindex[1]{%
+  \begingroup
+  \yadoc@hyperreffalse
+  \yadocset{do/.default=index,index options,#1}%
+  \endgroup
+}
+
+\yadocset{
+  do/def/.code={%
+    \begin{tcolorbox}[%
+        blank,
+        colback=white, colframe=white,
+        code={%
+          \tcbdimto\tcb@temp@grow@left{\yadoc@left}%
+          \tcbdimto\tcb@temp@grow@right{\yadoc@right}%
+        },
+        grow to left by=\tcb@temp@grow@left,
+        grow to right by=\tcb@temp@grow@right,
+        sidebyside, sidebyside align=top, sidebyside gap=-\tcb@w@upper@real,
+        force nobeforeafter,
+        phantom=\phantomsection,
+        /yadoc/head,
+      ]%
+      \yadoc@head@prefix
+      \yadoc@do@name
+      \yadoc@do@index
+      \yadoc@do@label
+      \yadoc@head@infix
+      \yadoc@do@parameters
+      \yadoc@head@suffix
+      \yadoc@do@description
+    \end{tcolorbox}
+    \nopagebreak
+  },
+  do/aux/.code={%
+    \yadoc@do@name
+    \yadoc@do@index
+    \yadoc@do@label  
+  },
+  do/foreign/.code={%
+    \yadoc@do@label
+  },
+  do/index/.code={%
+    \yadoc@do@label
+    \yadoc@do@index
+  },
+}
+
+\def\yadoc@do@name{%
+  \begingroup
+  \yadoc@name@colorize{%
+    \yadoc@name@font
+    \strut\yadoc@name@prefix\yadoc@name\yadoc@name@suffix\strut
+  }%
+  \endgroup
+}
+
+\def\yadoc@do@index{%
+  \ifyadoc@into@index
+    \yadoc@index@command{%
+      \yadoc@sort@index
+      \yadoc@index@actual
+      \yadoc@format@index
+    }%
+    \ifyadoc@index@gather
+      \yadoc@index@command{%
+        \yadoc@phrases@Commands
+        \yadoc@index@level
+        \yadoc@sort@index
+        \yadoc@index@actual
+        \yadoc@format@index
+      }%
+    \fi
+  \fi
+}
+
+\def\yadoc@name@colorize{%
+  \ifdefempty\yadoc@name@color{}{%
+    \textcolor{\yadoc@name@color}%
+  }%
+}
+
+\def\yadoc@format@index{%
+  {%
+    \ifyadoc@index@colorize@names\yadoc@name@colorize\fi
+    \yadoc@index@font
+    \yadoc@index@prefix\yadoc@index\yadoc@index@suffix
+  }%
+  {%
+    \ifkeyempty{/yadoc/index annotation}{}{%
+      \space\yadoc@index@annotation@font\pgfkeysvalueof{/yadoc/index annotation}%
+    }%
+  }%
+  \ifdefempty\yadoc@index@page@number@format{}{%
+    \yadoc@index@encapsulator
+    \yadoc@index@page@number@format
+  }%
+  \ifkeyempty{/yadoc/see}{}{%
+    \yadoc@index@encapsulator
+    see{\pgfkeysvalueof{/yadoc/see}}%
+  }%
+}
+
+\def\yadoc@do@label{%
+  \ifdefempty{\yadoc@label}{}{%
+    \begingroup
+    \yadocset{ref options}%
+    \protected@edef\@currentlabel{%
+      \protect\ifyadoc@setupref
+        \ifyadoc@hyperref
+          \protect\yadoc@hyperreftrue
+        \else
+          \protect\yadoc@hyperreffalse
+        \fi
+      \protect\fi
+      \protect\ifyadoc@printref
+        \yadoc@ref@font
+        \yadoc@ref@prefix\yadoc@name\yadoc@ref@suffix
+      \protect\fi
+      \protect\ifyadoc@into@index
+        \yadoc@do@index
+      \protect\fi
+    }%
+    \label{\yadoc@label@prefix\yadoc@label}%
+    \endgroup
+  }%
+}
+
+\def\yadoc@do@parameters{%
+  \ifdefempty\yadoc@parameters{}{%
+    \begingroup
+    \yadoc@parameters@font
+    \yadoc@parameters@prefix\yadoc@parameters\yadoc@parameters@suffix
+    \endgroup
+  }%
+}
+
+\def\yadoc@do@description{%
+  \ifdefempty{\yadoc@description}{}{%
+    \tcblower
+    \raggedleft
+    \strut
+    (\yadoc@description)%
+    \strut
+  }%
+}
+
+% ref
+
+\newif\ifyadoc@setupref
+\newif\ifyadoc@printref
+\newif\ifyadoc@hyperref
+\yadoc@printreftrue
+\yadoc@hyperreftrue
+\DeclareRobustCommand\docref[2][]{%
+  \quitvmode % otherwise, extra vertical space if this begins an \item !?!
+  \begingroup
+  \yadocset{ref options,#1}%
+  \ifcsname r@#2\endcsname
+    \expanded{%
+      \noexpand\yadoc@setupreftrue
+      \ifyadoc@printref\noexpand\yadoc@printreffalse\fi
+      \ifyadoc@into@index\noexpand\yadoc@into@indexfalse\fi
+      \ifmemoize\noexpand\memoizefalse\fi
+      \ref*{#2}%
+      \noexpand\yadoc@setupreffalse
+      \ifyadoc@printref\noexpand\yadoc@printreftrue\fi
+      \ifyadoc@into@index\noexpand\yadoc@into@indextrue\fi
+      \ifmemoize\noexpand\memoizetrue\fi
+    }%
+  \fi
+  \ifyadoc@printref\else\yadoc@hyperreffalse\fi
+  \ifyadoc@hyperref
+    \ifnum\getpagerefnumber{#2}=\thepage\relax
+      \yadoc@into@indexfalse
+    \fi
+    \hyperref[#2]{%
+      \ref*{#2}%
+      \ifyadoc@printref
+        \ifyadoc@ref@page\yadoc@ref@pagenumber{#2}\fi
+      \fi
+    }%
+  \else
+    \ref*{#2}%
+    \ifyadoc@printref
+      \ifyadoc@ref@page\yadoc@ref@pagenumber{#2}\fi
+    \fi
+  \fi
+  \endgroup
+}
+\def\yadoc@ref@pagenumber#1{%
+  \ifnum\getpagerefnumber{#1}=\thepage\relax
+  \else%
+    \textsuperscript{%
+      {\fontfamily{pzd}\fontencoding{U}\fontseries{m}\fontshape{n}%
+        \selectfont\char213}%
+      \,\yadoc@phrases@pageshort\,\pageref*{#1}}%
+  \fi
+}
+
+
+\yadocset{
+  before body=,
+  after body=,
+  left=2em,
+  right=0pt,
+  left indent=-2em,
+  right indent=0pt,
+  name=,
+  name font=\ttfamily\bfseries,
+  index font=\ttfamily,
+  ref font=\ttfamily,
+  index annotation font=,
+  name color=black,
+  name prefix=,
+  name suffix=,
+  label=,
+  label prefix=,
+  parameters=,
+  parameters font=,
+  parameters prefix=,
+  parameters suffix=,
+  keypath=,
+  keypath color opacity=30,
+  description=,
+  into index=true,
+  index colorize names=false,
+  index page number format=,
+  index command=\index,
+  index gather=false,
+  index actual={@},
+  index quote={"},
+  index level={!},
+  index encapsulator={|},
+  head prefix=,
+  head infix=,
+  head suffix=,
+  ref page=false,
+  phrases={
+    index=Index,
+    pageshort=P.,
+    Commands=Commands,
+  },
+  text/.code={#1},
+  comma/.code={,\ },
+  and/.code={\ and\ },
+}
+
+\def\ifkeyempty#1{\ifcsempty{pgfk@#1}}
+
+\AddToHook{begindocument}{%
+  \robustify\index
+  \robustify\hypersetup
+}

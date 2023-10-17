@@ -1,0 +1,12 @@
+%<att>\documentclass{article}
+%<att>\usepackage{collargs}
+%<att>\usepackage{xcolor}
+%<!lst>\long\def\ShowArguments#1{{\color{green!50!black}\tt\detokenize{#1}}}
+%<att>\begin{document}
+before
+\CollectArguments
+  {&{~no delimiters~, ~append postwrap={{{{#1}}}}~}o m}
+  \ShowArguments
+  [optional]{mandatory}
+after
+%<att>\end{document}

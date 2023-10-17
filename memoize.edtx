@@ -1,0 +1,3597 @@
+% \iffalse
+% 
+% memoize.edtx (this is not a .dtx file; to produce a .dtx, process it with edtx2dtx)
+% 
+%% This file is a part of Memoize, a TeX package for externalization of
+%% graphics and memoization of compilation results in general, available at
+%% https://ctan.org/pkg/memoize and https://github.com/sasozivanovic/memoize.
+%%
+%% Copyright (c) 2020- Saso Zivanovic <saso.zivanovic@guest.arnes.si>
+%%                     (Sa\v{s}o \v{Z}ivanovi\'{c})
+%%
+%% This work may be distributed and/or modified under the conditions of the
+%% LaTeX Project Public License, either version 1.3c of this license or (at
+%% your option) any later version.  The latest version of this license is in
+%% https://www.latex-project.org/lppl.txt and version 1.3c or later is part of
+%% all distributions of LaTeX version 2008 or later.
+%%
+%% This work has the LPPL maintenance status `maintained'.
+%% The Current Maintainer of this work is Saso Zivanovic.
+%% 
+%% The files belonging to this work and covered by LPPL are listed in
+%% (<texmf>/doc/generic/memoize/)FILES.
+% 
+% \fi
+% 
+%    \begin{macrocode}
+% 
+% \relax
+% 
+% This file contains the documented source code of
+% package \href{https://ctan.org/pkg/memoize}{Memoize} and, somewhat
+% unconventionally, its two independently distributed auxiliary
+% packages \href{https://ctan.org/pkg/advice}{Advice}
+% and \href{https://ctan.org/pkg/collargs}{CollArgs}.
+% 
+% The source code of the \hologo{TeX} parts of the package resides in
+% |memoize.edtx|, |advice.edtx| and |collargs.edtx|.  These files are written
+% in \href{https://ctan.org/pkg/easydtx}{EasyDTX}, a format of my own invention
+% which is almost like the DTX format but eliminates the need for all those
+% pesky |macrocode| environments: Any line introduced by a single comment
+% counts as documentation, and to top it off, documentation lines may be
+% indented.  An |.edtx| file is converted to a |.dtx| by a little Perl script
+% called |edtx2dtx|; there is also a rudimentary Emacs mode, implemented in
+% |easydoctex-mode.el|, which takes care of fontification, indentation, and
+% forward and inverse search.
+% 
+% The |.edtx| files contain the code for all three formats supported by the
+% three packages --- \hologo{LaTeX} (guard |latex|), \hologo{plainTeX} (guard
+% |plain|) and \hologo{ConTeXt} (guard |context|) --- but upon reading the
+% code, it will quickly become clear that Memoize was first developed for
+% \hologo{LaTeX}.  In \S\ref{sec:code:identification}, we manually define
+% whatever \hologo{LaTeX} tools are ``missing'' in \hologo{plainTeX} and
+% \hologo{ConTeXt}.  Even worse, \hologo{ConTeXt} code is often just the same
+% as \hologo{plainTeX} code, even in cases where I'm sure \hologo{ConTeXt}
+% offers the relevant tools.  This nicely proves that I have no clue about
+% \hologo{ConTeXt}.  If you are willing to \hologo{ConTeXt}-ualize my code ---
+% please do so, your help is welcome!
+% 
+% The runtimes of Memoize (and also Advice) comprise of more than just the main
+% runtime for each format.  Memoize ships with two additional stub packages,
+% |nomemoize| and |memoizable|, and a \hologo{TeX}-based extraction script
+% |memoize-extract-one|; Advice optionally offers a \TikZ; support defined in
+% |advice-tikz.code.tex|.  For the relation between guards and runtimes,
+% consult the core of the |.ins| files below.
+% 
+% \tcbset{ins listing/.style={listing only, fonttitle=\ttfamily\footnotesize,
+% leftupper=-1.5mm, lefttitle=2mm, right=0mm, top=2mm, bottom=2.65mm,
+% listing options app={basicstyle=\ttfamily\scriptsize}}}
+% 
+% \begin{tcbraster}[raster columns=100]
+%   \tcbinputlisting{raster multicolumn=55, ins listing, top=1mm, bottom=1mm, title=memoize.ins,listing file=../memoize.ins, linerange={27-38}, leftupper=1mm}
+%   \begin{tcboxedraster}[raster columns=1]{blankest, raster multicolumn=45}
+%     \tcbinputlisting{ins listing, title=advice.ins, listing file=../advice.ins, linerange=28-31}
+%     \tcbinputlisting{ins listing, title=collar\raisebox{0pt}[\height][0pt]{g}s.ins, listing file=../collargs.ins, linerange=29-31}
+%   \end{tcboxedraster}
+% \end{tcbraster}
+% 
+% Memoize also contains two scripts, |memoize-extract| and |memoize-clean|.
+% Both come in two functionally equivalent implementations: Perl (|.pl|) and a
+% Python (|.py|).  The code is listed in \S\ref{sec:code:scripts}, I believe it
+% is self-explanatory enough to lack more than a occasional comment.
+% 
+% 
+% \thispagestyle{empty}
+% \clearpage
+% \tableofcontents
+% \clearpage
+%
+% \newgeometry{left=4cm,right=1cm,top=1cm,bottom=1cm,
+% marginparwidth=3cm,marginparsep=0pt,nohead,includefoot}
+% \settowidth\marginparsep{\ }
+% 
+% \section{First things first}
+% \label{sec:code:identification}
+% 
+% \paragraph{Identification} of |memoize|, |memoizable| and |nomemoize|.
+%<*mmz>
+%<latex>\ProvidesPackage{memoize}[2023/10/10 v1.0.0 Fast and flexible externalization]
+%<context>%D \module[
+%<context>%D         file=t-memoize.tex,
+%<context>%D      version=1.0.0,
+%<context>%D        title=Memoize,
+%<context>%D     subtitle=Fast and flexible externalization,
+%<context>%D       author=Saso Zivanovic,
+%<context>%D         date=2023-10-10,
+%<context>%D    copyright=Saso Zivanovic,
+%<context>%D      license=LPPL,
+%<context>%D ]
+%<context>\writestatus{loading}{ConTeXt User Module / memoize}
+%<context>\unprotect
+%<context>\startmodule[memoize]
+%<plain>% Package memoize 2023/10/10 v1.0.0
+%</mmz>
+%<*mmzable>
+%<latex>\ProvidesPackage{memoizable}[2023/10/10 v1.0.0 A programmer's stub for Memoize]
+%<context>%D \module[
+%<context>%D         file=t-memoizable.tex,
+%<context>%D      version=1.0.0,
+%<context>%D        title=Memoizable,
+%<context>%D     subtitle=A programmer's stub for Memoize,
+%<context>%D       author=Saso Zivanovic,
+%<context>%D         date=2023-10-10,
+%<context>%D    copyright=Saso Zivanovic,
+%<context>%D      license=LPPL,
+%<context>%D ]
+%<context>\writestatus{loading}{ConTeXt User Module / memoizable}
+%<context>\unprotect
+%<context>\startmodule[memoizable]
+%<plain>% Package memoizable 2023/10/10 v1.0.0
+%</mmzable>
+%<*nommz>
+%<latex>\ProvidesPackage{nomemoize}[2023/10/10 v1.0.0 A no-op stub for Memoize]
+%<context>%D \module[
+%<context>%D         file=t-nomemoize.tex,
+%<context>%D      version=1.0.0,
+%<context>%D        title=Memoize,
+%<context>%D     subtitle=A no-op stub for Memoize,
+%<context>%D       author=Saso Zivanovic,
+%<context>%D         date=2023-10-10,
+%<context>%D    copyright=Saso Zivanovic,
+%<context>%D      license=LPPL,
+%<context>%D ]
+%<context>\writestatus{loading}{ConTeXt User Module / nomemoize}
+%<context>\unprotect
+%<context>\startmodule[nomemoize]
+%<mmz>% Package nomemoize 2023/10/10 v1.0.0
+%</nommz>
+% 
+% \paragraph{Required packages} and \hologo{LaTeX}ization of \hologo{plainTeX}
+% and \hologo{ConTeXt}.
+%<*(mmz,mmzable,nommz)&(plain,context)>
+\input miniltx
+%</(mmz,mmzable,nommz)&(plain,context)>
+% Some stuff which is ``missing'' in |miniltx|, copied here from |latex.ltx|.
+%<*mmz&(plain,context)>
+\def\PackageWarning#1#2{{%
+    \newlinechar`\^^J\def\MessageBreak{^^J\space\space#1: }%
+    \message{#1: #2}}}
+%</mmz&(plain,context)>
+% Same as the official definition, but without |\outer|.  Needed for record
+% file declarations.
+%<*mmz&plain>
+\def\newtoks{\alloc@5\toks\toksdef\@cclvi}
+\def\newwrite{\alloc@7\write\chardef\sixt@@n}
+%</mmz&plain>
+% |Nomemoize| has to load |pgfopts| as well, and process package options (right
+% away, why not), otherwise \hologo{LaTeX} will complain.
+%<*latex>
+%<mmz,nommz>\RequirePackage{pgfopts}  % pgfkeys-based package options
+%<nommz>\pgfkeys{/memoize/package options/.unknown/.code={}}
+%<nommz>\ProcessPgfPackageOptions{/memoize/package options}
+%</latex>
+% I can't really write any code without |etoolbox| \dots
+%<*mmz>
+%<latex>\RequirePackage{etoolbox}
+%<plain,context>\input etoolbox-generic
+% Setup the |memoize| namespace in \hologo{LuaTeX}.
+\ifdefined\luatexversion
+  \directlua{memoize = {}}
+\fi
+% |pdftexcmds.sty| eases access to some PDF primitives, but I cannot manage to
+% load it in \hologo{ConTeXt}, even if it's supposed to be a generic
+% package. So let's load |pdftexcmds.lua| and copy--paste what we need from
+% |pdftexcmds.sty|.
+%<latex>\RequirePackage{pdftexcmds}
+%<plain>\input pdftexcmds.sty
+%<*context>
+\directlua{%
+  require("pdftexcmds")
+  tex.enableprimitives('pdf@', {'draftmode'})
+}
+\long\def\pdf@mdfivesum#1{%
+  \directlua{%
+    oberdiek.pdftexcmds.mdfivesum("\luaescapestring{#1}", "byte")%
+  }%
+}%
+\def\pdf@system#1{%
+  \directlua{%
+    oberdiek.pdftexcmds.system("\luaescapestring{#1}")%
+  }%
+}
+\let\pdf@primitive\primitive
+% Lua function |oberdiek.pdftexcmds.filesize| requires the |kpse| library,
+% which is not loaded in \hologo{ConTeXt},
+% see \url(https://){github.com/latex3/lua-uni-algos/issues/3}, so we define our
+% own filesize function.
+\directlua{%
+  function memoize.filesize(filename)
+    local filehandle = io.open(filename, "r")
+    % We can't easily use |~=|, as |~| is an active character, so the |else|
+    % workaround.
+    if filehandle == nil then
+    else
+      tex.write(filehandle:seek("end"))
+      io.close(filehandle)
+    end
+  end
+}%
+\def\pdf@filesize#1{%
+  \directlua{memoize.filesize("\luaescapestring{#1}")}%
+}
+%</context>
+% Take care of some further differences between the engines.
+\ifdef\pdftexversion{%
+}{%
+  \def\pdfhorigin{1true in}%
+  \def\pdfvorigin{1true in}%
+  \ifdef\XeTeXversion{%
+    \let\quitvmode\leavevmode
+  }{%
+    \ifdef\luatexversion{%
+      \let\pdfpagewidth\pagewidth
+      \let\pdfpageheight\pageheight
+      \def\pdfmajorversion{\pdfvariable majorversion}%
+      \def\pdfminorversion{\pdfvariable minorversion}%
+    }{%
+      \PackageError{memoize}{Support for this TeX engine is not implemented}{}%
+    }%
+  }%
+}
+% 
+% In \hologo{ConTeXt}, |\unexpanded| means |\protected|, and the usual
+% |\unexpanded| is available as |\normalunexpanded|.  Option one: use dtx
+% guards to produce the correct control sequence.  I tried this option.  I find
+% it ugly, and I keep forgetting to guard.  Option two: |\let| an internal
+% control sequence, like |\mmz@unexpanded|, to the correct thing, and use that
+% all the time.  I never tried this, but I find it ugly, too, and I guess I
+% would forget to use the new control sequence, anyway.  Option three: use
+% |\unexpanded| in the |.dtx|, and |sed| through the generated \hologo{ConTeXt}
+% files to replace all its occurrences by |\normalunexpanded|.  Oh yeah!
+% 
+% 
+% \paragraph.{Shipout}
+% We will next load our own auxiliary package, CollArgs, but before we do
+% that, we need to grab |\shipout| in \hologo{plainTeX}.  The problem is,
+% Memoize needs to hack into the shipout routine, but it has best chances
+% of working as intended if it redefines the \emph{primitive} |\shipout|.
+% However, CollArgs loads |pgfkeys|, which in turn (and perhaps with no for
+% reason) loads |atbegshi|, which redefines |\shipout|.  For details, see
+% section~\ref{sec:code:extern}.  Below, we first check that the current
+% meaning of |\shipout| is primitive, and then redefine it.
+% 
+%<*plain>
+\def\mmz@regular@shipout{%
+  \global\advance\mmzRegularPages1\relax
+  \mmz@primitive@shipout
+}
+\edef\mmz@temp{\string\shipout}%
+\edef\mmz@tempa{\meaning\shipout}%
+\ifx\mmz@temp\mmz@tempa
+  \let\mmz@primitive@shipout\shipout      
+  \let\shipout\mmz@regular@shipout
+\else
+  \PackageError{memoize}{Cannot grab \string\shipout, it is already redefined}{}%
+\fi
+%</plain>
+% Our auxiliary package (\MS\ref{sec:ref:collargs}, \S\ref{sec:code:collargs}).
+% We also need it in |nomemoize|, to collect manual environments.
+%<latex>\RequirePackage{advice}
+%<plain>\input advice
+%<context>\input t-advice
+%</mmz>
+% 
+% \paragraph.{Loading order} |memoize| and |nomemoize| are mutually exclusive,
+% and |memoizable| must be loaded before either of them.  |\mmz@loadstatus|: 1
+% = memoize, 2 = memoizable, 3 = nomemoize.
+%<*(plain,context)&(mmz,nommz,mmzable)>
+\def\ifmmz@loadstatus#1{%
+  \ifnum#1=0\csname mmz@loadstatus\endcsname\relax
+    \expandafter\@firstoftwo
+  \else
+    \expandafter\@secondoftwo
+  \fi
+}
+%</(plain,context)&(mmz,nommz,mmzable)>
+%<*mmz>
+%<latex>\@ifpackageloaded{nomemoize}%
+%<plain,context>\ifmmz@loadstatus{3}%
+{%
+  \PackageError{memoize}{Cannot load the package, as "nomemoize" is already
+    loaded. Memoization will NOT be in effect}{Packages "memoize" and
+    "nomemoize" are mutually exclusive, please load either one or the other.}%
+  %<latex>\pgfkeys{/memoize/package options/.unknown/.code={}}
+  %<latex>\ProcessPgfPackageOptions{/memoize/package options}
+    \endinput
+}{}%
+%<latex>\@ifpackageloaded{memoizable}%
+%<plain,context>\ifmmz@loadstatus{2}%
+{%
+  \PackageError{memoize}{Cannot load the package, as "memoizable" is already
+    loaded}{Package "memoizable" is loaded by packages which support
+    memoization.  Memoize must be loaded before all such packages.  The
+    compilation log can help you figure out which package loaded "memoizable";
+    please move
+    %<latex>"\string\usepackage{memoize}"
+    %<plain>"\string\input memoize"
+    %<context>"\string\usemodule[memoize]"
+    before the
+    %<latex>"\string\usepackage"
+    %<plain>"\string\input"
+    %<context>"\string\usemodule"
+    of that package.}%
+    %<latex>\pgfkeys{/memoize/package options/.unknown/.code={}}
+    %<latex>\ProcessPgfPackageOptions{/memoize/package options}
+  \endinput
+}{}%
+%<plain,context>\ifmmz@loadstatus{1}{\endinput}{}%
+%<plain,context>\def\mmz@loadstatus{1}%
+%</mmz>
+%<*mmzable>
+%<latex>\@ifpackageloaded{memoize}%
+%<plain,context>\ifmmz@loadstatus{1}%
+{\endinput}{}
+%<latex>\@ifpackageloaded{nomemoize}%
+%<plain,context>\ifmmz@loadstatus{3}%
+{\endinput}{}%
+%<plain,context>\ifmmz@loadstatus{2}{\endinput}{}%
+%<plain,context>\def\mmz@loadstatus{2}%
+%</mmzable>
+%<*nommz>
+%<latex>\@ifpackageloaded{memoize}
+%<plain,context>\ifmmz@loadstatus{1}%
+{%
+  \PackageError{nomemoize}{Cannot load the package, as "memoize" is already
+    loaded; memoization will remain in effect}{Packages "memoize" and
+    "nomemoize" are mutually exclusive, please load either one or the other.}%
+  \endinput }{}%
+%<latex>\@ifpackageloaded{memoizable}%
+%<plain,context>\ifmmz@loadstatus{2}%
+{%
+  \PackageError{nomemoize}{Cannot load the package, as "memoizable" is already
+    loaded}{Package "memoizable" is loaded by packages which support
+    memoization.  (No)Memoize must be loaded before all such packages.  The
+    compilation log can help you figure out which package loaded
+    "memoizable"; please move
+    %<latex>"\string\usepackage{nomemoize}"
+    %<plain>"\string\input memoize"
+    %<context>"\string\usemodule[memoize]"
+    before the
+    %<latex>"\string\usepackage"
+    %<plain>"\string\input"
+    %<context>"\string\usemodule"
+    of that package.}%
+  \endinput
+}{}%
+%<plain,context>\ifmmz@loadstatus{3}{\endinput}{}%
+%<plain,context>\def\mmz@loadstatus{3}%
+%</nommz>
+% 
+%<*mmz>
+% 
+% \begin{macro}{\filetotoks}
+%   Read \hologo{TeX} file |#2| into token register |#1| (under the current
+%   category code regime); |\toksapp| is defined in CollArgs.
+\def\filetotoks#1#2{%
+  \immediate\openin0{#2}%
+  #1={}%
+  \loop
+  \unless\ifeof0
+    \read0 to \totoks@temp
+    % We need the |\expandafter|s for our |\toksapp| macro.
+    \expandafter\toksapp\expandafter#1\expandafter{\totoks@temp}%
+  \repeat
+  \immediate\closein0
+}
+% \end{macro}
+% 
+% \paragraph{Other} little things.
+\newif\ifmmz@temp
+\newtoks\mmz@temptoks
+\newbox\mmz@box
+\newwrite\mmz@out
+% 
+% \section{The basic configuration}
+% \label{sec:code:configuration}
+% 
+% \begin{macro}{\mmzset}
+%   The user primarily interacts with |Memoize| through the |pgfkeys|-based
+%   configuration macro |\mmzset|, which executes keys in path |/mmz|.  In
+%   |nomemoize| and |memoizable|, is exists as a no-op.
+\def\mmzset#1{\pgfqkeys{/mmz}{#1}\ignorespaces}
+%</mmz>
+%<nommz,mmzable>\def\mmzset#1{\ignorespaces}
+% \end{macro}
+% 
+% \begin{macro}{\mmzset}
+%   Any |/mmz| keys used outside of |\mmzset| must be declared by this macro
+%   for |nomemoize| package to work.
+%<mmz>\def\nommzkeys#1{}
+%<*nommz,mmzable>
+\def\nommzkeys{\pgfqkeys{/mmz}}
+\pgfqkeys{/mmz}{.unknown/.code={\pgfkeysdef{\pgfkeyscurrentkey}{}}}
+%</nommz,mmzable>
+% \end{macro}
+% 
+% \begin{key}{enable, disable}
+% \begin{macro}{\ifmemoize}
+%   These keys set \hologo{TeX}-style conditional \cs{ifmemoize}, used as the
+%   central on/off switch for the functionality of the package --- it is
+%   inspected in |\Memoize| and by run conditions of automemoization handlers.
+%   
+%   If used in the preamble, the effect of these keys is delayed until the
+%   beginning of the document.  The delay is implemented through a special
+%   style, |begindocument|, which is executed at |begindocument| hook in
+%   \hologo{LaTeX}; in other formats, the user must invoke it manually
+%   (\MS\ref{sec:ref:loading}).
+%
+%   |Nomemoize| does not need the keys themselves, but it does need the
+%   underlying conditional --- which will be always false.
+%<mmz,nommz,mmzable>\newif\ifmemoize
+%<*mmz>
+\mmzset{%
+  enable/.style={begindocument/.append code=\memoizetrue},
+  disable/.style={begindocument/.append code=\memoizefalse},
+  begindocument/.append style={
+    enable/.code=\memoizetrue,
+    disable/.code=\memoizefalse,
+  },
+  % Memoize is enabled at the beginning of the document, unless explicitly
+  % disabled by the user in the preamble.
+  enable,
+}
+% \end{macro}
+% \end{key}
+% 
+% \begin{key}{normal,readonly,recompile}
+%   When Memoize is enabled, it can be in one of three modes
+%   (\MS\ref{sec:tut:working-on-a-picture}): normal, readonly, and recompile.
+%   The numeric constants are defined below.  The mode is stored in
+%   |\mmz@mode|, and only matters in |\Memoize| (and
+%   |\mmz@process@ccmemo|).\footnote{In fact, this code treats anything but 1
+%   and 2 as normal.}
+\def\mmz@mode@normal{0}
+\def\mmz@mode@readonly{1}
+\def\mmz@mode@recompile{2}
+\let\mmz@mode\mmz@mode@normal
+\mmzset{%
+  normal/.code={\let\mmz@mode\mmz@mode@normal},
+  readonly/.code={\let\mmz@mode\mmz@mode@readonly},
+  recompile/.code={\let\mmz@mode\mmz@mode@recompile},
+}
+% \end{key}
+% 
+% \begin{key}{path, path/relative, path/dir, path/prefix}
+%   Key |path| executes the given keylist in path |/mmz/path|, to determine the
+%   full \emph{path prefix} to memo and extern files
+%   (\MS\ref{sec:tut:memodir},\ref{sec:memos}): |relative|, true by default,
+%   determines whether the location of these files is relative to the current
+%   directory; |dir| sets their directory; and |prefix| sets the first, fixed
+%   part of their basename; the second part containing the MD5 sum(s) is not
+%   under user control, and neither is the suffix.  These subkeys will be
+%   initialized a bit later, via |no memo dir|.
+\mmzset{%
+  path/.code={\pgfqkeys{/mmz/path}{#1}},
+  path/.cd,
+  relative/.is if=mmz@relativepath,
+  dir/.store in=\mmz@dir,
+  dir/.value required,
+  prefix/.store in=\mmz@prefix,
+  prefix/.value required,
+}
+\newif\ifmmz@relativepath
+% Key |path| concludes by performing two post-path-setting actions: creating
+% the given directory if |mkdir| is in effect, and noting the new path prefix
+% in record files (by eventually executing |record/prefix|, which typically
+% puts a |\mmzPrefix| line in the |.mmz| file).  These actions are the reason
+% for having the path setting keys grouped under |path| --- we don't want them
+% to be triggered by changes of the individual components of the path.
+% Similarly, we don't want them triggered by multiple invocations of |path| in
+% the preamble; only the final setting matters, so |path| is only equipped with
+% the action-triggering code at the beginning of the document.
+\mmzset{%
+  begindocument/.append style={
+    path/.append code=\mmz@maybe@mkmemodir\mmz@record@prefix,
+  },
+  % Consequently, the post-path-setting actions must be triggered manually at
+  % the beginning of the document.  Below, we trigger directory creation;
+  % |record/prefix| will be called from |record/begin|, which is executed at
+  % the beginning of the document, so it shouldn't be mentioned here.
+  begindocument/.append code=\mmz@maybe@mkmemodir,
+}
+% Define the paths to the memo directory and the prefix.
+\def\mmz@dir@path{\ifmmz@relativepath.\fi/\mmz@dir}
+\def\mmz@prefix@path{\mmz@dir@path/\mmz@prefix}
+% \end{key}
+% 
+% \begin{key}{mkdir, mkdir command}
+%   Should we create the memo/extern directory if it doesn't exist?  And which
+%   command should we use to create it?  Of course, shell escape must be
+%   properly configured for this to work (\MS\ref{sec:shell-escape}).
+%   ^^A todo: What about quoting the paths containing spaces on Windows? Will this work?
+\mmzset{
+  mkdir/.is if=mmz@mkdir,
+  mkdir command/.code={\def\mmz@mkdir@command##1{#1}},
+  mkdir command={mkdir "#1"},
+}
+% The underlying conditional \cs{ifmmz@mkdir} is only ever used in
+% |\mmz@maybe@mkmemodir| below, which is itself only executed at the end of
+% |path| and in |begindocument|.
+\newif\ifmmz@mkdir
+\def\mmz@maybe@mkmemodir{%
+  \ifmmz@mkdir
+    \pdf@system{\mmz@mkdir@command{\mmzOutputDirectory\mmz@dir@path}}%
+  \fi
+}
+% \end{key}
+% 
+% \begin{key}{memo dir, no memo dir}
+%   Shortcuts for two common settings of |path| keys.  The default |no memo
+%   dir| will place the memos and externs in the current directory, prefixed
+%   with |#1.|, where |#1| defaults to (unquoted) |\jobname|.  Key |memo dir|
+%   places the memos and externs in a dedicated directory, |#1.memo.dir|; the
+%   filenames themselves have no prefix.  Furthermore, |memo dir| triggers the
+%   creation of the directory.
+\mmzset{%
+  memo dir/.style={
+    mkdir,
+    path={
+      relative,
+      dir={#1.memo.dir},
+      prefix={},
+    },
+  },
+  memo dir/.default=\mmzUnquote\jobname,
+  no memo dir/.style={
+    mkdir=false,
+    path={
+      relative,
+      dir={},
+      prefix={#1.},
+    },
+  },
+  no memo dir/.default=\mmzUnquote\jobname,
+  no memo dir,
+}
+% \end{key}
+%   
+% \begin{macro}{\mmzUnquote}
+%   If the expanded argument is surrounded by double quotes, remove them. This
+%   relies on |#1| containing no quotes other than the potential surrounding
+%   quotes, which should be the case when applying the macro to |\jobname|.  An
+%   empty |#1| is dealt with correctly, even if |\jobname| can hardly ever be
+%   empty (needs |openout_any=a|).
+% 
+%   We use this macro when we are passing a filename constructed from
+%   |\jobname| to external programs.
+\def\mmzUnquote#1{\expanded{\noexpand\mmz@unquote#1}\mmz@unquote@end}
+\def\mmz@unquote#1{%
+  \ifx\mmz@unquote@end#1%
+  \else
+    \ifx"#1%
+      \expandafter\expandafter\expandafter\mmz@unquote@quotes
+    \else
+      \expandafter\expandafter\expandafter\mmz@unquote@noquotes
+      \expandafter\expandafter\expandafter#1%
+    \fi
+  \fi
+}
+\def\mmz@unquote@quotes#1"\mmz@unquote@end{#1}
+\def\mmz@unquote@noquotes#1\mmz@unquote@end{#1}
+% \end{macro}
+% 
+% \begin{key}{ignore spaces}
+%   The underlying conditional will be inspected by automemoization handlers,
+%   to maybe put |\ignorespaces| after the invocation of the handler.
+\newif\ifmmz@ignorespaces
+\mmzset{
+  ignore spaces/.is if=mmz@ignorespaces,
+}
+% \end{key}
+% 
+% \begin{key}{verbatim, verb, no verbatim}
+%   These keys are tricky.  For one, there's |verbatim|, which sets all
+%   characters' category codes to other, and there's |verb|, which leaves
+%   braces untouched (well, honestly, it redefines them).  But Memoize itself
+%   doesn't really care about this detail --- it only uses the underlying
+%   conditional \cs{ifmmz@verbatim}.  It is CollArgs which cares about the
+%   difference between the ``long'' and the ``short'' verbatim, so we need to
+%   tell it about it.  That's why the verbatim options ``append themselves'' to
+%   |\mmzRawCollectorOptions|, which is later passed on to
+%   |\CollectArgumentsRaw| as a part of its optional argument.
+\newif\ifmmz@verbatim
+\def\mmzRawCollectorOptions{}
+\mmzset{
+  verbatim/.code={%
+    \def\mmzRawCollectorOptions{\collargsVerbatim}%
+    \mmz@verbatimtrue
+  },
+  verb/.code={%
+    \def\mmzRawCollectorOptions{\collargsVerb}%
+    \mmz@verbatimtrue
+  },
+  no verbatim/.code={%
+    \def\mmzRawCollectorOptions{\collargsNoVerbatim}%
+    \mmz@verbatimfalse
+  },
+}
+% \end{key}
+% \section{Memoization}
+% \label{sec:code:memoization}
+% 
+% \subsection{Manual memoization}
+% \label{sec:code:memoization:manual}
+% 
+% \begin{macro}{\mmz}
+%   The core of this macro will be a simple invocation of |\Memoize|, but to
+%   get there, we have to collect the optional argument carefully, because we
+%   might have to collect the memoized code verbatim.
+\protected\def\mmz{\futurelet\mmz@temp\mmz@i}
+\def\mmz@i{%
+  % Anyone who wants to call |\Memoize| must open a group, because |\Memoize|
+  % will close a group.
+  \begingroup
+  % As the optional argument occurs after a control sequence (|\mmz|), any
+  % spaces were consumed and we can immediately test for the opening bracket.
+  \ifx\mmz@temp[%]
+    \def\mmz@verbatim@fix{}%
+    \expandafter\mmz@ii
+  \else
+    % If there was no optional argument, the opening brace (or the unlikely
+    % single token) of our mandatory argument is already tokenized.  If we are
+    % requested to memoize in a verbatim mode, this non-verbatim tokenization
+    % was wrong, so we will use option |\collargsFixFromNoVerbatim| to ask
+    % CollArgs to fix the situation.  (|\mmz@verbatim@fix| will only be used in
+    % the verbatim mode.)
+    \def\mmz@verbatim@fix{\noexpand\collargsFixFromNoVerbatim}%
+    % No optional argument, so we can skip |\mmz@ii|.
+    \expandafter\mmz@iii
+  \fi
+}
+\def\mmz@ii[#1]{%
+  % Apply the options given in the optional argument.
+  \mmzset{#1}%
+  \mmz@iii
+}
+\def\mmz@iii{%
+  % In the non-verbatim mode, we avoid collecting the single mandatory argument
+  % using |\CollectArguments|.
+  \ifmmz@verbatim
+    \expandafter\mmz@do@verbatim
+  \else
+    \expandafter\mmz@do
+  \fi
+}
+% This macro grabs the mandatory argument of |\mmz| and calls |\Memoize|.
+\long\def\mmz@do#1{%
+  \Memoize{#1}{#1}%
+}%
+% 
+% The following macro uses |\CollectArgumentsRaw| of package CollArgs
+% (\S\ref{sec:code:collargs}) to grab the argument verbatim; the appropriate
+% verbatim mode triggering raw option was put in |\mmzRawCollectorOptions| by
+% key |verb(atim)|.  The macro also |\mmz@verbatim@fix| contains the potential
+% request for a category code fix (\S\ref{sec:code:collargs:fix}).
+\def\mmz@do@verbatim#1{%
+  \expanded{%
+    \noexpand\CollectArgumentsRaw{%
+      \noexpand\collargsCaller{\noexpand\mmz}%
+      \expandonce\mmzRawCollectorOptions
+      \mmz@verbatim@fix
+    }%
+  }{+m}\mmz@do
+}
+% \end{macro}
+% 
+% \begin{environment}{memoize}
+%   The definition of the manual memoization environment proceeds along the
+%   same lines as the definition of |\mmz|, except that we also have to
+%   implement space-trimming, and that we will collect the environment using
+%   |\CollectArguments| in both the verbatim and the non-verbatim and mode.
+% 
+%   We define the \hologo{LaTeX}, \hologo{plainTeX} and \hologo{ConTeXt}
+%   environments in parallel.  The definition of the \hologo{plainTeX} and
+%   \hologo{ConTeXt} version is complicated by the fact that space-trimming is
+%   affected by the presence vs.\ absence of the optional argument (for
+%   purposes of space-trimming, it counts as present even if it is empty).
+%<*latex>
+% We define the \hologo{LaTeX} environment using |\newenvironment|, which
+% kindly grabs any spaces in front of the optional argument, if it exists ---
+% and if doesn't, we want to trim spaces at the beginning of the environment
+% body anyway.
+\newenvironment{memoize}[1][\mmz@noarg]{%
+  % We close the environment right away.  We'll collect the environment body,
+  % complete with the end-tag, so we have to reintroduce the end-tag somewhere.
+  % Another place would be after the invocation of |\Memoize|, but that would
+  % put memoization into a double group and |\mmzAfterMemoization| would not work.
+  \end{memoize}%
+  % % We open the group which will be closed by |\Memoize|.
+  \begingroup
+  % As with |\mmz| above, if there was no optional argument, we have to ask
+  % Collargs for a fix.  The difference is that, as we have collected the
+  % optional argument via |\newcommand|, we have to test for its presence in a
+  % roundabout way.
+  \def\mmz@temp{#1}%
+  \ifx\mmz@temp\mmz@noarg
+    \def\mmz@verbatim@fix{\noexpand\collargsFixFromNoVerbatim}%
+  \else
+    \def\mmz@verbatim@fix{}%
+    \mmzset{#1}%
+  \fi
+  \mmz@env@iii
+}{}
+\def\mmz@noarg{\mmz@noarg}
+%</latex>
+%<plain>\def\memoize{%
+%<context>\def\startmemoize{%
+%<*plain,context>
+  \begingroup
+  % In \hologo{plainTeX} and \hologo{ConTeXt}, we don't have to worry about any
+  % spaces in front of the optional argument, as the environments are opened by
+  % a control sequence.
+  \futurelet\mmz@temp\mmz@env@i
+}
+\def\mmz@env@i{%
+  \ifx\mmz@temp[%]
+    \def\mmz@verbatim@fix{}%
+    \expandafter\mmz@env@ii
+  \else
+    \def\mmz@verbatim@fix{\noexpand\collargsFixFromNoVerbatim}%
+    \expandafter\mmz@env@iii
+  \fi
+}
+\def\mmz@env@ii[#1]{%
+  \mmzset{#1}%
+  \mmz@env@iii
+}
+%</plain,context>
+\def\mmz@env@iii{%
+  \long\edef\mmz@do##1{%
+    % |\unskip| will ``trim'' spaces at the end of the environment body.
+    \noexpand\Memoize{##1}{##1\unskip}%
+  }%
+  \expanded{%
+    \noexpand\CollectArgumentsRaw{%
+      % |\CollectArgumentsRaw| will adapt the caller to the format automatically.
+      \noexpand\collargsCaller{memoize}%
+      % |verb(atim)| is in here if it was requested.
+      \expandonce\mmzRawCollectorOptions
+      % The category code fix, if needed.
+      \ifmmz@verbatim\mmz@verbatim@fix\fi
+    }%
+    % Spaces at the beginning of the environment body are trimmed by setting
+    % the first argument to |!t<space>| and disappearing it with
+    % |\collargsAppendPostwrap{}|; note that this removes any number of space
+    % tokens.  |\CollectArgumentsRaw| automatically adapts the argument type
+    % |b| to the format.
+    % 
+  }{&&{\collargsAppendPostwrap{}}!t{ }+b{memoize}}{\mmz@do}%
+}%
+%</mmz>
+% \end{environment}
+% 
+% \begin{macro}{\nommz}
+%   We throw away the optional argument if present, and replace the opening
+%   brace with begin-group plus |\memoizefalse|.  This way, the ``argument'' of
+%   |\nommz| will be processed in a group (with Memoize disabled) and even the
+%   verbatim code will work because the ``argument'' will not have been
+%   tokenized.
+% 
+%   As a user command, |\nommz| has to make it into package |nomemoize| as
+%   well, and we'll |\let| |\mmz| equal it there; it is not needed in
+%   |mmzable|.
+%<*mmz,nommz>
+\protected\def\nommz#1#{%
+  \afterassignment\nommz@i
+  \let\mmz@temp
+}
+\def\nommz@i{%
+  \bgroup
+  \memoizefalse
+}
+%<nommz>\let\mmz\nommz
+% \end{macro}
+% 
+% \begin{environment}{nomemoize}
+%   We throw away the optional argument and take care of the spaces at the
+%   beginning and at the end of the body.
+%<*latex>
+\newenvironment{nomemoize}[1][]{%
+  \memoizefalse
+  \ignorespaces
+}{%
+  \unskip
+}
+%</latex>
+%<*plain,context>
+%<plain>\def\nomemoize{%
+%<context>\def\startnomemoize{%
+% Start a group to delimit |\memoizefalse|.
+  \begingroup
+  \memoizefalse
+  \futurelet\mmz@temp\nommz@env@i
+}
+\def\nommz@env@i{%
+  \ifx\mmz@temp[%]
+    \expandafter\nommz@env@ii
+    % No optional argument, no problems with spaces.
+  \fi
+}
+\def\nommz@env@ii[#1]{%
+  \ignorespaces
+}
+%<plain>\def\endnomemoize{%
+%<context>\def\stopnomemoize{%
+  \endgroup
+  \unskip
+}
+%</plain,context>
+%<*nommz>
+%<plain,latex>\let\memoize\nomemoize
+%<plain,latex>\let\endmemoize\endnomemoize
+%<context>\let\startmemoize\startnomemoize
+%<context>\let\stopmemoize\stopnomemoize
+%</nommz>
+% \end{environment}
+% 
+% \subsection{The memoization process}
+% \label{sec:code:memoization-process}
+% 
+% \begin{macro}{\ifmemoizing}
+%     This conditional is set to true when we start memoization (but not when
+%     we start regular compilation or utilization); it should never be set
+%     anywhere else.  It is checked by |\Memoize| to prevent nested
+%     memoizations, deployed in advice run conditions set by |run only if
+%     memoizing|, etc.
+\newif\ifmemoizing
+% \end{macro}
+% 
+% \begin{macro}{\ifinmemoize}
+%     This conditional is set to true when we start either memoization or
+%     regular compilation (but not when we start utilization); it should never
+%     be set anywhere else.  It is deployed in the default advice run conditions,
+%     making sure that automemoized commands are not handled even when we're
+%     regularly compiling some code submitted to memoization.
+\newif\ifinmemoize
+% \end{macro}
+%
+% \begin{macro}{\mmz@maybe@scantokens}
+%   An auxiliary macro which rescans the given
+%   code using |\scantokens| if the verbatim mode is active.  We also need it
+%   in NoMemoize, to properly grab verbatim manually memoized code.
+%</mmz,nommz>
+%<*mmz>
+\def\mmz@maybe@scantokens{%
+  \ifmmz@verbatim
+    \expandafter\mmz@scantokens
+  \else
+    \expandafter\@firstofone
+  \fi
+}
+% Without |\newlinechar=13|, |\scantokens| would see receive the entire
+% argument as one long line --- but it would not \emph{see} the entire
+% argument, but only up to the first newline character, effectively losing most
+% of the tokens.  (We need to manually save and restore |\newlinechar| because
+% we don't want to execute the memoized code in yet another group.)
+\long\def\mmz@scantokens#1{%
+  \expanded{%
+    \newlinechar=13
+    \unexpanded{\scantokens{#1\endinput}}%
+    \newlinechar=\the\newlinechar
+  }%
+}
+% \end{macro}
+% 
+% \begin{macro}{\Memoize}
+%   Memoization is invoked by executing |\Memoize|.  This macro is a decision
+%   hub.  It test for the existence of the memos and externs associated with
+%   the memoized code, and takes the appropriate action (memoization:
+%   |\mmz@memoize|; regular compilation: |\mmz@compile|, utilization:
+%   |\mmz@process@cmemo| plus |\mmz@process@ccmemo| plus further complications)
+%   depending on the memoization mode (normal, readonly, recompile).  Note that
+%   one should open a \hologo{TeX} group prior to executing |\Memoize|, because
+%   |\Memoize| will close a group (\MS\ref{sec:Memoize}).
+% 
+%   |\Memoize| takes two arguments, which contain two potentially different
+%   versions of the code submitted to memoization: |#1| contains the code which
+%   \meta{code MD5 sum} is computed off of, while |#2| contains the code which
+%   is actually executed during memoization and regular compilation.  The
+%   arguments will contain the same code in the case of manual memoization, but
+%   they will differ in the case of automemoization, where the executable code
+%   will typically prefixed by |\AdviceOriginal|.  As the two
+%   codes will be used not only by |\Memoize| but also by macros called from
+%   |\Memoize|, |\Memoize| stores them into dedicated toks registers, declared
+%   below.
+\newtoks\mmz@mdfive@source
+\newtoks\mmz@exec@source
+% Finally, the definition of the macro.  In package NoMemoize, we should simply
+% execute the code in the second argument.  But in Memoize, we have work to do.
+\let\Memoize\@secondoftwo
+\long\def\Memoize#1#2{%
+  % We store the first argument into token register |\mmz@mdfive@source|
+  % because we might have to include it in tracing info (when |trace| is in
+  % effect), or paste it into the c-memo (depending on |include source in
+  % cmemo|).
+  \mmz@mdfive@source{#1}%
+  % We store the executable code in |\mmz@exec@source|.  In the verbatim mode,
+  % the code will have to be rescanned.  This is implemented by
+  % |\mmz@maybe@scantokens|, and we wrap the code into this macro right away,
+  % once and for all.  Even more, we pre-expand |\mmz@maybe@scantokens| (three
+  % times), effectively applying the current \cs{ifmmz@verbatim} and
+  % eliminating the need to save and restore this conditional in
+  % |\mmz@compile|, which (regularly) compiles the code \emph{after} closing
+  % the |\Memoize| group --- after this pre-expansion, |\mmz@exec@source| will
+  % contain either |\mmz@scantokens{...}| or |\@firstofone{...}|.
+  \expandafter\expandafter\expandafter\expandafter
+  \expandafter\expandafter\expandafter
+  \mmz@exec@source
+  \expandafter\expandafter\expandafter\expandafter
+  \expandafter\expandafter\expandafter
+  {%
+    \mmz@maybe@scantokens{#2}%
+  }%
+  \mmz@trace@Memoize
+  % In most branches below, we end up with regular compilation, so let this be
+  % the default action.
+  \let\mmz@action\mmz@compile
+  % If Memoize is disabled, or if memoization is currently taking place, we
+  % will perform a regular compilation.
+  \ifmemoizing
+  \else
+    \ifmemoize
+      % Compute \meta{code md5sum} off of the first argument, and globally
+      % store it into |\mmz@code@mdfivesum| --- globally, because we need it in
+      % utilization to include externs, but the |\Memoize| group is closed (by
+      % |\mmzMemo|) while inputting the cc-memo.  
+      \xdef\mmz@code@mdfivesum{\pdf@mdfivesum{\the\mmz@mdfive@source}}%
+      \mmz@trace@code@mdfive
+      % Recompile mode forces memoization.
+      \ifnum\mmz@mode=\mmz@mode@recompile\relax
+        \ifnum\pdf@draftmode=0
+          \let\mmz@action\mmz@memoize
+        \fi
+      \else
+        % In the normal and the readonly mode, we try to utilize the memos. The
+        % c-memo comes first.  If the c-memo does not exist (or if something is
+        % wrong with it), |\mmz@process@cmemo| (defined in
+        % \S\ref{sec:code:c-memo}) will set |\ifmmz@abort| to true.  It might
+        %   also set |\ifmmzUnmemoizable| which means we should compile normally
+        %     regardless of the mode.
+        \mmz@process@cmemo
+        \ifmmzUnmemoizable
+          \mmz@trace@cmemo@unmemoizable
+        \else
+          \ifmmz@abort
+            % If there is no c-memo, or it is invalid, we memoize, unless the
+            % read-only mode is in effect.
+            \mmz@trace@process@cmemo@fail
+            \ifnum\mmz@mode=\mmz@mode@readonly\relax
+            \else
+              \ifnum\pdf@draftmode=0
+                \let\mmz@action\mmz@memoize
+              \fi
+            \fi
+          \else
+            \mmz@trace@process@cmemo@ok
+            % If the c-memo was fine, the formal action decided upon is to try
+            % utilizing the cc-memo.  If it exists and everything is fine with
+            % it, |\mmz@process@ccmemo| (defined in
+            % section~\ref{sec:code:cc-memo}) will utilize it, i.e.\ the core
+            % of the cc-memo (the part following |\mmzMemo|) will be executed
+            % (typically including the single extern).  Otherwise,
+            % |\mmz@process@ccmemo| will trigger either memoization (in the
+            % normal mode) or regular compilation (in the readonly mode).  This
+            % final decision is left to |\mmz@process@ccmemo| because if we
+            % made it here, the code would get complicated, as the cc-memo must
+            % be processed outside the |\Memoize| group and all the
+            % conditionals in this macro.
+            \let\mmz@action\mmz@process@ccmemo
+          \fi
+        \fi
+      \fi
+    \fi
+  \fi
+  \mmz@action
+}
+% \end{macro}
+% 
+% \begin{macro}{\mmz@compile}
+%   This macro performs regular compilation --- this is signalled to the
+%   memoized code and the memoization driver by setting \cs{ifinmemoize} to
+%   true for the duration of the compilation; \cs{ifmemoizing} is not touched.
+%   The group opened prior to the invocation of |\Memoize| is closed before
+%   executing the code in |\mmz@exec@source|, so that compiling the code has
+%   the same local effect as if was not submitted to memoization; it is closing
+%   this group early which complicates the restoration of \cs{ifinmemoize} at
+%   the end of compilation.  Note that |\mmz@exec@source| is already set to
+%   properly deal with the current verbatim mode, so any further inspection of
+%   \cs{ifmmz@verbatim} is unnecessary; the same goes for
+%   \cs{ifmmz@ignorespaces}, which was (or at least should be) taken care of by
+%   whoever called |\Memoize|.
+\def\mmz@compile{%
+  \mmz@trace@compile
+  \expanded{%
+    \endgroup
+    \noexpand\inmemoizetrue
+    \the\mmz@exec@source
+    \ifinmemoize\noexpand\inmemoizetrue\else\noexpand\inmemoizefalse\fi
+  }%
+}
+% \end{macro}
+% \begin{luafun}{abortOnError}
+%   \begin{macro}{\mmz@lua@atbeginmemoization,\mmz@lua@atendmemoization}
+%     In \hologo{LuaTeX}, we can whether an error occurred during memoization,
+%     and abort if it did.  (We're going through |memoize.abort|, because
+%     |tex.print| does not seem to work during error handling.)  We omit all
+%     this in \hologo{ConTeXt}, as it appears to stop on any error?
+%<*!context>
+\ifdefined\luatexversion
+  \directlua{%
+    luatexbase.add_to_callback(
+      "show_error_message",
+      function()
+        memoize.abort = true
+        texio.write_nl(status.lasterrorstring)
+      end,
+      "Abort memoization on error"
+    )
+  }%
+  \def\mmz@lua@atbeginmemoization{%
+    \directlua{memoize.abort = false}%
+  }%
+  \def\mmz@lua@atendmemoization{%
+    \directlua{%
+      if memoize.abort then
+        tex.print("\noexpand\\mmzAbort")
+      end
+    }%
+  }%
+\else
+%</!context>
+  \let\mmz@lua@atbeginmemoization\relax
+  \let\mmz@lua@atendmemoization\relax
+%<!context>\fi
+%   \end{macro}
+% \end{luafun}
+% \begin{macro}{\mmz@memoize}
+%   This macro performs memoization --- this is signalled to the memoized code
+%   and the memoization driver by setting both \cs{ifinmemoize} and
+%   \cs{ifinmemoizing} to true.
+\def\mmz@memoize{%
+  \mmz@trace@memoize
+  \memoizingtrue
+  \inmemoizetrue
+  % Initialize the various macros and registers used in memoization (to be
+  % described below, or later).  Note that most of these are global, as they
+  % might be adjusted arbitrarily deep within the memoized code.
+  \edef\memoizinggrouplevel{\the\currentgrouplevel}%
+  \global\mmz@abortfalse
+  \global\mmzUnmemoizablefalse
+  \global\mmz@seq 0
+  \global\setbox\mmz@tbe@box\vbox{}%
+  \global\mmz@ccmemo@resources{}%
+  \global\mmzCMemo{}%
+  \global\mmzCCMemo{}%
+  \global\mmzContextExtra{}%
+  \gdef\mmzAtEndMemoizationExtra{}%
+  \gdef\mmzAfterMemoizationExtra{}%
+  \mmz@lua@atbeginmemoization
+  % Execute the pre-memoization hook, the memoized code (wrapped in the
+  % driver), and the post-memoization hook.
+  \mmzAtBeginMemoization
+  \mmzDriver{\the\mmz@exec@source}%
+  \mmzAtEndMemoization
+  \mmzAtEndMemoizationExtra
+  \mmz@lua@atendmemoization
+  \ifmmzUnmemoizable
+    % To permanently prevent memoization, we have to write down the c-memo
+    % (containing |\mmzUnmemoizabletrue|).  We don't need the extra context in
+    % this case.
+    \global\mmzContextExtra{}%
+    \gtoksapp\mmzCMemo{\global\mmzUnmemoizabletrue}%
+    \mmz@write@cmemo
+    \mmz@trace@endmemoize@unmemoizable
+    \PackageWarning{memoize}{Marking this code as unmemoizable}%
+  \else
+    \ifmmz@abort
+      % If memoization was aborted, we create an empty c-memo, to make sure that
+      % no leftover c-memo tricks Memoize into thinking that the code was
+      % successfully memoized.
+      \mmz@trace@endmemoize@aborted
+      \PackageWarning{memoize}{Memoization was aborted}%
+      \mmz@write@empty@cmemo
+    \else
+      % If memoization was not aborted, we compute the \meta{context md5sum},
+      % open and write out the memos, and shipout the externs (as pages into the
+      % document).
+      \mmz@compute@context@mdfivesum
+      \mmz@write@cmemo
+      \mmz@write@ccmemo
+      \mmz@shipout@externs
+      \mmz@trace@endmemoize@ok
+    \fi
+  \fi
+  % After closing the group, we execute the final, after-memoization hook (we
+  % pre-expand the regular macro; the extra macro was assigned to globally). In
+  % the after-memoization code, |\mmzIncludeExtern| points to a macro which can
+  % include the extern from |\mmz@tbe@box|, which makes it possible to typeset
+  % the extern by dropping the contents of |\mmzCCMemo| into this hook --- but
+  % note that this will only work if |\ifmmzkeepexterns| was in effect at the
+  %   end of memoization.
+  \expandafter\endgroup
+  \expandafter\let
+    \expandafter\mmzIncludeExtern\expandafter\mmz@include@extern@from@tbe@box
+  \mmzAfterMemoization
+  \mmzAfterMemoizationExtra
+}
+% \end{macro}
+% 
+% \begin{macro}{\memoizinggrouplevel}
+%   This macro stores the group level at the beginning of memoization.  It is
+%   deployed by |\IfMemoizing|, normally used by integrated drivers.
+\def\memoizinggrouplevel{-1}%
+% \end{macro}
+% 
+% \begin{macro}{\mmzAbort}
+% Memoized code may execute this macro to abort memoization.
+\def\mmzAbort{\global\mmz@aborttrue}
+% \end{macro}
+% 
+% \begin{macro}{\ifmmz@abort}
+%     This conditional serves as a signal that something went wrong during
+%     memoization (where it is set to true by |\mmzAbort|), or c(c)-memo
+%     processing.  The assignment to this conditional should always be global
+%     (because it may be set during memoization).
+\newif\ifmmz@abort
+% \end{macro}
+% 
+% \begin{macro}{\mmzUnmemoizable}
+%   Memoized code may execute |\mmzUnmemoizable| to abort memoization and mark
+%   (in the c-memo) that memoization should never be attempted again.  The
+%   c-memo is composed by |\mmz@memoize|.
+\def\mmzUnmemoizable{\global\mmzUnmemoizabletrue}
+% \end{macro}
+% 
+% \begin{macro}{\ifmmzUnmemoizable}
+%     This conditional serves as a signal that the code should never be
+%     memoized.  It can be set (a) during memoization (that's why it should be
+%     assigned globally), after which it is inspected by |\mmz@memoize|, and
+%     (b) from the c-memo, in which case it is inspected by |\Memoize|.
+\newif\ifmmzUnmemoizable
+% \end{macro}
+% 
+% \begin{macro}{\mmzAtBeginMemoization,\mmzAtEndMemoization,\mmzAfterMemoization}
+%   \begin{key}{at begin memoization, at end memoization, after memoization}
+%     The memoization hooks and their keys.  The hook macros may be set either
+%     before or during memoization.  In the former case, one should modify the
+%     primary macro (|\mmzAtBeginMemoization|, |\mmzAtEndMemoization|,
+%     |\mmzAfterMemoization|), and the assignment should be local.  In the
+%     latter case, one should modify the extra macro
+%     (|\mmzAtEndMemoizationExtra|, |\mmzAfterMemoizationExtra|; there is no
+%     |\mmzAtBeginMemoizationExtra|), and the assignment should be global.  The
+%     keys automatically adapt to the situation, by appending either to the
+%     primary or the the extra macro; if |at begin memoization| is used during
+%     memoization, the given code is executed immediately.  We will use this
+%     ``extra'' approach and the auto-adapting keys for other options, like
+%     |context|, as well.
+\def\mmzAtBeginMemoization{}
+\def\mmzAtEndMemoization{}
+\def\mmzAfterMemoization{}
+\mmzset{
+  at begin memoization/.code={%
+    \ifmemoizing
+      \expandafter\@firstofone
+    \else
+      \expandafter\appto\expandafter\mmzAtBeginMemoization
+    \fi
+    {#1}%
+  },
+  at end memoization/.code={%
+    \ifmemoizing
+      \expandafter\gappto\expandafter\mmzAtEndMemoizationExtra
+    \else
+      \expandafter\appto\expandafter\mmzAtEndMemoization
+    \fi
+    {#1}%
+  },
+  after memoization/.code={%
+    \ifmemoizing
+      \expandafter\gappto\expandafter\mmzAfterMemoizationExtra
+    \else
+      \expandafter\appto\expandafter\mmzAfterMemoization
+    \fi
+    {#1}%
+  },
+}
+% \end{key}
+% \end{macro}
+%
+% \begin{key}{driver}
+%   This key sets the (formal) memoization driver.  The function of the driver
+%   is to produce the memos and externs while executing the submitted code.
+\mmzset{
+  driver/.store in=\mmzDriver,
+  driver=\mmzSingleExternDriver,
+}
+% \end{key}
+% 
+% \begin{macro}{\ifmmzkeepexterns}
+%     This conditional causes Memoize not to empty out |\mmz@tbe@box|, holding
+%     the externs collected during memoization, while shipping them out.
+\newif\ifmmzkeepexterns
+% \end{macro}
+% 
+% \begin{macro}{\mmzSingleExternDriver}
+%   The default memoization driver externalizes the submitted code.  It always
+%   produces exactly one extern, and including the extern will be the only
+%   effect of inputting the cc-memo (unless the memoized code contained some
+%   commands, like |\label|, which added extra instructions to the cc-memo.)
+%   The macro (i) adds |\quitvmode| to the cc-memo, if we're capturing into a
+%   horizontal box, and it puts it to the very front, so that it comes before
+%   any |\label| and |\index| replications, guaranteeing (hopefully) that they
+%   refer to the correct page; (ii) takes the code and typesets it in a box
+%   (|\mmz@box|); (iii) submits the box for externalization; (iv) adds the
+%   extern-inclusion code to the cc-memo, and (v) puts the box into the
+%   document (again prefixing it with |\quitvmode| if necessary).  (The listing
+%   region markers help us present this code in the manual.)
+%   \begin{listingregion}{single-extern-driver.tex}
+\long\def\mmzSingleExternDriver#1{%
+  \xtoksapp\mmzCCMemo{\mmz@maybe@quitvmode}%
+  \setbox\mmz@box\mmz@capture{#1}%
+  \mmzExternalizeBox\mmz@box\mmz@temptoks
+  \xtoksapp\mmzCCMemo{\the\mmz@temptoks}%
+  \mmz@maybe@quitvmode\box\mmz@box
+}
+%   \end{listingregion}
+% \end{macro}
+% 
+% \begin{key}{capture}
+%   The default memoization driver uses |\mmz@capture| and
+%   |\mmz@maybe@quitvmode|, which are set by this key.  |\mmz@maybe@quitvmode|
+%   will be expanded, but for \hologo{XeTeX}, we have defined |\quitvmode| as a
+%   synonym for |\leavevmode|, which is a macro rather than a primitive, so we
+%   have to prevent its expansion in that case.  It is easiest to just add
+%   |\noexpand|, regardless of the engine used.
+\mmzset{
+  capture/.is choice,
+  capture/hbox/.code={%
+    \let\mmz@capture\hbox
+    \def\mmz@maybe@quitvmode{\noexpand\quitvmode}%
+  },
+  capture/vbox/.code={%
+    \let\mmz@capture\vbox
+    \def\mmz@maybe@quitvmode{}%
+  },
+  capture=hbox,
+}
+% \end{key}
+% The memoized code may be memoization-aware; in such a case, we say that the
+% driver is \emph{integrated} into the code.  Code containing an integrated
+% driver must take care to execute it only when memoizing, and not during a
+% regular compilation.  The following key and macro can help here, see
+% \MS\ref{sec:memoization-complex-single-driver} for details.
+% 
+% \begin{mmzautokey}{integrated driver}
+%   This is an advice key, residing in |/mmz/auto|.  Given \meta{suffix} as the
+%   only argument, it declares conditional \cs{ifmemoizing}\meta{suffix}, and
+%   sets the driver for the automemoized command to a macro which sets this
+%   conditional to true.  The declared conditional is \emph{internal} and
+%   should not be used directly, but only via |\IfMemoizing| --- because it
+%   will not be declared when package NoMemoize or only Memoizable is loaded.
+\mmzset{
+  auto/integrated driver/.style={
+    after setup={\expandafter\newif\csname ifmmz@memoizing#1\endcsname},
+    driver/.expand once={%
+      \csname mmz@memoizing#1true\endcsname
+      % Without this, we would introduce an extra group around the memoized
+      % code.
+      \@firstofone
+    }%
+  },
+}
+% \end{mmzautokey}
+% 
+% \begin{macro}{\IfMemoizing}
+%   Without the optional argument, the condition is satisfied when the internal
+%   conditional \cs{ifmemoizing}\meta{suffix}, declared by |integrated driver|,
+%   is true.  With the optional argument \meta{offset}, the current group level
+%   must additionally match the memoizing group level, modulo \meta{offset} ---
+%   this makes sure that the conditional comes out as false in a regular
+%   compilation embedded in a memoization.
+\newcommand\IfMemoizing[2][\mmz@Ifmemoizing@nogrouplevel]{%>\fi
+\csname ifmmz@memoizing#2\endcsname%>\if
+  % One |\relax| is for the |\numexpr|, another for |\ifnum|.  Complications
+  %   arise when |#1| is the optional argument default (defined below).  In
+  %   that case, the content of |\mmz@Ifmemoizing@nogrouplevel| closes off the
+  %   |\ifnum| conditional (with both the true and the false branch empty), and
+  %     opens up a new one, |\iftrue|.  Effectively, we're not testing for the
+  %       group level match.
+  \ifnum\currentgrouplevel=\the\numexpr\memoizinggrouplevel+#1\relax\relax
+    \expandafter\expandafter\expandafter\@firstoftwo
+  \else
+    \expandafter\expandafter\expandafter\@secondoftwo
+  \fi
+\else
+  \expandafter\@secondoftwo
+\fi
+}
+\def\mmz@Ifmemoizing@nogrouplevel{0\relax\relax\fi\iftrue}
+% \end{macro}
+% 
+% \paragraph.{Tracing} We populate the hooks which send the tracing info to the
+% terminal.
+\def\mmz@trace#1{\immediate\write16{[tracing memoize] #1}}
+\def\mmz@trace@context{\mmz@trace{\space\space
+    Context: "\expandonce{\mmz@context@key}" --> \mmz@context@mdfivesum}}
+\def\mmz@trace@Memoize@on{%
+  \mmz@trace{%
+    Entering \noexpand\Memoize (%
+    \ifmemoize enabled\else disabled\fi,
+    \ifnum\mmz@mode=\mmz@mode@recompile recompile\fi
+    \ifnum\mmz@mode=\mmz@mode@readonly readonly\fi
+    \ifnum\mmz@mode=\mmz@mode@normal normal\fi
+    \space mode) on line \the\inputlineno
+  }%
+  \mmz@trace{\space\space Code: \the\mmz@mdfive@source}%
+}
+\def\mmz@trace@code@mdfive@on{\mmz@trace{\space\space
+    Code md5sum: \mmz@code@mdfivesum}}
+\def\mmz@trace@compile@on{\mmz@trace{\space\space Compiling}}
+\def\mmz@trace@memoize@on{\mmz@trace{\space\space Memoizing}}
+\def\mmz@trace@endmemoize@ok@on{\mmz@trace{\space\space
+    Memoization completed}}%
+\def\mmz@trace@endmemoize@aborted@on{\mmz@trace{\space\space
+    Memoization was aborted}}
+\def\mmz@trace@endmemoize@unmemoizable@on{\mmz@trace{\space\space
+    Marking this code as unmemoizable}}
+% No need for |\mmz@trace@endmemoize@fail|, as abortion results in a package
+% warning anyway.
+\def\mmz@trace@process@cmemo@on{\mmz@trace{\space\space
+    Attempting to utilize c-memo \mmz@cmemo@path}}
+\def\mmz@trace@process@no@cmemo@on{\mmz@trace{\space\space
+    C-memo does not exist}}
+\def\mmz@trace@process@cmemo@ok@on{\mmz@trace{\space\space
+    C-memo was processed successfully}\mmz@trace@context}
+\def\mmz@trace@process@cmemo@fail@on{\mmz@trace{\space\space
+    C-memo input failed}}
+\def\mmz@trace@cmemo@unmemoizable@on{\mmz@trace{\space\space
+    This code was marked as unmemoizable}}
+\def\mmz@trace@process@ccmemo@on{\mmz@trace{\space\space
+    Attempting to utilize cc-memo \mmz@ccmemo@path\space
+    (\ifmmz@direct@ccmemo@input\else in\fi direct input)}}
+\def\mmz@trace@resource@on#1{\mmz@trace{\space\space
+    Extern file does not exist: #1}}
+\def\mmz@trace@process@ccmemo@ok@on{%
+  \mmz@trace{\space\space Utilization successful}}
+\def\mmz@trace@process@no@ccmemo@on{%
+  \mmz@trace{\space\space CC-memo does not exist}}
+\def\mmz@trace@process@ccmemo@fail@on{%
+  \mmz@trace{\space\space Cc-memo input failed}}
+% 
+% \begin{key}{tracing}
+%   \begin{macro}{\mmzTracingOn,\mmzTracingOff}
+%     The user interface for switching the tracing on and off; initially, it is
+%     off.  Note that there is no underlying conditional.  The off version
+%     simply |\let|s all the tracing hooks to |\relax|, so that the overhead of
+%     having the tracing functionality available is negligible.
+\mmzset{%
+  trace/.is choice,
+  trace/.default=true,
+  trace/true/.code=\mmzTracingOn,
+  trace/false/.code=\mmzTracingOff,
+}
+\def\mmzTracingOn{%
+  \let\mmz@trace@Memoize\mmz@trace@Memoize@on
+  \let\mmz@trace@code@mdfive\mmz@trace@code@mdfive@on
+  \let\mmz@trace@compile\mmz@trace@compile@on
+  \let\mmz@trace@memoize\mmz@trace@memoize@on
+  \let\mmz@trace@process@cmemo\mmz@trace@process@cmemo@on
+  \let\mmz@trace@endmemoize@ok\mmz@trace@endmemoize@ok@on
+  \let\mmz@trace@endmemoize@unmemoizable\mmz@trace@endmemoize@unmemoizable@on
+  \let\mmz@trace@endmemoize@aborted\mmz@trace@endmemoize@aborted@on
+  \let\mmz@trace@process@cmemo\mmz@trace@process@cmemo@on
+  \let\mmz@trace@process@cmemo@ok\mmz@trace@process@cmemo@ok@on
+  \let\mmz@trace@process@no@cmemo\mmz@trace@process@no@cmemo@on
+  \let\mmz@trace@process@cmemo@fail\mmz@trace@process@cmemo@fail@on
+  \let\mmz@trace@cmemo@unmemoizable\mmz@trace@cmemo@unmemoizable@on
+  \let\mmz@trace@process@ccmemo\mmz@trace@process@ccmemo@on
+  \let\mmz@trace@resource\mmz@trace@resource@on
+  \let\mmz@trace@process@ccmemo@ok\mmz@trace@process@ccmemo@ok@on
+  \let\mmz@trace@process@no@ccmemo\mmz@trace@process@no@ccmemo@on
+  \let\mmz@trace@process@ccmemo@fail\mmz@trace@process@ccmemo@fail@on
+}
+\def\mmzTracingOff{%
+  \let\mmz@trace@Memoize\relax
+  \let\mmz@trace@code@mdfive\relax
+  \let\mmz@trace@compile\relax
+  \let\mmz@trace@memoize\relax
+  \let\mmz@trace@process@cmemo\relax
+  \let\mmz@trace@endmemoize@ok\relax
+  \let\mmz@trace@endmemoize@unmemoizable\relax
+  \let\mmz@trace@endmemoize@aborted\relax
+  \let\mmz@trace@process@cmemo\relax
+  \let\mmz@trace@process@cmemo@ok\relax
+  \let\mmz@trace@process@no@cmemo\relax
+  \let\mmz@trace@process@cmemo@fail\relax
+  \let\mmz@trace@cmemo@unmemoizable\relax
+  \let\mmz@trace@process@ccmemo\relax
+  \let\mmz@trace@resource\@gobble
+  \let\mmz@trace@process@ccmemo@ok\relax
+  \let\mmz@trace@process@no@ccmemo\relax
+  \let\mmz@trace@process@ccmemo@fail\relax
+}
+\mmzTracingOff
+% \end{macro}
+% \end{key}
+% 
+%</mmz>
+%<nommz,mmzable>\newcommand\IfMemoizing[2][]{\@secondoftwo}
+%<*mmz>
+% 
+% \subsection{Context}
+% \label{sec:code:context}
+%
+% \begin{macro}{\mmzContext,\mmzContextExtra}
+%   The context expression is stored in two token registers.  Outside
+%   memoization, we will locally assign to |\mmzContext|; during memoization,
+%   we will globally assign to |\mmzContextExtra|.
+\newtoks\mmzContext
+\newtoks\mmzContextExtra
+% \end{macro}
+% \begin{key}{context, clear context}
+%   The user interface keys for context manipulation hide the complexity
+%   underlying the context storage from the user.
+\mmzset{%
+  context/.code={%
+    \ifmemoizing
+      \expandafter\gtoksapp\expandafter\mmzContextExtra
+    \else
+      \expandafter\toksapp\expandafter\mmzContext
+    \fi
+    % We append a comma to the given context chunk, for disambiguation.
+    {#1,}%
+  },
+  clear context/.code={%
+    \ifmemoizing
+      \expandafter\global\expandafter\mmzContextExtra
+    \else
+      \expandafter\mmzContext
+    \fi
+    {}%
+  },
+  clear context/.value forbidden,
+  % \end{key}
+  % \begin{key}{meaning to context, csname meaning to context, key meaning to
+  %   context, key value to context, /handlers/.meaning to context,
+  %   /handlers/.value to context}
+  %   Utilities to put the meaning of various stuff into |context|.
+  meaning to context/.code={\forcsvlist\mmz@mtoc{#1}},
+  csname meaning to context/.code={\mmz@mtoc@cs{#1}},
+  key meaning to context/.code={\forcsvlist\mmz@mtoc\mmz@mtoc@keycmd{#1}},
+  key value to context/.code={\forcsvlist\mmz@mtoc@key{#1}},
+  /handlers/.meaning to context/.code={%
+    \expanded{\noexpand\mmz@mtoc@cs{pgfk@\pgfkeyscurrentpath/.@cmd}}},
+  /handlers/.value to context/.code={%
+    \expanded{\noexpand\mmz@mtoc@cs{pgfk@\pgfkeyscurrentpath}}},
+}
+\def\mmz@mtoc#1{%
+  \collargs@cs@cases{#1}%
+    {\mmz@mtoc@cmd{#1}}%
+    {\mmz@mtoc@error@notcsorenv{#1}}%
+    {%
+      \mmz@mtoc@cs{%
+        %<context>start%
+        #1}%
+      \mmz@mtoc@cs{%
+        %<latex,plain>end%
+        %<context>stop%
+        #1}%
+    }%
+}
+\def\mmz@mtoc@cmd#1{%
+  \begingroup
+  \escapechar=-1
+  \expandafter\endgroup
+  \expandafter\mmz@mtoc@cs\expandafter{\string#1}%
+}
+\def\mmz@mtoc@cs#1{%
+  \pgfkeysvalueof{/mmz/context/.@cmd}%
+  \expandafter\string\csname#1\endcsname={\expandafter\meaning\csname#1\endcsname}%
+  \pgfeov  
+}
+\def\mmz@mtoc@key#1{\mmz@mtoc@cs{pgfk@#1}}
+\def\mmz@mtoc@key#1{\mmz@mtoc@cs{pgfk@#1/.@cmd}}
+\def\mmz@mtoc@error@notcsorenv#1{%
+  \PackageError{memoize}{'\detokenize{#1}' passed to key 'meaning to context' is neither a command nor an environment}{}%
+}
+% \end{key}
+% 
+% 
+% \subsection{C-memos}
+% \label{sec:code:c-memo}
+% 
+% \paragraph{The path} to a c-memo consists of the path prefix, the MD5 sum of
+% the memoized code, and suffix |.memo|.
+\def\mmz@cmemo@path{\mmz@prefix@path\mmz@code@mdfivesum.memo}
+% \begin{macro}{\mmzCMemo}
+%   The additional, free-form content of the c-memo is collected in this token
+%   register.
+\newtoks\mmzCMemo
+% \end{macro}
+% 
+% \begin{key}{include source in cmemo}
+%   \begin{macro}{\ifmmz@include@source}
+%       Should we include the memoized code in
+%       the c-memo?  By default, yes. \bigskip
+\mmzset{%
+  include source in cmemo/.is if=mmz@include@source,
+}
+\newif\ifmmz@include@source
+\mmz@include@sourcetrue
+% \end{macro}
+% \end{key}
+% 
+% \begin{macro}{\mmz@write@cmemo}
+%   This macro creates the c-memo from the contents of |\mmzContextExtra| and
+%   |\mmzCMemo|.
+\def\mmz@write@cmemo{%
+  % Open the file for writing.
+  \immediate\openout\mmz@out{\mmz@cmemo@path}%
+  % The memo starts with the |\mmzMemo| marker (a signal that the memo is valid).
+  \immediate\write\mmz@out{\noexpand\mmzMemo}%
+  % We store the content of |\mmzContextExtra| by writing out a command that
+  % will (globally) assign its content back into this register.
+  \immediate\write\mmz@out{%
+    \global\mmzContextExtra{\the\mmzContextExtra}\collargs@percentchar
+  }%
+  % Write out the free-form part of the c-memo.
+  \immediate\write\mmz@out{\the\mmzCMemo\collargs@percentchar}%
+  % When |include source in cmemo| is in effect, add the memoized code, hiding
+  % it behind the |\mmzSource| marker.
+  \ifmmz@include@source
+    \immediate\write\mmz@out{\noexpand\mmzSource}%
+    \immediate\write\mmz@out{\the\mmz@mdfive@source}%
+  \fi
+  % Close the file.
+  \immediate\closeout\mmz@out
+  % Record that we wrote a new c-memo.
+  \pgfkeysalso{/mmz/record/new cmemo={\mmz@cmemo@path}}%
+}
+% \end{macro}
+% 
+% \begin{macro}{\mmz@write@empty@cmemo}
+%   This macro is used to create an empty c-memo on aborted memoization, to
+%   make sure that no leftover c-memo tricks Memoize into thinking that the
+%   code was successfully memoized.
+\def\mmz@write@empty@cmemo{%
+  \immediate\openout\mmz@out{\mmz@cmemo@path}%
+  \immediate\closeout\mmz@out
+}
+% \end{macro}
+% 
+% 
+% \begin{macro}{\mmzSource}
+%   The c-memo memoized code marker. This macro is synonymous with |\endinput|,
+%   so the source following it is ignored when inputting the c-memo.
+\let\mmzSource\endinput
+% \end{macro}
+% 
+% \begin{macro}{\mmz@process@cmemo}
+%   This macro inputs the c-memo, which will update the context code, which we
+%   can then compute the MD5 sum of.
+\def\mmz@process@cmemo{%
+  \mmz@trace@process@cmemo
+  % |\ifmmz@abort| serves as a signal that the c-memo exists and is of correct
+  %   form.
+  \global\mmz@aborttrue
+  % If c-memo sets |\ifmmzUnmemoizable|, we will compile regularly.
+  \global\mmzUnmemoizablefalse
+  \def\mmzMemo{\global\mmz@abortfalse}%
+  % Just a safeguard \dots\ c-memo assigns to |\mmzContextExtra| anyway.
+  \global\mmzContextExtra{}%
+  % Input the c-memo, if it exists, and record that we have used it.
+  \IfFileExists{\mmz@cmemo@path}{%
+    \input{\mmz@cmemo@path}%
+    \pgfkeysalso{/mmz/record/used cmemo={\mmz@cmemo@path}}%
+  }{%
+    \mmz@trace@process@no@cmemo
+  }%
+  % Compute the context MD5 sum.
+  \mmz@compute@context@mdfivesum
+}
+% \end{macro}
+% 
+% \begin{macro}{\mmz@compute@context@mdfivesum}
+%   This macro computes the MD5 sum of the concatenation of |\mmzContext| and
+%   |\mmzContextExtra|, and writes out the tracing info when |trace context| is
+%   in effect.  The argument is the tracing note.
+% \end{macro}
+\def\mmz@compute@context@mdfivesum{%
+  \xdef\mmz@context@key{\the\mmzContext\the\mmzContextExtra}%
+  % A special provision for padding, which occurs in the context by default,
+  % and may contain otherwise undefined macros referring to the extern
+  % dimensions.  We make sure that when we expand the context key,
+  % |\mmz@paddings| contains the stringified |\width| etc., while these macros
+  % (which may be employed by the end user in the context expression), are
+  % returned to their original definitions.
+  \begingroup
+  \begingroup
+  \def\width{\string\width}%
+  \def\height{\string\height}%
+  \def\depth{\string\depth}%
+  \edef\mmz@paddings{\mmz@paddings}%
+  \expandafter\endgroup
+  \expandafter\def\expandafter\mmz@paddings\expandafter{\mmz@paddings}%
+  % We pre-expand the concatenated context, for tracing\slash inclusion in the
+  % cc-memo.  In \hologo{LaTeX}, we protect the expansion, as the context
+  % expression may contain whatever.
+  %<latex>\protected@xdef
+  %<!latex>\xdef
+  \mmz@context@key{\mmz@context@key}%
+  \endgroup
+  % Compute the MD5 sum.  We have to assign globally, because this macro is (also)
+  % called after inputting the c-memo, while the resulting MD5 sum is used to
+  % input the cc-memo, which happens outside the |\Memoize| group.
+  % |\mmz@context@mdfivesum|.
+  \xdef\mmz@context@mdfivesum{\pdf@mdfivesum{\expandonce\mmz@context@key}}%
+}
+%
+%
+% \subsection{Cc-memos}
+% \label{sec:code:cc-memo}
+%
+% \paragraph{The path} to a cc-memo consists of the path prefix, the
+% hyphen-separated MD5 sums of the memoized code and the (evaluated) context,
+% and suffix |.memo|.
+\def\mmz@ccmemo@path{%
+  \mmz@prefix@path\mmz@code@mdfivesum-\mmz@context@mdfivesum.memo}
+% 
+% \paragraph{The structure} of a cc-memo:
+% \begin{itemize}
+% \item the list of resources consisting of calls to |\mmzResource|;
+% \item the core memo code (which includes the externs when executed),
+%   introduced by marker |\mmzMemo|; and,
+% \item optionally, the context expansion, introduced by marker
+%   |\mmzThisContext|.
+% \end{itemize}
+% 
+% We begin the cc-memo with a list of extern files included by the core memo
+% code so that we can check whether these files exist prior to executing the
+% core memo code.  Checking this on the fly, while executing the core memo
+% code, would be too late, as that code is arbitrary (and also executed outside
+% the |\Memoize| group).
+% 
+% \begin{macro}{\mmzCCMemo}
+%   During memoization, the core content of the cc-memo is collected into this
+%   token register.
+\newtoks\mmzCCMemo
+% \end{macro}
+% 
+% \begin{key}{include context in ccmemo}
+%   \begin{macro}{\ifmmz@include@context}
+%       Should we include the context expansion in the cc-memo?  By default, no.
+%       \bigskip
+\newif\ifmmz@include@context
+\mmzset{%
+  include context in ccmemo/.is if=mmz@include@context,
+}
+% \end{macro}
+% \end{key}
+% 
+% \begin{key}{direct ccmemo input}
+%   \begin{macro}{\ifmmz@direct@ccmemo@input}
+%       When this conditional is false, the
+%         cc-memo is read indirectly, via a token register, to facilitate
+%         inverse search.  \bigskip
+\newif\ifmmz@direct@ccmemo@input
+\mmzset{%
+  direct ccmemo input/.is if=mmz@direct@ccmemo@input,
+}
+% \end{macro}
+% \end{key}
+% 
+% \begin{macro}{\mmz@write@ccmemo}
+%   This macro creates the cc-memo from the list of resources in
+%   |\mmz@ccmemo@resources| and the contents of |\mmzCCMemo|.
+\def\mmz@write@ccmemo{%
+  % Open the cc-memo file for writing.  Note that the filename contains the
+  % context MD5 sum, which can only be computed after memoization, as the
+  % memoized code can update the context.  This is one of the two reasons why
+  % we couldn't write the cc-memo directly into the file, but had to collect
+  % its contents into token register |\mmzCCMemo|.
+  \immediate\openout\mmz@out{\mmz@ccmemo@path}%
+  % Token register |\mmz@ccmemo@resources| consists of calls to
+  % |\mmz@ccmemo@append@resource|, so the following code writes down the list
+  % of created externs into the cc-memo.  Wanting to have this list at the top
+  % of the cc-memo is the other reason for the roundabout creation of the
+  % cc-memo --- the resources become known only during memoization, as well.
+  \begingroup
+  \the\mmz@ccmemo@resources
+  \endgroup
+  % Write down the content of |\mmzMemo|, but first introduce it by the
+  % |\mmzMemo| marker.
+  \immediate\write\mmz@out{\noexpand\mmzMemo}%
+  \immediate\write\mmz@out{\the\mmzCCMemo\collargs@percentchar}%
+  % Write down the context tracing info when |include context in ccmemo| is in
+  % effect.
+  \ifmmz@include@context
+    \immediate\write\mmz@out{\noexpand\mmzThisContext}%
+    \immediate\write\mmz@out{\expandonce{\mmz@context@key}}%
+  \fi
+  % Insert the end-of-file marker and close the file.
+  \immediate\write\mmz@out{\noexpand\mmzEndMemo}%
+  \immediate\closeout\mmz@out
+  % Record that we wrote a new cc-memo.
+  \pgfkeysalso{/mmz/record/new ccmemo={\mmz@ccmemo@path}}%
+}
+% \end{macro}
+% 
+% \begin{macro}{\mmz@ccmemo@append@resource}
+%   Append the resource to the cc-memo (we are nice to external utilities and
+%   put each resource on its own line).  |#1| is the sequential number of the
+%   extern belonging to the memoized code; below, we assign it to |\mmz@seq|,
+%   which appears in |\mmz@extern@name|.  Note that |\mmz@extern@name| only
+%   contains the extern filename --- without the path, so that externs can be
+%   used by several projects, or copied around.
+\def\mmz@ccmemo@append@resource#1{%
+  \mmz@seq=#1\relax
+  \immediate\write\mmz@out{%
+    \string\mmzResource{\mmz@extern@name}\collargs@percentchar}%
+}
+% \end{macro}
+% 
+% \begin{macro}{\mmzResource}
+%   A list of these macros is located at the top of a cc-memo.  The macro
+%   checks for the existence of the extern file, given as |#1|.  If the extern
+%   does not exist, we redefine |\mmzMemo| to |\endinput|, so that the core
+%   content of the cc-memo is never executed; see also |\mmz@process@ccmemo|
+%   above.
+\def\mmzResource#1{%
+  % We check for existence using |\pdffilesize|, because an empty PDF, which
+  % might be produced by a failed \hologo{TeX}-based extraction, should count
+  % as no file.  The |0| behind |\ifnum| is there because |\pdffilesize|
+  %   returns an empty string when the file does not exist.
+  \ifnum0\pdf@filesize{\mmz@dir@path/#1}=0
+    \ifmmz@direct@ccmemo@input
+      \let\mmzMemo\endinput
+    \else
+      % With indirect cc-memo input, we simulate end-of-input by grabbing
+      % everything up to the end-of-memo marker.  In the indirect cc-memo
+      % input, a |\par| token shows up after |\mmzEndMemo|, I'm not sure why
+      % (|\everyeof={}| does not help).
+      \long\def\mmzMemo##1\mmzEndMemo\par{}%
+    \fi
+    \mmz@trace@resource{#1}%
+  \fi
+}
+% \end{macro}
+% 
+% \begin{macro}{\mmz@process@ccmemo,\mmzThisContext,\mmzEndMemo}
+%   This macro processes the cc-memo.
+\def\mmz@process@ccmemo{%
+  \mmz@trace@process@ccmemo
+  % The following conditional signals whether cc-memo was successfully
+  % utilized.  If the cc-memo file does not exist, |\ifmmz@abort| will remain
+  %   true.  If it exists, it is headed by the list of resources.  If a
+  %   resource check fails, |\mmzMemo| (which follows the list of resources) is
+  %   redefined to |\endinput|, so |\ifmmz@abort| remains true.  However, if
+  %     all resource checks are successful, |\mmzMemo| marker is reached with
+  %     the below definition in effect, so |\ifmmz@abort| becomes false.  Note
+  %       that this marker also closes the |\Memoize| group, so that the core
+  %       cc-memo content is executed in the original group --- and that this
+  %       does not happen if anything goes wrong!
+  \global\mmz@aborttrue
+  % Note that |\mmzMemo| may be redefined by |\mmzResource| upon an unavailable
+  % extern file.
+  \def\mmzMemo{%
+    \endgroup
+    \global\mmz@abortfalse
+    % We |\let| the control sequence used for extern inclusion in the cc-memo to
+    % the macro which includes the extern from the extern file.
+    \let\mmzIncludeExtern\mmz@include@extern
+  }%
+  % Define |\mmzEndMemo| wrt |\ifmmz@direct@ccmemo@input|, whose value will be
+  %   lost soon because |\mmMemo| will close the group --- that's also why this
+  %   definition is global.
+  \xdef\mmzEndMemo{%
+    \ifmmz@direct@ccmemo@input
+      \noexpand\endinput
+    \else
+      % In the indirect cc-memo input, a |\par| token shows up after
+      % |\mmzEndMemo|, I'm not sure why (|\everyeof={}| does not help).
+      \unexpanded{%
+        \def\mmz@temp\par{}%
+        \mmz@temp
+      }%
+    \fi
+  }%
+  % The cc-memo context marker, again wrt |\ifmmz@direct@ccmemo@input| and
+  %   globally.  With direct cc-memo input, this macro is synonymous with
+  %   |\endinput|, so the (expanded) context following it is ignored when
+  %   inputting the cc-memo.  With indirect input, we simulate end-of-input by
+  %   grabbing everything up to the end-of-memo marker (plus gobble the |\par|
+  %   mentioned above).
+  \xdef\mmzThisContext{%
+    \ifmmz@direct@ccmemo@input
+      \noexpand\endinput
+    \else
+      \unexpanded{%
+        \long\def\mmz@temp##1\mmzEndMemo\par{}%
+        \mmz@temp
+      }%
+    \fi
+  }%
+  % Input the cc-memo if it exists.
+  \IfFileExists{\mmz@ccmemo@path}{%
+    \ifmmz@direct@ccmemo@input
+      \input{\mmz@ccmemo@path}%
+    \else
+      % Indirect cc-memo input reads the cc-memo into a token register and
+      % executes the contents of this register.
+      \filetotoks\toks@{\mmz@ccmemo@path}%
+      \the\toks@
+    \fi
+    % Record that we have used the cc-memo.
+    \pgfkeysalso{/mmz/record/used ccmemo={\mmz@ccmemo@path}}%
+  }{%
+    \mmz@trace@process@no@ccmemo
+  }%
+  \ifmmz@abort
+    % The cc-memo doesn't exist, or some of the resources don't.  We need to
+    % memoize, but we'll do it only if |readonly| is not in effect, otherwise
+    % we'll perform a regular compilation. (Note that we are still in the group
+    % opened prior to executing |\Memoize|.)
+    \mmz@trace@process@ccmemo@fail
+    \ifnum\mmz@mode=\mmz@mode@readonly\relax
+      \expandafter\expandafter\expandafter\mmz@compile
+    \else
+      \expandafter\expandafter\expandafter\mmz@memoize
+    \fi
+  \else
+    \mmz@trace@process@ccmemo@ok
+  \fi
+}
+% \end{macro}
+% 
+% \subsection{The externs}
+% \label{sec:code:extern}
+% 
+% \paragraph{The path} to an extern is like the path to a cc-memo, modulo
+% suffix |.pdf|, of course.  However, in case memoization of a chunk produces
+% more than one extern, the filename of any non-first extern includes
+% |\mmz@seq|, the sequential number of the extern as well (we start the
+% numbering at $0$).  We will have need for several parts of the full path to
+% an extern: the basename, the filename, the path without the suffix, and the
+% full path.
+\newcount\mmz@seq
+\def\mmz@extern@basename{%
+  \mmz@prefix\mmz@code@mdfivesum-\mmz@context@mdfivesum
+  \ifnum\mmz@seq>0 -\the\mmz@seq\fi
+}
+\def\mmz@extern@name{\mmz@extern@basename.pdf}
+\def\mmz@extern@basepath{\mmz@dir@path/\mmz@extern@basename}
+\def\mmz@extern@path{\mmz@extern@basepath.pdf}
+% 
+% \begin{key}{padding left, padding right, padding top, padding bottom}
+%   These options set the amount of space surrounding the bounding box of the
+%   externalized graphics in the resulting PDF, i.e.\ in the extern file.  This
+%   allows the user to deal with \TikZ; overlays, |\rlap| and |\llap|, etc.
+\mmzset{
+  padding left/.store in=\mmz@padding@left,
+  padding right/.store in=\mmz@padding@right,
+  padding top/.store in=\mmz@padding@top,
+  padding bottom/.store in=\mmz@padding@bottom,
+% \end{key}
+% 
+% \begin{key}{padding}
+%   A shortcut for setting all four paddings at once.
+  padding/.style={
+    padding left=#1, padding right=#1,
+    padding top=#1, padding bottom=#1
+  },
+  % The default padding is what \hologo{pdfTeX} puts around the page anyway, 1
+  % inch, but we'll use |1 in| rather than |1 true in|, which is the true
+  % default value of |\pdfhorigin| and |\pdfvorigin|, as we want the padding to
+  % adjust with magnification.
+  padding=1in,
+% \end{key}
+% 
+  % \begin{key}{padding to context}
+  %   This key adds padding to the context.  Note that we add the padding
+  %   expression (|\mmz@paddings|, defined below, refers to all the individual
+  %   padding macros), not the actual value (at the time of expansion).  This
+  %   is so because |\width|, |\height| and |\depth| are not defined outside
+  %   extern shipout routines, and the context is evaluated elsewhere.
+  padding to context/.style={
+    context={padding=(\mmz@paddings)},
+  },
+  % \end{key}
+  % 
+  % Padding nearly always belongs into the context --- the exception being
+  % memoized code which produces no externs (\MS\ref{sec:pure-memoization}) ---
+  % so we execute this key immediately.
+  padding to context,
+}
+\def\mmz@paddings{%
+  \mmz@padding@left,\mmz@padding@bottom,\mmz@padding@right,\mmz@padding@top
+}
+% 
+% \begin{macro}{\mmzExternalizeBox}
+%   This macro is the public interface to externalization.  In Memoize itself,
+%   it is called from the default memoization driver, |\mmzSingleExternDriver|,
+%   but it should be called by any driver that wishes to produce an extern, see
+%   \MS\ref{sec:memoization-drivers} for details.  It takes two arguments:
+% \begin{enumerate}[\tt\#1]
+% \item The box that we want to externalize.  It's content will remain intact.
+%   The box may be given either as a control sequence, declared via |\newbox|,
+%   or as box number (say, 0).
+% \item The token register which will receive the code that includes the extern
+%   into the document; it is the responsibility of the memoization driver to
+%   (globally) include the contents of the register in the cc-memo, i.e.\ in
+%   token register |\mmzCCMemo|.  This argument may be either a control
+%   sequence, declared via |\newtoks|, or a |\toks|\meta{token register
+%   number}.
+% \end{enumerate}
+\def\mmzExternalizeBox#1#2{%
+  \begingroup
+  % A courtesy to the user, so they can define padding in terms of the size of
+  % the externalized graphics.
+  \def\width{\wd#1 }%
+  \def\height{\ht#1 }%
+  \def\depth{\dp#1 }%
+  % Store the extern-inclusion code in a temporary macro, which will be
+  % smuggled out of the group.
+  \xdef\mmz@global@temp{%
+    % Executing |\mmzIncludeExtern| from the cc-memo will include the extern
+    % into the document.
+    \noexpand\mmzIncludeExtern
+    % |\mmzIncludeExtern| identifies the extern by its sequence number,
+    % |\mmz@seq|.
+      {\the\mmz@seq}%
+      % What kind of box? We |\noexpand| the answer just in case someone
+      % redefined them.
+      \ifhbox#1\noexpand\hbox\else\noexpand\vbox\fi
+      % The dimensions of the extern.
+      {\the\wd#1}%
+      {\the\ht#1}%
+      {\the\dp#1}%
+      % The padding values.
+      {\the\dimexpr\mmz@padding@left}%
+      {\the\dimexpr\mmz@padding@bottom}%
+      {\the\dimexpr\mmz@padding@right}%
+      {\the\dimexpr\mmz@padding@top}%
+  }%
+  % Prepend the new extern box into the global extern box where we collect all
+  % the externs of this memo.  Note that we |\copy| the extern box, retaining
+  % its content --- we will also want to place the extern box in its regular
+  % place in the document.
+  \global\setbox\mmz@tbe@box\vbox{\copy#1\unvbox\mmz@tbe@box}%
+  % Add the extern to the list of resources, which will be included at the top
+  % of the cc-memo, to check whether the extern files exists at the time the
+  % cc-memo is utilized.  In the cc-memo, the list will contain full extern
+  % filenames, which are currently unknown, but no matter; right now, providing
+  % the extern sequence number suffices, the full extern filename will be
+  % produced at the end of memoization, once the context MD5 sum is known.
+  \xtoksapp\mmz@ccmemo@resources{%
+    \noexpand\mmz@ccmemo@append@resource{\the\mmz@seq}%
+  }%
+  % Increment the counter containing the sequence number of the extern within
+  % this memo.
+  \global\advance\mmz@seq1
+  % Assign the extern-including code into the token register given in |#2|.
+  % This register may be given either as a control sequence or as
+  % |\toks|\meta{token register number}, and this is why we have temporarily
+  % stored the code (into |\mmz@global@temp|) globally: a local storage with
+  % |\expandafter\endgroup\expandafter| here would fail with the receiving
+  % token register given as |\toks|\meta{token register number}.
+  \endgroup
+  #2\expandafter{\mmz@global@temp}%
+}
+% \end{macro}
+% 
+% \begin{macro}{\mmz@ccmemo@resources}
+%   This token register, populated by |\mmz@externalize@box| and used by
+%   |\mmz@write@ccmemo|, holds the list of externs produced by memoization of
+%   the current chunk.
+\newtoks\mmz@ccmemo@resources
+% \end{macro}
+% 
+% \begin{macro}{\mmz@tbe@box}
+%   |\mmz@externalize@box| does not directly dump the extern into the document
+%   (as a special page).  Rather, the externs are collected into
+%   |\mmz@tbe@box|, whose contents are dumped into the document at the end of
+%   memoization of the current chunk.  In this way, we guarantee that aborted
+%   memoization does not pollute the document.
+\newbox\mmz@tbe@box
+% \end{macro}
+% 
+% \begin{macro}{\mmz@shipout@externs}
+%   This macro is executed at the end of
+%   memoization, when the externs are waiting for us in |\mmz@tbe@box| and need
+%   to be dumped into the document.  It loops through the contents of
+%   |\mmz@tbe@box|,\footnote{The looping code is based on TeX.SE
+%   answer \url(https://){tex.stackexchange.com/a/25142/16819} by Bruno Le
+%   Floch.}, putting each extern into |\mmz@box| and calling
+%   |\mmz@shipout@extern|.  Note that the latter macro is executed within the
+%   group opened by |\vbox| below.
+\def\mmz@shipout@externs{%
+  \global\mmz@seq 0
+  \setbox\mmz@box\vbox{%
+    % Set the macros below to the dimensions of the extern box, so that the
+    % user can refer to them in the padding specification (which is in turn
+    % used in the page setup in |\mmz@shipout@extern|).
+    \def\width{\wd\mmz@box}%
+    \def\height{\ht\mmz@box}%
+    \def\depth{\dp\mmz@box}%    
+    \vskip1pt
+    \ifmmzkeepexterns\expandafter\unvcopy\else\expandafter\unvbox\fi\mmz@tbe@box
+    \@whilesw\ifdim0pt=\lastskip\fi{%
+      \setbox\mmz@box\lastbox
+      \mmz@shipout@extern
+    }%
+  }%
+}
+% \end{macro}
+%
+% \begin{macro}{\mmz@shipout@extern}
+%   This macro ships out a single extern, which
+%   resides in |\mmz@box|, and records the creation of the new extern.
+\def\mmz@shipout@extern{%
+  % Calculate the expected width and height. We have to do this now, before we
+  % potentially adjust the box size and paddings for magnification.
+  \edef\expectedwidth{\the\dimexpr
+    (\mmz@padding@left) + \wd\mmz@box + (\mmz@padding@right)}%
+  \edef\expectedheight{\the\dimexpr
+    (\mmz@padding@top) + \ht\mmz@box + \dp\mmz@box + (\mmz@padding@bottom)}%
+  % Apply the inverse magnification, if |\mag| is not at the default
+  % value. We'll do this in a group, which will last until shipout.
+  \begingroup
+  \ifnum\mag=1000
+  \else
+    \mmz@shipout@mag
+  \fi
+  % Setup the geometry of the extern page.  In \hologo{plainTeX} and
+  % \hologo{LaTeX}, setting |\pdfpagewidth| and |\pdfpageheight| seems to do
+  % the trick of setting the extern page dimensions.  In \hologo{ConTeXt},
+  % however, the resulting extern page ends up with the PDF |/CropBox|
+  % specification of the current regular page, which is then used (ignoring our
+  % |mediabox| requirement) when we're including the extern into the document
+  % by |\mmzIncludeExtern|.  Typically, this results in a page-sized extern.
+  % I'm not sure how to deal with this correctly.  In the workaround below, we
+  % use Lua function |backends.codeinjections.setupcanvas| to set up page
+  % dimensions: we first remember the current page dimensions
+  % (|\edef\mmz@temp|), then set up the extern page dimensions
+  % (|\expanded{...}|), and finally, after shipping
+  % out the extern page, revert to the current page dimensions by executing
+  % |\mmz@temp| at the very end of this macro.
+  %<*plain,latex>
+  \pdfpagewidth\dimexpr
+    (\mmz@padding@left) + \wd\mmz@box + (\mmz@padding@right)\relax
+  \pdfpageheight\dimexpr
+    (\mmz@padding@top) + \ht\mmz@box + \dp\mmz@box+ (\mmz@padding@bottom)\relax
+  %</plain,latex>
+  %<*context>
+  \edef\mmz@temp{%
+    \noexpand\directlua{
+      backends.codeinjections.setupcanvas({
+        paperwidth=\the\numexpr\pagewidth,
+        paperheight=\the\numexpr\pageheight
+      })
+    }%
+  }%
+  \expanded{%
+    \noexpand\directlua{
+      backends.codeinjections.setupcanvas({
+        paperwidth=\the\numexpr\dimexpr
+          \mmz@padding@left + \wd\mmz@box + \mmz@padding@right\relax,
+        paperheight=\the\numexpr\dimexpr
+          \mmz@padding@top + \ht\mmz@box + \dp\mmz@box+ \mmz@padding@bottom\relax
+      })
+    }%
+  }%
+  %</context>
+  % 
+  % We complete the page setup by setting the content offset.
+  \hoffset\dimexpr\mmz@padding@left - \pdfhorigin\relax
+  \voffset\dimexpr\mmz@padding@top - \pdfvorigin\relax
+  % We shipout the extern page using the |\shipout| primitive, so that the
+  % extern page is not modified, or even registered, by the shipout code of the
+  % format or some package.  I can't imagine those shipout routines ever
+  % needing to know about the extern page.  In fact, most often knowing about
+  % it would be undesirable.  For example, \hologo{LaTeX} and \hologo{ConTeXt}
+  % count the ``real'' pages, but usually to know whether they are shipping out
+  % an odd or an even page, or to make the total number of pages available to
+  % subsequent compilations.  Taking the extern pages into account would
+  % disrupt these mechanisms.
+  % 
+  % Another thing: delayed |\write|s.  We have to make sure that any
+  % \hologo{LaTeX}-style protected stuff in those is not expanded. We don't
+  % bother introducing a special group, as we'll close the |\mag| group right
+  % after the shipout anyway.
+  %<latex>\let\protect\noexpand
+  \pdf@primitive\shipout\box\mmz@box
+  %<context>\mmz@temp
+  \endgroup
+  % Advance the counter of shipped-out externs.  We do this before preparing
+  % the recording information below, because the extern extraction tools expect
+  % the extern page numbering to start with $1$.
+  \global\advance\mmzExternPages1
+  % Prepare the macros which may be used in |record/<type>/new extern| code.
+  \edef\externbasepath{\mmz@extern@basepath}%
+  % Adding up the counters below should result in the real page number of the
+  % extern.  Macro |\mmzRegularPages| holds the number of pages which were
+  % shipped out so far using the regular shipout routine of the format;
+  % |\mmzExternPages| holds the number of shipped-out extern pages; and
+  % |\mmzExtraPages| holds, or at least should hold, the number of pages
+  % shipped out using any other means.
+  \edef\pagenumber{\the\numexpr\mmzRegularPages
+    % In \hologo{LaTeX}, the |\mmzRegularPages| holds to number of pages
+    % already shipped out.  In \hologo{ConTeXt}, the counter is already
+    % increased while processing the page, so we need to subtract $1$.
+%<context>    -1%
+    +\mmzExternPages+\mmzExtraPages}%
+  % Record the creation of the new extern.  We do this after shipping out the
+  % extern page, so that the recording mechanism can serve as an after-shipout
+  % hook, for the unlikely situation that some package really needs to do
+  % something when our shipout happens.  Note that we absolutely refuse to
+  % provide a before-shipout hook, because we can't allow anyone messing with
+  % our extern, and that using this after-shipout ``hook'' is unnecessary for
+  % counting extern shipouts, as we already provide this information in the
+  % public counter |\mmzExternPages|.
+  \mmzset{record/new extern/.expanded=\mmz@extern@path}%
+  % Advance the sequential number of the extern, in the context of the current
+  % memoized code chunk.  This extern numbering starts at 0, so we only do this
+  % after we wrote the cc-memo and called |record/new extern|.
+  \global\advance\mmz@seq1
+}
+% \end{macro}
+%
+% \begin{macro}{\mmz@shipout@mag}
+%   This macro applies the inverse magnification, so that the extern ends up
+%   with its natural size on the extern page.
+\def\mmz@shipout@mag{%
+  % We scale the extern box using the PDF primitives: |q| and |Q| save and
+  % restore the current graphics state; |cm| applies the given coordinate
+  % transformation matrix. ($a$ $b$ $c$ $d$ $e$ $f$ |cm| transforms $(x,y)$
+  % into $(ax+cy+e,bx+dy+f)$.)
+  \setbox\mmz@box\hbox{%
+    \pdfliteral{q \mmz@inverse@mag\space 0 0 \mmz@inverse@mag\space 0 0 cm}%
+    \copy\mmz@box\relax
+    \pdfliteral{Q}%
+  }%
+  % We first have to scale the paddings, as they might refer to the |\width|
+  % etc.\ of the extern.
+  \dimen0=\dimexpr\mmz@padding@left\relax
+  \edef\mmz@padding@left{\the\dimexpr\mmz@inverse@mag\dimen0}%
+  \dimen0=\dimexpr\mmz@padding@bottom\relax
+  \edef\mmz@padding@bottom{\the\dimexpr\mmz@inverse@mag\dimen0}%
+  \dimen0=\dimexpr\mmz@padding@right\relax
+  \edef\mmz@padding@right{\the\dimexpr\mmz@inverse@mag\dimen0}%
+  \dimen0=\dimexpr\mmz@padding@top\relax
+  \edef\mmz@padding@top{\the\dimexpr\mmz@inverse@mag\dimen0}%
+  % Scale the extern box.
+  \wd\mmz@box=\mmz@inverse@mag\wd\mmz@box\relax
+  \ht\mmz@box=\mmz@inverse@mag\ht\mmz@box\relax
+  \dp\mmz@box=\mmz@inverse@mag\dp\mmz@box\relax
+}
+% \end{macro}
+% 
+% \begin{macro}{\mmz@inverse@mag}
+%   The inverse magnification factor, i.e.\ the number we have to multiply the
+%   extern dimensions with so that they will end up in their natural size.  We
+%   compute it, once and for all, at the beginning of the document.  To do
+%   that, we borrow the little macro |\Pgf@geT| from |pgfutil-common| (but
+%   rename it).
+{\catcode`\p=12\catcode`\t=12\gdef\mmz@Pgf@geT#1pt{#1}}
+\mmzset{begindocument/.append code={%
+    \edef\mmz@inverse@mag{\expandafter\mmz@Pgf@geT\the\dimexpr 1000pt/\mag}%
+  }}
+% \end{macro}
+% 
+% \begin{macro}{\mmzRegularPages}
+%   This counter holds the number of pages shipped out by the format's shipout
+%   routine.  \hologo{LaTeX} and \hologo{ConTeXt} keep track of this in
+%   dedicated counters, so we simply use those.  In \hologo{plainTeX}, we have
+%   to hack the |\shipout| macro to install our own counter.  In fact, we
+%   already did this while loading the required packages, in order to avoid it
+%   being redefined by |atbegshi| first.  All that is left to do here is to
+%   declare the counter.
+%<latex>\let\mmzRegularPages\ReadonlyShipoutCounter
+%<context>\let\mmzRegularPages\realpageno
+%<plain>\newcount\mmzRegularPages
+% \end{macro}
+% 
+% \begin{macro}{\mmzExternPages}
+%   This counter holds the number of extern pages shipped out so far.
+\newcount\mmzExternPages
+% \end{macro}
+% 
+% The total number of new externs is announced at the end of the compilation,
+% so that \hologo{TeX} editors, |latexmk| and such can propose recompilation.
+\mmzset{
+  enddocument/afterlastpage/.append code={%
+    \ifnum\mmzExternPages>0
+      \PackageWarning{memoize}{The compilation produced \the\mmzExternPages\space
+        new extern\ifnum\mmzExternPages>1 s\fi.}%
+    \fi
+  },
+}
+% 
+% \begin{macro}{\mmzExtraPages}
+%   This counter will probably remain at zero forever.  It should be advanced by
+%   any package which (like Memoize) ships out pages bypassing the regular
+%   shipout routine of the format.
+\newcount\mmzExtraPages
+% \end{macro}
+% 
+% \begin{macro}{\mmz@include@extern}
+%   This macro, called from cc-memos as |\mmzIncludeExtern|, inserts an extern
+%   file into the document.  |#1| is the sequential number, |#2| is either
+%   |\hbox| or |\vbox|, |#3|, |#4| and |#5| are the (expected) width, height
+%   and the depth of the externalized box; |#6|--|#9| are the paddings (left,
+%   bottom, right, and top).
+\def\mmz@include@extern#1#2#3#4#5#6#7#8#9{%
+  % Set the extern sequential number, so that we open the correct extern file
+  % (|\mmz@extern@basename|).
+  \mmz@seq=#1\relax
+  % Use the primitive PDF graphics inclusion commands to include the extern
+  % file.  Set the correct depth or the resulting box, and shift it as
+  % specified by the padding.
+  \setbox\mmz@box=#2{%
+    \setbox0=\hbox{%
+      \lower\dimexpr #5+#7\relax\hbox{%
+        \hskip -#6\relax
+        \setbox0=\hbox{%
+          \mmz@insertpdfpage{\mmz@extern@path}{1}%
+        }%
+        \unhbox0
+      }%
+    }%
+    \wd0 \dimexpr\wd0-#8\relax
+    \ht0 \dimexpr\ht0-#9\relax
+    \dp0 #5\relax
+    \box0
+  }%
+  % Check whether the size of the included extern is as expected.  There is no
+  % need to check |\dp|, we have just set it.  (|\mmz@if@roughly@equal| is
+  % defined in section~\ref{sec:code:extract:tex}.)
+  \mmz@tempfalse
+  \mmz@if@roughly@equal{\mmz@tolerance}{#3}{\wd\mmz@box}{%
+    \mmz@if@roughly@equal{\mmz@tolerance}{#4}{\ht\mmz@box}{%
+      \mmz@temptrue
+    }{}}{}%
+  \ifmmz@temp
+  \else
+    \mmz@use@memo@warning{\mmz@extern@path}{#3}{#4}{#5}%
+  \fi
+  % Use the extern box, with the precise size as remembered at memoization.
+  \wd\mmz@box=#3\relax
+  \ht\mmz@box=#4\relax
+  \box\mmz@box
+  % Record that we have used this extern.
+  \pgfkeysalso{/mmz/record/used extern={\mmz@extern@path}}%
+}
+% \end{macro}
+\def\mmz@use@memo@warning#1#2#3#4{%
+  \PackageWarning{memoize}{Unexpected size of extern "#1";
+    expected #2\space x \the\dimexpr #3+#4\relax,
+    got \the\wd\mmz@box\space x \the\dimexpr\the\ht\mmz@box+\the\dp\mmz@box\relax}%
+}
+% \begin{macro}{\mmz@insertpdfpage}
+%   This macro inserts a page from the PDF into the document.  We define it
+%   according to which engine is being used.  Note that \hologo{ConTeXt} always
+%   uses \hologo{LuaTeX}.
+%<latex,plain>\ifdef\luatexversion{%
+  \def\mmz@insertpdfpage#1#2{% #1 = filename, #2 = page number
+    \saveimageresource page #2 mediabox {#1}%
+    \useimageresource\lastsavedimageresourceindex
+  }%
+%<*latex,plain>
+}{%
+  \ifdef\XeTeXversion{%
+    \def\mmz@insertpdfpage#1#2{%
+      \XeTeXpdffile #1 page #2 media 
+    }%
+  }{% pdfLaTeX
+    \def\mmz@insertpdfpage#1#2{%
+      \pdfximage page #2 mediabox {#1}%
+      \pdfrefximage\pdflastximage
+    }%
+  }%
+}
+%</latex,plain>
+% \end{macro}
+%
+% \begin{macro}{\mmz@include@extern@from@tbe@box}
+%   Include the extern number |#1| residing in |\mmz@tbe@box| into the
+%   document.  This helper macro makes it possible for a complex memoization
+%   driver to process the cc-memo right after memoization --- by using the
+%   |\mmzkeepexternstrue\xtoksapp\mmzAfterMemoizationExtra{\the\mmzCCMemo}|
+%   trick --- to ensure that the result of the memoizing compilation matches
+%   the result of inputting the cc-memo.  The rest of the arguments are
+%   gobbled, as we don't have to do any size adjustment or checking here, and
+%   the box is of the correct type.
+\def\mmz@include@extern@from@tbe@box#1#2#3#4#5#6#7#8#9{%
+  \setbox0\vbox{%
+    \@tempcnta#1\relax
+    \vskip1pt
+    \unvcopy\mmz@tbe@box
+    \@whilenum\@tempcnta>0\do{%
+      \setbox0\lastbox
+      \advance\@tempcnta-1\relax
+    }%
+    \global\setbox1\lastbox
+    \@whilesw\ifdim0pt=\lastskip\fi{%
+      \setbox0\lastbox
+    }%
+    \box\mmz@box
+  }%
+  \box1
+}
+% \end{macro}
+%
+% \section{Extraction}
+% \label{sec:code:extract}
+%
+% \subsection{Extraction mode and method}
+% \label{sec:code:extraction-mode-method}
+% 
+% \begin{key}{extract}
+%   This key selects the extraction mode and method.  It normally occurs in the
+%   package options list, less commonly in the preamble, and never in the
+%   document body.
+\def\mmzvalueof#1{\pgfkeysvalueof{/mmz/#1}}
+\mmzset{
+  extract/.estore in=\mmz@extraction@method,
+  extract/.value required,
+  begindocument/.append style={extract/.code=\mmz@preamble@only@warning},
+  % \end{key}
+  % 
+  % \begin{key}{extract/perl, extract/python}
+  %   Any other value will select internal extraction with the given method.
+  %   Memoize ships with two extraction scripts, a Perl script and a Python
+  %   script, which are selected by |extract=perl| (the default) and
+  %   |extract=python|, respectively.  We run the scripts in verbose mode
+  %   (without |-q|), and keep the |.mmz| file as is, i.e.\ we're not commenting
+  %   out the |\mmzNewExtern| lines, because we're about to overwrite it
+  %   anyway.  We also request the log file, which will contain
+  %   |\mmzExtractionSuccessful| if extraction was successful.
+  extract/perl/.code={%
+    \mmz@clear@extraction@log
+    \pdf@system{%
+      \mmzvalueof{perl extraction command}\space
+      \mmzvalueof{perl extraction options}%
+    }%
+    \mmz@check@extraction@log{perl}%
+    \def\mmz@mkdir@command##1{\mmzvalueof{perl extraction command}\space --mkdir "##1"}%
+  },
+  perl extraction command/.initial=memoize-extract.pl,
+  perl extraction options/.initial={%
+%     \begin{listingregion}{perl-extraction-options.tex}
+    -e -l "\mmzOutputDirectory\mmzUnquote\jobname.mmz.log" -w
+    %<latex>"\string\PackageWarning{memoize (perl-based extraction)}{\string\warningtext}"
+    %<plain>"\string\warning{memoize (perl-based extraction): \string\warningtext}"
+    %<context>"\string\warning{memoize (perl-based extraction): \string\warningtext}"
+    "\mmzOutputDirectory\mmzUnquote\jobname.mmz"
+%     \end{listingregion}
+  },
+  extract=perl,
+  extract/python/.code={%
+    \mmz@clear@extraction@log
+    \pdf@system{%
+      \mmzvalueof{python extraction command}\space
+      \mmzvalueof{python extraction options}%
+    }%
+    \mmz@check@extraction@log{python}%
+    \def\mmz@mkdir@command##1{\mmzvalueof{python extraction command}\space --mkdir "##1"}%
+  },
+  python extraction command/.initial=memoize-extract.py,
+  python extraction options/.initial={%
+  -e -l "\mmzOutputDirectory\mmzUnquote\jobname.mmz.log" -w
+  %<latex>"\string\PackageWarning{memoize (python-based extraction)}{\string\warningtext}"
+  %<plain>"\string\warning{memoize (python-based extraction): \string\warningtext}"
+  %<context>"\string\warning{memoize (python-based extraction): \string\warningtext}"
+  "\mmzOutputDirectory\mmzUnquote\jobname.mmz"
+  },
+}
+\def\mmz@preamble@only@warning{%
+  \PackageWarning{memoize}{%
+    Ignoring the invocation of "\pgfkeyscurrentkey".
+    This key may only be executed in the preamble}%
+}
+% \end{key}
+% 
+% \paragraph*{The extraction log}
+% As we cannot access the exit status of a system command in \hologo{TeX}, we
+% communicate with the system command via the ``extraction log file,'' produced
+% by both \hologo{TeX}-based extraction and the Perl and Python extraction
+% script.  This file signals whether the embedded extraction was successful ---
+% if it is, the file contains |\mmzExtractionSuccessful| --- and also contains
+% any size-mismatch warnings (these are currently only thrown by the
+% \hologo{TeX}-based extraction).  As the log is really a \hologo{TeX} file,
+% the idea is to simply input it after extracting each extern (for
+% \hologo{TeX}-based extraction) or after the extraction of all externs (for
+% the external scripts).
+\def\mmz@clear@extraction@log{%
+  \begingroup
+  \immediate\openout0{\mmzUnquote\jobname.mmz.log"}%
+  \immediate\closeout0
+  \endgroup
+}
+% |#1| is the extraction method.
+\def\mmz@check@extraction@log#1{%
+  \begingroup \def\extractionmethod{#1}%
+  \mmz@tempfalse \let\mmz@orig@endinput\endinput
+  \def\endinput{\mmz@temptrue\mmz@orig@endinput}%
+  \@input{\jobname.mmz.log}%
+  \ifmmz@temp \else \mmz@extraction@error \fi \endgroup }
+\def\mmz@extraction@error{%
+  \PackageWarning{memoize}{Extraction of externs from document "\mmzUnquote\jobname.pdf"
+    using method "\extractionmethod" was unsuccessful. Have you set the
+    shell escape mode as suggested in chapter 1 of the manual?}{}}
+%
+% \subsection{The record files}
+% \label{sec:code:record}
+%
+% \begin{key}{record}
+%   This key activates a record \meta{type}: the hooks defined by that record
+%   \meta{type} will henceforth be executed at the appropriate places.
+%   
+%   A \meta{hook} of a particular \meta{type} resides in |pgfkeys| path
+%   |/mmz/record/|\meta{type}|/|\meta{hook}, and is invoked via
+%   |/mmz/record/|\meta{hook}.  Record type activation thus appends a call of
+%   the former to the latter.  It does so using handler |.try|, so that
+%   unneeded hooks may be left undefined.
+% 
+\mmzset{
+  record/.style={%
+    record/begin/.append style={
+      /mmz/record/#1/begin/.try,
+      % The |begin| hook also executes the |prefix| hook, so that |\mmzPrefix|
+      % surely occurs at the top of the |.mmz| file.  Listing each prefix type
+      % separately in this hook ensures that |prefix| of a certain type is
+      % executed after that type's |begin|.
+      /mmz/record/#1/prefix/.try/.expanded=\mmz@prefix@path,
+    },
+    record/prefix/.append style={/mmz/record/#1/prefix/.try={##1}},
+    record/new extern/.append style={/mmz/record/#1/new extern/.try={##1}},
+    record/used extern/.append style={/mmz/record/#1/used extern/.try={##1}},
+    record/new cmemo/.append style={/mmz/record/#1/new cmemo/.try={##1}},
+    record/new ccmemo/.append style={/mmz/record/#1/new ccmemo/.try={##1}},
+    record/used cmemo/.append style={/mmz/record/#1/used cmemo/.try={##1}},
+    record/used ccmemo/.append style={/mmz/record/#1/used ccmemo/.try={##1}},
+    record/end/.append style={/mmz/record/#1/end/.try},
+  },
+}
+% \end{key}
+% 
+% \begin{key}{no record}
+%   This key deactivates all record types.  Below, we use it to initialize the
+%   relevant keys; in the user code, it may be used to deactivate the
+%   preactivated |mmz| record type.
+\mmzset{
+  no record/.style={%
+    % The |begin| hook clears itself after invocation, to prevent double
+    % execution.  Consequently, |record/begin| may be executed by the user in
+    % the preamble, without any ill effects.
+    record/begin/.style={record/begin/.style={}},
+    % The |prefix| key invokes itself again when the group closes.  This way,
+    % we can correctly track the path prefix changes in the |.mmz| even if
+    % |path| is executed in a group.
+    record/prefix/.code={\aftergroup\mmz@record@prefix},
+    record/new extern/.code={},
+    record/used extern/.code={},
+    record/new cmemo/.code={},
+    record/new ccmemo/.code={},
+    record/used cmemo/.code={},
+    record/used ccmemo/.code={},
+    % The |end| hook clears itself after invocation, to prevent double
+    % execution.  Consequently, |record/end| may be executed by the user before
+    % the end of the document, without any ill effects.
+    record/end/.style={record/end/.code={}},
+  }
+}
+% \end{key}
+% We define this macro because |\aftergroup|, used in |record/prefix|, only
+% accepts a token.
+\def\mmz@record@prefix{%
+  \mmzset{/mmz/record/prefix/.expanded=\mmz@prefix@path}%
+}
+% \paragraph{Initialize} the hook keys, preactivate |mmz| record type, and
+% execute hooks |begin| and |end| at the edges of the document.
+\mmzset{
+  no record,
+  record=mmz,
+  begindocument/.append style={record/begin},
+  enddocument/afterlastpage/.append style={record/end},
+}
+% 
+% \subsubsection{The \texttt{.mmz} file}
+% \label{sec:code:record:mmz}
+% 
+% Think of the |.mmz| record file as a \hologo{TeX}-readable log file, which
+% lets the extraction procedure know what happened in the previous compilation.
+% The file is in \hologo{TeX} format, so that we can trigger internal
+% \hologo{TeX}-based extraction by simply inputting it.  The commands it
+% contains are intentionally as simple as possible (just a macro plus braced
+% arguments), to facilitate parsing by the external scripts.
+% 
+% These hooks simply put the calls of the corresponding macros into the file.
+% All but hooks but |begin| and |end| receive the full path to the relevant
+% file as the only argument (ok, |prefix| receives the full path prefix, as set
+% by key |path|).
+% 
+% \begin{key}{record/mmz/...}
+\mmzset{
+  record/mmz/begin/.code={%
+    \newwrite\mmz@mmzout
+    % The record file has a fixed name (the jobname plus the |.mmz| suffix) and
+    % location (the current directory, i.e.\ the directory where \hologo{TeX}
+    % is executed from; usually, this will be the directory containing the
+    % \hologo{TeX} source).
+    \immediate\openout\mmz@mmzout{\jobname.mmz}%
+  },
+  % The |\mmzPrefix| is used by the clean-up script, which will remove all
+  % files with the given path prefix but (unless called with |--all|) those
+  % mentioned in the |.mmz|.  Now this script could in principle figure out
+  % what to remove by inspecting the paths to utilized\slash created
+  % memos\slash externs in the |.mmz| file, but this method could lead to
+  % problems in case of an incomplete (perhaps empty) |.mmz| file created by a
+  % failed compilation.  Recording the path prefix in the |.mmz| radically
+  % increases the chances of a successful clean-up, which is doubly important,
+  % because a clean-up is sometimes precisely what we need to do to recover
+  % after a failed compilation.
+  record/mmz/prefix/.code={%
+    \immediate\write\mmz@mmzout{\noexpand\mmzPrefix{#1}}%
+  },
+  record/mmz/new extern/.code={%
+    % While this key receives a single formal argument, Memoize also prepares
+    % macros |\externbasepath| (|#1| without the |.pdf| suffix), |\pagenumber|
+    % (of the extern page in the document PDF), and |\expectedwidth| and
+    % |\expectedheight| (of the extern page).
+    \immediate\write\mmz@mmzout{%
+      \noexpand\mmzNewExtern{#1}{\pagenumber}{\expectedwidth}{\expectedheight}%
+    }%
+  },
+  record/mmz/new cmemo/.code={%
+    \immediate\write\mmz@mmzout{\noexpand\mmzNewCMemo{#1}}%
+  },
+  record/mmz/new ccmemo/.code={%
+    \immediate\write\mmz@mmzout{\noexpand\mmzNewCCMemo{#1}}%
+  },
+  record/mmz/used extern/.code={%
+    \immediate\write\mmz@mmzout{\noexpand\mmzUsedExtern{#1}}%
+  },
+  record/mmz/used cmemo/.code={%
+    \immediate\write\mmz@mmzout{\noexpand\mmzUsedCMemo{#1}}%
+  },
+  record/mmz/used ccmemo/.code={%
+    \immediate\write\mmz@mmzout{\noexpand\mmzUsedCCMemo{#1}}%
+  },
+  record/mmz/end/.code={%
+    % Add the |\endinput| marker to signal that the file is complete.
+    \immediate\write\mmz@mmzout{\noexpand\endinput}%
+    \immediate\closeout\mmz@mmzout
+  },
+  % 
+  % \end{key}
+  % \subsubsection{The shell scripts}
+% 
+% We define two shell script record types: |sh| for Linux, and |bat| for
+% Windows.
+%
+% \begin{key}{sh, bat}
+%   These keys set the shell script filenames.
+%   \bigskip
+  sh/.store in=\mmz@shname,
+  sh=memoize-extract.\jobname.sh,
+  bat/.store in=\mmz@batname,
+  bat=memoize-extract.\jobname.bat,
+% \end{key}
+%   
+% \begin{key}{record/sh/...} Define the Linux shell script record type.
+  record/sh/begin/.code={%
+    \newwrite\mmz@shout
+    \immediate\openout\mmz@shout{\mmz@shname}%
+  },
+  record/sh/new extern/.code={%
+    \begingroup
+    % Macro |\mmz@tex@extraction@systemcall| is customizable through |tex
+    % extraction command|, |tex extraction options| and |tex extraction
+    % script|.
+    \immediate\write\mmz@shout{\mmz@tex@extraction@systemcall}%
+    \endgroup
+  },
+  record/sh/end/.code={%
+    \immediate\closeout\mmz@shout
+  },
+% \end{key}
+% 
+% \begin{key}{record/bat/...}
+%   Rinse and repeat for Windows.
+  record/bat/begin/.code={%
+    \newwrite\mmz@batout
+    \immediate\openout\mmz@batout{\mmz@batname}%
+  },
+  record/bat/new extern/.code={%
+    \begingroup
+    \immediate\write\mmz@batout{\mmz@tex@extraction@systemcall}%
+    \endgroup
+  },
+  record/bat/end/.code={%
+    \immediate\closeout\mmz@batout
+  },
+% \end{key}
+%
+% \subsubsection{The Makefile} 
+% 
+% The implementation of the Makefile record type is the most complex so far, as
+% we need to keep track of the targets.
+% 
+% \begin{key}{makefile}
+%   This key sets the makefile filename.
+  makefile/.store in=\mmz@makefilename,
+  makefile=memoize-extract.\jobname.makefile,
+}
+% \end{key}
+% 
+% We need to define a macro which expands to the tab character of catcode
+% ``other'', to use as the recipe prefix.
+\begingroup
+\catcode`\^^I=12
+\gdef\mmz@makefile@recipe@prefix{^^I}%
+\endgroup
+% \begin{key}{record/makefile/...}
+%   Define the Makefile record type.
+\mmzset{
+  record/makefile/begin/.code={%
+    % We initialize the record type by opening the file and setting makefile
+    % variables |.DEFAULT_GOAL| and |.PHONY|.
+    \newwrite\mmz@makefileout
+    \newtoks\mmz@makefile@externs
+    \immediate\openout\mmz@makefileout{\mmz@makefilename}%
+    \immediate\write\mmz@makefileout{.DEFAULT_GOAL = externs}%
+    \immediate\write\mmz@makefileout{.PHONY: externs}%
+  },
+  % The crucial part, writing out the extraction rule. The target comes first,
+  % then the recipe, which is whatever the user has set by |tex extraction
+  % command|, |tex extraction options| and |tex extraction script|.
+  record/makefile/new extern/.code={%
+    % The target extern file:
+    \immediate\write\mmz@makefileout{#1:}%
+    \begingroup
+    % The recipe is whatever the user set by |tex extraction
+    % command|, |tex extraction options| and |tex extraction script|.
+    \immediate\write\mmz@makefileout{%
+      \mmz@makefile@recipe@prefix\mmz@tex@extraction@systemcall}%
+    \endgroup
+    % Append the extern file to list of targets.
+    \xtoksapp\mmz@makefile@externs{#1\space}%
+  },
+  record/makefile/end/.code={%
+    % Before closing the file, we list the extern files as the prerequisites of
+    % our phony default target, |externs|.
+    \immediate\write\mmz@makefileout{externs: \the\mmz@makefile@externs}%
+    \immediate\closeout\mmz@makefileout
+  },
+}
+% \end{key}
+% 
+% 
+% \subsection{\hologo{TeX}-based extraction}
+% \label{sec:code:extract:tex}
+% 
+% \begin{key}{extract/tex}
+%   We trigger the \hologo{TeX}-based extraction by inputting the |.mmz| record
+%   file.
+\mmzset{
+  extract/tex/.code={%
+    \begingroup
+    \@input{\jobname.mmz}%
+    \endgroup
+  },
+}
+% \end{key}
+%
+% \begingroup
+% \setlength\MacroIndent{2em}
+% \begin{macro}{\mmzUsedCMemo,\mmzUsedCCMemo,\mmzUsedExtern,\mmzNewCMemo,\mmzNewCCMemo,\mmzPrefix}
+%   We can ignore everything but |\mmzNewExtern|s.  All these macros receive a
+%   single argument.
+\def\mmzUsedCMemo#1{}
+\def\mmzUsedCCMemo#1{}
+\def\mmzUsedExtern#1{}
+\def\mmzNewCMemo#1{}
+\def\mmzNewCCMemo#1{}
+\def\mmzPrefix#1{}
+% \end{macro}
+% \endgroup
+% 
+% \begin{macro}{\mmzNewExtern}
+%   Command |\mmzNewExtern| takes four arguments.  It instructs us to extract
+%   page |#2| of document |\jobname.pdf| to file |#1|.  During the extraction,
+%   we will check whether the size of the extern matches the given expected
+%   width (|#3|) and total height (|#4|).
+% 
+%   We perform the extraction by an embedded \hologo{TeX} call.  The system
+%   command that gets executed is stored in |\mmz@tex@extraction@systemcall|,
+%   which is set by |tex extraction command| and friends; by default, we
+%   execute |pdftex|.
+% 
+\def\mmzNewExtern#1{%
+  % The \hologo{TeX} executable expects the basename as the argument, so we
+  % strip away the |.pdf| suffix.
+  \mmz@new@extern@i#1\mmz@temp
+}
+\def\mmz@new@extern@i#1.pdf\mmz@temp#2#3#4{%
+  \begingroup
+  % Define the macros used in |\mmz@tex@extraction@systemcall|.
+  \def\externbasepath{#1}%
+  \def\pagenumber{#2}%
+  \def\expectedwidth{#3}%
+  \def\expectedheight{#4}%
+  % Empty out the extraction log.
+  \mmz@clear@extraction@log
+  % Extract.
+  \pdf@system{\mmz@tex@extraction@systemcall}%
+  % Was the extraction successful?  We temporarily redefine the extraction
+  % error message macro (suited for the external extraction scripts, which
+  % extract all externs in one go) to report the exact problematic extern page.
+  \let\mmz@extraction@error\mmz@pageextraction@error
+  \mmz@check@extraction@log{tex}%
+  \endgroup
+}
+% \end{macro}
+\def\mmz@pageextraction@error{%
+  \PackageError{memoize}{Extraction of extern page \pagenumber\space from
+    document "\mmzUnquote\jobname.pdf" using method "\extractionmethod" was unsuccessful.
+    Have you set the shell escape mode as suggested in chapter 1 of the
+    manual?}{If "\mmzvalueof{tex extraction command}" was executed,
+    shell escape mode is not the problem, and inspecting "\externbasepath.log"
+    might give you a clue what's wrong}}
+% 
+% \begin{key}{tex extraction command, tex extraction options, tex extraction script}
+%   Using these keys, we set the system call
+%   which will be invoked for each extern page.  The value of this key is
+%   expanded when executing the system command.  The user may deploy the
+%   following macros in the value of these keys:
+% \begin{itemize}
+% \item |\externbasepath|: the extern PDF that should be produced, minus the
+%   |.pdf| suffix;
+% \item |\pagenumber|: the page number to be extracted;
+% \item |\expectedwidth|: the expected width of the extracted page;
+% \item |\expectedheight|: the expected total height of the extracted page;
+% \end{itemize}
+\def\mmz@tex@extraction@systemcall{%
+  \mmzvalueof{tex extraction command}\space
+  \mmzvalueof{tex extraction options}\space
+  "\mmzvalueof{tex extraction script}"%
+}
+% \end{key}
+%
+% \paragraph{The default} system call for \hologo{TeX}-based extern extraction.
+% As this method, despite being \hologo{TeX}-based, shares no code with the
+% document, we're free to implement it with any engine and format we want.  For
+% reasons of speed, we clearly go for the plain \hologo{pdfTeX}.\footnote{I
+% implemented the first version of \hologo{TeX}-based extraction using
+% \hologo{LaTeX} and package \texttt{graphicx}, and it was (running with
+% \hologo{pdfTeX} engine) almost four times slower than the current plain
+% \hologo{TeX} implementation.}  We perform the extraction by a little
+% \hologo{TeX} script, |memoize-extract-one|, inputted at the end of the value
+% given to |tex extraction script|.
+\mmzset{
+  tex extraction command/.initial=pdftex,
+  tex extraction options/.initial={%
+%   \begin{listingregion}{tex-extraction-options.tex}
+    -halt-on-error
+    -interaction=batchmode
+    -jobname "\externbasepath"
+    \ifdefempty\mmzOutputDirectory{}{-output-directory "\mmzOutputDirectory"}
+% \end{listingregion}
+  },
+  tex extraction script/.initial={%
+%   \begin{listingregion}{tex-extraction-script.tex} ^^A todo: context
+    \def\noexpand\fromdocument{"\mmzOutputDirectory"\jobname.pdf}%
+    \def\noexpand\pagenumber{\pagenumber}%
+    \def\noexpand\expectedwidth{\expectedwidth}%
+    \def\noexpand\expectedheight{\expectedheight}%
+    \def\noexpand\logfile{\jobname.mmz.log}%
+    \unexpanded{%
+      \def\warningtemplate{%
+        %<latex>\noexpand\PackageWarning{memoize}{\warningtext}%
+        %<plain>\warning{memoize: \warningtext}%
+        %<context>\warning{memoize: \warningtext}%
+      }}%
+    \ifdef\XeTeXversion{}{%
+      \def\noexpand\mmzpdfmajorversion{\the\pdfmajorversion}%
+      \def\noexpand\mmzpdfminorversion{\the\pdfminorversion}%
+    }%
+    \noexpand\input memoize-extract-one
+% \end{listingregion}
+  },
+}
+%</mmz>
+%
+% \subsubsection{\texttt{memoize-extract-one.tex}}
+% 
+% The rest of the code of this section resides in file
+% |memoize-extract-one.tex|.  It is used to extract a single extern page from
+% the document; it also checks whether the extern page dimensions are as
+% expected, and passes a warning to the main job if that is not the case.  For
+% the reason of speed, the extraction script is in \hologo{plainTeX} format.
+% For the same reason, it is compiled by \hologo{pdfTeX} engine by default, but
+% we nevertheless take care that it will work with other (supported) engines as
+% well.
+% 
+%<*extract-one>
+\catcode`\@11\relax
+\def\@firstoftwo#1#2{#1}
+\def\@secondoftwo#1#2{#2}
+% 
+% Set the PDF version (maybe) passed to the script via |\mmzpdfmajorversion|
+% and |\mmzpdfminorversion|.
+\ifdefined\XeTeXversion
+\else
+  \ifdefined\luatexversion
+    \def\pdfmajorversion{\pdfvariable majorversion}%
+    \def\pdfminorversion{\pdfvariable minorversion}%
+  \fi
+  \ifdefined\mmzpdfmajorversion
+    \pdfmajorversion\mmzpdfmajorversion\relax
+  \fi
+  \ifdefined\mmzpdfminorversion
+    \pdfminorversion\mmzpdfminorversion\relax    
+  \fi
+\fi
+% Allocate a new output stream, always --- |\newwrite| is |\outer| and thus
+% cannot appear in a conditional.
+\newwrite\extractionlog
+% Are we requested to produce a log file?
+\ifdefined\logfile
+  \immediate\openout\extractionlog{\logfile}%
+  % Define a macro which both outputs the warning message and writes it to the
+  % extraction log.
+  \def\doublewarning#1{%
+    \message{#1}%
+    \def\warningtext{#1}%
+    % This script will be called from different formats, so it is up to the
+    % main job to tell us, by defining macro |\warningtemplate|, how to throw a
+    % warning in the log file.
+    \immediate\write\extractionlog{%
+      \ifdefined\warningtemplate\warningtemplate\else\warningtext\fi
+    }%
+  }%
+\else
+  \let\doublewarning\message
+\fi
+\newif\ifforce
+\ifdefined\force
+  \csname force\force\endcsname
+\fi
+% \begin{macro}{\mmz@if@roughly@equal}
+%   This macro checks whether the given dimensions (|#2| and |#3|) are equal
+%   within the tolerance given by |#1|.  We use the macro both in the
+%   extraction script and in the main package.  (We don't use |\ifpdfabsdim|,
+%     because it is unavailable in \hologo{XeTeX}.)
+%</extract-one>
+%<*mmz,extract-one>
+\def\mmz@tolerance{0.01pt}
+\def\mmz@if@roughly@equal#1#2#3{%
+  \dimen0=\dimexpr#2-#3\relax
+  \ifdim\dimen0<0pt
+    \dimen0=-\dimen0\relax
+  \fi
+  \ifdim\dimen0>#1\relax
+    \expandafter\@secondoftwo
+  \else
+    % The exact tolerated difference is, well, tolerated.  This is a must to
+    % support |tolerance=0pt|.
+    \expandafter\@firstoftwo
+  \fi
+}%
+%</mmz,extract-one>
+%<*extract-one>
+% Grab the extern page from the document and put it in a box.
+\ifdefined\XeTeXversion
+  \setbox0=\hbox{\XeTeXpdffile \fromdocument\space page \pagenumber media}%
+\else
+  \ifdefined\luatexversion
+    \saveimageresource page \pagenumber mediabox {\fromdocument}%
+    \setbox0=\hbox{\useimageresource\lastsavedimageresourceindex}%
+  \else
+    \pdfximage page \pagenumber mediabox {\fromdocument}%
+    \setbox0=\hbox{\pdfrefximage\pdflastximage}%
+  \fi
+\fi
+% Check whether the extern page is of the expected size.
+\newif\ifbaddimensions
+\ifdefined\expectedwidth
+  \ifdefined\expectedheight
+    \mmz@if@roughly@equal{\mmz@tolerance}{\wd0}{\expectedwidth}{%
+      \mmz@if@roughly@equal{\mmz@tolerance}{\ht0}{\expectedheight}%
+        {}%
+        {\baddimensionstrue}%
+    }{\baddimensionstrue}%
+  \fi
+\fi
+% We'll setup the page geometry of the extern file and shipout the extern ---
+% if all is well, or we're forced to do it.
+\ifdefined\luatexversion
+  \let\pdfpagewidth\pagewidth
+  \let\pdfpageheight\pageheight
+  \def\pdfhorigin{\pdfvariable horigin}%
+  \def\pdfvorigin{\pdfvariable vorigin}%
+\fi
+\def\do@shipout{%
+  \pdfpagewidth=\wd0
+  \pdfpageheight=\ht0
+  \ifdefined\XeTeXversion
+    \hoffset -1 true in
+    \voffset -1 true in
+  \else
+    \pdfhorigin=0pt
+    \pdfvorigin=0pt
+  \fi
+  \shipout\box0
+}
+\ifbaddimensions
+  \doublewarning{I refuse to extract page \pagenumber\space from
+    "\fromdocument", because its size (\the\wd0 \space x \the\ht0) is not
+    what I expected (\expectedwidth\space x \expectedheight)}%
+  \ifforce\do@shipout\fi
+\else
+  \do@shipout
+\fi
+% If logging is in effect and the extern dimensions were not what we expected,
+% write a warning into the log.
+\ifdefined\logfile
+  \immediate\write\extractionlog{\noexpand\endinput}%
+  \immediate\closeout\extractionlog
+\fi
+\bye
+%</extract-one>
+% \end{macro}
+% 
+% \section{Automemoization}
+% \label{sec:code:automemoization}
+% 
+% \paragraph{Install} the advising framework implemented by our auxiliary
+% package Advice, which automemoization depends on.  This will define keys
+% |auto|, |activate| etc.\ in our keypath.
+%<*mmz>
+\mmzset{
+  .install advice={setup key=auto, activation=deferred},
+  % We switch to the immediate activation at the end of the preamble.
+  begindocument/before/.append style={activation=immediate},
+}
+% 
+% \begin{key}{manual}
+%   Unless the user switched on |manual|, we perform the deferred
+%   (de)activations at the beginning of the document (and then clear the style,
+%   so that any further deferred activations will start with a clean slate).
+%   In \hologo{LaTeX}, we will use the latest possible hook,
+%   |begindocument/end|, as we want to hack into commands defined by other
+%   packages.  (The \hologo{TeX} conditional needs to be defined before using
+%   it in |.append code| below.
+\newif\ifmmz@manual
+\mmzset{
+  manual/.is if=mmz@manual,
+  begindocument/end/.append code={%
+    \ifmmz@manual
+    \else
+      \pgfkeysalso{activate deferred,activate deferred/.code={}}%
+    \fi
+  },
+% \end{key}
+% 
+% \paragraph{Announce} Memoize's run conditions and handlers.
+  auto/.cd,
+  run if memoization is possible/.style={
+    run conditions=\mmz@auto@rc@if@memoization@possible
+  },
+  run if memoizing/.style={run conditions=\mmz@auto@rc@if@memoizing},
+  apply options/.style={
+    bailout handler=\mmz@auto@bailout,
+    outer handler=\mmz@auto@outer,
+  },
+  memoize/.style={
+    run if memoization is possible,
+    apply options,
+    inner handler=\mmz@auto@memoize
+  },
+  %<*latex>
+  noop/.style={run if memoization is possible, noop \AdviceType},
+  noop command/.style={apply options, inner handler=\mmz@auto@noop},
+  noop environment/.style={
+    outer handler=\mmz@auto@noop@env, bailout handler=\mmz@auto@bailout},
+  %</latex>
+  %<plain,context>noop/.style={inner handler=\mmz@auto@noop},
+  nomemoize/.style={noop, options=disable},
+  replicate/.style={run if memoizing, inner handler=\mmz@auto@replicate},
+}
+%
+% \paragraph{Abortion}
+% We cheat and let the |run conditions| do the work --- it is cheaper to just
+% always abort than to invoke the outer handler.  (As we don't set
+% |\AdviceRuntrue|, the run conditions will never be satisfied.)
+% \begin{listingregion}{_auto-abort.tex}
+\mmzset{
+  auto/abort/.style={run conditions=\mmzAbort},
+}
+% \end{listingregion}
+% And the same for |unmemoizable|:
+\mmzset{
+  auto/unmemoizable/.style={run conditions=\mmzUnmemoizable},
+}
+% For one, we abort upon |\pdfsavepos| (called |\savepos| in \hologo{LuaTeX}).
+% Second, unless in \hologo{LuaTeX}, we submit |\errmessage|, which allows us
+% to detect at least some errors --- in \hologo{LuaTeX}, we have a more
+% bullet-proof system of detecting errors, see |\mmz@memoize| in
+% \S\ref{sec:code:memoization-process}.
+\ifdef\luatexversion{%
+  \mmzset{auto=\savepos{abort}}
+}{%
+  \mmzset{
+    auto=\pdfsavepos{abort},
+    auto=\errmessage{abort},
+  }
+}
+% 
+% \begin{mmzautokey}{run if memoization is possible}
+%   \begin{macro}{\mmz@auto@rc@if@memoization@possible}
+%     These run conditions are used by |memoize| and |noop|: Memoize should be
+%     enabled, but we should not be already within Memoize, i.e.\ memoizing or
+%     normally compiling some code submitted to memoization.
+%     \begin{listingregion}{_auto-run-if-memoization-is-possible.tex}
+\def\mmz@auto@rc@if@memoization@possible{%
+  \ifmemoize
+    \ifinmemoize
+    \else
+      \AdviceRuntrue
+    \fi
+  \fi
+}
+% \end{listingregion}
+% \end{macro}
+% \end{mmzautokey}
+% 
+% \begin{mmzautokey}{run if memoizing}
+%   \begin{macro}{\mmz@auto@rc@if@memoizing}
+%     These run conditions are used by |\label| and |\ref|: they should
+%     be handled only during memoization (which implies that Memoize is enabled).
+\def\mmz@auto@rc@if@memoizing{%
+  \ifmemoizing\AdviceRuntrue\fi
+}
+% \end{macro}
+% \end{mmzautokey}
+%
+% \begin{macro}{\mmznext}
+%   The next-options, set by this macro, will be applied to the next, and only
+%   next instance of automemoization.  We set the next-options globally, so
+%   that only the linear order of the invocation matters. Note that |\mmznext|,
+%   being a user command, must also be defined in package |nomemoize|.
+%</mmz>
+%<nommz>\def\mmznext#1{\ignorespaces}
+%<*mmz>
+\def\mmznext#1{\gdef\mmz@next{#1}\ignorespaces}
+\mmznext{}%
+% \end{macro}
+% 
+% \begin{mmzautokey}{apply options}
+%   \begin{macro}{\mmz@auto@outer,\mmz@auto@bailout}
+%     The outer and the bailout handler defined here work as a team.  The outer
+%     handler's job is to apply the auto- and the next-options; therefore, the
+%     bailout handler must consume the next-options as well.  To keep the
+%     option application local, the outer handler opens a group, which is
+%     expected to be closed by the inner handler.  This key is used by
+%     |memoize| and |noop command|.
+%     \begin{listingregion}{_auto-memoize-outer.tex}
+\def\mmz@auto@outer{%
+  \begingroup
+  \mmzAutoInit
+  \AdviceCollector
+}
+% \end{listingregion}
+% \begin{listingregion}{_auto-memoize-bailout.tex}
+\def\mmz@auto@bailout{%
+  \mmznext{}%
+}
+% \end{listingregion}
+% \bigskip
+% \end{macro}
+% \end{mmzautokey}
+% 
+% \begin{macro}{\mmzAutoInit}
+%   Apply first the auto-options, and then the next-options (and clear the
+%   latter).  Finally, if we have any extra collector options (set by the
+%   |verbatim| keys), append them to Advice's (raw) collector options.
+\def\mmzAutoInit{%
+  \ifdefempty\AdviceOptions{}{\expandafter\mmzset\expandafter{\AdviceOptions}}%
+  \ifdefempty\mmz@next{}{\expandafter\mmzset\expandafter{\mmz@next}\mmznext{}}%
+  \eappto\AdviceRawCollectorOptions{\expandonce\mmzRawCollectorOptions}%
+}
+% \end{macro}
+% 
+% \begin{mmzautokey}{memoize}
+%   \begin{macro}{\mmz@auto@memoize}
+%     This key installs the inner handler for memoization.  If you compare this
+%     handler to the definition of |\mmz| in
+%     section~\ref{sec:code:memoization:manual}, you will see that the only
+%     thing left to do here is to start memoization with |\Memoize|, everything
+%     else is already done by the advising framework, as customized by Memoize.
+% 
+%     The first argument to |\Memoize| is the memoization key (which the code
+%     md5sum is computed off of); it consists of the handled code (the contents
+%     of |\AdviceReplaced|) and its arguments, which were collected into |##1|.
+%     The second argument is the code which the memoization driver will
+%     execute.  |\AdviceOriginal|, if invoked right away, would execute the
+%     original command; but as this macro is only guaranteed to refer to this
+%     command within the advice handlers, we expand it before calling |\Memoize|.
+%     that command.
+% 
+%     Note that we don't have to define different handlers for commands and
+%     environments, and for different \hologo{TeX} formats.  When memoizing
+%     command |\foo|, |\AdviceReplaced| contains |\foo|.  When memoizing
+%     environment |foo|, |\AdviceReplaced| contains |\begin{foo}|, |\foo| or
+%       |\startfoo|, depending on the format, while the closing tag
+%       (|\end{foo}|, |\endfoo| or |\stopfoo|) occurs at the end of the
+%     collected arguments, because |apply options| appended
+%     |\collargsEndTagtrue| to |raw collector options|.
+% 
+%     This macro has no formal parameters, because the collected arguments will
+%     be grabbed by |\mmz@marshal|, which we have to go through because
+%     executing |\Memoize| closes the memoization group and we lose the current
+%     value of |\ifmmz@ignorespaces|.  (We also can't use |\aftergroup|,
+%       because closing the group is not the final thing |\Memoize| does.)
+%       \begin{listingregion}{_auto-memoize-inner.tex}
+\long\def\mmz@auto@memoize#1{%
+  \expanded{%
+    \noexpand\Memoize
+      {\expandonce\AdviceReplaced\unexpanded{#1}}%
+      {\expandonce\AdviceOriginal\unexpanded{#1}}%
+    \ifmmz@ignorespaces\ignorespaces\fi
+  }%
+}
+% \end{listingregion}
+% \end{macro}
+% \end{mmzautokey}
+%
+% \begin{mmzautokey}{noop}
+%   \begin{macro}{\mmz@auto@noop,\mmz@auto@noop@env}
+%     The no-operation handler can be used to apply certain options for the
+%     span of the execution of the handled command or environment.  This is
+%     exploited by |auto/nomemoize|, which sets |disable| as an auto-option.
+% 
+%     The handler for commands and non-\hologo{LaTeX} environments is
+%     implemented as an inner handler.  On its own, it does nothing except
+%     honor |verbatim| and |ignore spaces| (only takes care of |verbatim| and
+%     |ignore spaces| (in the same way as the memoization handler above), but
+%     it is intended to be used alongside the default outer handler, which
+%     applies the auto- and the next-options.  As that handler opens a group
+%     (and this handler closes it), we have effectively delimited the effect of
+%     those options to this invocation of the handled command or environment.
+\long\def\mmz@auto@noop#1{%
+  \expandafter\mmz@maybe@scantokens\expandafter{\AdviceOriginal#1}%
+  \expandafter\endgroup
+  \ifmmz@ignorespaces\ignorespaces\fi
+}
+% In \hologo{LaTeX}, and only there, commands and environments need separate
+% treatment.  As \hologo{LaTeX} environments introduce a group of their own, we
+% can simply hook our initialization into the beginning of the environment (as
+% a one-time hook).  Consequently, we don't need to collect the environment
+% body, so this can be an outer handler.
+%<*latex>
+\def\mmz@auto@noop@env{%
+  \AddToHookNext{env/\AdviceName/begin}{%
+    \mmzAutoInit
+    \ifmmz@ignorespaces\ignorespacesafterend\fi
+  }%
+  \AdviceOriginal
+}
+%</latex>
+% \end{macro}
+% \end{mmzautokey}
+%
+% \begin{mmzautokey}{replicate}
+%   \begin{macro}{\mmz@auto@replicate}
+%     This inner handler writes a copy of the handled command or environment's
+%     invocation into the cc-memo (and then executes it).  As it is used
+%     alongside |run if memoizing|, the replicated command in the cc-memo will
+%     always execute the original command.  The system works even if
+%     replication is off when the cc-memo is input; in that case, the control
+%     sequence in the cc-memo directly executes the original command.
+% 
+%     This handler takes an option, |expanded| --- if given, the collected
+%     arguments will be expanded (under protection) before being written into
+%     the cc-memo.
+\def\mmz@auto@replicate#1{%
+  \begingroup
+  \let\mmz@auto@replicate@expansion\unexpanded
+  \expandafter\pgfqkeys\expanded{{/mmz/auto/replicate}{\AdviceOptions}}%
+  %<latex>\let\protect\noexpand
+  \expanded{%
+    \endgroup
+    \noexpand\gtoksapp\noexpand\mmzCCMemo{%
+      \expandonce\AdviceReplaced\mmz@auto@replicate@expansion{#1}}%
+    \expandonce\AdviceOriginal\unexpanded{#1}%
+  }%
+}
+\pgfqkeys{/mmz/auto/replicate}{
+  expanded/.code={\let\mmz@auto@replicate@expansion\@firstofone},
+}
+% \end{macro}
+% \end{mmzautokey}
+% 
+% \subsection{\hologo{LaTeX}-specific handlers}
+%
+% We handle cross-referencing (both the |\label| and the |\ref| side) and
+% indexing.  Note that the latter is a straightforward instance of replication.
+% 
+%<*latex>
+% \begin{listingregion}{_auto-memoize-ref.tex}
+\mmzset{
+  auto/.cd,
+  ref/.style={outer handler=\mmz@auto@ref\mmzNoRef, run if memoizing},
+  force ref/.style={outer handler=\mmz@auto@ref\mmzForceNoRef, run if memoizing},
+}
+% \end{listingregion}
+\mmzset{
+  auto=\ref{ref},
+  auto=\pageref{ref},
+  auto=\label{run if memoizing, outer handler=\mmz@auto@label},
+  auto=\index{replicate, args=m, expanded},
+}
+% 
+% \begin{mmzautokey}{ref, force ref}
+%   \begin{macro}{\mmz@auto@ref}
+%   These keys install an outer handler which appends a cross-reference to the
+%   context.  |force ref| does this even if the reference key is undefined,
+%   while |ref| aborts memoization in such a case --- the idea is that it makes
+%   no sense to memoize when we expect the context to change in the next
+%   compilation anyway.
+% 
+%   Any command taking a mandatory braced reference key argument potentially
+%   preceded by optional arguments of (almost) any kind may be submitted to
+%   these keys. This follows from the parameter list of |\mmz@auto@ref@i|,
+%   where |#2| grabs everything up to the first opening brace.  The downside of
+%   the flexibility regarding the optional arguments is that unbraced
+%   single-token reference keys will cause an error, but as such usages of
+%   |\ref| and friends should be virtually inexistent, we let the bug stay.
+% 
+%   |#1| should be either |\mmzNoRef| or |\mmzForceNoRef|. |#2| will receive
+%   any optional arguments of |\ref| (or |\pageref|, or whatever), and |#3| in
+%   |\mmz@auto@ref@i| is the cross-reference key.
+%   \begin{listingregion}{_auto-memoize-ref.tex}
+\def\mmz@auto@ref#1#2#{\mmz@auto@ref@i#1{#2}}
+\def\mmz@auto@ref@i#1#2#3{%
+  #1{#3}%
+  \AdviceOriginal#2{#3}%
+}
+% \end{listingregion}
+% \end{macro}
+% \end{mmzautokey}
+% 
+% \begin{macro}{\mmzForceNoRef,\mmzNoRef}
+%   These macros do the real job in the outer handlers for cross-referencing,
+%   but it might be useful to have them publicly available.  |\mmzForceNoRef|
+%   appends the reference key to the context.  |\mmzNoRef| only does that if
+%   the reference is defined, otherwise it aborts the memoization.
+\def\mmzForceNoRef#1{%
+  \ifmemoizing
+    \expandafter\gtoksapp\expandafter\mmzContextExtra
+  \else
+    \expandafter\toksapp\expandafter\mmzContext
+  \fi
+  {r@#1={\csname r@#1\endcsname}}%
+  \ignorespaces
+}
+\def\mmzNoRef#1{%
+  \ifcsundef{r@#1}{\mmzAbort}{\mmzForceNoRef{#1}}%
+  \ignorespaces
+}
+% \end{macro}
+%
+% \begin{mmzautokey}{refrange, force refrange}
+%   \begin{macro}{\mmz@auto@refrange}
+%     Let's rinse and repeat for reference ranges. The code is virtually the
+%     same as above, but we grab two reference key arguments (|#3| and |#4|) in
+%     the final macro.\indentmacrocode
+\mmzset{
+  auto/.cd,
+  refrange/.style={outer handler=\mmz@auto@refrange\mmzNoRef,
+    bailout handler=\relax, run if memoizing},
+  force refrange/.style={outer handler=\mmz@auto@refrange\mmzForceNoRef,
+    bailout handler=\relax, run if memoizing},
+}
+% \noindentmacrocode
+\def\mmz@auto@refrange#1#2#{\mmz@auto@refrange@i#1{#2}}
+\def\mmz@auto@refrange@i#1#2#3#4{%
+  #1{#3}%
+  #1{#4}%
+  \AdviceOriginal#2{#3}{#4}%
+}
+% \end{macro}
+% \end{mmzautokey}
+% 
+% \begin{mmzautokey}{multiref, force multiref}
+%   \begin{macro}{\mmz@auto@multiref}
+%     And one final time, for ``multi-references'', such as |cleveref|'s
+%     |\cref|, which can take a comma-separated list of reference keys in the
+%     sole argument.  Again, only the final macro is any different, this time
+%     distributing |#1| (|\mmzNoRef| or |\mmzForceNoRef|) over |#3| by
+%     |\forcsvlist|.
+\mmzset{
+  auto/.cd,
+  multiref/.style={outer handler=\mmz@auto@multiref\mmzNoRef,
+    bailout handler=\relax, run if memoizing},
+  force multiref/.style={outer handler=\mmz@auto@multiref\mmzForceNoRef,
+    bailout handler=\relax, run if memoizing},
+}
+\def\mmz@auto@multiref#1#2#{\mmz@auto@multiref@i#1{#2}}
+\def\mmz@auto@multiref@i#1#2#3{%
+  \forcsvlist{#1}{#3}%
+  \AdviceOriginal#2{#3}%
+}
+%   \end{macro}
+% \end{mmzautokey}
+% 
+% \begin{macro}{\mmz@auto@label}
+%   The outer handler for \cs{label} must be defined specifically for this
+%   command.  The generic replicating handler is not enough here, as we need to
+%   replicate both the invocation of |\label| and the definition of
+%   |\@currentlabel|.
+\def\mmz@auto@label#1{%
+  \xtoksapp\mmzCCMemo{%
+    \noexpand\mmzLabel{#1}{\expandonce\@currentlabel}%
+  }%
+  \AdviceOriginal{#1}%
+}
+% \end{macro}
+% 
+% \begin{macro}{\mmzLabel}
+%   This is the macro that |\label|'s handler writes into the cc-memo.  The
+%   first argument is the reference key; the second argument is the value of
+%   |\@currentlabel| at the time of invocation |\label| during memoization,
+%   which this macro temporarily restores.
+\def\mmzLabel#1#2{%
+  \begingroup
+  \def\@currentlabel{#2}%
+  \label{#1}%
+  \endgroup  
+}
+%</latex>
+%</mmz>
+%   
+% \end{macro}
+% 
+% \section{Support for various classes and packages}
+% 
+% \subsection{\TikZ;}
+% \label{sec:code:mmz:tikz}
+%
+% In this section, we activate \TikZ; support (the collector is defined by
+% Advice).  All the action happens at the end of the preamble, so that we can
+% detect whether \TikZ; was loaded (regardless of whether Memoize was loaded
+% before \TikZ;, or vice versa), but still input the definitions.
+%<*mmz>
+\mmzset{
+  begindocument/before/.append code={%
+    %<latex>\@ifpackageloaded{tikz}{%
+    %<plain,context>\ifdefined\tikz
+      \input advice-tikz.code.tex
+    %<latex>}{}%
+    %<plain,context>\fi
+    % We define and activate the automemoization handlers for the \TikZ; command
+    % and environment.
+    \mmzset{%
+      % \begin{listingregion}{_auto-tikz-collector.tex}
+      auto=\tikz{memoize, collector=\AdviceCollectTikZArguments},
+      % \end{listingregion}
+      %/utils/exec={\tracingall},
+      auto={tikzpicture}{memoize},
+      % A hack to prevent memoizing pictures which are accidentally marked as
+      % remembered --- accidentally in the sense that because the document
+      % changed, the |.aux| file contains a |\pgfsyspdfmark| command which
+      % erroneously refers to the picture being memoized.  We know that
+      % memoizing a remembered picture can't be right, as we always abort on
+      % |\pdfsavepos|.  This is implemented by hacking into PGF's
+      % |\pgfsys@getposition|, and aborting memoization if the mark does not
+      % equal |\relax|.  (We have to duplicate |#| because of |.append code|.)
+      auto=\pgfsys@getposition{
+        run if memoizing, outer handler=\mmz@pgfsys@getposition},
+    }%    
+    \def\mmz@pgfsys@getposition##1{%
+      \expandafter\ifx\csname pgf@sys@pdf@mark@pos@##1\endcsname\relax
+      \else
+        \mmzAbort
+      \fi
+      \AdviceOriginal{##1}%
+    }%
+  },
+}
+%</mmz>
+% 
+%
+% \subsection{Forest}
+% \label{sec:code:forest}
+%
+% Forest will soon feature extensive memoization support, but for now, let's
+% just enable the basic, single extern externalization.
+%<*mmz>
+%<*latex>
+\mmzset{
+  begindocument/before/.append code={%
+    \@ifpackageloaded{forest}{%
+      \mmzset{
+        auto={forest}{memoize},
+% Yes, |\Forest| is defined using |xparse|.
+        auto=\Forest{memoize},
+      }%
+    }{}%
+  },
+}
+%</latex>
+% 
+% \subsection{Beamer}
+% \label{sec:code:beamer}
+%
+% The Beamer code is explained in \MS\ref{sec:per-overlay}.
+% 
+%<*latex>
+\AddToHook{begindocument/before}{\@ifclassloaded{beamer}{%
+  % \begin{listingregion}{per-overlay.tex}
+  \mmzset{per overlay/.style={
+    /mmz/context={%
+      overlay=\csname beamer@overlaynumber\endcsname,
+      pauses=\ifmemoizing
+               \mmzBeamerPauses
+             \else
+               \expandafter\the\csname c@beamerpauses\endcsname
+             \fi
+    },
+    /mmz/at begin memoization={%
+      \xdef\mmzBeamerPauses{\the\c@beamerpauses}%
+      \xtoksapp\mmzCMemo{%
+        \noexpand\mmzSetBeamerOverlays{\mmzBeamerPauses}{\beamer@overlaynumber}}%
+      \gtoksapp\mmzCCMemo{%
+        \only<\mmzBeamerOverlays>{}}%
+    },
+    /mmz/at end memoization={%
+      \xtoksapp\mmzCCMemo{%
+        \noexpand\setcounter{beamerpauses}{\the\c@beamerpauses}}%
+    },
+    /mmz/per overlay/.code={},
+  }}
+  \def\mmzSetBeamerOverlays#1#2{%
+    \ifnum\c@beamerpauses=#1\relax
+      \gdef\mmzBeamerOverlays{#2}%
+      \ifnum\beamer@overlaynumber<#2\relax \mmz@temptrue \else \mmz@tempfalse \fi
+    \else
+      \mmz@temptrue
+    \fi
+    \ifmmz@temp
+      \appto\mmzAtBeginMemoization{%
+        \gtoksapp\mmzCMemo{\mmzSetBeamerOverlays{#1}{#2}}}%
+    \fi
+  }%
+  % \end{listingregion}
+}{}}
+%</latex>
+%
+%
+% \section{Initialization}
+% \label{sec:code:initialization}
+%
+% \begin{key}{begindocument/before, begindocument, begindocument/end,
+%   enddocument/afterlastpage}
+%   These styles contain the initialization
+%   and the finalization code.  They were populated throughout the source.
+%   Hook |begindocument/before| contains the package support code, which must
+%   be loaded while still in the preamble.  Hook |begindocument| contains the
+%   initialization code whose execution doesn't require any particular timing,
+%   as long as it happens at the beginning of the document.  Hook
+%   |begindocument/end| is where the commands are activated; this must
+%   crucially happen as late as possible, so that we successfully override
+%   foreign commands (like |hyperref|'s definitions).  In \hologo{LaTeX}, we
+%   can automatically execute these hooks at appropriate places:
+%<*latex>
+\AddToHook{begindocument/before}{\mmzset{begindocument/before}}
+\AddToHook{begindocument}{\mmzset{begindocument}}
+\AddToHook{begindocument/end}{\mmzset{begindocument/end}}
+\AddToHook{enddocument/afterlastpage}{\mmzset{enddocument/afterlastpage}}
+%</latex>
+% In \hologo{plainTeX}, the user must execute these hooks manually; but at
+% least we can group them together and given them nice names.  Provisionally,
+% manual execution is required in \hologo{ConTeXt} as well, as I'm not sure
+% where to execute them --- please help!
+%<*plain,context>
+\mmzset{
+  begin document/.style={begindocument/before, begindocument, begindocument/end},
+  end document/.style={enddocument/afterlastpage},
+}
+%</plain,context>
+% \end{key}
+% 
+% \paragraph{\texttt{memoize.cfg}} Load the configuration file.  Note that
+% |nomemoize| must input this file as well, because any special
+% memoization-related macros defined by the user should be available; for
+% example, my |memoize.cfg| defines |\ifregion| (see
+%   \MS\ref{sec:tut:multifile}).
+%</mmz>
+%<mmz,nommz>\InputIfFileExists{memoize.cfg}{}{}
+%<*mmz>
+%
+% Formats other than \hologo{plainTeX} need a way to prevent extraction during
+% package-loading.
+\mmzset{
+  %<!plain>extract/no/.code={},
+% \begin{key}{output directory}
+%   \begin{macro}{mmzOutputDirectory}
+%     Set the |-output-directory| --- manually, as there is no other way.
+% \indentmacrocode
+  output-directory/.store in=\mmzOutputDirectory,
+}
+%   \end{macro}
+% \end{key}
+% 
+% \paragraph{Process} the package options (except in \hologo{plainTeX}).
+%<latex>\ProcessPgfPackageOptions{/mmz}
+%<context>\expandafter\mmzset\expandafter{\currentmoduleparameters}
+% 
+% Define |\mmzOutputDirectory| if |output-directory| was not given.
+\ifdefined\mmzOutputDirectory
+\else
+  \def\mmzOutputDirectory{}%
+\fi
+\mmzset{output directory/.code={\PackageError{memoize}{Key "output-directory"
+      may only be used as a package option}{}}}
+\mmzset{
+  % \paragraph{Extract} the externs using the method given by |memoize.cfg| or
+  % the package options --- unless we're running \hologo{plainTeX}.
+  %<*!plain>
+  extract/\mmz@extraction@method,
+  % In non-\hologo{plainTeX} formats, also disable |extract| in the preamble.
+  extract/.code={\PackageError{memoize}{Key "extract" is only allowed as a
+      package option.}{If you really want to extract in the preamble, execute
+      "extract/<method>".}},
+  %</!plain>
+  %<*plain>
+  % In \hologo{plainTeX}, where extraction must be invoked after
+  % loading the package, we now have to redefine |extract|, so that it will
+  % immediately trigger extraction.  
+  extract/.is choice,
+  extract/.default=\mmz@extraction@method,
+  % But only once:
+  extract/.append style={
+    extract/.code={\PackageError{memoize}{Key "extract" is only allowed to
+        be used once.}{If you really want to extract again, execute
+        "extract/<method>".}},
+  },
+  %</plain>
+}
+% 
+% Memoize was not really born for the draft mode, as it cannot produce new
+% externs there.  But we don't want to disable the package, as utilization is
+% still perfectly valid in this mode, so let's just warn the user.
+\ifnum\pdf@draftmode=1
+  \PackageWarning{memoize}{No memoization will be performed in the draft mode}%
+\fi
+%</mmz>
+% 
+% \paragraph{The end} of |memoize|, |nomemoize| and |memoizable|.
+%<*mmz,nommz,mmzable>
+%<plain>\resetatcatcode
+%<context>\stopmodule
+%<context>\protect
+%</mmz,nommz,mmzable>
+% That's all, folks!
+% 
+%    \end{macrocode}
+% 
+% \endinput
+% 
+% Local Variables:
+% TeX-engine: luatex
+% TeX-master: "doc/memoize-code.tex"
+% TeX-auto-save: nil
+% End:

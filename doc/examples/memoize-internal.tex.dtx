@@ -1,0 +1,15 @@
+%<*!lst>
+%<!att>\documentclass[varwidth]{standalone}
+%<att>\documentclass{article}
+\usepackage{memoize}
+
+\begin{document}
+%</!lst>
+%<t>% The following line internally invokes
+%<t>% \Memoize{Will this get memoized?}{Will this get memoized?}
+\mmz{Will this get memoized?}
+
+\begingroup
+\Memoize{Will this get memoized?}{Something entirely different got memoized!}
+%<t>% \endgroup % Don't uncomment! \Memoize already closed this group!
+%<!lst>\end{document}

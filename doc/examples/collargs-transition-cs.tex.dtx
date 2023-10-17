@@ -1,0 +1,14 @@
+%<att>\documentclass{article}
+%<att>\usepackage{collargs}
+%<att>\usepackage{xcolor}
+%<!lst>\long\def\ShowArgs#1{Collected: ``{\color{red}\tt\detokenize{#1}}''}
+%<att>
+%<att>
+%<!lst>\author{Sa\v so \v Zivanovi\'c}
+%<att>
+%<att>\begin{document}
+%<att>
+\makeatletter\@author\makeatother\par
+\CollectArguments[verbatim]{o}{\ShowArgs}~\~makeatletter~\@~author\makeatother
+%<att>
+%<att>\end{document}

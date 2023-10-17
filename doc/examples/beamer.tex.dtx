@@ -1,0 +1,27 @@
+~\RequirePackage~{memoize}
+\documentclass{beamer}
+%<*!lst>
+\mode<presentation>
+{
+  \usetheme[secheader]{Boadilla}
+}
+
+\mmzset{include context in ccmemo}
+
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric}
+%</!lst>
+\tikzset{only/.code 2 args={\only<#1>{\pgfkeysalso{#2}}}}
+%<*!lst>
+
+\begin{document}
+\centering
+%</!lst>
+\begin{frame}{A frame with a memoized Ti\emph{k}Z picture}
+  \begin{tikzpicture}[~/mmz/per overlay~]
+    \node[ellipse, fill=yellow, ~only={2}~{
+        pin={[overlay, fill=red, pin edge={overlay, red}]60:An important remark!}
+      }]{An important concept};
+  \end{tikzpicture}
+\end{frame}
+%<!lst>\end{document}

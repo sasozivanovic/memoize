@@ -1,0 +1,9 @@
+\newout\mmzexternpagesout
+\mmzset{
+  record/pages/begin/.code={
+    \immediate\openout\mmzexternpagesout{\jobname.extern-pages}},
+  record/pages/new extern/.code={%
+    \immediate\write\mmzexternpagesout{\pagenumber\space#1}},
+  record/pages/end/.code={
+    \immediate\closeout\mmzexternpagesout},
+}

@@ -1,0 +1,276 @@
+%% memoize-code.sty
+%% 
+%% This file is a part of Memoize, a TeX package for externalization of
+%% graphics and memoization of compilation results in general, available at
+%% https://ctan.org/pkg/memoize and https://github.com/sasozivanovic/memoize.
+%%
+%% Copyright (c) 2020- Saso Zivanovic <saso.zivanovic@guest.arnes.si>
+%%                     (Sa\v{s}o \v{Z}ivanovi\'{c})
+%%
+%% This work may be distributed and/or modified under the conditions of the
+%% LaTeX Project Public License, either version 1.3c of this license or (at
+%% your option) any later version.  The latest version of this license is in
+%% https://www.latex-project.org/lppl.txt and version 1.3c or later is part of
+%% all distributions of LaTeX version 2008 or later.
+%%
+%% This work has the LPPL maintenance status `maintained'.
+%% The Current Maintainer of this work is Saso Zivanovic.
+%% 
+%% The files belonging to this work and covered by LPPL are listed in
+%% (<texmf>/doc/generic/memoize/)FILES.
+
+\ProvidesPackage{memoize-code}
+\RequirePackage{memoize-doc-common}
+
+% Typesetting the code & indentation
+\MacroIndent=0pt
+\MacroTopsep = 0pt
+\MacrocodeTopsep = 7pt plus 2pt minus 2pt
+\AddToHook{env/macrocode/before}{\macrocodepar}%
+\let\macrocodepar\par
+
+% A mark for extraction into the manual. We need to remove some vertical space
+% when this environment occurs alone in a doc block.
+\newenvironment{listingregion}[1]{%
+  \ifvmode
+    \let\macrocodepar\relax
+    \AddToHookNext{env/macrocode/begin}{\MacrocodeTopsep=0pt\relax}%
+    \def\listingregionskip{\vspace{-\baselineskip}}%
+    \listingregionskip
+  \else
+    \def\listingregionskip{}%
+  \fi
+}{\listingregionskip}
+
+\setlist{nosep}
+
+% Paragraph headings in the left margin, same as macro environments.
+\RenewDocumentCommand\paragraph{s t. m}{%
+  \setbox0=\hbox{%
+    \mbox{%
+      \textcolor{blue}{%
+        #3%
+        \IfBooleanT{#1}{\mbox{\ ---}}%
+        \IfBooleanT{#2}{\hspace{0.7em}}%
+      }%
+    }%
+  }%
+  \noindent
+  \ifdim\wd0>\marginparwidth
+    \hangindent\dimexpr\wd0-\marginparwidth\relax
+    \hangafter-1\relax
+  \fi
+  \marginpar{\ifdim\wd0<\marginparwidth\hfill\fi\box0}%
+  \AddToHookNext{env/macrocode/before}{\par\nohang}%
+  \pgf@keys@utilifnextchar\par{\myparagraph@gobblepar}{\ignorespaces}%
+}
+\long\def\myparagraph@gobblepar#1{\ignorespaces}
+
+\def\macrocodeenvname{macrocode}
+\def\MacroFont{\fontencoding\encodingdefault
+  \fontfamily\ttdefault
+  \fontseries\mddefault
+  \fontshape\shapedefault
+  \small
+  \ifx\@currenvir\macrocodeenvname\else\color{blue}\fi
+}
+\let\AltMacroFont\MacroFont  % No special font for guarded code.
+
+% Typeset one-line guards to the left, 
+% indent multi-line guard begin/ends by the guard level,
+% and let guards be orange.
+% Move the codeline number left.
+\def\Module#1{%
+  \begingroup
+  \IfBeginWith{#1}{*}{%
+    \def\next{}%
+  }{%
+    \IfBeginWith{#1}{/}{%
+      \def\next{}%
+      \advance\guard@level-1
+    }
+    {%
+      \def\next##1{%
+        \guard@level0
+        \setbox0=\lastbox
+        \llap{\unhbox0 ##1}%
+      }%
+    }%
+  }%
+  \next{%
+    \loop
+    \ifnum\guard@level>0
+      \hskip 1em
+      \advance\guard@level-1
+    \repeat
+    \color{orange}\mod@math@codes$\langle\mathsf{#1}\rangle$\hspace{0.1em}%
+  }%
+  \endgroup
+}
+
+
+% doc elements
+\NewDocElement[idxgroup={\texttt{/mmz} keys}, idxtype={\texttt{/mmz}}]{Key}{key}
+\NewDocElement[idxgroup={\texttt{/collargs} keys}, idxtype={\texttt{/collargs}}]{CollargsKey}{collargskey}
+\NewDocElement[idxgroup={\texttt{/advice} keys}, idxtype={\texttt{/advice}}]{AdviceKey}{advicekey}
+\NewDocElement[idxgroup={\texttt{/mmz/auto} keys}, idxtype={\texttt{/mmz/auto}}]{MmzAutoKey}{mmzautokey}
+\NewDocElement[idxgroup={\texttt{/handlers} keys}, idxtype={\texttt{/handlers}}]{HandlersKey}{handlerskey}
+\NewDocElement[idxgroup={\texttt{/advice/install} keys}, idxtype={\texttt{/advice/install}}]{AdviceInstallkey}{adviceinstallkey}
+
+% Funny: without repeating this here, I can't use commas to separate several macros.
+\RenewDocElement[macrolike=true, idxtype=,idxgroup=,printtype=]{Macro}{macro}
+\NewDocElement[idxtype={Lua function}, idxgroup=Lua functions]{LuaFunction}{luafun}
+
+
+\newcommand\PrintMainMacro[1]{{\MacroFont\string#1}\SpecialMainMacroIndex{#1}}
+
+\newcommand\MyIndex[3]{%
+  \global\advance\c@CodelineNo 1
+  \csuse{special@index}{#1\actualchar#2\encapchar#3}%
+  \global\advance\c@CodelineNo -1
+  \ignorespaces
+}
+\NewDocumentCommand\exclamationmark{}{!}
+
+
+% hanging indent for "key" and "macro" environments
+\newcommand\hang[2]{%
+  \setbox0=\hbox{\MacroFont \string#2\relax}% "\relax" is short enough to never trigger a hanging indent
+  \ifdim\wd0>\dimexpr\marginparwidth\relax
+    \hangindent\dimexpr\wd0-\marginparwidth\relax
+    \hangafter-#1\relax
+    \AddToHookNext{env/macrocode/before}{\par\nohang}%
+    \AddToHookNext{para/after}{\aftergroup\nohang}%
+  \fi
+  \ignorespaces
+}
+\newcommand\nohang{\hangindent 0pt\relax}
+\newcommand\indentmacrocode{%
+  \settowidth\MacroIndent{\theCodelineNo\ }%
+  \addtolength\MacroIndent{\hangindent}%
+}
+\newcommand\noindentmacrocode{%
+  \setlength\MacroIndent{0em}%
+  \AddToHookNext{env/macrocode/begin}{\MacrocodeTopsep 0pt\relax}%
+}
+
+% and now ... autohang!
+% (the macros should be listed without spaces after commas)
+\usepackage{advice}
+\pgfkeys{
+  /my/.cd,
+  .install advice,
+  advice/hang/.style={outer handler=\autohang},
+  advice=\key{hang},
+  advice=\macro{hang},
+  advice=\autokey{hang},
+  advice=\mmzautokey{hang},
+  advice=\collargskey{hang},
+  advice=\handlerskey{hang},
+  advice=\adviceinstallkey{hang},
+  advice=\luafun{hang},
+}
+\def\hangn{0}
+\def\hanglength{0}
+\def\hangstring{}
+\newcommand\autohang[2][]{%
+  \ifstrequal{#1}{noprint}{}{%
+    \def\temp{#2}%
+    \@for\hangtemp:=\temp\do{\computehang}%
+    \edef\temp{\noexpand\hang{\hangn}{\expandonce\hangstring}}\temp
+  }%
+  \AdviceOriginal[#1]{#2}%
+}
+\def\computehang{%
+  \StrLen{\expandafter\string\hangtemp}[\temp]%
+  \edef\hangn{\the\numexpr\hangn+1}
+  \ifnum\temp>\hanglength\relax
+    \let\hanglength\temp
+    \let\hangstring\hangtemp
+  \fi
+}
+
+
+
+%%% Various:
+\newcommand\MS{\textsuperscript{M}\S} % manual section
+
+% Read in the manual .aux, for \MS cross-references.
+\begingroup
+\let\orig@newlabel\newlabel
+\def\newlabel#1#2{%
+  \IfBeginWith{#1}{sec:}{\orig@newlabel{#1}{#2}}{}%
+}
+\def\doline{%
+  \expandafter\futurelet\expandafter\firsttoken\expandafter\dolinei\line\fi}
+\def\dolinei{\ifx\firsttoken\newlabel}%
+\openin0=memoize.aux
+\loop
+  \unless\ifeof0
+  \read0 to \line
+  \doline
+\repeat
+\closein0
+\endgroup
+
+
+
+%%%% Filter the index, keeping only the entries with a corresponding "main"
+%%%% entry.
+
+\AddToHook{enddocument/end}{%
+  \immediate\closeout\@indexfile  % it is never explicitly closed!
+  \filterindex
+}
+
+\newwrite\tempidx
+\def\filterindex{%
+  \IfFileExists{\jobname.idx}{%
+    \begingroup
+    \catcode`\%=12
+    \def\indexentry{\filterindex@parse\filterindex@first@pass}%
+    \immediate\openout\tempidx \jobname.idx.orig
+    \input \jobname.idx
+    \immediate\closeout\tempidx
+    \def\indexentry{\filterindex@parse\filterindex@second@pass}%
+    \immediate\openout\tempidx \jobname.idx
+    % \tracingall
+    \input \jobname.idx.orig
+    \immediate\closeout\tempidx
+    \endgroup
+  }{}%
+}
+
+\def\filterindex@parse{%
+  \catcode`\\=12
+  \filterindex@parse@i
+}
+\long\def\filterindex@parse@i#1#2#3{\filterindex@parse@ii#1#2{#3}}
+\long\def\filterindex@parse@ii#1#2=#3hdclindex#4#5#6{%
+  \catcode`\\=0
+  #1{#2}{#3}{#4}{#5}{#6}%
+}
+
+\long\def\filterindex@first@pass#1#2#3#4#5{%
+  \filterindex@write{#1}{#2}{#3}{#4}{#5}%
+  \IfStrEq{#4}{main}{%
+    \csdef{\detokenize{filt@#1}}{}%
+  }{}%
+}
+\long\def\filterindex@second@pass#1#2#3#4#5{%
+  \ifcsdef{\detokenize{filt@#1}}{%
+    \filterindex@write{#1}{#2}{#3}{#4}{#5}%
+  }{%
+  }%
+}
+\long\def\filterindex@write#1#2#3#4#5{%
+  \immediate\write\tempidx{\string\indexentry\detokenize{{#1=#2hdclindex{#3}{#4}}{#5}}}%
+}
+
+
+
+% Local Variables:
+% TeX-engine: luatex
+% TeX-master: "memoize-code.tex"
+% TeX-auto-save: nil
+% End:

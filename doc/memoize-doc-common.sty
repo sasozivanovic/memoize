@@ -1,0 +1,173 @@
+%% memoize-doc-common.sty
+%% 
+%% This file is a part of Memoize, a TeX package for externalization of
+%% graphics and memoization of compilation results in general, available at
+%% https://ctan.org/pkg/memoize and https://github.com/sasozivanovic/memoize.
+%%
+%% Copyright (c) 2020- Saso Zivanovic <saso.zivanovic@guest.arnes.si>
+%%                     (Sa\v{s}o \v{Z}ivanovi\'{c})
+%%
+%% This work may be distributed and/or modified under the conditions of the
+%% LaTeX Project Public License, either version 1.3c of this license or (at
+%% your option) any later version.  The latest version of this license is in
+%% https://www.latex-project.org/lppl.txt and version 1.3c or later is part of
+%% all distributions of LaTeX version 2008 or later.
+%%
+%% This work has the LPPL maintenance status `maintained'.
+%% The Current Maintainer of this work is Saso Zivanovic.
+%% 
+%% The files belonging to this work and covered by LPPL are listed in
+%% (<texmf>/doc/generic/memoize/)FILES.
+
+\ProvidesPackage{memoize-doc-common}
+
+\usepackage[inline,shortlabels]{enumitem}
+\usepackage{tcolorbox}
+\tcbuselibrary{listings,hooks,raster,skins}
+\usepackage{tikz}
+\usepackage{xstring}
+\usepackage{microtype}
+
+\usepackage{listings}
+\lstset{
+  language=[LaTeX]TeX,
+  columns=fullflexible,
+  basicstyle=\ttfamily\small,
+  commentstyle=\color{purple},
+  moredelim={[is][\pstyle]{~}{~}}
+}
+\lstMakeShortInline[moredelim={[is][\pstyle]{~}{~}}]{ˇ}%
+\tcbset{
+  linerange/.style={listing options app={linerange=#1}},
+}
+
+
+%%%%%%%%%%%%%%
+% title page %
+
+\usepackage{pdftexcmds}
+\let\pdfsystem\pdf@system
+
+% version and date
+\def\datefrompackageversion#1{%
+  \setbox0=\hbox{%
+    \def\ProvidesPackage##1[##2]{%
+      \gdef\@packagever{##2}%
+      \endinput
+    }%
+    \input{#1.sty}%
+  }%
+  \expandafter\parsepackagever@\@packagever\parsepackagever@
+}
+\def\parsepackagever@#1/#2/#3 v#4 #5\parsepackagever@{%
+  \year=#1\relax\month=#2\relax\day=#3\relax
+  \def\packagever{#4}\def\packagedesc{#5}%
+}
+
+\renewcommand\maketitle{%
+  \begingroup
+  \mmzset{disable, auto={tcolorbox}{clear options}}% \mmznext does not work here -- todo: maybe it does now
+  \begin{tcolorbox}[
+      colback=emphcolor,
+      fonttitle=\LARGE\bf,
+      halign title=center,
+      halign upper=center,
+      halign lower=center,
+      tikznode lower,
+      adjusted title=\@title,
+    ]
+    \packagever\\
+    \@date
+    \tcblower
+    \Large\@author
+  \end{tcolorbox}
+  \endgroup
+}
+\colorlet{emphcolor}{yellow!90!black}
+\usepackage{marvosym}
+\let\emailsymbol\Letter
+\let\homepagesymbol\ComputerMouse
+\usepackage{fontawesome} % for \faGithub
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%
+% \verb@eol@error hack %
+
+% The problem: doc.sty (re)defines \verb "to check for newlines in its argument
+% since a missing delimiter is difficult to detect in doc source."  In
+% principle, that's great, but I really hate it that I can't use Emacs's
+% "fill-paragraph" without fear of getting the "Text for \noexpand\verb command
+% ended by end of line" error.
+% 
+% Solution: the original \verb@eol@error defines a newline (which is active at
+%   that point) to throw an error.  We redefine \verb@eol@error to define a
+% newline to gobble an immediately following percent character (assuming that
+%   we are processing .dtx documentation) and spaces.
+
+\begingroup
+  \obeylines%
+  \gdef\verb@eol@error{\obeylines%
+    \def^^M{\futurelet\verb@eol@nextchar\verb@eol@peek}%
+  }%
+\endgroup
+\gdef\verb@eol@peek{%
+  \if\@percentchar\verb@eol@nextchar
+    \expandafter\verb@eol@ignorepercentchar
+  \else
+    \space % we need one space, though!
+    \expandafter\verb@eol@ignorespaces
+  \fi
+}
+\def\verb@eol@ignorepercentchar#1{% #1 = "%"
+  \@xobeysp\verb@eol@ignorespaces}
+\begingroup\catcode`\ =13 \gdef\verb@eol@otherspace{ }\endgroup
+% |\ignorespaces| wouldn't work here, as our spaces are of category 13
+\def\verb@eol@ignorespaces{%
+  \futurelet\verb@eol@nextchar\verb@eol@ignorespaces@peek}
+\def\verb@eol@ignorespaces@peek{%
+  \expandafter\ifx\verb@eol@otherspace\verb@eol@nextchar
+    \expandafter\verb@eol@ignorespaces@space
+  \fi
+}
+\def\verb@eol@ignorespaces@space#1{\verb@eol@ignorespaces}
+
+% The same hack, but for \lstinline of package listings.
+% https://tex.stackexchange.com/a/473459/16819
+
+\def\lst@InlineM#1{\gdef\lst@inlinechars{%
+    \lst@Def{`#1}{\lst@DeInit\egroup\global\let\lst@inlinechars\@empty}%
+    \lst@Def{13}{\lst@ProcessSpace}}% <---
+    \lst@inlinechars}
+
+
+%%%%%%%%%%%
+% various %
+
+\usepackage{hologo}
+\def\TikZ;{{\rm Ti\emph{k}Z}}
+\def\PGF;{PGF}
+\newcommand\PGFmanual[1]{%
+  \href
+    {http://mirrors.ctan.org/graphics/pgf/base/doc/pgfmanual.pdf}
+    {\S#1 of the Ti\emph{k}Z \& \textsc{PGF} manual}%
+}
+\newcommand\Alt{\,$\vert$\,}
+\newcommand\hyp{\discretionary{}{}{}}
+\newcommand\fncomma{\ensuremath{{^,}}}
+
+
+% load hyperref before this
+
+\protected\def\hypercolor#1#2{% #1 = url/link/.., #2 = color
+  \expanded{%
+    \noexpand\HyColor@HyperrefColor{#2}\expandonce{\csname @#1color\endcsname}%
+  }%
+}
+
+\RenewDocumentCommand\url{ O{} D(){} m }{%
+  {\hypercolor{url}{#1}\href{#2#3}{\texttt{#3}}}}
+
+\def\pkgcolor{black}
+\NewDocumentCommand\pkg{O{\pkgcolor}m}{{%
+    \hypercolor{url}{#1}%
+    \href{https://ctan.org/pkg/#2}{\texttt{#2}}}}

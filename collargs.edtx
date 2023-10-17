@@ -1,0 +1,2938 @@
+% \iffalse
+% collargs.edtx (this is not a .dtx file; to produce a .dtx, process it with edtx2dtx)
+%% 
+%% This file is a part of CollArgs, a TeX package providing a command which can
+%% determine the argument scope of any command whose argument structure
+%% conforms to xparse's argument specification, available at
+%% https://ctan.org/pkg/advice and https://github.com/sasozivanovic/advice.
+%%
+%% Copyright (c) 2023- Saso Zivanovic <saso.zivanovic@guest.arnes.si>
+%%                     (Sa\v{s}o \v{Z}ivanovi\'{c})
+%%
+%% This work may be distributed and/or modified under the conditions of the
+%% LaTeX Project Public License, either version 1.3 of this license or (at your
+%% option) any later version.  The latest version of this license is in
+%% http://www.latex-project.org/lppl.txt and version 1.3 or later is part of
+%% all distributions of LaTeX version 2005/12/01 or later.
+%% 
+%% This work has the LPPL maintenance status `maintained'.
+%% The Current Maintainer of this work is Saso Zivanovic.
+%%
+%% The files belonging to this work and covered by LPPL are listed in
+%% (<texmf>/doc/generic/collargs/)FILES.
+%
+% \fi
+% 
+%    \begin{macrocode}
+% 
+% Package CollArgs provides commands |\CollectArguments| and
+% |\CollectArgumentsRaw|, which (what a surprise!) collect the arguments
+% conforming to the given (slightly extended) |xparse| argument specification.
+% The package was developed to help out with automemoization (see
+% section~\ref{sec:code:automemoization}).  It started out as a few lines of
+% code, but had grown once I realized I want automemoization to work for
+% verbatim environments as well --- the environment-collecting code is based on
+% Bruno Le Floch's package |cprotect| --- and had then grown some more once I
+% decided to support the |xparse| argument specification in full detail, and to
+% make the verbatim mode flexible enough to deal with a variety of situations.
+% 
+% The implementation of this package does not depend on |xparse|. Perhaps this
+% is a mistake, especially as the |xparse| code is now included in the base
+% \hologo{LaTeX}, but the idea was to have a light-weight package (not sure
+% this is the case anymore, given all the bells and whistles), to have its
+% functionality available in plain \hologo{TeX} and \hologo{ConTeXt} as well
+% (same as Memoize), and, perhaps most importantly, to have the ability to
+% collect the arguments verbatim.
+% 
+% 
+% \paragraph{Identification}
+%<latex>\ProvidesPackage{collargs}[2023/10/10 v1.0.0 Collect arguments of any command]
+%<context>%D \module[
+%<context>%D         file=t-collargs.tex,
+%<context>%D      version=1.0.0,
+%<context>%D        title=CollArgs,
+%<context>%D     subtitle=Collect arguments of any command,
+%<context>%D       author=Saso Zivanovic,
+%<context>%D         date=2023-10-10,
+%<context>%D    copyright=Saso Zivanovic,
+%<context>%D      license=LPPL,
+%<context>%D ]
+%<context>\writestatus{loading}{ConTeXt User Module / collargs}
+%<context>\unprotect
+%<context>\startmodule[collargs]
+% \paragraph{Required packages}
+%<latex>\RequirePackage{pgfkeys}
+%<plain>\input pgfkeys
+%<context>\input t-pgfkey
+%<latex>\RequirePackage{etoolbox}
+%<plain,context>\input etoolbox-generic
+%<plain>\edef\resetatcatcode{\catcode`\noexpand\@\the\catcode`\@\relax}
+%<plain>\catcode`\@11\relax
+% 
+% \begin{macro}{\toksapp,\gtoksapp,\etoksapp,\xtoksapp}
+%   Our macros for appending to a token register only accept a control sequence
+%   defined by |\toksdef| (like |\mytoks|) but not an explicit register
+%   designation like |\toks0|, so we only define them if noone else did; the
+%   names of the macros match the \hologo{LuaTeX} primitives, so they surely
+%   won't be defined there.
+\ifdefined\toksapp\else
+  \long\def\toksapp#1#2{#1\expandafter{\the#1#2}}%
+\fi
+\ifdefined\etoksapp\else
+  \long\def\etoksapp#1#2{#1\expandafter{\expanded{\the#1#2}}}%
+\fi
+\ifdefined\gtoksapp\else
+  \long\def\gtoksapp#1#2{\global#1\expandafter{\the#1#2}}%
+\fi
+\ifdefined\xtoksapp\else
+  \long\def\xtoksapp#1#2{\global#1\expandafter{\expanded{\the#1#2}}}%
+\fi
+\ifdefined\toks@\else\toksdef\toks@=0 \fi
+% \end{macro}
+% 
+% \begin{macro}{\CollectArguments,\CollectArgumentsRaw}
+%   These are the only public commands provided by the
+%   package. |\CollectArguments| takes three arguments: the optional |#1| is
+%   the option list, processed by |pgfkeys| (given the grouping structure,
+%   these options will apply to all arguments); the mandatory |#2| is the
+%   |xparse|-style argument specification; the mandatory |#3| is the ``next''
+%   command (or a sequence of commands).  The argument list is expected to
+%   start immediately after the final argument; |\CollectArguments| parses it,
+%   effectively figuring out its extent, and then passes the entire argument
+%   list to the ``next'' command (as a single argument).
+% 
+%   |\CollectArgumentsRaw| differs only in how it takes and processes the
+%   options.  For one, these should be given as a mandatory argument.
+%   Furthermore, they do not take the form of a keylist, but should deploy the
+%   ``programmer's interface.''  |#1| should thus be a sequence of invocations
+%   of the macro counterparts of the keys defined in
+%   section~\ref{sec:code:collargs:keys}, which can be recognized as starting
+%   with |\collargs| followed by a capital letter, e.g.\ |\collargsCaller|.
+%   Note that |\collargsSet| may also be used in |#1|.  (The ``optional,''
+%   i.e.\ bracketed, argument of |\CollectArgumentsRaw| is in fact mandatory.)
+\protected\def\CollectArguments{%
+  \pgf@keys@utilifnextchar[\CollectArguments@i{\CollectArgumentsRaw{}}%]
+}
+\def\CollectArguments@i[#1]{\CollectArgumentsRaw{\collargsSet{#1}}}
+\protected\def\CollectArgumentsRaw#1#2#3{%
+  % This group will be closed by |\collargs@.| once we grinded through the
+  % argument specification.
+  \begingroup
+  % Initialize category code fixing; see section~\ref{sec:code:collargs:fix}
+  % for details. We have to do this before applying the settings, so that
+  % |\collargsFixFromNoVerbatim| et al can take effect.
+  \global\let\ifcollargs@last@verbatim\ifcollargs@verbatim
+  \global\let\ifcollargs@last@verbatimbraces\ifcollargs@verbatimbraces
+  \global\collargs@double@fixfalse
+  % Apply the settings.
+  \collargs@verbatim@wrap{#1}%
+  % Initialize the space-grabber.
+  \collargs@init@grabspaces
+  % Remember the code to execute after collection.
+  \def\collargs@next{#3}%
+  % Initialize the token register holding the collected arguments.
+  \global\collargs@toks{}%
+  % Execute the central loop macro, which expects the argument specification
+  % |#2| to be delimited from the following argument tokens by a dot.
+  \collargs@#2.%
+}
+% \end{macro}
+% 
+% \begin{macro}{\collargsSet}
+%   This macro processes the given keys in the |/collargs| keypath.  When it is
+%   used to process options given by the end user (the optional argument to
+%   |\CollectArguments|, and the options given within the argument
+%   specification, using the new modifier |&|), its invocation should be
+%   wrapped in |\collargs@verbatim@wrap| to correctly deal with the changes of
+%   the verbatim mode.
+\def\collargsSet#1{\pgfqkeys{/collargs}{#1}}
+% \end{macro}
+%
+% 
+% \subsubsection{The keys}
+% \label{sec:code:collargs:keys}
+% 
+% \begin{macro}{\collargs@cs@cases}
+%   If the first argument of this auxiliary macro is a single control sequence,
+%   then the second argument is executed.  If the first argument starts with a
+%   control sequence but this control sequence does not form the entire
+%   argument, the third argument is executed.  Otherwise, the fourth argument
+%   is executed. 
+% 
+%   This macro is defined in package CollArgs because we use it in key |caller|
+%   below, but it is really useful in package Auto, where having it we don't
+%   have to bother the end-user with a separate keys for commands and
+%   environments, but automatically detect whether the argument of |auto| and
+%   (|de|)|activate| is a command or an environment.
+\def\collargs@cs@cases#1{\collargs@cs@cases@i#1\collargs@cs@cases@end}
+\let\collargs@cs@cases@end\relax
+\def\collargs@cs@cases@i{\futurelet\collargs@temp\collargs@cs@cases@ii}
+\def\collargs@cs@cases@ii#1#2\collargs@cs@cases@end{%
+  \ifcat\noexpand\collargs@temp\relax
+    \ifx\relax#2\relax
+      \expandafter\expandafter\expandafter\@firstofthree
+    \else
+      \expandafter\expandafter\expandafter\@secondofthree
+    \fi
+  \else
+    \expandafter\@thirdofthree
+  \fi
+}
+\def\@firstofthree#1#2#3{#1}
+\def\@secondofthree#1#2#3{#2}
+\def\@thirdofthree#1#2#3{#3}
+% \end{macro}
+% 
+% \begin{collargskey}{caller}
+%   \begin{macro}{\collargsCaller}
+%     Every macro which grabs a part of the argument list will be accessed
+%     through the ``caller'' control sequence, so that \hologo{TeX}'s reports
+%     of any errors in the argument structure can contain a command name
+%     familiar to the author.\footnote{The idea is borrowed from package
+%     |environ|, which is in turn based on code from |amsmath|.}  For example,
+%     if the argument list ``originally'' belonged to command |\foo| with
+%     argument structure |r()|, but no parentheses follow in the input, we want
+%     \hologo{TeX} to complain that |Use of \foo doesn't match its definition|.
+%     This can be achieved by setting |caller=\foo|; the default is
+%     |caller=\CollectArguments|, which is still better than seeing an error
+%     involving some random internal control sequence.  It is also ok to set an
+%     environment name as the caller, see below.
+% 
+%     The key and macro defined below store the caller control sequence into
+%     |\collargs@caller|, e.g.\ when we say |caller=\foo|, we effectively
+%     execute |\def\collargs@caller{\foo}|.
+\collargsSet{
+  caller/.code={\collargsCaller{#1}},
+}
+\def\collargsCaller#1{%
+  \collargs@cs@cases{#1}{%
+    \let\collargs@temp\collargs@caller@cs
+  }{%
+    \let\collargs@temp\collargs@caller@csandmore
+  }{%
+    \let\collargs@temp\collargs@caller@env
+  }%
+  \collargs@temp{#1}%
+}
+\def\collargs@caller@cs#1{%
+  % If |#1| is a single control sequence, just use that as the caller.
+  \def\collargs@caller{#1}%
+}
+\def\collargs@caller@csandmore#1{%
+  % If |#1| starts with a control sequence, we don't complain, but convert the
+  % entire |#1| into a control sequence.
+  \begingroup
+  \escapechar -1
+  \expandafter\endgroup
+  \expandafter\def\expandafter\collargs@caller\expandafter{%
+    \csname\string#1\endcsname
+  }%
+}
+\def\collargs@caller@env#1{%
+  % If |#1| does not start with a control sequence, we assume that is an
+  % environment name, so we prepend |start| in \hologo{ConTeXt}, and dress it
+  % up into |\begin{#1}| in \hologo{LaTeX}.
+  \expandafter\def\expandafter\collargs@caller\expandafter{%
+    \csname
+    %<context>start%
+    %<latex>begin{%
+    #1%
+    %<latex>}%
+    \endcsname
+  }%
+}
+\collargsCaller\CollectArguments
+%   \end{macro}
+% \end{collargskey}
+% 
+% \begin{macro}{\ifcollargs@verbatim,\ifcollargs@verbatimbraces}
+%       The first of these conditional
+%         signals that we're collecting the arguments in one of the verbatim
+%         modes; the second one signals the |verb| mode in particular.
+\newif\ifcollargs@verbatim
+\newif\ifcollargs@verbatimbraces
+% \end{macro}
+% 
+% \begin{collargskey}{verbatim, verb, no verbatim}
+% \begin{macro}{\collargs@verbatim@wrap}
+%   These keys set the verbatim mode macro which will be executed by
+%   |\collargsSet| after processing all keys.  
+%   The verbatim mode macros |\collargsVerbatim|, |\collargsVerb| and
+%   |\collargsNoVerbatim| are somewhat complex; we postpone their definition
+%   until section~\ref{sec:code:collargs:verbatim}.  Their main effect is to
+%   set conditionals |\ifcollargs@verbatim| and |\ifcollargs@verbatimbraces|,
+%   which are be inspected by the argument type handlers --- and to make
+%   the requested category code changes, of course.
+% 
+%   Here, note that the verbatim-selection code is not executed while the
+%   keylist is being processed.  Rather, the verbatim keys simply set the macro
+%   which will be executed \emph{after} the keylist is processed, and this is
+%   why processing of a keylist given by the user must be always wrapped in
+%   |\collargs@verbatim@wrap|.
+\collargsSet{
+  verbatim/.code={\let\collargs@apply@verbatim\collargsVerbatim},
+  verb/.code={\let\collargs@apply@verbatim\collargsVerb},
+  no verbatim/.code={\let\collargs@apply@verbatim\collargsNoVerbatim},
+}
+\def\collargs@verbatim@wrap#1{%
+  \let\collargs@apply@verbatim\relax
+  #1%
+  \collargs@apply@verbatim
+}
+% \end{macro}
+% \end{collargskey}
+% 
+% \begin{collargskey}{fix from verbatim, fix from verb, fix from no verbatim}
+%   \begin{macro}{\collargsFixFromVerbatim,\collargsFixFromVerb,\collargsFixFromNoVerbatim}
+%     These keys and macros should be used to request a category code fix, when
+%     the offending tokenization took place prior to invoking
+%     |\CollectArguments|; see section~\ref{sec:code:collargs:fix} for details.
+%     While I assume that only |\collargsFixFromNoVerbatim| will ever be used
+%     (and it is used by |\mmz|), we provide macros for all three transitions,
+%     for completeness.\indentmacrocode
+\collargsSet{
+  fix from verbatim/.code={\collargsFixFromVerbatim},
+  fix from verb/.code={\collargsFixFromVerb},
+  fix from no verbatim/.code={\collargsFixFromNoVerbatim},
+}
+% \noindentmacrocode
+\def\collargsFixFromNoVerbatim{%
+  \global\collargs@fix@requestedtrue
+  \global\let\ifcollargs@last@verbatim\iffalse
+}
+\def\collargsFixFromVerbatim{%
+  \global\collargs@fix@requestedtrue
+  \global\let\ifcollargs@last@verbatim\iftrue
+  \global\let\ifcollargs@last@verbatimbraces\iftrue
+}
+\def\collargsFixFromVerb{%
+  \global\collargs@fix@requestedtrue
+  \global\let\ifcollargs@last@verbatim\iftrue
+  \global\let\ifcollargs@last@verbatimbraces\iffalse
+}
+% \end{macro}
+% \end{collargskey}
+% 
+% \begin{collargskey}{braces}
+%   Set the characters which are used as the grouping characters in the full
+%   verbatim mode.  The user is only required to do this when multiple
+%   character pairs serve as the grouping characters.  The underlying macro,
+%   |\collargsBraces|, will be defined in
+%   section~\ref{sec:code:collargs:verbatim}.
+\collargsSet{
+  braces/.code={\collargsBraces{#1}}%
+}
+% \end{collargskey}
+% 
+% \begin{collargskey}{environment}
+%   \begin{macro}{\collargsEnvironment}
+%     Set the environment name. 
+%     \indentmacrocode
+\collargsSet{
+  environment/.estore in=\collargs@b@envname
+}
+\def\collargsEnvironment#1{\edef\collargs@b@envname{#1}}
+\collargsEnvironment{}
+% \end{macro}
+% \end{collargskey}
+% 
+% \begin{collargskey}{begin tag, end tag, tags}
+%   \begin{macro}{\ifcollargsBeginTag,\ifcollargsEndTag,\ifcollargsAddTags}
+%           When |begin tag|\slash|end tag| is in effect, the begin\slash end-tag will
+%           be will be prepended/appended to the environment body. |tags| is a
+%           shortcut for setting |begin tag| and |end tag| simultaneously.
+%           \indentmacrocode
+\collargsSet{
+  begin tag/.is if=collargsBeginTag,
+  end tag/.is if=collargsEndTag,
+  tags/.style={begin tag=#1, end tag=#1},
+  tags/.default=true,
+}
+\newif\ifcollargsBeginTag
+\newif\ifcollargsEndTag
+% \end{macro}
+% \end{collargskey}
+% 
+% \begin{collargskey}{ignore nesting}
+%   \begin{macro}{\ifcollargsIgnoreNesting}
+%       When this key is in effect, we will
+%         ignore any \cs{begin}\marg{name}s and simply grab everything up to
+%         the first \cs{end}\marg{name} (again, the markers are automatically
+%         adapted to the format).
+\collargsSet{
+  ignore nesting/.is if=collargsIgnoreNesting,
+}
+\newif\ifcollargsIgnoreNesting
+% \end{macro}
+% \end{collargskey}
+% 
+% \begin{collargskey}{ignore other tags}
+%   \begin{macro}{\ifcollargsIgnoreOtherTags}
+%       This key is only relevant in the
+%         non-verbatim and partial verbatim modes in \hologo{LaTeX}.  When it
+%         is in effect, CollArgs checks the environment name following each
+%         |\begin| and |\end|, ignoring the tags with an environment name other
+%         than |\collargs@b@envname|.
+\collargsSet{
+  ignore other tags/.is if=collargsIgnoreOtherTags,
+}
+\newif\ifcollargsIgnoreOtherTags
+% \end{macro}
+% \end{collargskey}
+% 
+% \begin{collargskey}[noindex]{(append/prepend) (pre/post)processor}
+%   \begin{macro}[noindex]{\collargs(Append/Prepend)(Pre/Post)processor}
+%     \begin{collargskey}[noprint]{append preprocessor, prepend preprocessor,
+%       append postprocessor, prepend postprocessor}
+%       \begin{macro}[noprint]{\collargsAppendPreprocessor,\collargsPrependPreprocessor,\collargsAppendPostprocessor,\collargsPrependPostprocessor}
+%         These keys and
+%         macros populate the list of preprocessors,
+%         |\collargs@preprocess@arg|, and the list of post-processors,
+%         |\collargs@postprocess@arg|, executed in |\collargs@appendarg|.
+\collargsSet{
+  append preprocessor/.code={\collargsAppendPreprocessor{#1}},
+  prepend preprocessor/.code={\collargsPrependPreprocessor{#1}},
+  append postprocessor/.code={\collargsAppendPostprocessor{#1}},
+  prepend postprocessor/.code={\collargsPrependPostprocessor{#1}},
+}
+\def\collargsAppendPreprocessor{%
+  \collargs@addprocessor\appto\collargs@preprocess@arg}
+\def\collargsPrependPreprocessor{%
+  \collargs@addprocessor\preto\collargs@preprocess@arg}
+\def\collargsAppendPostprocessor{%
+  \collargs@addprocessor\appto\collargs@postprocess@arg}
+\def\collargsPrependPostprocessor{%
+  \collargs@addprocessor\preto\collargs@postprocess@arg}
+% Here, |#1| will be either |\appto| or |\preto|, and |#2| will be either
+% |\collargs@preprocess@arg| or |\collargs@postprocess@arg|.  |#3| is the
+% processor code.
+\def\collargs@addprocessor#1#2#3{%
+  #1#2{%
+    \expanded{%
+      \unexpanded{#3}{\the\collargsArg}%
+    }%
+  }%
+}
+% \end{macro}
+% \end{collargskey}
+% \end{macro}
+% \end{collargskey}
+% 
+% \begin{collargskey}[noindex]{clear (pre/post)processors}
+%   \begin{macro}[noindex]{\collargsClear(Pre/Post)processors}
+%     \begin{collargskey}[noprint]{clear preprocessors, clear postprocessors}
+%       \begin{macro}[noprint]{\collargsClearPreprocessors,\collargsClearPostprocessors}
+%         These keys and macros
+%         clear the pre- and post-processor lists, which are initially empty as
+%         well.
+\def\collargs@preprocess@arg{}
+\def\collargs@postprocess@arg{}
+\collargsSet{
+  clear preprocessors/.code={\collargsClearPreprocessors},
+  clear postprocessors/.code={\collargsClearPostprocessors},
+}
+\def\collargsClearPreprocessors{\def\collargs@preprocess@arg{}}%
+\def\collargsClearPostprocessors{\def\collargs@postprocess@arg{}}%
+% \end{macro}
+% \end{collargskey}
+% \end{macro}
+% \end{collargskey}
+% 
+% \begin{collargskey}[noindex]{(append/prepend) expandable (pre/post)processor}
+%   \begin{macro}[noindex]{\collargs(Append/Prepend)Expandable(Pre/Post)processor}
+%     \begin{collargskey}[noprint]{append expandable preprocessor, prepend expandable preprocessor, append expandable postprocessor, prepend expandable postprocessor}
+%       \begin{macro}[noprint]{\collargsAppendExpandablePreprocessor,\collargsPrependExpandablePreprocessor,\collargsAppendExpandablePostprocessor,\collargsPrependExpandablePostprocessor}
+%     These keys
+%     and macros simplify the definition of fully expandable processors.  Note
+%     that expandable processors are added to the same list as non-expandable
+%     processors.
+\collargsSet{
+  append expandable preprocessor/.code={%
+    \collargsAppendExpandablePreprocessor{#1}},
+  prepend expandable preprocessor/.code={%
+    \collargsPrependExpandablePreprocessor{#1}},
+  append expandable postprocessor/.code={%
+    \collargsAppendExpandablePostprocessor{#1}},
+  prepend expandable postprocessor/.code={%
+    \collargsPrependExpandablePostprocessor{#1}},
+}
+\def\collargsAppendExpandablePreprocessor{%
+  \collargs@addeprocessor\appto\collargs@preprocess@arg}
+\def\collargsPrependExpandablePreprocessor{%
+  \collargs@addeprocessor\preto\collargs@preprocess@arg}
+\def\collargsAppendExpandablePostprocessor{%
+  \collargs@addeprocessor\appto\collargs@postprocess@arg}
+\def\collargsPrependExpandablePostprocessor{%
+  \collargs@addeprocessor\preto\collargs@postprocess@arg}
+\def\collargs@addeprocessor#1#2#3{%
+  #1#2{%
+    \expanded{%
+      \edef\noexpand\collargs@temp{\unexpanded{#3}{\the\collargsArg}}%
+      \unexpanded{\expandafter\collargsArg\expandafter{\collargs@temp}}%
+    }%
+  }%
+}
+% \end{macro}
+% \end{collargskey}
+% \end{macro}
+% \end{collargskey}
+% 
+% \begin{collargskey}[noindex]{(append/prepend) (pre/post)wrap}
+%   \begin{macro}[noindex]{\collargs(Append/Prepend)(Pre/Post)wrap}
+%     \begin{collargskey}[noprint]{append prewrap, prepend prewrap, append postwrap, prepend postwrap}
+%       \begin{macro}[noprint]{\collargsAppendPrewrap,\collargsPrependPrewrap,\collargsAppendPostwrap,\collargsPrependPostwrap}
+%      These keys and macros
+%     simplify the definition of processors which yield the result after a
+%     single expansion.  Again, they are added to the same list as other
+%     processors.
+\collargsSet{
+  append prewrap/.code={\collargsAppendPrewrap{#1}},
+  prepend prewrap/.code={\collargsPrependPrewrap{#1}},
+  append postwrap/.code={\collargsAppendPostwrap{#1}},
+  prepend postwrap/.code={\collargsPrependPostwrap{#1}},
+}
+\def\collargsAppendPrewrap{\collargs@addwrap\appto\collargs@preprocess@arg}
+\def\collargsPrependPrewrap{\collargs@addwrap\preto\collargs@preprocess@arg}
+\def\collargsAppendPostwrap{\collargs@addwrap\appto\collargs@postprocess@arg}
+\def\collargsPrependPostwrap{\collargs@addwrap\preto\collargs@postprocess@arg}
+\def\collargs@addwrap#1#2#3{%
+  #1#2{%
+    \long\def\collargs@temp##1{#3}%
+    \expandafter\expandafter\expandafter\collargsArg
+    \expandafter\expandafter\expandafter{%
+      \expandafter\collargs@temp\expandafter{\the\collargsArg}%
+    }%
+  }%
+}
+% \end{macro}
+% \end{collargskey}
+% \end{macro}
+% \end{collargskey}
+% 
+% 
+% \begin{collargskey}{no delimiters}
+%   \begin{macro}{\ifcollargsNoDelimiters}
+%       When this conditional is in effect, the
+%         delimiter wrappers set by |\collargs@wrap| are ignored by
+%         |\collargs@appendarg|.
+\collargsSet{%
+  no delimiters/.is if=collargsNoDelimiters,
+}
+\newif\ifcollargsNoDelimiters
+%   \end{macro}
+% \end{collargskey}
+%
+% \subsubsection{The central loop}
+% \label{sec:code:collargs:central-loop}
+%
+% The central loop is where we grab the next \meta{token} from the argument
+% specification and execute the corresponding argument type or modifier
+% handler, |\collargs@|\meta{token}.  The central loop consumes the argument
+% type \meta{token}; the handler will see the remainder of the argument
+% specification (which starts with the arguments to the argument type, if any,
+% e.g.\ by |()| of |d()|), followed by a dot, and then the tokens list from
+% which the arguments are to be collected.  It is the responsibility of handler
+% to preserve the rest of the argument specification and reexecute the central
+% loop once it is finished.
+% 
+% \begin{macro}{\collargs@}
+%   Each argument is processed in a group to allow for local settings.  This
+%   group is closed by |\collargs@appendarg|.
+\def\collargs@{%
+  \begingroup
+  \collargs@@@
+}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@@@}
+%   This macro is where modifier handlers reenter the central loop --- we don't
+%   want modifers to open a group, because their settings should remain in
+%   effect until the next argument.  Furthermore, modifiers do not trigger
+%   category code fixes.
+\def\collargs@@@#1{%
+  \collargs@in@{#1}{&+!>.}%
+  \ifcollargs@in@
+    \expandafter\collargs@@@iii
+  \else
+    \expandafter\collargs@@@i
+  \fi
+  #1%
+}
+\def\collargs@@@i#1.{%
+  % Fix the category code of the next argument token, if necessary, and then
+  % proceed with the main loop.
+  \collargs@fix{\collargs@@@ii#1.}%
+}
+% Reset the fix request and set the last verbatim conditionals to the current
+% state.
+\def\collargs@@@ii{%
+  \global\collargs@fix@requestedfalse
+  \global\let\ifcollargs@last@verbatim\ifcollargs@verbatim
+  \global\let\ifcollargs@last@verbatimbraces\ifcollargs@verbatimbraces
+  \collargs@@@iii
+}
+% Call the modifier or argument type handler denoted by the first token of the
+% remainder of the argument specification.
+\def\collargs@@@iii#1{%
+  \ifcsname collargs@#1\endcsname
+    \csname collargs@#1\expandafter\endcsname
+  \else
+    % We throw an error if the token refers to no argument type or modifier.
+    \collargs@error@badtype{#1}%
+  \fi
+}
+% Throwing an error stops the processing of the argument specification, and
+% closes the group opened in |\collargs@i|.
+\def\collargs@error@badtype#1#2.{%
+  \PackageError{collargs}{Unknown xparse argument type or modifier "#1"
+    for "\expandafter\string\collargs@caller\space"}{}%
+  \endgroup
+}
+% \end{macro}
+% 
+% {\catcode`\&=11
+% \begin{macro}{\collargs@&}
+%   We extend the |xparse| syntax with modifier |&|, which applies the given
+%   options to the following (and only the following) argument.  If |&| is
+%   followed by another |&|, the options are expected to occur in the raw
+%   format, like the options given to |\CollectArgumentsRaw|.  Otherwise, the
+%   options should take the form of a keylist, which will be processed by
+%   |\collargsSet|.  In any case, the options should be given within the
+%   argument specification, immediately following the (single or double) |&|.
+\csdef{collargs@&}{%
+  \futurelet\collargs@temp\collargs@amp@i
+}
+\def\collargs@amp@i{%
+  % In \hologo{ConTeXt}, |&| has character code ``other'' in the text.
+  %<!context>\ifx\collargs@temp&%
+  %<context>\expandafter\ifx\detokenize{&}\collargs@temp
+    \expandafter\collargs@amp@raw
+  \else
+    \expandafter\collargs@amp@set
+  \fi
+}
+\def\collargs@amp@raw#1#2{%
+  \collargs@verbatim@wrap{#2}%
+  \collargs@@@
+}
+\def\collargs@amp@set#1{%
+  \collargs@verbatim@wrap{\collargsSet{#1}}%
+  \collargs@@@
+}
+% \end{macro}}
+% 
+% \begin{macro}[noindex]{\collargs@+}
+%   \MyIndex{collargs@&plus;}{\texttt{\textbackslash collargs@+}}{main}
+%   This modifier makes the next argument long, i.e.\ accept paragraph tokens.
+\csdef{collargs@+}{%
+  \collargs@longtrue
+  \collargs@@@
+}
+\newif\ifcollargs@long
+% \end{macro}
+% 
+% \begin{macro}{\collargs@>}
+%   We can simply ignore the processor modifier. (This, |xparse|'s processor,
+%   should not be confused with CollArgs's processors, which are set using
+%   keys |append preprocessor| etc.)
+\csdef{collargs@>}#1{\collargs@@@}
+% \end{macro}
+%
+% \begin{macro}[noindex]{\collargs@!}
+%   \MyIndex{collargs@&excl;}{\texttt{\textbackslash collargs@\exclamationmark}}{main}
+%   Should we accept spaces before an optional argument following a mandatory
+%   argument (\pkg{xparse} manual, \S1.1)?  By default, yes.  This modifier is
+%   only applicable to types |d| and |t|, and derived types, but, unlike
+%   |xparse|, we don't bother to enforce this; when used with other types, |!|
+%   simply has no effect.
+\csdef{collargs@!}{%
+  \collargs@grabspacesfalse
+  \collargs@@@
+}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@toks}
+%   This token register is where we store the collected argument tokens.  All
+%   assignments to this register are global, because it needs to survive the
+%   groups opened for individual arguments.
+\newtoks\collargs@toks
+% \end{macro}
+%
+% \begin{macro}{\collargsArg}
+%   An auxiliary, but publicly available token register, used for processing
+%   the argument, and by some argument type handlers.
+\newtoks\collargsArg
+% \end{macro}
+% 
+% \begin{macro}{\collargs@.}
+%   This fake argument type is used to signal the end of the argument list.
+%   Note that this really counts as an extension of the |xparse| argument
+%   specification.
+\csdef{collargs@.}{%
+  % Close the group opened in |\collargs@|.
+  \endgroup
+  % Close the main |\CollectArguments| group, fix the category code of the next
+  % token if necessary, and execute the next-code, followed by the collected
+  % arguments in braces.  Any over-grabbed spaces are reinserted into the input
+  % stream, non-verbatim.
+  \expanded{%
+    \endgroup
+    \noexpand\collargs@fix{%
+      \expandonce\collargs@next{\the\collargs@toks}%
+      \collargs@spaces
+    }%
+  }%
+}
+% \end{macro}
+% 
+% \subsubsection{Auxiliary macros}
+% \label{sec:code:collargs:aux}
+%
+% \begin{macro}{\collargs@appendarg}
+%   This macro is used by the argument type
+%   handlers to append the collected argument to the storage
+%   (|\collargs@toks|).
+\long\def\collargs@appendarg#1{%
+  % Temporarily store the collected argument into a token register.  The
+  % processors will manipulate the contents of this register.
+  \collargsArg={#1}%
+  % This will clear the double-fix conditional, and potentially request a
+  % normal, single fix.  We can do this here because this macro is only called
+  % when something is actually collected.  For details, see
+  % section~\ref{sec:code:collargs:fix}.
+  \ifcollargs@double@fix
+    \collargs@cancel@double@fix
+  \fi
+  % Process the argument with user-definable preprocessors, the wrapper defined
+  % by the argument type, and user-definable postprocessors.
+  \collargs@preprocess@arg
+  \ifcollargsNoDelimiters
+  \else
+    \collargs@process@arg
+  \fi
+  \collargs@postprocess@arg
+  % Append the processed argument, preceded by any grabbed spaces (in the
+  % correct mode), to the storage.
+  \xtoksapp\collargs@toks{\collargs@grabbed@spaces\the\collargsArg}%
+  % Initialize the space-grabber.
+  \collargs@init@grabspaces
+  % Once the argument was appended to the list, we can close its group, opened
+  % by |\collargs@|.
+  \endgroup
+}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@wrap}
+%   This macro is used by argument type handlers to declare their delimiter
+%   wrap, like square brackets around the optional argument of type |o|.  It
+%   uses |\collargs@addwrap|, defined in section~\ref{sec:code:collargs:keys},
+%   but adds to |\collargs@process@arg|, which holds the delimiter wrapper
+%   defined by the argument type handler.  Note that this macro \emph{appends}
+%   a wrapper, so multiple wrappers are allowed --- this is used by type |e|
+%   handler.
+\def\collargs@wrap{\collargs@addwrap\appto\collargs@process@arg}
+\def\collargs@process@arg{}
+% \end{macro}
+%
+% \begin{macro}{\collargs@defcollector,\collargs@defusecollector,\collargs@letusecollector}
+%     These macros streamline the usage of
+%     the ``caller'' control sequence.  They are like a |\def|, but should not
+%     be given the control sequence to define, as they will automatically
+%     define the control sequence residing in |\collargs@caller|; the usage is
+%     thus |\collargs@defcollector<parameters>{<definition>}|.  For example, if
+%     |\collargs@caller| holds |\foo|, |\collargs@defcollector#1{(#1)}| is
+%     equivalent to |\def\foo#1{(#1)}|.  Macro |\collargs@defcollector| will
+%     only define the caller control sequence to be the collector, while
+%     |\collargs@defusecollector| will also immediately execute it.
+\def\collargs@defcollector#1#{%
+  \ifcollargs@long\long\fi
+  \expandafter\def\collargs@caller#1%
+}
+\def\collargs@defusecollector#1#{%
+  \afterassignment\collargs@caller
+  \ifcollargs@long\long\fi
+  \expandafter\def\collargs@caller#1%
+}
+\def\collargs@letusecollector#1{%
+  \expandafter\let\collargs@caller#1%
+  \collargs@caller
+}
+\newif\ifcollargs@grabspaces
+\collargs@grabspacestrue
+% \end{macro}
+% 
+% \begin{macro}{\collargs@init@grabspaces}
+%   The space-grabber macro
+%   |\collargs@grabspaces| should be initialized by executing this macro.  If
+%   |\collargs@grabspaces| is called twice without an intermediate
+%   initialization, it will assume it is in the same position in the input
+%   stream and simply bail out.
+\def\collargs@init@grabspaces{%
+  \gdef\collargs@gs@state{0}%
+  \gdef\collargs@spaces{}%
+  \gdef\collargs@otherspaces{}%
+}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@grabspaces}
+%   This auxiliary macro grabs any following
+%   spaces, and then executes the next-code given as the sole argument.  The
+%   spaces will be stored into two macros, |\collargs@spaces| and
+%   |\collargs@otherspaces|, which store the spaces in the non-verbatim and the
+%   verbatim form.  With the double storage, we can grab the spaces in the
+%   verbatim mode and use them non-verbatim, or vice versa.  The macro takes a
+%   single argument, the code to execute after maybe grabbing the spaces.
+% 
+\def\collargs@grabspaces#1{%
+  \edef\collargs@gs@next{\unexpanded{#1}}%
+  \ifnum\collargs@gs@state=0
+    \gdef\collargs@gs@state{1}%
+    \expandafter\collargs@gs@i
+  \else
+    \expandafter\collargs@gs@next
+  \fi
+}
+\def\collargs@gs@i{%
+  \futurelet\collargs@temp\collargs@gs@g
+}
+% We check for grouping characters even in the verbatim mode, because we might
+% be in the partial verbatim.
+\def\collargs@gs@g{%
+  \ifcat\noexpand\collargs@temp\bgroup
+    \expandafter\collargs@gs@next
+  \else
+    \ifcat\noexpand\collargs@temp\egroup
+      \expandafter\expandafter\expandafter\collargs@gs@next
+    \else
+      \expandafter\expandafter\expandafter\collargs@gs@ii
+    \fi
+  \fi
+}
+\def\collargs@gs@ii{%
+  \ifcollargs@verbatim
+    \expandafter\collargs@gos@iii
+  \else
+    \expandafter\collargs@gs@iii
+  \fi
+}
+% This works because the character code of a space token is always 32.
+\def\collargs@gs@iii{%
+  \expandafter\ifx\space\collargs@temp
+    \expandafter\collargs@gs@iv
+  \else
+    \expandafter\collargs@gs@next
+  \fi
+}
+\expandafter\def\expandafter\collargs@gs@iv\space{%
+  \gappto\collargs@spaces{ }%
+  \xappto\collargs@otherspaces{\collargs@otherspace}%
+  \collargs@gs@i
+}
+% We need the space of category 12 above.
+\begingroup\catcode`\ =12\relax\gdef\collargs@otherspace{ }\endgroup
+\def\collargs@gos@iii#1{%
+  % Macro |\collargs@cc| recalls the ``outside'' category code of character
+  % |#1|; see section~\ref{sec:code:collargs:verbatim}.
+  \ifnum\collargs@cc{#1}=10
+    % We have a space.
+    \expandafter\collargs@gos@iv
+  \else
+    \ifnum\collargs@cc{#1}=5
+      % We have a newline.
+      \expandafter\expandafter\expandafter\collargs@gos@v
+    \else
+      \expandafter\expandafter\expandafter\collargs@gs@next
+    \fi
+  \fi
+  #1%
+}
+\def\collargs@gos@iv#1{%
+  \gappto\collargs@otherspaces{#1}%
+  % No matter how many verbatim spaces we collect, they equal a single
+  % non-verbatim space.
+  \gdef\collargs@spaces{ }%
+  \collargs@gs@i
+}
+\def\collargs@gos@v{%
+  % Only add the first newline.
+  \ifnum\collargs@gs@state=2
+    \expandafter\collargs@gs@next
+  \else
+    \expandafter\collargs@gs@vi
+  \fi
+}
+\def\collargs@gs@vi#1{%
+  \gdef\collargs@gs@state{2}%
+  \gappto\collargs@otherspaces{#1}%
+  \gdef\collargs@spaces{ }%
+  \collargs@gs@i
+}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@maybegrabspaces}
+%   This macro grabs any following spaces, but it will do so only when
+%   conditional |\ifcollargs@grabspaces|, which can be \emph{un}set by modifier
+%     |!|, is in effect.  The macro is used by handlers for types |d| and |t|.
+\def\collargs@maybegrabspaces{%
+  \ifcollargs@grabspaces
+    \expandafter\collargs@grabspaces
+  \else
+    \expandafter\@firstofone
+  \fi
+}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@grabbed@spaces}
+%   This macro expands to either the verbatim
+%   or the non-verbatim variant of the grabbed spaces, depending on the
+%   verbatim mode in effect at the time of expansion.
+\def\collargs@grabbed@spaces{%
+  \ifcollargs@verbatim
+    \collargs@otherspaces
+  \else
+    \collargs@spaces
+  \fi
+}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@reinsert@spaces}
+%   Inserts the grabbed spaces back into the
+%   input stream, but with the category code appropriate for the verbatim mode
+%   then in effect.  After the insertion, the space-grabber is initialized and
+%   the given next-code is executed in front of the inserted spaces.
+\def\collargs@reinsert@spaces#1{%
+  \expanded{%
+    \unexpanded{%
+      \collargs@init@grabspaces
+      #1%
+    }%
+    \collargs@grabbed@spaces
+  }%
+}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@ifnextcat}
+%   An adaptation of |\pgf@keys@utilifnextchar|
+%   which checks whether the \emph{category} code of the next non-space
+%   character matches the category code of |#1|.
+\long\def\collargs@ifnextcat#1#2#3{%
+  \let\pgf@keys@utilreserved@d=#1%
+  \def\pgf@keys@utilreserved@a{#2}%
+  \def\pgf@keys@utilreserved@b{#3}%
+  \futurelet\pgf@keys@utillet@token\collargs@ifncat}
+\def\collargs@ifncat{%
+  \ifx\pgf@keys@utillet@token\pgf@keys@utilsptoken
+    \let\pgf@keys@utilreserved@c\collargsxifnch
+  \else
+    \ifcat\noexpand\pgf@keys@utillet@token\pgf@keys@utilreserved@d
+      \let\pgf@keys@utilreserved@c\pgf@keys@utilreserved@a
+    \else
+      \let\pgf@keys@utilreserved@c\pgf@keys@utilreserved@b
+    \fi
+  \fi
+  \pgf@keys@utilreserved@c}
+{%
+  \def\:{\collargs@xifncat}
+  \expandafter\gdef\: {\futurelet\pgf@keys@utillet@token\collargs@ifncat}
+}
+% \end{macro} 
+% 
+% \begin{macro}{\collargs@forrange}
+%   This macro executes macro |\collargs@do| for every integer from |#1| and
+%   |#2|, both inclusive.  |\collargs@do| should take a single parameter, the
+%   current number.
+\def\collargs@forrange#1#2{%
+  \expanded{%
+     \noexpand\collargs@forrange@i{\number#1}{\number#2}%
+   }%
+ }
+\def\collargs@forrange@i#1#2{%
+  \ifnum#1>#2 %
+    \expandafter\@gobble
+  \else
+    \expandafter\@firstofone
+  \fi
+  {%
+    \collargs@do{#1}%
+    \expandafter\collargs@forrange@i\expandafter{\number\numexpr#1+1\relax}{#2}%
+  }%
+}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@forranges}
+%   This macro executes macro |\collargs@do| for every integer falling into the
+%   ranges specified in |#1|.  The ranges should be given as a comma-separated
+%   list of |from-to| items, e.g.\ |1-5,10-11|.
+\def\collargs@forranges{\forcsvlist\collarg@forrange@i}
+\def\collarg@forrange@i#1{\collarg@forrange@ii#1-}
+\def\collarg@forrange@ii#1-#2-{\collargs@forrange{#1}{#2}}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@percentchar}
+%   This macro holds the percent character of category 12.
+\begingroup
+\catcode`\%=12
+\gdef\collargs@percentchar{%}
+\endgroup
+% \end{macro}
+% 
+% 
+% \subsubsection{The handlers}
+% \label{sec:code:collargs:handlers}
+%
+% \begin{macro}{\collargs@l}
+%   We will first define the handler for the very funky argument type |l|,
+%   which corresponds to \hologo{TeX}'s |\def\foo#1#{...}|, which grabs (into
+%   |#1|) everything up to the first opening brace --- not because this type is
+%   important or even recommended to use, but because the definition of the
+%   handler is very simple, at least for the non-verbatim case.
+%   
+\def\collargs@l#1.{%
+  % Any pre-grabbed spaces in fact belong into the argument.
+  \collargs@reinsert@spaces{\collargs@l@i#1.}%
+}
+\def\collargs@l@i{%
+  % We request a correction of the category code of the delimiting brace if the
+  % verbatim mode changes for the next argument; for details, see
+  % section~\ref{sec:code:collargs:fix}.
+  \global\collargs@fix@requestedtrue
+  % Most handlers will branch into the verbatim and the non-verbatim part using
+  % conditional |\ifcollargs@verbatim|.  This handler is a bit special, because
+  %   it needs to distinguish verbatim and non-verbatim \emph{braces}, and
+  %   braces are verbatim only in the full verbatim mode, i.e.\ when
+  %   |\ifcollargs@verbatimbraces| is true.
+  \ifcollargs@verbatimbraces
+    \expandafter\collargs@l@verb
+  \else
+    \expandafter\collargs@l@ii
+  \fi
+}
+% We grab the rest of the argument specification (|#1|), to be reinserted into
+% the token stream when we reexecute the central loop.
+\def\collargs@l@ii#1.{%
+  % In the non-verbatim mode, we merely have to define and execute the
+  % collector macro.  The parameter text |##1##| (note the doubled hashes),
+  % which will put everything up to the first opening brace into the first
+  % argument, looks funky, but that's all.
+  \collargs@defusecollector##1##{%
+    % We append the collected argument, |##1|, to |\collargs@toks|, the token
+    % register holding the collected argument tokens.
+    \collargs@appendarg{##1}%
+    % Back to the central loop, with the rest of the argument specification
+    % reinserted.
+    \collargs@#1.%
+  }%
+}
+\def\collargs@l@verb#1.{%
+  % In the verbatim branch, we need to grab everything up to the first opening
+  % brace of category code 12, so we want to define the collector with
+  % parameter text |##1{|, with the opening brace of category 12.  We have
+  % stored this token in macro |\collargs@other@bgroup|, which we now need to
+  % expand.
+  \expandafter\collargs@defusecollector
+  \expandafter##\expandafter1\collargs@other@bgroup{%
+    % Appending the argument works the same as in the non-verbatim case.
+    \collargs@appendarg{##1}%
+    % Reexecuting the central loop macro is a bit more involved, as we need to
+    % reinsert the verbatim opening brace (contrary to the regular brace above,
+    % the verbatim brace is consumed by the collector macro) back into the
+    % token stream, behind the reinserted argument specification.
+    \expanded{%
+      \noexpand\collargs@\unexpanded{#1.}%
+      \collargs@other@bgroup
+    }%
+  }%
+}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@u}
+%   Another weird type --- |u|\meta{tokens} reads everything up to the given
+%   \meta{tokens}, i.e.\ this is \hologo{TeX}'s
+%   |\def\foo#1|\meta{tokens}|{...}| --- but again, simple enough to allow us
+%   to showcase solutions to two recurring problems.  
+% 
+%   We start by branching into the verbatim mode (full or partial) or the
+%   non-verbatim mode.
+\def\collargs@u{%
+  \ifcollargs@verbatim
+    \expandafter\collargs@u@verb
+  \else
+    \expandafter\collargs@u@i
+  \fi
+}
+% To deal with the verbatim mode, we only need to convert the above
+% \meta{tokens} (i.e.\ the argument of |u| in the argument specification) to
+% category 12, i.e.\ we have to |\detokenize| them.  Then, we may proceed as in
+% the non-verbatim branch, |\collargs@u@ii|.
+\def\collargs@u@verb#1{%
+  % The |\string| here is a temporary solution to a problem with spaces.  Our
+  % verbatim mode has them of category ``other'', but |\detokenize| produces a
+  % space of category ``space'' behind control words. ^^A todo
+  \expandafter\collargs@u@i\expandafter{\detokenize\expandafter{\string#1}}%
+}
+% We then reinsert any pre-grabbed spaces into the stream, but we take care not
+% to destroy the braces around our delimiter in the argument specification.
+\def\collargs@u@i#1#2.{%
+  \collargs@reinsert@spaces{\collargs@u@ii{#1}#2.}%
+}
+\def\collargs@u@ii#1#2.{%
+  % |#1| contains the delimiter tokens, so |##1| below will receive everything
+  % in the token stream up to these.  But we have a problem: if we defined the
+  % collector as for the non-verbatim |l|, and the delimiter happened to be
+  % preceded by a single brace group, we would lose the braces.  For example,
+  % if the delimiter was |-| and we received |{foo}-|, we would collect |foo-|.
+  % We solve this problem by inserting |\collargs@empty| (with an empty
+  % definition) into the input stream (at the end of this macro) --- this way,
+  % the delimiter can never be preceded by a single brace group --- and then
+  % expanding it away before appending to storage (within the argument of
+  % |\collargs@defusecollector|).
+  \collargs@defusecollector##1#1{%
+    % Define the wrapper which will add the delimiter tokens (|#1|) after the
+    % collected argument.  The wrapper will be applied during argument
+    % processing in |\collargs@appendarg| (sandwiched between used-definable
+    % pre- and post-processors).
+    \collargs@wrap{####1#1}%
+    % Expand the first token in |##1|, which we know to be |\collargs@empty|,
+    % with empty expansion.
+    \expandafter\collargs@appendarg\expandafter{##1}%
+    \collargs@#2.%
+  }%
+  % Insert |\collargs@empty| into the input stream, in front of the ``real''
+  % argument tokens.
+  \collargs@empty
+}
+\def\collargs@empty{}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@r}
+%   Finally, a real argument type: required delimited argument.
+\def\collargs@r{%
+  \ifcollargs@verbatim
+    \expandafter\collargs@r@verb
+  \else
+    \expandafter\collargs@r@i
+  \fi
+}
+\def\collargs@r@verb#1#2{%
+  \expandafter\collargs@r@i\detokenize{#1#2}%
+}
+\def\collargs@r@i#1#2#3.{%
+  % We will need to use the |\collargs@empty| trick from type |u|, but with an
+  % additional twist: we need to insert it \emph{after} the opening delimiter
+  % |#1|.  To do this, we consume the opening delimiter by the ``outer''
+  % collector below --- we need to use the collector so that we get a nice
+  % error message when the opening delimiter is not present --- and have this
+  % collector define the ``inner'' collector in the spirit of type |u|.
+  % 
+  % The outer collector has no parameters, it just requires the presence of the
+  % opening delimiter.
+  \collargs@defcollector#1{%
+    % The inner collector will grab everything up to the closing delimiter.
+    \collargs@defusecollector####1#2{%
+      % Append the collected argument |####1| to the list, wrapping it into the
+      % delimiters (|#1| and |#2|), but not before expanding its first token,
+      % which we know to be |\collargs@empty|.
+      \collargs@wrap{#1########1#2}%
+      \expandafter\collargs@appendarg\expandafter{####1}%
+      \collargs@#3.%
+    }%
+    \collargs@empty
+  }%
+  % Another complication: our delimited argument may be preceded by spaces.  To
+  % replicate the argument tokens faithfully, we need to collect them before
+  % trying to grab the argument itself.
+  \collargs@grabspaces\collargs@caller
+}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@R}
+%   Discard the default and execute |r|.
+\def\collargs@R#1#2#3{\collargs@r#1#2}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@d}
+%   Optional delimited argument.  Very similar to |r|.
+\def\collargs@d{%
+  \ifcollargs@verbatim
+    \expandafter\collargs@d@verb
+  \else
+    \expandafter\collargs@d@i
+  \fi
+}
+\def\collargs@d@verb#1#2{%
+  \expandafter\collargs@d@i\detokenize{#1#2}%
+}
+\def\collargs@d@i#1#2#3.{%
+  % This macro will be executed when the optional argument is not present.  It
+  % simply closes the argument's group and reexecutes the central loop.
+  \def\collargs@d@noopt{%
+    \global\collargs@fix@requestedtrue
+    \endgroup
+    \collargs@#3.%
+  }%
+  % The collector(s) are exactly as for |r|.
+  \collargs@defcollector#1{%
+    \collargs@defusecollector####1#2{%
+      \collargs@wrap{#1########1#2}%
+      \expandafter\collargs@appendarg\expandafter{####1}%
+      \collargs@#3.%
+    }%
+    \collargs@empty
+  }%
+  % This macro will check, in conjunction with |\futurelet| below, whether the
+  % optional argument is present or not.
+  \def\collargs@d@ii{%
+    \ifx#1\collargs@temp
+      \expandafter\collargs@caller
+    \else
+      \expandafter\collargs@d@noopt
+    \fi
+  }%
+  % Whether spaces are allowed in front of this type of argument depends on the
+  % presence of modifier |!|.
+  \collargs@maybegrabspaces{\futurelet\collargs@temp\collargs@d@ii}%
+}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@D}
+% Discard the default and execute |d|.
+\def\collargs@D#1#2#3{\collargs@d#1#2}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@o}
+%   |o| is just |d| with delimiters |[| and |]|.
+\def\collargs@o{\collargs@d[]}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@O}
+%   |O| is just |d| with delimiters |[| and |]| and the discarded default.
+\def\collargs@O#1{\collargs@d[]}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@t}
+%   An optional token.  Similar to |d|.
+\def\collargs@t{%
+  \ifcollargs@verbatim
+    \expandafter\collargs@t@verb
+  \else
+    \expandafter\collargs@t@i
+  \fi
+}
+\def\collargs@t@space{ }
+\def\collargs@t@verb#1{%
+  \let\collargs@t@space\collargs@otherspace
+  \expandafter\collargs@t@i\expandafter{\detokenize{#1}}%
+}
+\def\collargs@t@i#1{%
+  \expandafter\ifx\space#1%
+    \expandafter\collargs@t@s
+  \else
+    \expandafter\collargs@t@I\expandafter#1%
+  \fi
+}
+\def\collargs@t@s#1.{%
+  \collargs@grabspaces{%
+    \ifcollargs@grabspaces
+      \collargs@appendarg{}%
+    \else
+      \expanded{%
+        \noexpand\collargs@init@grabspaces
+        \noexpand\collargs@appendarg{\collargs@grabbed@spaces}%
+      }%
+    \fi
+    \collargs@#1.%
+  }%
+}
+\def\collargs@t@I#1#2.{%
+  \def\collargs@t@noopt{%
+    \global\collargs@fix@requestedtrue
+    \endgroup
+    \collargs@#2.%
+  }%
+  \def\collargs@t@opt##1{%
+    \collargs@appendarg{#1}%
+    \collargs@#2.%
+  }%
+  \def\collargs@t@ii{%
+    \ifx#1\collargs@temp
+      \expandafter\collargs@t@opt
+    \else
+      \expandafter\collargs@t@noopt
+    \fi
+  }%
+  \collargs@maybegrabspaces{\futurelet\collargs@temp\collargs@t@ii}%
+}
+\def\collargs@t@opt@space{%
+  \expanded{\noexpand\collargs@t@opt{\space}\expandafter}\romannumeral-0%
+}%
+% \end{macro}
+% 
+% \begin{macro}{\collargs@s}
+%   The optional star is just a special case of |t|.
+\def\collargs@s{\collargs@t*}
+% \end{macro}
+%
+%  \begin{macro}{\collargs@m}
+%    Mandatory argument.  Interestingly, here's where things get complicated,
+%    because we have to take care of several \hologo{TeX} quirks.
+\def\collargs@m{%
+  \ifcollargs@verbatim
+    \expandafter\collargs@m@verb
+  \else
+    \expandafter\collargs@m@i
+  \fi
+}
+% The non-verbatim mode. First, collect any spaces in front of the argument.
+\def\collargs@m@i#1.{%
+  \collargs@grabspaces{\collargs@m@checkforgroup#1.}%
+}
+% Is the argument in braces or not?
+\def\collargs@m@checkforgroup#1.{%
+  \edef\collargs@action{\unexpanded{\collargs@m@checkforgroup@i#1.}}%
+  \futurelet\collargs@token\collargs@action
+}
+\def\collargs@m@checkforgroup@i{%
+  \ifcat\noexpand\collargs@token\bgroup
+    \expandafter\collargs@m@group
+  \else
+    \expandafter\collargs@m@token
+  \fi
+}
+% The argument is given in braces, so we put them back around it
+% (|\collargs@wrap|) when appending to the storage.
+\def\collargs@m@group#1.{%
+  \collargs@defusecollector##1{%
+    \collargs@wrap{{####1}}%
+    \collargs@appendarg{##1}%
+    \collargs@#1.%
+  }%
+}
+% The argument is a single token, we append it to the storage as is.
+\def\collargs@m@token#1.{%
+  \collargs@defusecollector##1{%
+    \collargs@appendarg{##1}%
+    \collargs@#1.%
+  }%
+}
+% The verbatim mode.  Again, we first collect any spaces in front of the
+% argument.
+\def\collargs@m@verb#1.{%
+  \collargs@grabspaces{\collargs@m@verb@checkforgroup#1.}%
+}
+% We want to check whether we're dealing with a braced argument.  We're in the
+% verbatim mode, but are braces verbatim as well?  In other words, are we in
+% |verbatim| or |verb| mode?  In the latter case, braces are regular, so we
+% redirect to the regular mode.
+\def\collargs@m@verb@checkforgroup{%
+  \ifcollargs@verbatimbraces
+    \expandafter\collargs@m@verb@checkforgroup@i
+  \else
+    \expandafter\collargs@m@checkforgroup
+  \fi
+}
+% Is the argument in verbatim braces?
+\def\collargs@m@verb@checkforgroup@i#1.{%
+  \def\collargs@m@verb@checkforgroup@ii{\collargs@m@verb@checkforgroup@iii#1.}%
+  \futurelet\collargs@temp\collargs@m@verb@checkforgroup@ii
+}
+\def\collargs@m@verb@checkforgroup@iii#1.{%
+  \expandafter\ifx\collargs@other@bgroup\collargs@temp
+    % Yes, the argument is in (verbatim) braces.
+    \expandafter\collargs@m@verb@group
+  \else
+    % We need to manually check whether the following token is a (verbatim)
+    % closing brace, and throw an error if it is.
+    \expandafter\ifx\collargs@other@egroup\collargs@temp
+      \expandafter\expandafter\expandafter\collargs@m@verb@egrouperror
+    \else
+      % The argument is a single token.
+      \expandafter\expandafter\expandafter\collargs@m@v@token
+    \fi
+  \fi
+  #1.%
+}
+\def\collargs@m@verb@egrouperror#1.{%
+  \PackageError{collargs}{%
+    Argument of \expandafter\string\collargs@caller\space has an extra
+    \iffalse{\else\string}}{}%
+}
+% A single-token verbatim argument.
+\def\collargs@m@v@token#1.#2{%
+  % Is it a control sequence?  (Macro |\collargs@cc| recalls the ``outside''
+  % category code of character |#1|; see
+  % section~\ref{sec:code:collargs:verbatim}.)
+  \ifnum\collargs@cc{#2}=0
+    \expandafter\collargs@m@v@token@cs
+  \else
+    \expandafter\collargs@m@token
+  \fi
+  #1.#2%
+}
+% Is it a one-character control sequence?
+\def\collargs@m@v@token@cs#1.#2#3{%
+  \ifnum\collargs@cc{#3}=11
+    \expandafter\collargs@m@v@token@cs@letter
+  \else
+    \expandafter\collargs@m@v@token@cs@nonletter
+  \fi
+  #1.#2#3%
+}
+% Store |\<token>|.
+\def\collargs@m@v@token@cs@nonletter#1.#2#3{%
+  \collargs@appendarg{#2#3}%
+  \collargs@#1.%
+}
+% Store |\| to a temporary register, we'll parse the control sequence name now.
+\def\collargs@m@v@token@cs@letter#1.#2{%
+  \collargsArg{#2}%
+  \def\collargs@tempa{#1}%
+  \collargs@m@v@token@cs@letter@i
+}
+% Append a letter to the control sequence.
+\def\collargs@m@v@token@cs@letter@i#1{%
+  \ifnum\collargs@cc{#1}=11
+    \toksapp\collargsArg{#1}%
+    \expandafter\collargs@m@v@token@cs@letter@i
+  \else
+    % Finish, returning the non-letter to the input stream.
+    \expandafter\collargs@m@v@token@cs@letter@ii\expandafter#1%
+  \fi
+}
+% Store the verbatim control sequence.
+\def\collargs@m@v@token@cs@letter@ii{%
+  \expanded{%
+    \unexpanded{%
+      \expandafter\collargs@appendarg\expandafter{\the\collargsArg}%
+    }%
+    \noexpand\collargs@\expandonce\collargs@tempa.%
+  }%
+}
+% The verbatim mandatory argument is delimited by verbatim braces.  We have to
+% use the heavy machinery adapted from |cprotect|.
+\def\collargs@m@verb@group#1.#2{%
+  \let\collargs@begintag\collargs@other@bgroup
+  \let\collargs@endtag\collargs@other@egroup
+  \def\collargs@tagarg{}%
+  \def\collargs@commandatend{\collargs@m@verb@group@i#1.}%
+  \collargs@readContent
+}
+% This macro appends the result given by the heavy machinery, waiting for us in
+% macro |\collargsArg|, to |\collargs@toks|, but not before dressing
+% it up (via |\collargs@wrap|) in a pair of verbatim braces.
+\def\collargs@m@verb@group@i{%
+  \edef\collargs@temp{%
+    \collargs@other@bgroup\unexpanded{##1}\collargs@other@egroup}%
+  \expandafter\collargs@wrap\expandafter{\collargs@temp}%
+  \expandafter\collargs@appendarg\expandafter{\the\collargsArg}%
+  \collargs@
+}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@g}
+%   An optional group: same as |m|, but we simply bail out if we don't find the
+%   group character.
+\def\collargs@g{%
+  \def\collargs@m@token{%
+    \global\collargs@fix@requestedtrue
+    \endgroup
+    \collargs@
+  }%
+  \let\collargs@m@v@token\collargs@m@token
+  \collargs@m
+}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@G}
+%   Discard the default and execute |g|.
+\def\collargs@G#1{\collargs@g}
+% \end{macro}
+%
+% \begin{macro}{\collargs@v}
+%   Verbatim argument.  The code is executed in the group, deploying
+%   |\collargsVerbatim|.  The grouping characters are always set to braces, to
+%   mimick |xparse| perfectly.
+\def\collargs@v#1.{%
+  \begingroup
+  \collargsBraces{{}}%
+  \collargsVerbatim
+  \collargs@grabspaces{\collargs@v@i#1.}%
+}
+\def\collargs@v@i#1.#2{%
+  \expandafter\ifx\collargs@other@bgroup#2%
+    % If the first token we see is an opening brace, use the |cprotect|
+    % adaptation to grab the group.
+    \let\collargs@begintag\collargs@other@bgroup
+    \let\collargs@endtag\collargs@other@egroup
+    \def\collargs@tagarg{}%
+    \def\collargs@commandatend{%
+      \edef\collargs@temp{%
+        \collargs@other@bgroup\unexpanded{####1}\collargs@other@egroup}%
+      \expandafter\collargs@wrap\expandafter{\collargs@temp}%
+      \expandafter\collargs@appendarg\expandafter{\the\collargsArg}%
+      \endgroup
+      \collargs@#1.%
+    }%
+    \expandafter\collargs@readContent
+  \else
+    % Otherwise, the verbatim argument is delimited by two identical characters
+    % (|#2|).
+    \collargs@defcollector##1#2{%
+      \collargs@wrap{#2####1#2}%
+      \collargs@appendarg{##1}%
+      \endgroup
+      \collargs@#1.%
+    }%
+    \expandafter\collargs@caller
+  \fi
+}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@b}
+%   Environments.  Here's where all hell breaks loose.  We survive by adapting
+%   some code from Bruno Le Floch's |cprotect|.  We first define the
+%   environment-related keys, then provide the handler code, and finish with
+%   the adaptation of |cprotect|'s environment-grabbing code.
+% 
+%   The argument type |b| token may be followed by a braced environment name
+%   (in the argument specification).
+\def\collargs@b{%
+  \collargs@ifnextcat\bgroup\collargs@bg\collargs@bi
+}
+\def\collargs@bg#1{%
+  \edef\collargs@b@envname{#1}%
+  \collargs@bi
+}
+\def\collargs@bi#1.{%
+  % Convert the environment name to verbatim if necessary.
+  \ifcollargs@verbatim
+    \edef\collargs@b@envname{\detokenize\expandafter{\collargs@b@envname}}%
+  \fi
+  % This is a format-specific macro which sets up |\collargs@begintag| and
+  % |\collargs@endtag|.
+  \collargs@bi@defCPTbeginend
+  \edef\collargs@tagarg{%
+    \ifcollargs@verbatimbraces
+    \else
+      \ifcollargsIgnoreOtherTags
+        \collargs@b@envname
+      \fi
+    \fi
+  }%
+  % Run this after collecting the body.
+  \def\collargs@commandatend{%
+    % In \hologo{LaTeX}, we might, depending on the verbatim mode, need to
+    % check whether the environment name is correct.
+    %<latex>\collargs@bii
+    % In \hologo{plainTeX} and \hologo{ConTeXt}, we can skip directly to
+    % |\collargs@biii|.
+    %<plain,context>\collargs@biii
+    #1.%
+  }%
+  % Collect the environment body, but first, put any grabbed spaces back into
+  % the input stream.
+  \collargs@reinsert@spaces\collargs@readContent
+}
+%<*latex>
+% In \hologo{LaTeX} in the regular and the partial verbatim mode, we search for
+% |\begin|\slash|\end| --- as we cannot search for braces --- either as control
+% sequences in the regular mode, or as strings in the partial verbatim
+% mode. (After search, we will have to check whether the argument of
+% |\begin|\slash|\end| matches our environment name.)  In the full verbatim
+% mode, we can search for the entire string |\begin|\slash|\end|\marg{name}.
+\def\collargs@bi@defCPTbeginend{%
+  \edef\collargs@begintag{%
+    \ifcollargs@verbatim
+      \expandafter\string
+    \else
+      \expandafter\noexpand
+    \fi
+    \begin
+    \ifcollargs@verbatimbraces
+      \collargs@other@bgroup\collargs@b@envname\collargs@other@egroup
+    \fi
+  }%
+  \edef\collargs@endtag{%
+    \ifcollargs@verbatim
+      \expandafter\string
+    \else
+      \expandafter\noexpand
+    \fi
+    \end
+    \ifcollargs@verbatimbraces
+      \collargs@other@bgroup\collargs@b@envname\collargs@other@egroup
+    \fi
+  }%
+}
+%</latex>
+%<*plain,context>
+% We can search for the entire |\|\meta{name}\slash|\end|\meta{name} (in
+% \hologo{TeX}) or |\start|\meta{name}\slash|\stop|\meta{name} (in
+% \hologo{ConTeXt}), either as a control sequence (in the regular mode), or as
+% a string (in the verbatim modes).
+\def\collargs@bi@defCPTbeginend{%
+  \edef\collargs@begintag{%
+    \ifcollargs@verbatim
+      \expandafter\expandafter\expandafter\string
+    \else
+      \expandafter\expandafter\expandafter\noexpand
+    \fi
+    \csname
+      %<context>start%
+      \collargs@b@envname
+    \endcsname
+  }%
+  \edef\collargs@endtag{%
+    \ifcollargs@verbatim
+      \expandafter\expandafter\expandafter\string
+    \else
+      \expandafter\expandafter\expandafter\noexpand
+    \fi
+    \csname
+      %<plain>end%
+      %<context>stop%
+      \collargs@b@envname
+    \endcsname
+  }%
+}
+%</plain,context>
+%<*latex>
+% Check whether we're in front of the (braced) environment name (in
+% \hologo{LaTeX}), and consume it.
+\def\collargs@bii{%
+  \ifcollargs@verbatimbraces
+    \expandafter\collargs@biii
+  \else
+    \ifcollargsIgnoreOtherTags
+      % We shouldn't check the name in this case, because it was already
+      % checked, and consumed.
+      \expandafter\expandafter\expandafter\collargs@biii
+    \else
+      \expandafter\expandafter\expandafter\collargs@b@checkend
+    \fi
+  \fi
+}
+\def\collargs@b@checkend#1.{%
+  \collargs@grabspaces{\collargs@b@checkend@i#1.}%
+}
+\def\collargs@b@checkend@i#1.#2{%
+  \def\collargs@temp{#2}%
+  \ifx\collargs@temp\collargs@b@envname
+  \else
+    \collargs@b@checkend@error
+  \fi
+  \collargs@biii#1.%
+}
+\def\collargs@b@checkend@error{%
+  \PackageError{collargs}{Environment "\collargs@b@envname" ended as
+    "\collargs@temp"}{}%
+}
+%</latex>
+% This macro stores the collected body.
+\def\collargs@biii{%
+  % Define the wrapper macro (|\collargs@temp|).
+  \collargs@b@def@wrapper
+  % Execute |\collargs@appendarg| to append the body to the list.  Expand the
+  % wrapper in |\collargs@temp| first and the body in |\collargsArg| next.
+  \expandafter\collargs@appendarg\expandafter{\the\collargsArg}%
+  % Reexecute the central loop.
+  \collargs@
+}
+\def\collargs@b@def@wrapper{%
+  %<latex>\edef\collargs@temp{{\collargs@b@envname}}%
+  \edef\collargs@temp{%
+    % Was the begin-tag requested?
+    \ifcollargsBeginTag
+      % |\collargs@begintag| is already adapted to the format and the verbatim mode.
+      \expandonce\collargs@begintag
+      % Add the braced environment name in \hologo{LaTeX} in the regular and
+      % partial verbatim mode.
+      % 
+      %<*latex>
+      \ifcollargs@verbatimbraces\else\collargs@temp\fi
+      %</latex>
+    \fi
+    % This is the body.
+    ####1%
+    % Rinse and repeat for the end-tag.
+    \ifcollargsEndTag
+      \expandonce\collargs@endtag
+      %<*latex>
+      \ifcollargs@verbatimbraces\else\collargs@temp\fi
+      %</latex>
+    \fi
+  }%
+  \expandafter\collargs@wrap\expandafter{\collargs@temp}%
+}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@readContent}
+%   This macro, which is an adaptation of
+%   \texttt{cprotect}'s environment-grabbing code, collects some delimited
+%   text, leaving the result in |\collargsArg|.  Before calling it, one must
+%   define the following macros: |\collargs@begintag| and |\collargs@endtag|
+%   are the content delimiters; |\collargs@tagarg|, if non-empty, is the token
+%   or grouped text which must follow a delimiter to be taken into account;
+%   |\collargs@commandatend| is the command that will be executed once the
+%   content is collected.
+\def\collargs@readContent{%
+  % Define macro which will search for the first begin-tag.
+  \ifcollargs@long\long\fi
+  \collargs@CPT@def\collargs@gobbleOneB\collargs@begintag{%
+    % Assign the collected tokens into a register.  The first token in |##1|
+    % will be |\collargs@empty|, so we expand to get rid of it.
+    \expandafter\toks@\expandafter{##1}%
+    % |cprotect| simply grabs the token following the |\collargs@begintag| with
+    % a parameter. We can't do this, because we need the code to work in the
+    % non-verbatim mode, as well, and we might stumble upon a brace there.  So
+    % we take a peek.
+    \futurelet\collargs@temp\collargs@gobbleOneB@i
+  }%
+  % Define macro which will search for the first end-tag.  We make it long if
+  % so required (by |+|).
+  \ifcollargs@long\long\fi
+  \collargs@CPT@def\collargs@gobbleUntilE\collargs@endtag{%
+    % Expand |\collargs@empty| at the start of |##1|.
+    \expandafter\toksapp\expandafter\toks@\expandafter{##1}%
+    \collargs@gobbleUntilE@i
+  }%
+  % Initialize.
+  \collargs@begins=0\relax
+  \collargsArg{}%
+  \toks@{}%
+  % We will call |\collargs@gobbleUntilE| via the caller control sequence.
+  \collargs@letusecollector\collargs@gobbleUntilE
+  % We insert |\collargs@empty| to avoid the potential debracing problem.
+  \collargs@empty
+}
+% How many begin-tags do we have opened?
+\newcount\collargs@begins
+% An auxiliary macro which |\def|s |#1| so that it will grab everything up
+% until |#2|.  Additional parameters may be present before the definition.
+\def\collargs@CPT@def#1#2{%
+  \expandafter\def\expandafter#1%
+  \expandafter##\expandafter1#2%
+}
+% A quark quard.
+\def\collargs@qend{\collargs@qend}
+% This macro will collect the ``environment'', leaving the result in
+% |\collargsArg|.  It expects |\collargs@begintag|, |\collargs@endtag| and
+% |\collargs@commandatend| to be set.
+\def\collargs@gobbleOneB@i{%
+  \def\collargs@begins@increment{1}%
+  \ifx\collargs@qend\collargs@temp
+    % We have reached the fake begin-tag. Note that we found the end-tag.
+    \def\collargs@begins@increment{-1}%
+    % Gobble the quark guard.
+    \expandafter\collargs@gobbleOneB@v
+  \else
+    % Append the real begin-tag to the temporary tokens.
+    \etoksapp\toks@{\expandonce\collargs@begintag}%
+    \expandafter\collargs@gobbleOneB@ii
+  \fi
+}%
+% Do we have to check the tag argument (i.e.\ the environment name after |\begin|)?
+\def\collargs@gobbleOneB@ii{%
+  \expandafter\ifx\expandafter\relax\collargs@tagarg\relax
+    \expandafter\collargs@gobbleOneB@vi
+  \else
+    % Yup, so let's (carefully) collect the tag argument.
+    \expandafter\collargs@gobbleOneB@iii
+  \fi
+}
+\def\collargs@gobbleOneB@iii{%
+  \collargs@grabspaces{%
+    \collargs@letusecollector\collargs@gobbleOneB@iv
+  }%
+}
+\def\collargs@gobbleOneB@iv#1{%
+  \def\collargs@temp{#1}%
+  \ifx\collargs@temp\collargs@tagarg
+    % This is the tag argument we've been waiting for! 
+  \else
+    % Nope, this |\begin| belongs to someone else.
+    \def\collargs@begins@increment{0}%
+  \fi
+  % Whatever the result was, we have to append the gobbled group to the
+  % temporary toks.
+  \etoksapp\toks@{\collargs@grabbed@spaces\unexpanded{{#1}}}%
+  \collargs@init@grabspaces
+  \collargs@gobbleOneB@vi
+}
+\def\collargs@gobbleOneB@v#1{\collargs@gobbleOneB@vi}
+\def\collargs@gobbleOneB@vi{%
+  % Store.
+  \etoksapp\collargsArg{\the\toks@}%
+  % Advance the begin-tag counter.
+  \advance\collargs@begins\collargs@begins@increment\relax
+  % Find more begin-tags, unless this was the final one.
+  \ifnum\collargs@begins@increment=-1
+  \else
+    \expandafter\collargs@gobbleOneB\expandafter\collargs@empty
+  \fi
+}
+\def\collargs@gobbleUntilE@i{%
+  % Do we have to check the tag argument (i.e.\ the environment name after |\end|)?
+  \expandafter\ifx\expandafter\relax\collargs@tagarg\relax
+    \expandafter\collargs@gobbleUntilE@iv
+  \else
+    % Yup, so let's (carefully) collect the tag argument.
+    \expandafter\collargs@gobbleUntilE@ii
+  \fi
+}
+\def\collargs@gobbleUntilE@ii{%
+  \collargs@grabspaces{%
+    \collargs@letusecollector\collargs@gobbleUntilE@iii
+  }%
+}
+\def\collargs@gobbleUntilE@iii#1{%
+  \etoksapp\toks@{\collargs@grabbed@spaces}%
+  \collargs@init@grabspaces
+  \def\collargs@tempa{#1}%
+  \ifx\collargs@tempa\collargs@tagarg
+    % This is the tag argument we've been waiting for!
+    \expandafter\collargs@gobbleUntilE@iv
+  \else
+    % Nope, this |\end| belongs to someone else.  Insert the end tag plus the
+    % tag argument, and collect until the next |\end|.
+    \expandafter\toksapp\expandafter\toks@\expandafter{\collargs@endtag{#1}}%
+    \expandafter\collargs@letusecollector\expandafter\collargs@gobbleUntilE
+  \fi
+}
+\def\collargs@gobbleUntilE@iv{%
+  % Invoke |\collargs@gobbleOneB| with the collected material, plus a fake
+  % begin-tag and a quark guard.
+  \ifcollargsIgnoreNesting
+    \expandafter\collargsArg\expandafter{\the\toks@}%
+    \expandafter\collargs@commandatend
+  \else
+    \expandafter\collargs@gobbleUntilE@v
+  \fi
+}
+\def\collargs@gobbleUntilE@v{%
+  \expanded{%
+    \noexpand\collargs@letusecollector\noexpand\collargs@gobbleOneB
+    \noexpand\collargs@empty
+    \the\toks@
+    % Add a fake begin-tag and a quark guard.
+    \expandonce\collargs@begintag
+    \noexpand\collargs@qend
+  }%
+  \ifnum\collargs@begins<0
+    \expandafter\collargs@commandatend
+  \else
+    \etoksapp\collargsArg{%
+      \expandonce\collargs@endtag
+      \expandafter\ifx\expandafter\relax\collargs@tagarg\relax\else{%
+          \expandonce\collargs@tagarg}\fi
+    }%
+    \toks@={}%
+    \expandafter\collargs@letusecollector\expandafter\collargs@gobbleUntilE
+    \expandafter\collargs@empty
+  \fi
+}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@e}
+%   Embellishments.  Each embellishment counts as an argument, in the sense
+%   that we will execute |\collargs@appendarg|, with all the processors, for
+%   each embellishment separately.
+\def\collargs@e{%
+  % We open an extra group, because |\collargs@appendarg| will close a group
+  % for each embellishment.
+  \global\collargs@fix@requestedtrue
+  \begingroup
+  \ifcollargs@verbatim
+    \expandafter\collargs@e@verbatim
+  \else
+    \expandafter\collargs@e@i
+  \fi
+}
+% Detokenize the embellishment tokens in the verbatim mode.
+\def\collargs@e@verbatim#1{%
+  \expandafter\collargs@e@i\expandafter{\detokenize{#1}}%
+}
+% Ungroup the embellishment tokens, separating them from the rest of the
+% argument specification by a dot.
+\def\collargs@e@i#1{\collargs@e@ii#1.}
+% We now have embellishment tokens in |#1| and the rest of the argument
+% specification in |#2|.  Let's grab spaces first.
+\def\collargs@e@ii#1.#2.{%
+  \collargs@grabspaces{\collargs@e@iii#1.#2.}%
+}
+% What's the argument token?
+\def\collargs@e@iii#1.#2.{%
+  \def\collargs@e@iv{\collargs@e@v#1.#2.}%
+  \futurelet\collargs@temp\collargs@e@iv
+}
+% If it is a open or close group character, we surely don't have an
+% embellishment.
+\def\collargs@e@v{%
+  \ifcat\noexpand\collargs@temp\bgroup\relax
+    \let\collargs@marshal\collargs@e@z
+  \else
+    \ifcat\noexpand\collargs@temp\egroup\relax
+      \let\collargs@marshal\collargs@e@z
+    \else
+      \let\collargs@marshal\collargs@e@vi
+    \fi
+  \fi
+  \collargs@marshal
+}
+% We borrow the ``Does |#1| occur within |#2|?'' macro from |pgfutil-common|,
+% but we fix it by executing |\collargs@in@@| in a braced group.  This will
+% prevent an |&| in an argument to function as an alignment character; the
+% minor price to pay is that we assign the conditional globally.
+\newif\ifcollargs@in@
+\def\collargs@in@#1#2{%
+ \def\collargs@in@@##1#1##2##3\collargs@in@@{%
+   \ifx\collargs@in@##2\global\collargs@in@false\else\global\collargs@in@true\fi
+ }%
+ {\collargs@in@@#2#1\collargs@in@\collargs@in@@}%
+}
+% Let' see whether the following token, now |#3|, is an embellishment token.
+\def\collargs@e@vi#1.#2.#3{%
+  \collargs@in@{#3}{#1}%
+  \ifcollargs@in@
+    \expandafter\collargs@e@vii
+  \else
+    \expandafter\collargs@e@z
+  \fi
+  #1.#2.#3%
+}
+% |#3| is the current embellishment token.  We'll collect its argument using
+% |\collargs@m|, but to do that, we have to (locally) redefine
+% |\collargs@appendarg| and |\collargs@|, which get called by |\collargs@m|.
+\def\collargs@e@vii#1.#2.#3{%
+  % We'll have to execute the original |\collargs@appendarg| later, so let's
+  % remember it.  The temporary |\collargs@appendarg| simply stores the
+  % collected argument into |\collargsArg| --- we'll do the processing etc.\
+  % later.
+  \let\collargs@real@appendarg\collargs@appendarg
+  \def\collargs@appendarg##1{\collargsArg{##1}}%
+  % Once |\collargs@m| is done, it will call the redefined |\collargs@| and
+  % thereby get us back into this handler.
+  \def\collargs@{\collargs@e@viii#1.#3}%
+  \collargs@m#2.%
+}
+% The parameters here are as follows.  |#1| are the embellishment tokens, and
+% |#2| is the current embellishment token; these get here via our local
+% redefinition of |\collargs@| in |\collargs@e@vii|.  |#3| are the rest of the
+% argument specification, which is put behind control sequence |\collargs@| by
+% the |m| handler.
+\def\collargs@e@viii#1.#2#3.{%
+  % Our wrapper puts the current embellishment token in front of the collected
+  % embellishment argument.  Note that if the embellishment argument was in
+  % braces, |\collargs@m| has already set one wrapper (which will apply first).
+  \collargs@wrap{#2##1}%
+  % We need to get rid of the current embellishment from embellishments, not to
+  % catch the same embellishment twice.
+  \def\collargs@e@ix##1#2{\collargs@e@x##1}%
+  \collargs@e@ix#1.#3.%
+}
+% When this is executed, the input stream starts with the (remaining)
+% embellishment tokens, followed by a dot, then the rest of the argument
+% specification, also followed by a dot.
+\def\collargs@e@x{%
+  % Process the argument and append it to the storage.
+  \expandafter\collargs@real@appendarg\expandafter{\the\collargsArg}%
+  % |\collargs@real@appendarg| has closed a group, so we open it again, and
+  % start looking for another embellishment token in the input stream.
+  \begingroup
+  \collargs@e@ii
+}
+% The first argument token in not an embellishment token. We finish by
+% consuming the list of embellishment tokens, closing the two groups opened by
+% this handler, and reexecuting the central loop.
+\def\collargs@e@z#1.{\endgroup\endgroup\collargs@}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@E}
+%   Discard the defaults and execute |e|.
+\def\collargs@E#1#2{\collargs@e{#1}}
+% \end{macro}
+% 
+%
+% \subsubsection{The verbatim modes}
+% \label{sec:code:collargs:verbatim}
+% 
+%   \begin{macro}{\collargsVerbatim,\collargsVerb,\collargsNoVerbatim}
+%     These macros set the two verbatim-related
+%     conditionals, |\ifcollargs@verbatim| and |\ifcollargs@verbatimbraces|,
+%         and then call |\collargs@make@verbatim| to effect the requested
+%         category code changes (among other things).  A group should be opened
+%         prior to executing either of them.  After execution, they are
+%         redefined to minimize the effort needed to enter into another mode in
+%         an embedded group.  Below, we first define all the possible transitions.
+\let\collargs@NoVerbatimAfterNoVerbatim\relax
+\def\collargs@VerbAfterNoVerbatim{%
+  \collargs@verbatimtrue
+  \collargs@verbatimbracesfalse
+  \collargs@make@verbatim
+  \collargs@after{Verb}%
+}
+\def\collargs@VerbatimAfterNoVerbatim{%
+  \collargs@verbatimtrue
+  \collargs@verbatimbracestrue
+  \collargs@make@verbatim
+  \collargs@after{Verbatim}%
+}
+\def\collargs@NoVerbatimAfterVerb{%
+  \collargs@verbatimfalse
+  \collargs@verbatimbracesfalse
+  \collargs@make@other@groups
+  \collargs@make@no@verbatim
+  \collargs@after{NoVerbatim}%
+}
+\def\collargs@VerbAfterVerb{%
+  \collargs@make@other@groups
+}
+\def\collargs@VerbatimAfterVerb{%
+  \collargs@verbatimbracestrue
+  \collargs@make@other@groups
+  % Process the lists of grouping characters, created by
+  % |\collargs@make@verbatim|, making these characters of category ``other''.
+  \def\collargs@do##1{\catcode##1=12 }%
+  \collargs@bgroups
+  \collargs@egroups
+  \collargs@after{Verbatim}%
+}%
+\let\collargs@NoVerbatimAfterVerbatim\collargs@NoVerbatimAfterVerb
+\def\collargs@VerbAfterVerbatim{%
+  \collargs@verbatimbracesfalse
+  \collargs@make@other@groups
+  % Process the lists of grouping characters, created by
+  % |\collargs@make@verbatim|, making these characters be of their normal
+  % category.
+  \def\collargs@do##1{\catcode##1=1 }%
+  \collargs@bgroups
+  \def\collargs@do##1{\catcode##1=2 }%
+  \collargs@egroups
+  \collargs@after{Verb}%
+}%
+\let\collargs@VerbatimAfterVerbatim\collargs@VerbAfterVerb
+% This macro expects |#1| to be the mode just entered (|Verbatim|, |Verb| or
+% |NoVerbatim|), and points macros |\collargsVerbatim|, |\collargsVerb| and
+% |\collargsNoVerbatim| to the appropriate transition macro.
+\def\collargs@after#1{%
+  \letcs\collargsVerbatim{collargs@VerbatimAfter#1}%
+  \letcs\collargsVerb{collargs@VerbAfter#1}%
+  \letcs\collargsNoVerbatim{collargs@NoVerbatimAfter#1}%
+}
+% The first transition is always from the non-verbatim mode.
+\collargs@after{NoVerbatim}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@bgroups,\collargs@egroups}
+%   Initialize the lists of the current grouping characters used in the
+%   redefinitions of macros |\collargsVerbatim| and |\collargsVerb| above.
+%   Each entry is of form |\collargs@do|\marg{character code}.  These lists
+%   will be populated by |\collargs@make@verbatim|.  They may be local, as they
+%   only used within the group opened for a verbatim environment.
+\def\collargs@bgroups{}%
+\def\collargs@egroups{}%
+% \end{macro}
+% 
+% \begin{macro}{\collargs@cc}
+%   This macro recalls the category code of character |#1|.  In
+%   \hologo{LuaTeX}, we simply look up the category code in the original
+%   category code table; in other engines, we have stored the original category
+%   code into |\collargs@cc@|\meta{character code} by
+%   |\collargs@make@verbatim|.  (Note that |#1| is a character, not a number.)
+\ifdefined\luatexversion
+  \def\collargs@cc#1{%
+    \directlua{tex.sprint(tex.getcatcode(\collargs@catcodetable@original,
+      \the\numexpr\expandafter`\csname#1\endcsname\relax))}%
+  }
+\else
+  \def\collargs@cc#1{%
+    \ifcsname collargs@cc@\the\numexpr\expandafter`\csname#1\endcsname\endcsname
+      \csname collargs@cc@\the\numexpr\expandafter`\csname#1\endcsname\endcsname
+    \else
+      12%
+    \fi
+  }
+\fi
+% \end{macro}
+%
+%
+% \begin{macro}{\collargs@other@bgroup,\collargs@other@egroup,\collargsBraces}
+%   Macros |\collargs@other@bgroup| and
+%   |\collargs@other@egroup| hold the characters of category code ``other''
+%   which will play the role of grouping characters in the full verbatim mode.
+%   They are usually defined when entering a verbatim mode in
+%   |\collargs@make@verbatim|, but may be also set by the user via
+%   |\collargsBraces| (it is not even necessary to select characters which
+%   indeed have the grouping function in the outside category code regime).
+%   The setting process is indirect: executing |\collargsBraces| merely sets
+%   |\collargs@make@other@groups|, which gets executed by the subsequent
+%   |\collargsVerbatim|, |\collargsVerb| or |\collargsNoVerbatim| (either
+%   directly or via |\collargs@make@verbatim|).
+\def\collargsBraces#1{%
+  \expandafter\collargs@braces@i\detokenize{#1}\relax
+}
+\def\collargs@braces@i#1#2#3\relax{%
+  \def\collargs@make@other@groups{%
+    \def\collargs@other@bgroup{#1}%
+    \def\collargs@other@egroup{#2}%
+  }%
+}
+\def\collargs@make@other@groups{}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@catcodetable@verbatim,\catcodetable@atletter,\collargs@catcodetable@initex}
+%   We declare several new catcode tables in \hologo{LuaTeX}, the most
+%   important one being |\collargs@catcodetable@verbatim|, where all characters
+%   have category code 12.  We only need the other two tables in some formats:
+%   |\collargs@catcodetable@atletter| holds the catcode in effect at the time
+%   of loading the package, and |\collargs@catcodetable@initex| is the
+%   \hologo{iniTeX} table.
+\ifdefined\luatexversion
+  %<*latex,context>
+  \newcatcodetable\collargs@catcodetable@verbatim
+  %<latex>\let\collargs@catcodetable@atletter\catcodetable@atletter
+  %<context>\newcatcodetable\collargs@catcodetable@atletter
+  %</latex,context>
+  %<*plain>
+  \ifdefined\collargs@catcodetable@verbatim\else
+    \chardef\collargs@catcodetable@verbatim=4242
+  \fi
+  \chardef\collargs@catcodetable@atletter=%
+    \number\numexpr\collargs@catcodetable@verbatim+1\relax
+  \chardef\collargs@catcodetable@initex=%
+    \number\numexpr\collargs@catcodetable@verbatim+2\relax
+    \initcatcodetable\collargs@catcodetable@initex
+  %</plain>
+  %<plain,context>\savecatcodetable\collargs@catcodetable@atletter
+  \begingroup
+  \@firstofone{%
+    %<latex>\catcodetable\catcodetable@initex
+    %<plain>\catcodetable\collargs@catcodetable@initex
+    %<context>\catcodetable\inicatcodes
+    \catcode`\\=12
+    \catcode13=12
+    \catcode0=12
+    \catcode32=12
+    \catcode`\%=12
+    \catcode127=12
+    \def\collargs@do#1{\catcode#1=12 }%
+    \collargs@forrange{`\a}{`\z}%
+    \collargs@forrange{`\A}{`\Z}%
+    \savecatcodetable\collargs@catcodetable@verbatim
+    \endgroup
+  }%
+\fi
+% \end{macro}
+% 
+% \begin{collargskey}{verbatim ranges}
+%   \begin{macro}{\collargsVerbatimRanges,\collargs@verbatim@ranges}
+%     This key and macro set the character ranges to which the verbatim mode
+%     will apply (in \hologo{pdfTeX} and \hologo{XeTeX}), or which will be
+%     inspected for grouping and comment characters (in \hologo{LuaTeX}).  In
+%     \hologo{pdfTeX}, the default value |0-255| should really remain
+%     unchanged.
+\collargsSet{
+  verbatim ranges/.store in=\collargs@verbatim@ranges,
+}
+\def\collargsVerbatimRanges#1{\def\collargs@verbatim@ranges{#1}}
+\def\collargs@verbatim@ranges{0-255}
+%   \end{macro}
+% \end{collargskey}
+% 
+% \begin{macro}{\collargs@make@verbatim}
+%   This macro changes the category code of all characters to ``other'' ---
+%   except the grouping characters in the partial verbatim mode.  While doing
+%   that, it also stores (unless we're in \hologo{LuaTeX}) the current category
+%   codes into |\collargs@cc@|\meta{character code} (easily recallable by
+%   |\collargs@cc|), redefines the ``primary'' grouping characters
+%   |\collargs@make@other@bgroup| and |\collargs@make@other@egroup| if
+%   necessary, and ``remembers'' the grouping characters (storing them into
+%   |\collargs@bgroups| and |\collargs@egroups|) and the comment characters
+%   (storing them into |\collargs@comments|).
+% 
+%   In \hologo{LuaTeX}, we can use catcode tables, so we change the category
+%   codes by switching to category code table
+%   |\collargs@catcodetable@verbatim|.  In other engines, we have to change the
+%   codes manually.  In order to offer some flexibility in \hologo{XeTeX}, we
+%   perform the change for characters in |verbatim ranges|.
+\ifdefined\luatexversion
+  \def\collargs@make@verbatim{%
+    \directlua{%
+      for from, to in string.gmatch(
+        "\luaescapestring{\collargs@verbatim@ranges}",
+        "(\collargs@percentchar d+)-(\collargs@percentchar d+)"
+      ) do
+        for char = tex.round(from), tex.round(to) do
+          catcode = tex.catcode[char]
+          % For category codes 1, 2 and 14, we have to call macros
+          % |\collargs@make@verbatim@bgroup|, |\collargs@make@verbatim@egroup|
+          % and |\collargs@make@verbatim@comment|, same as for engines other
+          % than \hologo{LuaTeX}.
+          if catcode == 1 then
+            tex.sprint(
+              \number\collargs@catcodetable@atletter,
+              "\noexpand\\collargs@make@verbatim@bgroup{" .. char .. "}")
+          elseif catcode == 2 then
+            tex.sprint(
+              \number\collargs@catcodetable@atletter,
+              "\noexpand\\collargs@make@verbatim@egroup{" .. char .. "}")
+          elseif catcode == 14 then
+            tex.sprint(
+              \number\collargs@catcodetable@atletter,
+              "\noexpand\\collargs@make@verbatim@comment{" .. char .. "}")
+          end
+        end
+      end
+    }%
+    \edef\collargs@catcodetable@original{\the\catcodetable}%
+    \catcodetable\collargs@catcodetable@verbatim
+    % Even in \hologo{LuaTeX}, we switch between the verbatim braces regimes by
+    % hand.
+    \ifcollargs@verbatimbraces
+    \else
+      \def\collargs@do##1{\catcode##1=1\relax}%
+      \collargs@bgroups
+      \def\collargs@do##1{\catcode##1=2\relax}%
+      \collargs@egroups
+    \fi
+  }
+\else
+  % The non-\hologo{LuaTeX} version:
+  \def\collargs@make@verbatim{%
+    \ifdefempty\collargs@make@other@groups{}{%
+        % The user has executed |\collargsBraces|.  We first apply that setting
+        % by executing macro |\collargs@make@other@groups|, and then disable our
+        % automatic setting of the primary grouping characters.
+      \collargs@make@other@groups
+      \def\collargs@make@other@groups{}%
+      \let\collargs@make@other@bgroup\@gobble
+      \let\collargs@make@other@egroup\@gobble
+    }%
+    % Initialize the list of current comment characters.  Each entry is of
+    % form |\collargs@do|\marg{character code}.  The definition must be global,
+    % because the macro will be used only once we exit the current group (by
+    % |\collargs@fix@cc@from@other@comment|, if at all).
+    \gdef\collargs@comments{}%
+    \let\collargs@do\collargs@make@verbatim@char
+    \expandafter\collargs@forranges\expandafter{\collargs@verbatim@ranges}%
+  }
+  \def\collargs@make@verbatim@char#1{%
+    % Store the current category code of the current character.
+    \ifnum\catcode#1=12
+    \else
+      \csedef{collargs@cc@#1}{\the\catcode#1}%
+    \fi
+    \ifnum\catcode#1=1
+      \collargs@make@verbatim@bgroup{#1}%
+    \else
+      \ifnum\catcode#1=2
+        \collargs@make@verbatim@egroup{#1}%
+      \else
+        \ifnum\catcode#1=14
+          \collargs@make@verbatim@comment{#1}%
+        \fi
+        % Change the category code of the current character (including the
+        % comment characters).
+        \ifnum\catcode#1=12
+        \else
+          \catcode#1=12\relax
+        \fi
+      \fi
+    \fi
+  }
+\fi
+% \end{macro}
+% 
+% \begin{macro}{\collargs@make@verbatim@bgroup}
+%   This macro changes the category of
+%   the opening group character to ``other'', but only in the full verbatim
+%   mode.  Next, it populates |\collargs@bgroups|, to facilitate the potential
+%   transition into the other verbatim mode.  Finally, it executes
+%   |\collargs@make@other@bgroup|, which stores the ``other'' variant of the
+%   current character into |\collargs@other@bgroup|, and automatically disables
+%   itself, so that it is only executed for the first encountered opening group
+%   character --- unless it was already |\relax|ed at the top of
+%   |\collargs@make@verbatim| as a consequence of the user executing
+%   |\collargsBraces|.
+\def\collargs@make@verbatim@bgroup#1{%
+  \ifcollargs@verbatimbraces
+    \catcode#1=12\relax
+  \fi
+  \appto\collargs@bgroups{\collargs@do{#1}}%
+  \collargs@make@other@bgroup{#1}%
+}
+\def\collargs@make@other@bgroup#1{%
+  \collargs@make@char\collargs@other@bgroup{#1}{12}%
+  \let\collargs@make@other@bgroup\@gobble
+}
+% \end{macro}
+%
+% \begin{macro}{\collargs@make@verbatim@egroup}
+%   Ditto for the closing group character.
+\def\collargs@make@verbatim@egroup#1{%
+  \ifcollargs@verbatimbraces
+    \catcode#1=12\relax
+  \fi
+  \appto\collargs@egroups{\collargs@do{#1}}%
+  \collargs@make@other@egroup{#1}%
+}
+\def\collargs@make@other@egroup#1{%
+  \collargs@make@char\collargs@other@egroup{#1}{12}%
+  \let\collargs@make@other@egroup\@gobble
+}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@make@verbatim@comment}
+%   This macro populates
+%   |\collargs@make@comments@other|.
+\def\collargs@make@verbatim@comment#1{%
+  \gappto\collargs@comments{\collargs@do{#1}}%
+}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@make@no@verbatim}
+%   This macro switches back to the non-verbatim mode: in \hologo{LuaTeX}, by
+%   switching to the original catcode table; in other engines, by recalling the
+%   stored category codes.
+\ifdefined\luatexversion
+  \def\collargs@make@no@verbatim{%
+    \catcodetable\collargs@catcodetable@original\relax
+  }%
+\else
+\def\collargs@make@no@verbatim{%
+  \let\collargs@do\collargs@make@no@verbatim@char
+  \expandafter\collargs@forranges\expandafter{\collargs@verbatim@ranges}%
+}
+\fi
+\def\collargs@make@no@verbatim@char#1{%
+  % The original category code of a characted was stored into
+  % |\collargs@cc@|\meta{character code} by |\collargs@make@verbatim|. (We don't
+  % use |\collargs@cc|, because we have a number.)
+  \ifcsname collargs@cc@#1\endcsname
+    \catcode#1=\csname collargs@cc@#1\endcsname\relax
+    % We don't have to restore category code 12.
+  \fi
+}
+% \end{macro}
+% 
+% 
+% \subsubsection{Transition between the verbatim and the non-verbatim mode}
+% \label{sec:code:collargs:fix}
+% 
+% At the transition from verbatim to non-verbatim mode, and vice versa, we
+% sometimes have to fix the category code of the next argument token.  This
+% happens when we have an optional argument type in one mode followed by an
+% argument type in another mode, but the optional argument is absent, or when
+% an optional, but absent, verbatim argument is the last argument in the
+% specification.  The problem arises because the presence of optional arguments
+% is determined by looking ahead in the input stream; when the argument is
+% absent, this means that we have fixed the category code of the next token.
+% CollArgs addresses this issue by noting the situations where a token receives
+% the wrong category code, and then does its best to replace that token with
+% the same character of the appropriate category code.
+% 
+% \begin{macro}{\ifcollargs@fix@requested}
+%     This conditional is set, globally,
+%       by the optional argument handlers when the argument is in fact absent,
+%       and reset in the central loop after applying the fix if necessary.
+\newif\ifcollargs@fix@requested
+% \end{macro}
+% 
+% \begin{macro}{\collargs@fix}
+%   This macro selects the fixer appropriate to the transition between the
+%   previous verbatim mode (determined by |\ifcollargs@last@verbatim| and
+%     |\ifcollargs@last@verbatimbraces|) and the current verbatim mode (which
+%       is determined by macros |\ifcollargs@verbatim| and
+%         |\ifcollargs@verbatimbraces|); if the category code fix was not
+%           requested (for this, we check |\ifcollargs@fix@requested|), the
+%             macro simply executes the next-code given as the sole argument.
+%             The name of the fixer macro has the form
+%             |\collargs@fix@|\meta{last mode}|to|\meta{current mode}, where
+%             the modes are given by mnemonic codes: |V| = full verbatim, |v| =
+%             partial verbatim, and |N| = non-verbatim.
+\long\def\collargs@fix#1{%
+  % Going through |\edef| + |\unexpanded| avoids doubling the hashes.
+  \edef\collargs@fix@next{\unexpanded{#1}}%
+  \ifcollargs@fix@requested
+    \letcs\collargs@action{collargs@fix@%
+      \ifcollargs@last@verbatim
+        \ifcollargs@last@verbatimbraces V\else v\fi
+      \else
+        N%
+      \fi
+      to%
+      \ifcollargs@verbatim
+        \ifcollargs@verbatimbraces V\else v\fi
+      \else
+        N%
+      \fi
+    }%
+  \else
+    \let\collargs@action\collargs@fix@next
+  \fi
+  \collargs@action
+}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@fix@NtoN,\collargs@fix@vtov,\collargs@fix@VtoV}
+%   \indentmacrocode
+%   Nothing to do, continue with the next-code.
+\def\collargs@fix@NtoN{\collargs@fix@next}
+\let\collargs@fix@vtov\collargs@fix@NtoN
+\let\collargs@fix@VtoV\collargs@fix@NtoN
+% \end{macro}
+% 
+% \begin{macro}{\collargs@fix@Ntov}
+%   We do nothing for the group tokens; for other tokens, we redirect to
+%   |\collargs@fix@NtoV|.
+\def\collargs@fix@Ntov{%
+  \futurelet\collargs@temp\collargs@fix@cc@to@other@ii
+}
+\def\collargs@fix@cc@to@other@ii{%
+  \ifcat\noexpand\collargs@temp\bgroup
+    \let\collargs@action\collargs@fix@next
+  \else
+    \ifcat\noexpand\collargs@temp\egroup
+      \let\collargs@action\collargs@fix@next
+    \else
+      \let\collargs@action\collargs@fix@NtoV
+    \fi
+  \fi
+  \collargs@action
+}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@fix@NtoV}
+%   The only complication here is that we might be in front of a control
+%   sequence that was a result of a previous fix in the other direction.
+\def\collargs@fix@NtoV{%
+  \ifcollargs@double@fix
+    \ifcollargs@in@second@fix
+      \expandafter\expandafter\expandafter\collargs@fix@NtoV@secondfix
+    \else
+      \expandafter\expandafter\expandafter\collargs@fix@NtoV@onemore
+    \fi
+  \else
+    \expandafter\collargs@fix@NtoV@singlefix
+  \fi
+}
+% This is the usual situation of a single fix.  We just use |\string| on
+% the next token here (but note that some situations can't be saved: noone
+% can bring a comment back to life, or distinguish a newline and a space)
+\def\collargs@fix@NtoV@singlefix{%
+  \expandafter\collargs@fix@next\string
+}
+% If this is the first fix of two, we know |#1| is a control sequence, so it is
+% safe to grab it.
+\def\collargs@fix@NtoV@onemore#1{%
+  \collargs@do@one@more@fix{%
+    \expandafter\collargs@fix@next\string#1%  
+  }%
+}
+% If this is the second fix of the two, we have to check whether the next token
+% is a control sequence, and if it is, we need to remember it.  Afterwards, we
+% redirect to the single-fix.
+\def\collargs@fix@NtoV@secondfix{%
+  \if\noexpand\collargs@temp\relax
+    \expandafter\collargs@fix@NtoV@secondfix@i
+  \else
+    \expandafter\collargs@fix@NtoV@singlefix
+  \fi
+}
+\def\collargs@fix@NtoV@secondfix@i#1{%
+  \gdef\collargs@double@fix@cs@ii{#1}%
+  \collargs@fix@NtoV@singlefix#1%
+}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@fix@vtoN}
+%   Do nothing for the grouping tokens, redirect to |\collargs@fix@VtoN| for
+%   other tokens.
+\def\collargs@fix@vtoN{%
+  \futurelet\collargs@token\collargs@fix@vtoN@i
+}
+\def\collargs@fix@vtoN@i{%
+  \ifcat\noexpand\collargs@token\bgroup
+    \expandafter\collargs@fix@next
+  \else
+    \ifcat\noexpand\collargs@token\egroup
+      \expandafter\expandafter\expandafter\collargs@fix@next
+    \else
+      \expandafter\expandafter\expandafter\collargs@fix@VtoN
+    \fi
+  \fi
+}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@fix@vtoV}
+%   Redirect group tokens to |\collargs@fix@NtoV|, and do nothing for other
+%   tokens.
+\def\collargs@fix@vtoV{%
+  \futurelet\collargs@token\collargs@fix@vtoV@i
+}
+\def\collargs@fix@vtoV@i{%
+  \ifcat\noexpand\collargs@token\bgroup
+    \expandafter\collargs@fix@NtoV
+  \else
+    \ifcat\noexpand\collargs@token\egroup
+      \expandafter\expandafter\expandafter\collargs@fix@NtoV
+    \else
+      \expandafter\expandafter\expandafter\collargs@fix@next
+    \fi
+  \fi
+}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@fix@Vtov}
+%   Redirect group tokens to |\collargs@fix@VtoN|, and do nothing for other
+%   tokens.  |#1| is surely of category 12, so we can safely grab it.
+\def\collargs@fix@catcode@of@braces@fromverbatim#1{%
+  \ifnum\catcode`#1=1
+    \expandafter\collargs@fix@VtoN
+    \expandafter#1%
+  \else
+    \ifnum\catcode`#1=2
+      \expandafter\expandafter\expandafter\collargs@fix@cc@VtoN
+      \expandafter\expandafter\expandafter#1%
+    \else
+      \expandafter\expandafter\expandafter\collargs@fix@next
+    \fi
+  \fi
+}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@fix@VtoN}
+%   This is the only complicated part.  Control sequences and comments (but not
+%   grouping characters!) require special attention.  We're fine to grab the
+%   token right away, as we know it is of category 12.
+\def\collargs@fix@VtoN#1{%
+  \ifnum\catcode`#1=0
+    \expandafter\collargs@fix@VtoN@escape
+  \else
+    \ifnum\catcode`#1=14
+      \expandafter\expandafter\expandafter\collargs@fix@VtoN@comment
+    \else
+      \expandafter\expandafter\expandafter\collargs@fix@VtoN@token
+    \fi
+  \fi
+  #1%
+}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@fix@VtoN@token}
+%   We create a new character with the current
+%   category code behing the next-code.  This works even for grouping
+%   characters.
+\def\collargs@fix@VtoN@token#1{%
+  \collargs@insert@char\collargs@fix@next{`#1}{\the\catcode`#1}%
+}
+% \end{macro}
+% 
+% \begin{macro}{\collargs@fix@VtoN@comment}
+%   This macro defines a macro which will,
+%   when placed at a comment character, remove the tokens until the end of the
+%   line.  The code is adapted from the TeX.SE answer at
+%   \url(https://){tex.stackexchange.com/a/10454/16819} by Bruno Le Floch.
+\def\collargs@defcommentstripper#1#2{%
+  % We chuck a parameter into the following definition, to grab the (verbatim)
+  % comment character.  This is why this macro must be executed precisely
+  % before the (verbatim) comment character.
+  \def#1##1{%
+    \begingroup%
+    \escapechar=`\\%
+    \catcode\endlinechar=\active%
+    % We assign the ``other'' category code to comment characters.  Without
+    % this, comment characters behind the first one make trouble: there would
+    % be no |^||^M| at the end of the line, so the comment stripper would
+    % gobble the following line as well; in fact, it would gobble all
+    % subsequent lines containing a comment character.  We also make sure to
+    % change the category code of \emph{all} comment characters, even if there
+    % is usually just one.
+    \def\collargs@do####1{\catcode####1=12 }%
+    \collargs@comments
+    \csname\string#1\endcsname%
+  }%
+  \begingroup%
+  \escapechar=`\\%
+  \lccode`\~=\endlinechar%
+  \lowercase{%
+    \expandafter\endgroup
+    \expandafter\def\csname\string#1\endcsname##1~%
+  }{%
+    % I have removed |\space| from the end of the following line.  We don't
+    % want it for our application.
+    \endgroup#2%
+  }%
+}
+\collargs@defcommentstripper\collargs@fix@VtoN@comment{%
+  \collargs@fix@next
+}
+% We don't need the generator any more.
+\let\collargs@defcommentstripper\relax
+% \end{macro}
+% 
+% \begin{macro}{\collargs@fix@VtoN@escape}
+%   An escape character of category code 12
+%   is the most challenging --- and we won't get things completely right --- as
+%   we have swim further down the input stream to create a control sequence.
+%   This macro will throw away the verbatim escape character |#1|.
+\def\collargs@fix@VtoN@escape#1{%
+  \ifcollargs@double@fix
+    % We need to do things in a special way if we're in the double-fix
+    % situation triggered by the previous fixing of a control sequence
+    % (probably this very one).  In that case, we can't collect it in the usual
+    % way because the entire control sequence is spelled out in verbatim.
+    \expandafter\collargs@fix@VtoN@escape@d
+  \else
+    % This here is the usual situation where the escape character was tokenized
+    % verbatim, but the control sequence name itself will be collected (right
+    % away) in the non-verbatim regime.
+    \expandafter\collargs@fix@VtoN@escape@i
+  \fi
+}
+\def\collargs@fix@VtoN@escape@i{%
+  % The sole character forming a control symbol name may be of any category.
+  % Temporarily redefining the category codes of the craziest characters allows
+  % |\collargs@fix@VtoN@escape@ii| to simply grab the following
+  % character.
+  \begingroup
+  \catcode`\\=12
+  \catcode`\{=12
+  \catcode`\}=12
+  \catcode`\ =12
+  \collargs@fix@VtoN@escape@ii
+}
+% The argument is the first character of the control sequence name.
+\def\collargs@fix@VtoN@escape@ii#1{%
+  \endgroup
+  \def\collargs@csname{#1}%
+  % Only if |#1| is a letter may the control sequence name continue.
+  \ifnum\catcode`#1=11
+    \expandafter\collargs@fix@VtoN@escape@iii
+  \else
+    % In the case of a control space, we have to throw away the following
+    % spaces.
+    \ifnum\catcode`#1=10
+      \expandafter\expandafter\expandafter\collargs@fix@VtoN@escape@s
+    \else
+      % We have a control symbol.  That means that we haven't peeked ahead and
+      % can thus skip |\collargs@fix@VtoN@escape@z|.
+      \expandafter\expandafter\expandafter\collargs@fix@VtoN@escape@z@i
+    \fi
+  \fi
+}
+% We still have to collect the rest of the control sequence name.  Braces have
+% their usual meaning again, so we have to check for them explicitly (and bail
+% out if we stumble upon them).
+\def\collargs@fix@VtoN@escape@iii{%
+  \futurelet\collargs@temp\collargs@fix@VtoN@escape@iv
+}
+\def\collargs@fix@VtoN@escape@iv{%
+  \ifcat\noexpand\collargs@temp\bgroup
+    \let\collargs@action\collargs@fix@VtoN@escape@z
+  \else
+    \ifcat\noexpand\collargs@temp\egroup
+      \let\collargs@action\collargs@fix@VtoN@escape@z
+    \else
+      \expandafter\ifx\space\collargs@temp
+        \let\collargs@action\collargs@fix@VtoN@escape@s
+      \else
+        \let\collargs@action\collargs@fix@VtoN@escape@v
+      \fi
+    \fi
+  \fi
+  \collargs@action
+}
+% If we have a letter, store it and loop back, otherwise finish.  
+\def\collargs@fix@VtoN@escape@v#1{%
+  \ifcat\noexpand#1a%
+    \appto\collargs@csname{#1}%
+    \expandafter\collargs@fix@VtoN@escape@iii
+  \else
+    \expandafter\collargs@fix@VtoN@escape@z\expandafter#1%
+  \fi
+}
+% Throw away the following spaces.
+\def\collargs@fix@VtoN@escape@s{%
+  \futurelet\collargs@temp\collargs@fix@VtoN@escape@s@i
+}
+\def\collargs@fix@VtoN@escape@s@i{%
+  \expandafter\ifx\space\collargs@temp
+    \expandafter\collargs@fix@VtoN@escape@s@ii
+  \else
+    \expandafter\collargs@fix@VtoN@escape@z
+  \fi
+}
+\def\collargs@fix@VtoN@escape@s@ii{%
+  \expandafter\collargs@fix@VtoN@escape@z\romannumeral-0%
+}
+% Once we have collected the control sequence name into |\collargs@csname|, we
+% will create the control sequence behind the next-code.  However, we have two
+% complications.  The minor one is that |\csname| defines an unexisting control
+% sequence to mean |\relax|, so we have to check whether the control sequence
+% we will create is defined, and if not, ``undefine'' it in advance.
+% ^^A todo: do nicer
+\def\collargs@fix@VtoN@escape@z@i{%
+  \collargs@fix@VtoN@escape@z@maybe@undefine@cs@begin
+  \collargs@fix@VtoN@escape@z@ii
+}%
+\def\collargs@fix@VtoN@escape@z@maybe@undefine@cs@begin{%
+  \ifcsname\collargs@csname\endcsname
+    \@tempswatrue
+  \else
+    \@tempswafalse
+  \fi
+}
+\def\collargs@fix@VtoN@escape@z@maybe@undefine@cs@end{%
+  \if@tempswa
+  \else
+    \cslet{\collargs@csname}\collargs@undefined
+  \fi
+}
+\def\collargs@fix@VtoN@escape@z@ii{%
+  \expandafter\collargs@fix@VtoN@escape@z@maybe@undefine@cs@end
+  \expandafter\collargs@fix@next\csname\collargs@csname\endcsname
+}
+% The second complication is much greater, but it only applies to control words
+% and spaces, and that's why control symbols went directly to the macro above.
+% Control words and spaces will only get there via a detour through the
+% following macro.
+% 
+% The problem is that collecting the control word\slash space name peeked ahead
+% in the stream, so the character following the control sequence (name) is
+% already tokenized.  We will (at least partially) address this by requesting a
+% ``double-fix'': until the control sequence we're about to create is consumed
+% into some argument, each category code fix will fix two ``tokens'' rather
+% than one.
+\def\collargs@fix@VtoN@escape@z{%
+  \collargs@if@one@more@fix{%
+    % Some previous fixing has requested a double fix, so let's do it.
+    % Afterwards, redirect to the control symbol code
+    % |\collargs@fix@VtoN@escape@z@i|.  It will surely use the correct
+    % |\collargs@csname| because we do the second fix in a group.
+    \collargs@do@one@more@fix\collargs@fix@VtoN@escape@z@i
+  }{%
+    % Remember the collected control sequence.  It will be used in
+    % |\collargs@cancel@double@fix|.
+    \collargs@fix@VtoN@escape@z@maybe@undefine@cs@begin
+    \xdef\collargs@double@fix@cs@i{\expandonce{\csname\collargs@csname\endcsname}}%
+    \collargs@fix@VtoN@escape@z@maybe@undefine@cs@end
+    % Request the double-fix.
+    \global\collargs@double@fixtrue
+    % The complication is addressed, redirect to the control symbol finish.
+    \collargs@fix@VtoN@escape@z@ii
+  }%
+}
+% When we have to ``redo'' a control sequence, because it was ping-ponged back
+% into the verbatim mode, we cannot collect it by
+% |\collargs@fix@VtoN@escape@i|, because it is spelled out entirely in
+% verbatim.  However, we have seen this control sequence before, and remembered
+% it, so we'll simply grab it.  Another complication is that we might be either
+% at the ``first'' control sequence, whose fixing created all these double-fix
+% trouble, or at the ``second'' control sequence, if the first one was
+% immediately followed by another one.  But we have remembered both of them:
+% the first one in |\collargs@fix@VtoN@escape@z|, the second one in
+% |\collargs@fix@NtoV@secondfix|.
+\def\collargs@fix@VtoN@escape@d{%
+  \ifcollargs@in@second@fix
+    \expandafter\collargs@fix@VtoN@escape@d@i
+      \expandafter\collargs@double@fix@cs@ii
+  \else
+    \expandafter\collargs@fix@VtoN@escape@d@i
+      \expandafter\collargs@double@fix@cs@i
+  \fi
+}
+% We have the contents of either |\collargs@double@fix@cs@i| or
+% |\collargs@double@fix@cs@ii| here, a control sequence in both cases.
+\def\collargs@fix@VtoN@escape@d@i#1{%
+  \expandafter\expandafter\expandafter\collargs@fix@VtoN@escape@d@ii
+    \expandafter\string#1\relax
+}
+% We have the verbatimized control sequence name in |#2| (|#1| is the escape
+% character).  By storing it into |\collargs@csname|, we pretend we have
+% collected it.  By defining and executing |\collargs@fix@VtoN@escape@d@iii|,
+% we actually gobble it from the input stream.  Finally, we reroute to
+% |\collargs@fix@VtoN@escape@z|.
+\def\collargs@fix@VtoN@escape@d@ii#1#2\relax{%
+  \def\collargs@csname{#2}%
+  \def\collargs@fix@VtoN@escape@d@iii#2{%
+    \collargs@fix@VtoN@escape@z
+  }%
+  \collargs@fix@VtoN@escape@d@iii
+}
+% This conditional signals a double-fix request.  It should be always set
+% globally, because it is cleared by |\collargs@double@fixfalse| in a group.
+\newif\ifcollargs@double@fix
+% This conditional signals that we're currently performing the second fix.
+\newif\ifcollargs@in@second@fix
+% Inspect the two conditionals above to decide whether we have to perform
+% another fix: if so, execute the first argument, otherwise the second one.
+% This macro is called only from |\collargs@fix@VtoN@escape@z| and
+% |\collargs@fix@NtoV|, because these are the only two places where we might
+% need the second fix, ping-ponging a control sequence between the verbatim and
+% the non-verbatim mode.
+\def\collargs@if@one@more@fix{%
+  \ifcollargs@double@fix
+    \ifcollargs@in@second@fix
+      \expandafter\expandafter\expandafter\@secondoftwo
+    \else
+      \expandafter\expandafter\expandafter\@firstoftwo
+    \fi
+  \else
+    \expandafter\@secondoftwo
+  \fi
+}
+\def\collargs@do@one@more@fix#1{%
+  % We perform the second fix in a group, signalling that we're performing
+  % it.
+  \begingroup
+  \collargs@in@second@fixtrue
+  % Reexecute the fixing routine, at the end, close the group and execute
+  % the given code afterwards.
+  \collargs@fix{%
+    \endgroup
+    #1%
+  }%
+}
+% This macro is called from |\collargs@appendarg| to cancel the double-fix
+% request.
+\def\collargs@cancel@double@fix{%
+  % |\collargs@appendarg| is only executed when something was actually
+  % consumed.  We thus know that at least one of the problematic ``tokens'' is
+  % gone, so the double fix is not necessary anymore.
+  \global\collargs@double@fixfalse
+  % What we have to figure out, still, is whether both problematic ``tokens''
+  % we consumed.  If so, no more fixing is required.  But if only one of them
+  % was consumed, we need to request the normal, single, fix for the remaining
+  % ``token''.
+  \begingroup
+  % This will attach the delimiters directly to the argument, so we'll see what
+  % was actually consumed.
+  \collargs@process@arg
+  % We compare what was consumed when collecting the current argument with the
+  % control word that triggered double-fixing.  If they match, only the
+  % offending control word was consumed, so we need to set the fix request to
+  % true for the following token.
+  \edef\collargs@temp{\the\collargsArg}%
+  \edef\collargs@tempa{\expandafter\string\collargs@double@fix@cs@i}%
+  \ifx\collargs@temp\collargs@tempa
+    \global\collargs@fix@requestedtrue
+  \fi
+  \endgroup
+}
+% \end{macro}
+%
+%
+% \begin{macro}{\collargs@insert@char,\collargs@make@char}
+%   These macros create a character of character code |#2| and category code
+%   |#3|.  The first macro inserts it into the stream behind the code in |#1|;
+%   the second one defines the control sequence in |#1| to hold the created
+%   character (clearly, it should not be used for categories 1 and 2).  
+% 
+%   We use the facilities of \hologo{LuaTeX}, \hologo{XeTeX} and \hologo{LaTeX}
+%   where possible.  In the end, we only have to implement our own macros for
+%   plain \hologo{pdfTeX}.
+%<!context>\ifdefined\luatexversion
+  \def\collargs@insert@char#1#2#3{%
+    \edef\collargs@temp{\unexpanded{#1}}%
+    \expandafter\collargs@temp\directlua{%
+      tex.cprint(\number#3,string.char(\number#2))}%
+  }%
+  \def\collargs@make@char#1#2#3{%
+    \edef#1{\directlua{tex.cprint(\number#3,string.char(\number#2))}}%
+  }%
+%<*!context>  
+\else
+  \ifdefined\XeTeXversion
+    \def\collargs@insert@char#1#2#3{%
+      \edef\collargs@temp{\unexpanded{#1}}%
+      \expandafter\collargs@temp\Ucharcat #2 #3
+    }%
+    \def\collargs@make@char#1#2#3{%
+      \edef#1{\Ucharcat#2 #3}%
+    }%
+  \else
+    %<*latex>
+    \ExplSyntaxOn
+    \def\collargs@insert@char#1#2#3{%
+      \edef\collargs@temp{\unexpanded{#1}}%
+      \expandafter\expandafter\expandafter\collargs@temp\char_generate:nn{#2}{#3}%
+    }%
+    \def\collargs@make@char#1#2#3{%
+      \edef#1{\char_generate:nn{#2}{#3}}%
+    }%
+    \ExplSyntaxOff
+    %</latex>
+    %<*plain>
+    % The implementation is inspired by |expl3|'s implementation of
+    % |\char_generate:nn|, but our implementation is not expandable, for
+    % simplicity.  We first store an (arbitrary) character |^||^@| of category
+    % code $n$ into control sequence |\collargs@charofcat@|$n$, for every
+    % (implementable) category code.
+    \begingroup
+    \catcode`\^^@=1  \csgdef{collargs@charofcat@1}{%
+      \noexpand\expandafter^^@\iffalse}\fi}
+    \catcode`\^^@=2  \csgdef{collargs@charofcat@2}{\iffalse{\fi^^@}
+    \catcode`\^^@=3  \csgdef{collargs@charofcat@3}{^^@}
+    \catcode`\^^@=4  \csgdef{collargs@charofcat@4}{^^@}
+    % As we have grabbed the spaces already, a remaining newline should surely be
+    % fixed into a |\par|.
+                     \csgdef{collargs@charofcat@5}{\par}
+    \catcode`\^^@=6  \csxdef{collargs@charofcat@6}{\unexpanded{^^@}}
+    \catcode`\^^@=7  \csgdef{collargs@charofcat@7}{^^@}
+    \catcode`\^^@=8  \csgdef{collargs@charofcat@8}{^^@}
+                     \csgdef{collargs@charofcat@10}{\noexpand\space}
+    \catcode`\^^@=11 \csgdef{collargs@charofcat@11}{^^@}
+    \catcode`\^^@=12 \csgdef{collargs@charofcat@12}{^^@}
+    \catcode`\^^@=13 \csgdef{collargs@charofcat@13}{^^@}
+    \endgroup
+    \def\collargs@insert@char#1#2#3{%
+      % Temporarily change the lowercase code of |^||^@| to the requested character
+      % |#2|.
+      \begingroup
+      \lccode`\^^@=#2\relax
+      % We'll have to close the group before executing the next-code.
+      \def\collargs@temp{\endgroup#1}%
+      % |\collargs@charofcat@|\meta{requested category code} is f-expanded first,
+      % leaving us to lowercase |\expandafter\collargs@temp^||^@|.  Clearly,
+      % lowercasing |\expandafter\collargs@temp| is a no-op, but lowercasing
+      % |^||^@| gets us the requested character of the requested category.
+      % |\expandafter| is executed next, and this gets rid of the conditional for
+      % category codes 1 and 2.
+      \expandafter\lowercase\expandafter{%
+        \expandafter\expandafter\expandafter\collargs@temp
+        \romannumeral-`0\csname collargs@charofcat@\the\numexpr#3\relax\endcsname
+      }%
+    }
+    % This macro cannot not work for category code 6 (because we assign the
+    % result to a macro), but no matter, we only use it for category code 12
+    % anyway.
+    \def\collargs@make@char#1#2#3{%
+      \begingroup
+      \lccode`\^^@=#2\relax
+      % Define |\collargs@temp| to hold |^||^@| of the appropriate category.
+      \edef\collargs@temp{%
+        \csname collargs@charofcat@\the\numexpr#3\relax\endcsname}%
+      % Preexpand the second |\collargs@temp| so that we lowercase
+      % |\def\collargs@temp{^||^@}|, with |^||^@| of the appropriate category.
+      \expandafter\lowercase\expandafter{%
+        \expandafter\def\expandafter\collargs@temp\expandafter{\collargs@temp}%
+      }%
+      \expandafter\endgroup
+      \expandafter\def\expandafter#1\expandafter{\collargs@temp}%
+    }
+    %</plain>
+  \fi
+\fi
+%</!context>
+% \end{macro}
+% 
+%<plain>\resetatcatcode
+%<context>\stopmodule
+%<context>\protect
+%    \end{macrocode}
+% 
+% Local Variables:
+% TeX-engine: luatex
+% TeX-master: "doc/memoize-code.tex"
+% TeX-auto-save: nil
+% End:

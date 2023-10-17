@@ -1,0 +1,120 @@
+\documentclass[a4paper,11pt]{ltxdoc}
+
+\usepackage[left=1cm,right=1cm,top=1cm,bottom=1cm,
+  marginparwidth=0cm,marginparsep=0pt,
+  nohead,includefoot
+]{geometry}
+\settowidth\marginparsep{\ }
+
+% There is a \mmzset in memoize-doc-common.
+\usepackage{nomemoize}
+
+% Hypdoc (which loads hyperref) must be loaded before memoize-code.
+\usepackage{hypdoc}
+\hypersetup{colorlinks=true, allcolors=blue}
+
+\usepackage{memoize-code} % Also loads memoize-doc-common
+
+\pdfsystem{makeindex -s gind.ist \jobname.idx}
+
+\CodelineIndex
+\EnableCrossrefs
+
+\title{The documented source of Memoize, Advice and CollArgs}
+\author{Sašo Živanović\\[2mm]
+  \emailsymbol~\url(mailto:){saso.zivanovic@guest.arnes.si}\\
+  \homepagesymbol~\url(http://){spj.ff.uni-lj.si/zivanovic}\\
+  \faGithub~\url(https://){github.com/sasozivanovic}}
+
+\datefrompackageversion{collargs}
+\edef\allpackagever{CollArgs v\packagever}
+\datefrompackageversion{advice}
+\epreto\allpackagever{Advice v\packagever, }
+\datefrompackageversion{memoize}
+\epreto\allpackagever{Memoize v\packagever, }
+\let\packagever\allpackagever
+
+\hypersetup{
+  % pdftitle={Memoize},
+  pdfauthor={Sašo Živanović},
+  pdfsubject={externalization},
+  pdfkeywords={LaTeX, externalization, memoization}
+}
+
+\begin{document}
+
+\maketitle
+
+\def\docdir{..}
+\DocInput{\docdir/memoize.dtx}
+
+\section{Auxiliary packages}
+\label{sec:code:utils}
+
+\subsection{Extending commands and environments with Advice}
+\label{sec:code:auto}
+
+\DocInput{\docdir/advice.dtx}
+
+\subsection{Argument collection with CollArgs}
+\label{sec:code:collargs}
+
+\DocInput{\docdir/collargs.dtx}
+
+\clearpage
+\restoregeometry
+
+\section{The scripts}
+\label{sec:code:scripts}
+
+\def\continuation{\llap{\textcolor{purple}{$\rightarrow$}\,}}
+
+\subsection{The Perl extraction script \texttt{memoize-extract.pl}}
+
+\lstinputlisting[firstline=20, % manual (exclude the license information)
+  language=Perl,
+  breaklines, breakindent=4em, postbreak=\continuation,
+  commentstyle=,
+]{../memoize-extract.pl}
+
+\subsection{The Python extraction script \texttt{memoize-extract.py}}
+
+\lstinputlisting[firstline=20, % manual (exclude the license information)
+  language=Python,
+  breaklines, breakindent=4em, postbreak=\continuation,
+  commentstyle=,
+]{../memoize-extract.py}
+
+\subsection{The Perl clean-up script \texttt{memoize-clean.pl}}
+
+\lstinputlisting[firstline=20, % manual (exclude the license information)
+  language=Perl,
+  breaklines, breakindent=4em, postbreak=\continuation,
+  commentstyle=,
+]{../memoize-clean.pl}
+
+\subsection{The Python clean-up script \texttt{memoize-clean.py}}
+
+\lstinputlisting[firstline=20, % manual (exclude the license information)
+  language=Python,
+  breaklines, breakindent=4em, postbreak=\continuation,
+  commentstyle=,
+]{../memoize-clean.py}
+
+\clearpage
+
+\IndexPrologue{\section*{Index}Numbers written in red refer to the code line
+  where the corresponding entry is defined; numbers in blue refer to the code
+  lines where the entry is used.}
+
+\setcounter{IndexColumns}{2}
+\def\main#1{\begingroup\hypercolor{link}{red}#1\endgroup}
+\PrintIndex
+
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-engine: luatex
+%%% TeX-master: t
+%%% End:

@@ -1,0 +1,20 @@
+%<!att&!lst>\documentclass[varwidth]{standalone}
+%<att,lst>\documentclass{article}
+\usepackage{tikz,forest}
+
+~\usepackage{memoize}~
+
+\begin{document}
+
+Memoize will automatically externalize\\
+\begin{tikzpicture}
+  \node(node)
+    [align=center,ellipse,draw]
+    {TikZ\\pictures};
+\end{tikzpicture}
+\begin{forest}
+  [and Forest trees [and]
+    [Forest trees[Forest][trees]]]
+\end{forest}
+
+\end{document}
