@@ -965,10 +965,12 @@
 }
 % \subsubsection{Tracing} 
 % 
+% We implement tracing by adding the tracing information to the handlers after
+% we load them.  So it is the handlers themselves which, if and when they are
+% executed, will print out that this is happening.
+% 
 % \begin{macro}{\AdviceTracingOn,\AdviceTracingOff}
-%   We implement tracing by adding the tracing information to the handlers
-%   after we load them.  So it is the handlers themselves which, if and when
-%   they are executed, will print out that this is happening.
+%   Enable and disable tracing.
 \def\AdviceTracingOn{%
   \let\advice@init@i\advice@trace@init@i
   \let\advice@init@I\advice@trace@init@I
@@ -978,7 +980,24 @@
   \let\advice@init@I\advice@setup@init@I
 }
 % \end{macro}
-\def\advice@trace#1{\immediate\write16{[tracing advice] #1}}
+% \begin{macro}{\advice@typeout,\advice@trace}
+%   The tracing output routine; the typeout macro depends on the format.  In
+%   \hologo{LaTeX}, we use stream |\@unused|, which is guaranteed to be
+%   unopened, so that the output will go to the terminal and the log.
+%   \hologo{ConTeXt}, we don't muck about with write streams but simply use Lua
+%   function |texio.write_nl|.  In \hologo{plainTeX}, we use either Lua or the
+%   stream, depending on the engine; we use a high stream number 128 although
+%   the good old 16 would probably work just as well.
+%<plain>\ifdefined\luatexversion
+  %<!latex>\long\def\advice@typeout#1{\directlua{texio.write_nl("\luaescapestring{#1}")}}
+%<plain>\else
+  %<latex>\def\advice@typeout{\immediate\write\@unused}
+  %<plain>\def\advice@typeout{\immediate\write128}
+%<plain>\fi
+\def\advice@trace#1{\advice@typeout{[tracing advice] #1}}
+% \end{macro}
+% \begin{macro}{\advice@trace@init@i,\advice@trace@init@I}
+%   Install the tracing code.
 \def\advice@trace@init@i#1#2{%
   \advice@trace{Advising \detokenize\expandafter{\string#2} (\detokenize{#1})}%
   \advice@setup@init@i{#1}{#2}%
@@ -1039,6 +1058,7 @@
   }%
   \def\AdviceInnerHandler{\advice@inner@handler@trace}%
 }
+% \end{macro}
 %<plain>\resetatcatcode
 %<context>\stopmodule
 %<context>\protect
