@@ -44,11 +44,11 @@ makefiles = Makefile.package Makefile.runtimes Makefile.advice Makefile.collargs
 codedoc-source = memoize-code.tex \
                  memoize-code.sty memoize-doc-common.sty
 
-manual-source = memoize.tex \
+manual-source = memoize-doc.tex \
                 memoize-doc.sty memoize-doc-common.sty yadoc.sty \
-		memoize.mst
+		memoize-doc.mst
 
-PDF = memoize.pdf memoize-code.pdf
+PDF = memoize-doc.pdf memoize-code.pdf
 
 codedoc-source := $(codedoc-source:%=doc/%)
 manual-source := $(manual-source:%=doc/%)
@@ -120,7 +120,7 @@ version:
 	$(call EDIT-VERSION-MAN,doc/memoize-extract.1.md)
 	$(call EDIT-VERSION-MAN,doc/memoize-clean.1.md)
 # Change the date of the latest release (identified by the version).
-	sed -Ei 's!^\\item\[\\githubrelease\{[0-9]{4}/[0-9]{2}/[0-9]{2}\}\{v$(VERSION)\}\] *$$!\\item\[\\githubrelease\{$(YEAR)/$(MONTH)/$(DAY)\}\{v$(VERSION)\}\]!' doc/memoize.tex
+	sed -Ei 's!^\\item\[\\githubrelease\{[0-9]{4}/[0-9]{2}/[0-9]{2}\}\{v$(VERSION)\}\] *$$!\\item\[\\githubrelease\{$(YEAR)/$(MONTH)/$(DAY)\}\{v$(VERSION)\}\]!' doc/memoize-doc.tex
 
 define COLOR_VERSION
 grep -E --color '[0-9]{4}[/-][0-9]{2}[/-][0-9]{2}|v?[0-9]\.[0-9]\.[0-9]|(January|February|March|April|May|June|July|August|September|October|November|December) [0-9]+, [0-9]{4}'
@@ -131,7 +131,7 @@ versions-show:
 	@grep __version__ *.py | ${COLOR_VERSION}
 	@grep VERSION *.pl | ${COLOR_VERSION}
 	@grep -E '^(footer|date):' doc/memoize-*.md | ${COLOR_VERSION}
-	@grep -E 'githubrelease' doc/memoize.tex | ${COLOR_VERSION}
+	@grep -E 'githubrelease' doc/memoize-doc.tex | ${COLOR_VERSION}
 
 include Makefile.package
 include Makefile.runtimes
