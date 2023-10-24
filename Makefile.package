@@ -16,13 +16,16 @@ ctan/$(PACKAGE).zip: $(ALL)
 CTAN-DIR = ctan/$(PACKAGE)
 CTAN-DOC-DIR = ctan/$(PACKAGE)/doc
 
+format-dir = $(subst context,context/third,$(FORMAT))
+
 TDS-DIR = texmf/$(PACKAGE).tds
 TDS-SCRIPTS-DIR = $(TDS-DIR)/scripts/$(PACKAGE)
-TDS-DOC-DIR = $(TDS-DIR)/doc/$(FORMAT)/$(PACKAGE)
-TDS-SOURCE-DIR = $(TDS-DIR)/source/$(FORMAT)/$(PACKAGE)
+TDS-DOC-DIR = $(TDS-DIR)/doc/$(format-dir)/$(PACKAGE)
+TDS-SOURCE-DIR = $(TDS-DIR)/source/$(format-dir)/$(PACKAGE)
 TDS-MAN-DIR = $(TDS-DIR)/doc/man/man
 TDS-ALL-DIRS = $(TDS-SCRIPTS-DIR) $(TDS-SOURCE-DIR) $(TDS-DOC-DIR) \
-		$(TDS-DIR)/tex/{latex,plain,context,generic}/$(PACKAGE) \
+		$(TDS-DIR)/tex/{latex,plain,generic}/$(PACKAGE) \
+		$(TDS-DIR)/tex/context/third/$(PACKAGE) \
 		$(TDS-MAN-DIR){1,2,3,4,5,6,7,8,9}
 
 readme?md = README$(findstring .md, $(suffix $(README)))
@@ -61,11 +64,10 @@ define CTAN-END
 		zip -r $(PACKAGE).tds.zip * ; \
 	fi
 	if [[ -a $(TDS-DIR)/$(PACKAGE).tds.zip ]] ; then \
-		mv $(TDS-DIR)/$(PACKAGE).tds.zip $(CTAN-DIR) ; \
+		mv $(TDS-DIR)/$(PACKAGE).tds.zip ctan ; \
 	fi
-	if [[ -a $(TDS-DIR)/FILES ]] ; then cp $(TDS-DOC-DIR)/FILES $(CTAN-DIR) ; fi
 	rmdir -p --ignore-fail-on-non-empty `find $(CTAN-DIR) -type d`
-	cd ctan && zip -r $(PACKAGE).zip $(PACKAGE)
+	cd ctan && zip -r $(PACKAGE).zip $(PACKAGE) $(PACKAGE).tds.zip
 endef
 
 define MAKE-TDS
@@ -84,7 +86,7 @@ endef
 define TDS-CP
 	$(call cp,$(latex),$(TDS-DIR)/tex/latex/$(PACKAGE))
 	$(call cp,$(plain),$(TDS-DIR)/tex/plain/$(PACKAGE))
-	$(call cp,$(context),$(TDS-DIR)/tex/context/$(PACKAGE))
+	$(call cp,$(context),$(TDS-DIR)/tex/context/third/$(PACKAGE))
 	$(call cp,$(GENERIC),$(TDS-DIR)/tex/generic/$(PACKAGE))
 	$(call cp,$(SCRIPTS),$(TDS-SCRIPTS-DIR))
 	$(call cp,$(SOURCE),$(TDS-SOURCE-DIR))
@@ -110,7 +112,7 @@ define TDS-END
 endef
 define TDS-FILES
 	cd $(TDS-DIR) ; find . -type f | sed 's!^\./!!' \
-		> doc/$(FORMAT)/$(PACKAGE)/FILES
+		> doc/$(format-dir)/$(PACKAGE)/FILES
 endef
 define TDS-PRUNE
 	rmdir -p --ignore-fail-on-non-empty `find $(TDS-DIR) -type d`

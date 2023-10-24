@@ -82,7 +82,8 @@ ctan/$(PACKAGE).zip:
 
 
 
-doc/memoize-code.pdf: $(SOURCE) $(codedoc-source)
+doc/memoize-code.pdf: $(SOURCE) $(codedoc-source) \
+                      advice.edtx advice.ins collargs.edtx collargs.ins
 
 doc/memoize.pdf: $(manual-source) $(examples-src)
 
