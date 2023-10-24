@@ -16,6 +16,7 @@ SOURCE = collargs.edtx collargs.ins
 
 README = doc/README.collargs.md
 INSTALL = doc/INSTALL.collargs.md
+CHANGELOG = doc/CHANGELOG.collargs.md
 MAKEFILE = Makefile.runtimes
 LICENCE = LICENCE
 
@@ -28,5 +29,6 @@ ctan/$(PACKAGE).zip:
 version:
 	$(call EDIT-VERSION-LATEX,collargs.edtx,collargs,$(YEAR)/$(MONTH)/$(DAY) v$(VERSION))
 	$(call EDIT-VERSION-CONTEXT,collargs.edtx,$(YEAR)-$(MONTH)-$(DAY),$(VERSION))
+	$(call EDIT-DATE-CHANGELOG,doc/CHANGELOG.collargs.md)
 
 include Makefile.package

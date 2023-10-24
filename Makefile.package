@@ -9,7 +9,7 @@ TEX = $(latex) $(plain) $(context) $(GENERIC)
 RUNTIME = $(TEX) $(SCRIPTS) $(MAN)
 
 ALL = $(RUNTIME) $(SOURCE) $(DOC) \
-      $(README) $(INSTALL) $(LICENCE) $(MAKEFILE)
+      $(README) $(INSTALL) $(CHANGELOG) $(LICENCE) $(MAKEFILE)
 
 ctan/$(PACKAGE).zip: $(ALL)
 
@@ -30,6 +30,7 @@ TDS-ALL-DIRS = $(TDS-SCRIPTS-DIR) $(TDS-SOURCE-DIR) $(TDS-DOC-DIR) \
 
 readme?md = README$(findstring .md, $(suffix $(README)))
 install?md = INSTALL$(findstring .md, $(suffix $(INSTALL)))
+changelog?md = CHANGELOG$(findstring .md, $(suffix $(CHANGELOG)))
 licence?md = LICENCE$(findstring .md, $(suffix $(LICENCE)))
 
 man1 = $(filter %.1,$(MAN))
@@ -53,6 +54,7 @@ define CTAN-BEGIN
 	$(call cp,$(SOURCE) $(SCRIPTS) $(CTAN),$(CTAN-DIR))
 	$(call cp,$(README),$(CTAN-DIR)/$(readme?md))
 	$(call cp,$(INSTALL),$(CTAN-DIR)/$(install?md))
+	$(call cp,$(CHANGELOG),$(CTAN-DIR)/$(changelog?md))
 	$(call cp,$(LICENCE),$(CTAN-DIR)/$(licence?md))
 	$(call cp,$(MAKEFILE),$(CTAN-DIR)/Makefile)
 	$(call cp,$(DOC),$(CTAN-DOC-DIR))
@@ -94,6 +96,7 @@ define TDS-CP
 	$(call cp,$(DOC),$(TDS-DOC-DIR))
 	$(call cp,$(README),$(TDS-DOC-DIR)/$(readme?md))
 	$(call cp,$(INSTALL),$(TDS-DOC-DIR)/$(install?md))
+	$(call cp,$(CHANGELOG),$(TDS-DOC-DIR)/$(changelog?md))
 	$(call cp,$(LICENCE),$(TDS-DOC-DIR)/$(licence?md))
 	$(call cp,$(man1),$(TDS-MAN-DIR)1)
 	$(call cp,$(man2),$(TDS-MAN-DIR)2)
@@ -200,5 +203,10 @@ endef
 VERSION-PLAIN = $(VERSION-LATEX)
 define EDIT-VERSION-PLAIN
 	sed -Ei 's!^(%<[^\>]*>% Package $(2) ).*!\1$(VERSION-PLAIN)!' $(1)
+endef
+
+# Change the date of the latest release (identified by the version) of the package.
+define EDIT-DATE-CHANGELOG
+	sed -Ei 's!^(#+) [0-9]{4}/[0-9]{2}/[0-9]{2} +v$(VERSION)!\1 $(YEAR)/$(MONTH)/$(DAY) v$(VERSION)!' $(1)
 endef
 
