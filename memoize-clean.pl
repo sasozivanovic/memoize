@@ -27,9 +27,9 @@ use File::Basename;
 
 my $VERSION = '2023/10/10 v1.0.0';
 
-my $usage = "usage: memoize-clean.py [-h] [--yes] [--all] [--quiet] [--prefix PREFIX] [mmz ...]\n";
+my $usage = "usage: memoize-clean.pl [-h] [--yes] [--all] [--quiet] [--prefix PREFIX] [mmz ...]\n";
 my $Help = <<END;
-Remove (stale) memo and extern files.
+Remove (stale) memo and extern files produced by package Memoize.
 
 positional arguments:
   mmz                   .mmz record files
@@ -43,7 +43,7 @@ options:
   --prefix PREFIX, -p PREFIX
                         A path prefix to clean; this option can be specified multiple times.
 
-For details, see the man page or the Memoize documentation.
+For details, see the man page or the Memoize documentation (https://ctan.org/pkg/memoize).
 END
 
 my ($yes, $all, @prefixes, $quiet, $help, $print_version);

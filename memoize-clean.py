@@ -24,7 +24,7 @@ import argparse, re, sys, pathlib, os
 
 parser = argparse.ArgumentParser(
     description="Remove (stale) memo and extern files.",
-    epilog = "For details, see the man page or the Memoize documentation."
+    epilog = "For details, see the man page or the Memoize documentation (https://ctan.org/pkg/memoize)."
 )
 parser.add_argument('--yes', '-y', action = 'store_true',
                     help = 'Do not ask for confirmation.')

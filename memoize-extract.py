@@ -24,7 +24,7 @@ import argparse, re, sys, os, pdfrw, subprocess, itertools
 from pathlib import Path
 
 parser = argparse.ArgumentParser(
-    description = "Extract extern pages out of the document PDF.",
+    description = "Extract extern pages produced by package Memoize out of the document PDF.",
     epilog = "For details, see the man page or the Memoize documentation.",
     prog = 'memoize-extract.py',
 )

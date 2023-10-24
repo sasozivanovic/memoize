@@ -29,7 +29,7 @@ my $VERSION = '2023/10/10 v1.0.0';
 
 my $usage = "usage: memoize-extract.pl [-h] [--pdf PDF] [--prune] [--keep] [--force] [--log LOG] [--warning-template WARNING_TEMPLATE] [--quiet] [--mkdir] mmz\n";
 my $Help = <<END;
-Extract extern pages out of the document PDF.
+Extract extern pages produced by package Memoize out of the document PDF.
 
 positional arguments:
   mmz                   the record file produced by Memoize: doc.mmz when compiling doc.tex
