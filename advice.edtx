@@ -48,6 +48,10 @@
 %<latex>\RequirePackage{collargs}
 %<plain>\input collargs
 %<context>\input t-collargs
+% In \hologo{LaTeX}, we also require |xparse|.  Even though
+% |\NewDocumentCommand| and friends are integrated into the \hologo{LaTeX}
+% kernel, |\GetDocumentCommandArgSpec| is only available through |xparse|.
+%<latex>\RequirePackage{xparse}
 % 
 % \subsubsection{Installation into a keypath}
 % 
