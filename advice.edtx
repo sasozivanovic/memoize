@@ -44,6 +44,7 @@
 %<context>\unprotect
 %<context>\startmodule[advice]
 % \paragraph{Required packages}
+%<plain,context>\input miniltx
 %<latex>\RequirePackage{collargs}
 %<plain>\input collargs
 %<context>\input t-collargs
