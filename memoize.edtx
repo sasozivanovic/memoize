@@ -1320,7 +1320,7 @@
 % 
 % \paragraph.{Tracing} We populate the hooks which send the tracing info to the
 % terminal.
-\def\mmz@trace#1{\immediate\write16{[tracing memoize] #1}}
+\def\mmz@trace#1{\advice@typeout{[tracing memoize] #1}}
 \def\mmz@trace@context{\mmz@trace{\space\space
     Context: "\expandonce{\mmz@context@key}" --> \mmz@context@mdfivesum}}
 \def\mmz@trace@Memoize@on{%
