@@ -128,8 +128,15 @@
       index annotation=option of \hologo{TeX} binaries},
     generic={name=enable-write18, name prefix=--, label prefix:=--,
       index annotation=option of \hologo{TeX} binaries},
-    generic={name=TEXMFOUTPUT, index annotation={variable in
+    generic={name=TEXMFOUTPUT, index annotation={environment variable,
+        or variable in \reffile[into index=false]{texmf.cnf}}},
+    generic={name=TEXMF\_OUTPUT\_DIRECTORY, label=TEXMF_OUTPUT_DIRECTORY,
+      index annotation={environment variable, or variable in
         \reffile[into index=false]{texmf.cnf}}},
+    generic={name=openout\_any, label=openout_any,
+      index annotation={variable in \reffile[into index=false]{texmf.cnf}}},
+    generic={name=openin\_any, label=openin_any,
+      index annotation={variable in \reffile[into index=false]{texmf.cnf}}},
   }%
   \docindex{%
     cmd={name=pdfprimitive, see={\refcmd[into index=false,short]{primitive}}},
@@ -443,11 +450,18 @@ have to either
   \docref{--enable-write18} (on MiK\hologo{TeX}), or
 \item set up the restricted shell escape mode to allow for the execution of
   \refscript{memoize-extract.pl}.\footnote{\label{fn:shell-escape-commands}On
-    \hologo{TeX}Live, execute \code{tlmgr conf texmf shell\_escape\_commands}
-    to get the list of currently allowed commands \meta{current}, then add the
-    script by executing \code{tlmgr conf texmf shell\_escape\_commands
-      \meta{current},memoize-extract.pl}.  On MiK\hologo{TeX}, you get the
-    \meta{current} list by \code{initexmf
+    \hologo{TeX}Live, |tlmgr conf texmf shell\_escape| will tell you which shell
+    escape mode is currently in effect (|p| = partial = restricted, |f| = disabled
+    and |t| = enabled); if necessary, use |tlmgr conf texmf shell\_escape p| to
+    set it to restricted.  Then, execute \code{tlmgr conf texmf
+      shell\_escape\_commands} to get the list of currently allowed commands
+    \meta{current}, then add the script by executing \code{tlmgr conf texmf
+      shell\_escape\_commands \meta{current},memoize-extract.pl}.
+
+    On MiK\hologo{TeX}, the shell escape mode can be reported by |initexmf
+    --show-config-value=[Core]ShellCommandMode|, and restricted mode set by
+    |initexmf --set-config-value=[Core]ShellCommandMode=Restricted|, and you
+    get the \meta{current} list by \code{initexmf
       --show-config-value=[Core]AllowedShellCommands[]}, and add to it by
     \code{initexmf
       --set-config-value=[Core]AllowedShellCommands[]=\meta{current};memoize-extract.pl}.}
@@ -752,10 +766,10 @@ Take example file \texttt{\examplename.tex},\footnote{Where can you find
   full, compilable documents, including the document preamble etc.} or some
 simple document containing a \TikZ picture or a Forest tree, add
 \EmphVerbatim{\usepackage{memoize}} to the preamble,\footnote{Memoize likes to
-  be loaded early.  If you get the error \texttt{Extern extraction from
-    document \meta{jobname}.pdf was unsuccessful}, move
-  \cs{usepackage}\bracestt{memoize} up the preamble; see
-  section~\ref{sec:loading-order} for details.} and compile it twice.
+  be loaded early.  If you get the warning \texttt{Cannot read file
+    \meta{jobname}.pdf}, move \cs{usepackage}\bracestt{memoize} up the
+  preamble; see section~\ref{sec:loading-order} for details.} and compile it
+twice.
 
 \begin{itemize}
 \item The first compilation of the example should produce a three-page PDF.
@@ -1421,10 +1435,10 @@ above) and set up \refmmz{memo dir} as shown below.  Well, this won't work, or
 at least it won't work with the vanilla \hologo{TeX} Live, because \hologo{TeX}
 will refuse to \emph{write} into (memo) files outside the directory where it
 was executed,\cprotect\footnote{In \hologo{TeX} Live, the \reffile{texmf.cnf}
-  option controlling this behaviour is called |openout_any|.  By default, it is
+  option controlling this behaviour is called \docref{openout_any}.  By default, it is
   set to |p| (paranoid), which ``disallow[s] opening dot files [and]
   \emph{going to parent directories}, and restrict[s] absolute paths to be
-  under \texttt{\$TEXMFOUTPUT}'' (emphasis mine).}  and this is precisely what
+  under \docref{TEXMFOUTPUT}'' (emphasis mine).}  and this is precisely what
 the chapter compilation is asked to do below.
 
 \begin{tcboxedraster}[raster columns=2, raster valign=top]{blankest, bad}
@@ -6311,47 +6325,41 @@ require.
     key={name=perl extraction command, par=\meta{system command},
       desc={no default, initially \refscript{memoize-extract.pl}}},
     key={name=perl extraction options, par=\meta{options},
-      desc={no default, initially: see below}},
-    key={name=python extraction command, par=\meta{system command},
-      desc={no default, initially \refscript{memoize-extract.py}}},
-    key={name=python extraction options, par=\meta{options},
-      desc={no default, initially: see below}},
+      desc={no default, initially: \code{\refscript[short]{memoize-extract.pl--format}
+        \meta{format} \string\jobname}}},
+    key={name=python extraction command, par=\meta{system command}, desc={no
+        default, initially \refscript{memoize-extract.py}}}, key={name=python
+      extraction options, par=\meta{options}, desc={no default, initially:
+        \code{\refscript[short]{memoize-extract.pl--format} \meta{format}
+          \string\jobname}}}
   }
+  
   These keys determine the system calls used for invoking the extraction
   scripts \refscript{memoize-extract.pl} and \refscript{memoize-extract.py}.
   All the details below apply both to the Perl and the Python version.
 
   Use |perl|\slash|python extraction command| to set the name of the extraction
-  script.  If necessary, include the full path to the scrip, or |perl|\slash
+  script.  If necessary, include the full path to the script, or |perl|\slash
   |python| plus the path to the script.  Whatever you set here must be allowed
   by the shell escape mode.
 
   Use |perl|\slash|python extraction options| to set the options that the
   script will receive; consult the documentation of
-  \refscript{memoize-extract.pl} for their meaning.
+  \refscript{memoize-extract.pl} for their meaning.  The initial value asks the
+  script to process \meta{document name}\dmmz, and informs it that it is
+  executed from within a \hologo{TeX} compilation of a document in the given
+  \meta{format} (|latex| for \hologo{LaTeX}, |plain| for \hologo{plainTeX},
+  |context| for \hologo{ConTeXt}); the latter makes the script yield any
+  warnings or errors in a form expected by the format.
 
-  The initial value of \refmmz{perl extraction options}, shown below, (i) sets
-  embedded mode, which prefixes each output line with the script name, (ii)
-  requests a log file named \meta{jobname}|.mmz.log| (|-l|; |\input|ting the
-  log after extraction informs Memoize, and the author, whether extraction was
-  successful), and (iii) sets the warning template suitable for the format
-  (|-w|; this way, any warning messages issued by the script can be reissued by
-  the compilation of the document).
-  
-  These keys were initialized using \pkg{pgfkeys} handler |.initial|, so their
-  values may be modified by handlers |.prefix|, |.append|, etc.  During the
-  execution of the system call, their values are fully expanded --- thus the
-  |\string|s in the initial options value below.  The guards
-  (|%<latex>| etc.) make sure that
-  each format asks for a warning message it understands (the code shown below
-  is an excerpt from the |.dtx| file; ultimately, each format receives a single
-  of the three guarded lines).
-
-  \makeexcerpt{perl-extraction-options}
-  \tcbinputexample[.tex][.excerpt]{listing only, one file, no attachment,
-    title={The initial value of \refmmz{perl extraction
-        options}}, full width, left=-2mm, right=0mm, listing options app={
-      morecomment={[s]{\%<}>} }, }
+  During the execution of a system call, the values of these settings are fully
+  expanded.  Furthermore, these keys were initialized using \pkg{pgfkeys}
+  handler |.initial|, so their values may be modified by handlers |.prefix|,
+  |.append|, etc.  The initial value of the extraction options contains a space
+  on both sides, so that these handlers are easy to use.  For example, write
+  \code{\refmmz{perl extraction
+      options}/.append=\refscript{memoize-extract.pl--quiet}} to ask
+  for less output.
 \end{doc}
 
 \begin{doc}{
@@ -6363,6 +6371,12 @@ require.
   \refmmz{extract}|=|\refmmz{extract=perl} (the default) or
   \refmmz{extract}|=|\refmmz{extract=python}.
 
+  Argument \meta{name}\dmmz may be given either in full (e.g.\ |doc.mmz|), or
+  merely as the stem (|doc|).  In the latter case, |.mmz| is appended to the
+  given argument even if it already contains a suffix (e.g.\ |my.doc| will
+  result in |my.doc.mmz|); the exception is suffix |.tex|, which is replaced by
+  |.mmz|.
+  
   The script inspects the given record file, \meta{name}\dmmz, for lines of
   form \refcmd{mmzNewExtern}\marg{extern filename}\marg{extern page
     number}\braces{\meta{expected width}\texttt{pt}}\braces{\meta{expected
@@ -6386,22 +6400,23 @@ require.
 
   The extraction script's paranoia extends further.  It will refuse to extract
   the page, yielding a warning, if a (c)c-memo associated to the extern does
-  not exist.  And it will refuse (yielding a runtime error) to write to any
-  file whose absolute path does not occur under the current directory or the
-  directory set by \docref{TEXMFOUTPUT} (in \reffile{texmf.cnf} or as an
-  environment variable); \docref{TEXMFOUTPUT} is also not allowed to point to
-  the root directory, except on Windows, where it can only point to a drive
-  root.
-    
-  \yadocset{
-    of=script:memoize-extract.pl,
-    override/.style={
-      index annotation={option of {%
+  not exist.  And it will respect the |openin| and |openout| settings of
+  |texmf.cnf|; under the default configuration, it will therefore refuse
+  (yielding an error) to write to any file whose absolute path does not occur
+  under the current directory, the temporary directory set by
+  \docref{TEXMFOUTPUT} (in \reffile{texmf.cnf} or as an environment variable),
+  or the output directory (\docref{TEXMF_OUTPUT_DIRECTORY}).  Furthermore, it
+  will refuse to write into the root directory (except on Windows, where
+  writing into a drive root might potentially make sense).
+
+  Exit codes: 0 = success, 1 = Perl/Python error, 2 = usage error, 10 =
+  extraction warning, 11 = extraction error.
+  
+  \yadocset{ of=script:memoize-extract.pl, override/.style={ index
+      annotation={option of {%
           \hypercolor{link}{gray}%
           \hyperref[script:memoize-extract.pl]{\texttt{memoize-extract}}%
-        }},
-    },
-  }
+        }}, }, }
   \begin{doc}{
       option={name=pdf, short name=P, par=\meta{pdf}}
     }
@@ -6423,34 +6438,31 @@ require.
     prevents this behaviour.
   \end{doc}
   \begin{doc}{
-      option={name=log, short name=l, parameters=\meta{filename}}
+      option={name=format, short name=F,
+        par=\code{latex}\Alt\code{plain}\Alt\code{context}}
     }
-    When given this option, the script creates a log file with the given name.
-    The log will receive any warnings yielded by the script, see also
-    \refscript{memoize-extract.pl--warning-template}.  A well-formed log ends
-    with |\endinput|, indicating that the \dmmz file was completely processed.
+    When this option is given, the script assumes that it was called from
+    within a \hologo{TeX} compilation of a document in the given format
+    (|latex| for \hologo{LaTeX}, |plain| for \hologo{plainTeX}, |context| for
+    \hologo{ConTeXt}).
     
-    In absence of this option, the warnings are printed to the standard error.
-  \end{doc}
-  \begin{doc}{
-      option={name=warning-template, short name=w, parameters=\meta{template}}, 
-    }
-    When this option is given, a warning message is not logged (or printed to
-    standard error) as-is; it is wrapped by the template given as the argument
-    of this option.  More precisely, the script will log the given
-    \meta{template}, with all occurrences of \docaux{cmd}{warningtext}
-    substituted by the actual warning message.
+    For one, the script will prefix all its output by the script name, to be
+    easily identifiable in the terminal output, but more importantly, it will
+    create a log file (\code{\string\jobname.mmz.log}) which will receive any
+    warnings and errors yielded by the script (in absence of this option, the
+    warnings and errors are printed to the standard error).  The log contains
+    messages in a form recognized by the format (e.g.\ \cs{PackageError} for
+    \hologo{LaTeX}), so Memoize can then \cs{input}s this log to reproduce the
+    warnings and errors in the compilation.
 
-    The option can be used to propagate warnings to the upstream compilation,
-    simply by setting this option appropriately (see the initial value of
-    \refmmz{python extraction options}) and |\input|ting the log after
-    extraction.
+    There should be no need to use this option when executing the script form
+    the command line.
   \end{doc}
   \begin{doc}{
       option={name=force, short name=f}
     }
-    Force extern extraction even if the size-check fails.  The failure will
-    still be logged.
+    Force extern extraction even if the size check or (c)c-memo existence check
+    fails.  The failure will still yield a warning.
   \end{doc}
   \begin{doc}{
       option={name=quiet, short name=q}
@@ -6458,14 +6470,6 @@ require.
     Normally, the script prints what it is doing to the standard output; in
     particular, it prints out the page number and the filename of each extern
     it is extracting.  This option disables this behaviour.
-  \end{doc}
-  \begin{doc}{
-      option={name=embedded, short name=e}
-    }
-    When given this option, everything printed to the standard output is
-    prefixed by the script name.  The idea is to use this option when calling
-    the script from the \hologo{TeX} compilation, as it makes it easy to
-    identify the output of the script.
   \end{doc}
   \begin{doc}{
       option={name=mkdir, short name=m}
@@ -6488,14 +6492,14 @@ require.
     \refmmz{extract=python}.
   \end{doc}
   \begin{doc}{
-      option={name=help, short name=h}
-    }
-    Show help.
-  \end{doc}
-  \begin{doc}{
       option={name=version, short name=V}
     }
     Show Memoize version.
+  \end{doc}
+  \begin{doc}{
+      option={name=help, short name=h}
+    }
+    Show help.
   \end{doc}
 
   Functionally, the Perl (|.pl|) and the Python (|.py|) version of the script
@@ -8849,7 +8853,7 @@ as follows: \docref{xparse:o}, \docref{xparse:d}, \docref{xparse:s},
 package.
 
 
-\paragraph{Disappearing errors}
+\paragraph{An error occurs, but disappears in the next compilation}
 If a non-fatal internal \hologo{TeX} error occurs during memoization, the memos
 and externs may be nevertheless produced and utilized in subsequent
 compilations.  In such a case, the erroneous code won't be compiled again, and
@@ -8892,56 +8896,181 @@ release.
 \label{sec:fadings-problem}
 \label{sec:loading-order}
 
-If the internal extern extraction does not work, you should have gotten one of
-the following warnings:
+Upon an unsuccessful extern extraction, you should get one of the errors or
+warnings listed below.  They should appear both in the terminal output and in
+the log file.  All but the final error can also appear when extern extraction
+is performed externally.
+
+
+Errors:
+
 \begin{enumerate}
-\item \code{Package memoize Warning: Extraction of externs from document
-    "\meta{jobname}.pdf" using method "perl" was unsuccessful. Have you set the
-    shell escape mode as suggested in chapter 1 of the manual?}
   
-  This warning is thrown when the extraction log \meta{jobname}|.mmz.log|,
-  which should be produced by the extraction script, is incomplete, i.e.\ it
-  does not finish by |\endinput|.\footnote{The extraction log will never be
-    absent, because Memoize clears it before executing the extraction script
-    --- and clearing it creates it if it doesn't exist.}  The most likely
-  reason is that the script was not executed at all, so the question asked in
-  the warning message is pertinent.  However, if all is well with the
-  shell-mode, you have a mystery at your hands.  To gather information, I
-  suggest inspecting:
+\item \code{Error: Python module 'pdfrw' was not found'},\\
+  \code{Error: Perl module 'PDF::API' was not found"}, or\\
+  \code{Error: Perl module 'PDF::Builder' was not found"}
+
+  You have not installed the PDF processing library, at least not
+  successfully. The installation instructions can be found in
+  section~\ref{sec:install}.  Perhaps you have multiple instances of Perl\slash
+  Python on your system and you have installed the library into the wrong
+  instance?
+
+\item\label{item:warning:extract:cannot-read} \code{Error: File
+    "\meta{jobname}.pdf" seems corrupted. Perhaps you have to load Memoize
+    earlier in the preamble?}
+
+  While the PDF could be corrupted for various reasons, the most probable
+  reason is the package loading order, as indicated in the error message
+  itself.  (Note that the absence of \meta{jobname}|.pdf| does not yield this
+  error.  This is so that a fatal error unrelated to Memoize doesn't make
+  Memoize throw another error in the next compilation.)  Embedded extern
+  extraction requires an intact document PDF from the previous compilation, so
+  Memoize must be loaded before the document PDF is opened for writing the
+  results of the ongoing compilation.  In particular, the PDF is opened by \PGF
+  library |fadings|, included by \TikZ's libraries |fadings| and |shadows|, so
+  Memoize must be loaded before any of these libraries.  With \pkg{beamer}, the
+  problem is particularly acute because the PDF is opened while loading the
+  class.  In this case, simply moving |\usepackage{memoize}| up the preamble,
+  as suggested, won't help: you have to write |\RequirePackage{memoize}|
+  \emph{before} |\documentclass{beamer}|!
+
+  It is also possible that the PDF processing library deployed by the
+  extraction script chokes on your particular document.  Inspecting the error
+  message original error message produced by Perl\slash Python, which can be
+  found at the end of the long error message in the log, should help you see
+  whether this is the case.  For example, a couple of times, I got
+  \code{%\myfontexpansionon
+    Invalid dictionary key at /.../perl5/site\_perl/PDF/API2/Basic/PDF/File.pm
+    line $N$\myfontexpansionoff} when extracting with the Perl-based script.
+  The issue might be related to PDF version --- by default, \hologo{TeX}
+  produces PDFs of version 1.5, while the PDF library
+  \hreftt{https://metacpan.org/pod/PDF::API2}{PDF::API2} officially only
+  supports versions up to 1.4 --- but I'm afraid I haven't identified the exact
+  circumstances yet (possibly, the externalizing a picture containing an
+  embedded PDF file might be the culprit).  In general, the workaround is to
+  use another extraction method or PDF processing library, see \refmmz{extract}
+  and \refscript{memoize-extract.pl--library}.
+  
+\item\label{item:error:openin_any}
+  \code{Error: I'm not allowed to write to '{\meta{filename}}' (openout\_any =
+    {\meta{mode}})"}
+
+  Your \hologo{TeX} distribution does not allow this file to be written to.
+  The relevant setting is called \docref{openin_any} in \hologo{TeX}Live and
+  |[Core]AllowUnsafeOutputFiles| in MiK\hologo{TeX}.
+
+\item \code{Error: I'm not allowed to read from '{\meta{filename}}' (openin\_any
+    = {\meta{mode}})"}
+
+  Your \hologo{TeX} distribution does not allow this file to be read from. The
+  relevant setting is called \docref{openout_any} in \hologo{TeX}Live and
+  |[Core]AllowUnsafeInputFiles| in MiK\hologo{TeX}.
+  
+\item \code{Error: "Semi-absolute" filenames are disallowed: '\meta{filename}'}
+
+  This error can only occur on Windows.  The extraction scripts are even more
+  paranoid than \hologo{TeX} and don't allow paths such as |C:foo\bar| or
+  |\foo\bar|, neither as path to a \dmmz, memo or extern file nor as an output
+  or temporary directory.
+
+\item \code{Error: I cannot extract page {\meta{n}} '\meta{filename}.pdf', as
+    it contains only \meta{N} pages}
+
+  The document PDF is too short. This could happen if you are accidentally
+  triggering the extern extraction twice, and the first extraction was called
+  with \refscript{memoize-extract.pl--prune}.
+
+\item\label{item:error:runtime} \code{Error: Python error: \meta{error
+      message}} or \code{Error: Perl error: \meta{error message}}
+
+  A runtime error occurred during the execution of the extraction script.  The
+  error message should be followed by the traceback information which includes
+  the line number (in the extraction script) where the error occurred.
+
+  One possible source of this error are insufficient filesystem permissions.
+  For example, it will occur if the current directory is marked as read-only
+  and the temporary output directory (\texttt{\$TEXMFOUTPUT}) is not set.
+  
+\item \code{Error: Extraction of externs from document "\meta{jobname}.pdf"
+    using method "\meta{extraction method}" was unsuccessful.}
+
+  This is a generic error produced when the extraction script was either not
+  executed at all, or the execution didn't finish properly.\footnote{How does
+    Memoize know whether this happened?  When invoked given option
+    \refscript{memoize-extract.pl--format}, the extraction script is supposed
+    to write a log (actually, status) file called
+    % todo: \mbox is a workaround preventing "font expansion: using fonts with
+    % different limit of expansion in one paragraph is not allowed" error,
+    % which arises in combination with "pi=..." in the CollArgs section.
+    \mbox{\meta{jobname}}|.mmz.log|.  Upon a clean completion, the final line
+    of this log reads \cs{endinput}.  If this marker is missing, Memoize
+    produces the error under discussion.  Feel free to see what's up with this
+    file if all else fails.}
+
+  A couple of reasons for the failure to execute the script:
   \begin{itemize}
-  \item \meta{jobname}|.log| --- search for \code{runsystem(memoize-extract.pl
-      ...)}, it will tell you whether the script was executed;
-  \item the terminal output --- if the script was executed, it should've
-    announced itself by \code{Extracting externs from \meta{jobname}.pdf}; are
-    there any further messages between this header and the warning message?
-  \item \meta{the path to the extern}|.log|, if you are using the
-    \hologo{TeX}-based extraction (\code{\refmmz{extract}=\refmmz{extract=tex}}).
+  \item Is the shell escape configured properly?  It should be, as both
+    Memoize's extraction scripts are listed among restricted shell escape
+    commands in both \hologo{TeX}Live and MiK\hologo{TeX}, but it never hurts
+    to check.
+
+    The easiest way to see if shell escape is the culprit is to compile the
+    document with command option \docref{-shell-escape} (on \hologo{TeX}Live)
+    or \docref{--enable-write18} (on MiK\hologo{TeX}).  If this resolves the
+    problem, check your shell escape mode; see
+    footnote~\ref{fn:shell-escape-commands} on
+    page~\pageref{fn:shell-escape-commands} for how to do this.
+  \item Is environment variable PATH set correctly, so that the system can find
+    the extraction script?
+  \item Is Perl\slash Python installed on your system, and accessible to
+    \hologo{TeX}?
   \end{itemize}
-  \hologo{TeX}-based extraction will yield this error even in the case of a
-  missing or corrupted PDF, i.e.\ in
-  case~\ref{item:warning:extract:cannot-read} below.
 
-\item\label{item:warning:extract:cannot-read}
-  \code{Package memoize (perl-based extraction) Warning: Cannot read file
-    "\meta{jobname}.pdf". Perhaps you have to load Memoize earlier in the
-    preamble?}
+  Normally, you should get error~\ref{item:error:runtime} if a runtime error
+  occurs during the execution of the extraction script.  You can only get the
+  generic error if the runtime error occurred before the script could set up
+  the log file, perhaps due to insufficient filesystem permissions in
+  combination with the paranoid \docref{openout_any} setting (which is the
+  default).
 
-  Embedded extern extraction requires an intact document PDF from the previous
-  compilation, so Memoize must be loaded before the document PDF is opened for
-  writing the results of the ongoing compilation.  In particular, the PDF is
-  opened by \PGF library |fadings|, included by \TikZ's libraries |fadings|
-  and |shadows|, so Memoize must be loaded before any of these libraries.
+  If the source of the error remains a mistery, I suggest inspecting the
+  following sources of information, to help you with your investigation:
+  \begin{itemize}
+  \item Can you can run the extraction script by hand?  Open the terminal, go
+    into the directory containing your document, write |memoize-extract.pl
+    |\meta{document name} (or |memoize-extract.py |\meta{document name}), and
+    see what happens.
+  \item Inspect \meta{jobname}|.log| --- search for
+    \code{runsystem(memoize-extract.pl ...)}, it will tell you whether the
+    script was executed.
+  \item Inspect the \hologo{TeX} terminal output --- if the script was
+    executed, it should've announced itself by \code{Extracting externs from
+      \meta{jobname}.pdf}; are there any further messages between this header
+    and the error message?
+  \item Inspect \meta{the path to the extern}|.log|, if you are using the
+    \hologo{TeX}-based extraction
+    (\code{\refmmz{extract}=\refmmz{extract=tex}}).
+  \end{itemize}
+  
+\end{enumerate}
 
-  With \pkg{beamer}, the problem is particularly acute because the PDF is
-  opened while loading the class.  In this case, simply moving
-  |\usepackage{memoize}| up the preamble, as suggested, won't help: you have to
-  write |\RequirePackage{memoize}| \emph{before} |\documentclass{beamer}|!
+Not every failure to extract externs results in an error.  When a warning is
+produced, the compilation will succeed, it's just that as Memoize cannot
+extract the externs, they will be produced, and dumped into your document, at
+each and every compilation.  For warnings other than the missing document PDF,
+Memoize extracts as many externs as possible.
 
-\item\label{item:warning:extract:unexpected-size} \code{Package memoize
-    (perl-based extraction) Warning: I refuse to extract page $n$ from
-    "\meta{jobname}.pdf", because its size ($\meta{width}\times\meta{height}$)
-    is not what I expected\\ ($\meta{expected width}\times\meta{expected
-      height}$)}
+\begin{enumerate}
+
+\item \code{Warning: Cannot open '\meta{filename}.pdf'}
+
+  This is not an error because what if you deleted the document PDF on purpose?
+  
+\item\label{item:warning:extract:unexpected-size} \code{Warning: I refuse to
+    extract page $n$ from "\meta{jobname}.pdf", because its size
+    ($\meta{width}\times\meta{height}$) is not what I expected\\
+    ($\meta{expected width}\times\meta{expected height}$)}
 
   If the compilation which produced the offending extern pages yielded any
   errors, you should probably disregard this warning, fix the errors, and
@@ -8958,26 +9087,23 @@ the following warnings:
   option \refscript{memoize-extract.pl--force} to the script invocation, which
   can be set by \refmmz{perl extraction options}.  However, as such a situation
   probably indicates a bug in Memoize, please let me know about it.
-\item\code{\myfontexpansionon Invalid dictionary key at
-    /.../perl5/site\_perl/PDF/API2/Basic/PDF/File.pm line $N$\myfontexpansionoff}
 
-  This can sometimes happen when extracting with the Perl-based script.  The
-  issue might be related to PDF version --- by default, \hologo{TeX} produces
-  PDFs of version 1.5, while the PDF library
-  \hreftt{https://metacpan.org/pod/PDF::API2}{PDF::API2} officially only
-  supports versions up to 1.4 --- but I'm afraid I haven't identified the exact
-  circumstances yet.  Possibly, the externalizing a picture containing an
-  embedded PDF file might be the culprit.  The workaround is to use Python- or
-  \hologo{TeX}-based extraction, i.e.\ load Memoize with package option
-  \refmmz{extract}|=|\refmmz{extract=python} or
-  \refmmz{extract}|=|\refmmz{extract=tex}.
+\item \code{Warning: I refuse to extract page $n$ into extern \meta{extern
+      filename}, because the associated (c)c-memo does not exist.}
+
+  Assuming that you haven't deleted the memos (|.memo| files), either manually
+  or via \refscript{memoize-clean.pl}, could it be that they were never created
+  in the first place?  Check where they should be written to (the configuration
+  commands are listed in section~\ref{sec:ref:dirs}).  Is that directory
+  writeable, both in the sense of the system and for \hologo{TeX} (the
+  |openout| setting in |texmf.cnf|)?
+  
+ 
 \end{enumerate}
+  
 
-The failure to extract externs intentionally doesn't result in an error,
-because what if you deleted the document PDF on purpose?  At any rate, the
-compilation will succeed, it's just that as Memoize cannot extract the externs,
-they will be produced, and dumped into your document, at each and every
-compilation.
+% warning('I failed to execute "kpsewhich"; assuming openin_any = openout_any =
+% "p" '
 
 \paragraph{An extern won't be included}
 
@@ -8991,10 +9117,17 @@ Did you receive a warning or error message?
   above, only that it occurs once the extern is extracted.  The same
   investigative methods apply.
 \item \code{!pdfTeX error: pdflatex (file \meta{extern path}.pdf): reading
-    image file failed}
+    image file failed}, or something similar for engines other than
+  \hologo{pdfTeX}
 
-  This is a fatal error.  The extern file got corrupted, somehow ---
-  inexistent, or even empty, extern files merely trigger recompilation.
+  This is a fatal error.  The extern file got corrupted, somehow --- inexistent
+  and even empty extern files merely trigger recompilation.
+\item \code{pdfTeX warning: pdflatex (file \meta{extern path}.pdf): PDF
+    inclusion: found PDF version <$m$>, but at most version <$n$> allowed}
+
+  When you produced the externs, a higher \docref{reg:pdfmajorversion} and/or
+  \docref{reg:pdfminorversion} was in effect than now.  I guess you shouldn't worry
+  about this warning if the output looks fine.
 \end{enumerate}
 
 If there was no warning or error --- are you certain that Memoize is

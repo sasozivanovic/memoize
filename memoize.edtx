@@ -2352,10 +2352,10 @@
   %   Memoize ships with two extraction scripts, a Perl script and a Python
   %   script, which are selected by |extract=perl| (the default) and
   %   |extract=python|, respectively.  We run the scripts in verbose mode
-  %   (without |-q|), and keep the |.mmz| file as is, i.e.\ we're not commenting
-  %   out the |\mmzNewExtern| lines, because we're about to overwrite it
-  %   anyway.  We also request the log file, which will contain
-  %   |\mmzExtractionSuccessful| if extraction was successful.
+  %   (without |-q|), and keep the |.mmz| file as is (without |-k|), i.e.\
+  %   we're not commenting out the |\mmzNewExtern| lines, because we're about
+  %   to overwrite it anyway.  We inform the script about the format of the
+  %   document (|-F|).
   extract/perl/.code={%
     \mmz@clear@extraction@log
     \pdf@system{%
@@ -2366,14 +2366,11 @@
     \def\mmz@mkdir@command##1{\mmzvalueof{perl extraction command}\space --mkdir "##1"}%
   },
   perl extraction command/.initial=memoize-extract.pl,
-  perl extraction options/.initial={%
-%     \begin{listingregion}{perl-extraction-options.tex}
-    -e -l "\mmzOutputDirectory\mmzUnquote\jobname.mmz.log" -w
-    %<latex>"\string\PackageWarning{memoize (perl-based extraction)}{\string\warningtext}"
-    %<plain>"\string\warning{memoize (perl-based extraction): \string\warningtext}"
-    %<context>"\string\warning{memoize (perl-based extraction): \string\warningtext}"
-    "\mmzOutputDirectory\mmzUnquote\jobname.mmz"
-%     \end{listingregion}
+  perl extraction options/.initial={\space
+    %<latex>-F latex
+    %<plain>-F plain
+    %<context>-F context
+    \jobname\space
   },
   extract=perl,
   extract/python/.code={%
@@ -2386,12 +2383,11 @@
     \def\mmz@mkdir@command##1{\mmzvalueof{python extraction command}\space --mkdir "##1"}%
   },
   python extraction command/.initial=memoize-extract.py,
-  python extraction options/.initial={%
-  -e -l "\mmzOutputDirectory\mmzUnquote\jobname.mmz.log" -w
-  %<latex>"\string\PackageWarning{memoize (python-based extraction)}{\string\warningtext}"
-  %<plain>"\string\warning{memoize (python-based extraction): \string\warningtext}"
-  %<context>"\string\warning{memoize (python-based extraction): \string\warningtext}"
-  "\mmzOutputDirectory\mmzUnquote\jobname.mmz"
+  python extraction options/.initial={\space
+    %<latex>-F latex
+    %<plain>-F plain
+    %<context>-F context
+    \jobname\space
   },
 }
 \def\mmz@preamble@only@warning{%
@@ -2426,9 +2422,11 @@
   \@input{\jobname.mmz.log}%
   \ifmmz@temp \else \mmz@extraction@error \fi \endgroup }
 \def\mmz@extraction@error{%
-  \PackageWarning{memoize}{Extraction of externs from document "\mmzUnquote\jobname.pdf"
-    using method "\extractionmethod" was unsuccessful. Have you set the
-    shell escape mode as suggested in chapter 1 of the manual?}{}}
+  \PackageError{memoize}{Extraction of externs from document
+    "\jobname.pdf" using method "\extractionmethod" was
+    unsuccessful}{The extraction script "\mmzvalueof{\extractionmethod\space
+      extraction command}" wasn't executed or didn't finish execution
+    properly.}}
 %
 % \subsection{The record files}
 % \label{sec:code:record}
@@ -2744,11 +2742,11 @@
 % \end{macro}
 \def\mmz@pageextraction@error{%
   \PackageError{memoize}{Extraction of extern page \pagenumber\space from
-    document "\mmzUnquote\jobname.pdf" using method "\extractionmethod" was unsuccessful.
-    Have you set the shell escape mode as suggested in chapter 1 of the
-    manual?}{If "\mmzvalueof{tex extraction command}" was executed,
-    shell escape mode is not the problem, and inspecting "\externbasepath.log"
-    might give you a clue what's wrong}}
+    document "jobname.pdf" using method "\extractionmethod" was
+    unsuccessful.}{Check the log file to see if the extraction script was
+    executed at all, and if it finished successfully.  You might also want to
+    inspect "\externbasepath.log", the log file of the embedded TeX compilation
+    which ran the extraction script}}
 % 
 % \begin{key}{tex extraction command, tex extraction options, tex extraction script}
 %   Using these keys, we set the system call
@@ -2786,12 +2784,11 @@
     -halt-on-error
     -interaction=batchmode
     -jobname "\externbasepath"
-    \ifdefempty\mmzOutputDirectory{}{-output-directory "\mmzOutputDirectory"}
 % \end{listingregion}
   },
   tex extraction script/.initial={%
 %   \begin{listingregion}{tex-extraction-script.tex} ^^A todo: context
-    \def\noexpand\fromdocument{"\mmzOutputDirectory"\jobname.pdf}%
+    \def\noexpand\fromdocument{\jobname.pdf}%
     \def\noexpand\pagenumber{\pagenumber}%
     \def\noexpand\expectedwidth{\expectedwidth}%
     \def\noexpand\expectedheight{\expectedheight}%
@@ -3525,26 +3522,12 @@
 % package-loading.
 \mmzset{
   %<!plain>extract/no/.code={},
-% \begin{key}{output directory}
-%   \begin{macro}{mmzOutputDirectory}
-%     Set the |-output-directory| --- manually, as there is no other way.
-% \indentmacrocode
-  output-directory/.store in=\mmzOutputDirectory,
 }
-%   \end{macro}
-% \end{key}
 % 
 % \paragraph{Process} the package options (except in \hologo{plainTeX}).
 %<latex>\ProcessPgfPackageOptions{/mmz}
 %<context>\expandafter\mmzset\expandafter{\currentmoduleparameters}
 % 
-% Define |\mmzOutputDirectory| if |output-directory| was not given.
-\ifdefined\mmzOutputDirectory
-\else
-  \def\mmzOutputDirectory{}%
-\fi
-\mmzset{output directory/.code={\PackageError{memoize}{Key "output-directory"
-      may only be used as a package option}{}}}
 \mmzset{
   % \paragraph{Extract} the externs using the method given by |memoize.cfg| or
   % the package options --- unless we're running \hologo{plainTeX}.

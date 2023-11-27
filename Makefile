@@ -81,10 +81,17 @@ ctan/$(PACKAGE).zip:
 	ln -sr $(TDS-DOC-DIR)/examples.zip $(CTAN-DIR)/doc
 	$(CTAN-END)
 
+%.py.dtx: %.py
+	edtx2dtx -s -c '#' -B '^__version__' -E '^# Local Variables:' $< \
+		| sed -e '/^% Local Variables:/Q' > $@
 
+%.pl.dtx: %.pl
+	edtx2dtx -s -c '#' -B '^my \$$PROG' -E '^# Local Variables:' $< \
+		| sed -e '/^% Local Variables:/Q' > $@
 
 doc/memoize-code.pdf: $(SOURCE) $(codedoc-source) \
-                      advice.edtx advice.ins collargs.edtx collargs.ins
+                      advice.edtx advice.ins collargs.edtx collargs.ins \
+                      $(SCRIPTS:%=%.dtx)
 
 doc/memoize.pdf: $(manual-source) $(examples-src)
 
