@@ -2,7 +2,7 @@
 
 PACKAGES = memoize advice collargs
 
-all: ctan/memoize.zip
+all: test ctan/memoize.zip
 	$(MAKE) -f Makefile.advice ctan/advice.zip
 	$(MAKE) -f Makefile.collargs ctan/collargs.zip
 
@@ -31,7 +31,7 @@ SCRIPTS := $(SCRIPTS:%=%.pl) $(SCRIPTS:%=%.py)
 %.py.1: %.1
 	echo .so man1/$*.1 > $@     # link to .1 man page
 
-.PHONY: runtime
+.PHONY: runtime test
 runtime: $(RUNTIME)
 
 README = doc/README.memoize.md
@@ -144,3 +144,6 @@ include Makefile.package
 include Makefile.runtimes
 
 VERSION-MAN = of Memoize v$(VERSION)
+test:
+	$(MAKE) -C testing PYL=py
+	$(MAKE) -C testing PYL=pl
