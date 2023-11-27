@@ -163,13 +163,6 @@
 \def\newtoks{\alloc@5\toks\toksdef\@cclvi}
 \def\newwrite{\alloc@7\write\chardef\sixt@@n}
 %</mmz&plain>
-% |Nomemoize| has to load |pgfopts| as well, and process package options (right
-% away, why not), otherwise \hologo{LaTeX} will complain.
-%<*latex>
-%<mmz,nommz>\RequirePackage{pgfopts}  % pgfkeys-based package options
-%<nommz>\pgfkeys{/memoize/package options/.unknown/.code={}}
-%<nommz>\ProcessPgfPackageOptions{/memoize/package options}
-%</latex>
 % I can't really write any code without |etoolbox| \dots
 %<*mmz>
 %<latex>\RequirePackage{etoolbox}
@@ -445,8 +438,13 @@
   % Memoize is enabled at the beginning of the document, unless explicitly
   % disabled by the user in the preamble.
   enable,
-}
 % \end{macro}
+% \end{key}
+% 
+% \begin{key}{options}
+%   Execute the given value as a keylist of Memoize settings.
+  options/.style={#1},
+}
 % \end{key}
 % 
 % \begin{key}{normal,readonly,recompile}
@@ -3563,8 +3561,21 @@
 }
 % 
 % \paragraph{Process} the package options (except in \hologo{plainTeX}).
-%<latex>\ProcessPgfPackageOptions{/mmz}
+%<*latex>
+\DeclareUnknownKeyHandler[mmz]{%
+  \expanded{\noexpand\pgfqkeys{/mmz}{#1\IfBlankF{#2}{={#2}}}}}
+\ProcessKeyOptions[mmz]
+%</latex>
 %<context>\expandafter\mmzset\expandafter{\currentmoduleparameters}
+%
+% In \hologo{LaTeX}, |nomemoize| has to process package options as well,
+% otherwise \hologo{LaTeX} will complain.
+%</mmz>
+%<*latex&nommz>
+\DeclareUnknownKeyHandler[mmz]{}
+\ProcessKeyOptions[mmz]
+%</latex&nommz>
+%<*mmz>
 % 
 \mmzset{
   % \paragraph{Extract} the externs using the method given by |memoize.cfg| or

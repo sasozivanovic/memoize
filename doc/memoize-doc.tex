@@ -5071,17 +5071,19 @@ Load Memoize by \cs{usepackage}\braces{\docaux{package}{memoize}} or
 almost identically to the former followed by
 \refcmd{mmzset}\bracestt{\meta{options}}, with two exceptions.
 
-First, the \meta{options} as package options may not contain spaces.  This is a
-constraint imposed by \hologo{LaTeX} itself.  To avoid it for a particular key,
-define a spaceless variant of the key in \reffile{memoize.cfg}.  For example,
-to use \refmmz{memo dir} as a package option, put
-\refcmd{mmzset}|{memodir/.style={|\refmmz{memo dir}|={#1}}}| into that file.
+First, when used as package options, \meta{options} may not contain the slash
+character (|/|), which is necessary to invoke \pkg{pgfkeys} handlers, because
+is it misinterpreted by \hologo{LaTeX}.\footnote{The historic \hologo{LaTeX}
+  constraint prohibiting spaces in package options does not apply anymore.}  In
+the rare situations requiring key handling in the package options, use option
+\refmmz{options}.
 
-Second, key \refmmz{extract} only make senses as a package option, or within
-\reffile{memoize.cfg}.  Internal extern extraction can only be performed before
-the output PDF is opened, and to maximize chances of that, Memoize is designed
-to extract as soon as it can: while it is being loaded.  Consequently, changing
-the extraction method in the document preamble has no effect.
+Second, key \refmmz{extract} and other extraction-related keys such as
+\refmmz{perl extraction options} only make sense as a package option, or
+within \reffile{memoize.cfg}.  Internal extern extraction can only be performed
+before the output PDF is opened, and to maximize chances of that, Memoize is
+designed to extract as soon as it can: while it is being loaded.  Consequently,
+changing the extraction method in the document preamble has no effect.
 
 The necessity of performing extraction before the output PDF is opened is also
 why Memoize prefers to be loaded early with respect to other packages.  In
@@ -5136,8 +5138,9 @@ this means that Memoize must be loaded before \pkg{atbegshi}.
 
 Load Memoize by \cs{usemodule}\bracketstt{memoize} or
 \cs{usemodule}\bracketstt{memoize}\oarg{options}.  Unlike in \hologo{LaTeX},
-spaces are allowed in \meta{options}; the remarks on key \refmmz{extract} and
-loading order are the same as for \hologo{LaTeX}.
+there are no restrictions on characters allowed within \meta{options}; the
+remarks on key \refmmz{extract} and loading order are the same as for
+\hologo{LaTeX}.
 
 In \hologo{LaTeX}, Memoize automatically executes its initialization and
 finalization code when at the beginning and the end of the document body.  Due
@@ -5154,13 +5157,14 @@ on how to handle this properly.
 \begin{doc}{package={name=nomemoize}}
   Loading this package instead of Memoize completely disables memoization, but
   does not require removing any Memoize commands from the document (they all
-  become no-ops).
+  become no-ops).  This package accepts any package options (and ignores them).
 \end{doc}
 
 \begin{doc}{package={name=memoizable}}
   This package is a programmer's stub: if Memoize is loaded, it does nothing;
-  otherwise, it provides the no-op variants Memoize commands.  See
-  section~\ref{sec:loading-memoize} for details.
+  otherwise, it provides the no-op variants Memoize commands.  This package
+  accepts no package options.  See section~\ref{sec:loading-memoize} for
+  details.
 \end{doc}
 
 
@@ -5249,6 +5253,26 @@ on how to handle this properly.
   This file is also loaded by package \refpkg{nomemoize}, on the off chance it
   defines some commands other than \refkeypath{/mmz} keys.  (It is not loaded
   by package \refpkg{memoizable}, though).
+\end{doc}
+
+\begin{doc}{key={name=options, par=\marg{options}}}
+  Execute \meta{options} as if they were given an an argument to \refcmd{mmzset}.
+
+  This option primarily exists to allow any key--value pair accepted by
+  \refcmd{mmzset} to be used as a package option.  In particular, this applies
+  key handlers (see \PGFmanual{87}), because their invocation includes a slash
+  (|/|).  For example, one cannot directly use
+  \begin{center}
+    \code{\cs{usepackage}[\refmmz{perl extraction
+          options}/.prefix=\braces{\braces{\refscript{memoize-extract.pl--quiet}}} ]\braces{memoize}}
+  \end{center}
+  to add (prepend) option \refscript{memoize-extract.pl--quiet} to the
+  invocation of the perl extraction script \refscript{memoize-extract.pl}, but
+  this will work:
+  \begin{center}
+    \code{\cs{usepackage}[\refmmz{options}=\braces{\refmmz{perl extraction
+          options}/.prefix=\braces{\braces{\refscript{memoize-extract.pl--quiet}}} ]\braces{memoize}}}
+  \end{center}
 \end{doc}
 
 \begin{doc}{cmd={name=nommzkeys, par=\marg{key}}}
