@@ -1112,14 +1112,14 @@
     \gtoksapp\mmzCMemo{\global\mmzUnmemoizabletrue}%
     \mmz@write@cmemo
     \mmz@trace@endmemoize@unmemoizable
-    \PackageWarning{memoize}{Marking this code as unmemoizable}%
+    \PackageInfo{memoize}{Marking this code as unmemoizable}%
   \else
     \ifmmz@abort
       % If memoization was aborted, we create an empty c-memo, to make sure that
       % no leftover c-memo tricks Memoize into thinking that the code was
       % successfully memoized.
       \mmz@trace@endmemoize@aborted
-      \PackageWarning{memoize}{Memoization was aborted}%
+      \PackageInfo{memoize}{Memoization was aborted}%
       \mmz@compute@context@mdfivesum
       \mmz@write@cmemo
     \else
