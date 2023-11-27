@@ -22,6 +22,7 @@ collargs.zip
 link-generated-files-into-texmf.sh
 memoizable.sty
 memoizable.tex
+memoizable.code.tex
 memoize-extract-one.tex
 memoize.dtx
 memoize.sty

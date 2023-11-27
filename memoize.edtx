@@ -231,6 +231,7 @@
     }%
   }%
 }
+%</mmz>
 % 
 % In \hologo{ConTeXt}, |\unexpanded| means |\protected|, and the usual
 % |\unexpanded| is available as |\normalunexpanded|.  Option one: use dtx
@@ -242,6 +243,18 @@
 % |\unexpanded| in the |.dtx|, and |sed| through the generated \hologo{ConTeXt}
 % files to replace all its occurrences by |\normalunexpanded|.  Oh yeah!
 % 
+% Load |pgfkeys| in |nomemoize| and |memoizable|.  Not necessary in |memoize|,
+% as it is already loaded by CollArgs.
+%<*nommz,mmzable>
+%<latex>\RequirePackage{pgfkeys}
+%<plain>\input pgfkeys
+%<context>\input t-pgfkey
+%</nommz,mmzable>
+% 
+% Different formats of |memoizable| merely load |memoizable.code.tex|, which
+% exists so that |memoizable| can be easily loaded by generic code, like a
+% |tikz| library.
+%<mmzable&!generic>\input memoizable.code.tex
 % 
 % \paragraph.{Shipout}
 % We will next load our own auxiliary package, CollArgs, but before we do
@@ -253,6 +266,7 @@
 % section~\ref{sec:code:extern}.  Below, we first check that the current
 % meaning of |\shipout| is primitive, and then redefine it.
 % 
+%<*mmz>
 %<*plain>
 \def\mmz@regular@shipout{%
   \global\advance\mmzRegularPages1\relax
@@ -277,7 +291,7 @@
 % \paragraph.{Loading order} |memoize| and |nomemoize| are mutually exclusive,
 % and |memoizable| must be loaded before either of them.  |\mmz@loadstatus|: 1
 % = memoize, 2 = memoizable, 3 = nomemoize.
-%<*(plain,context)&(mmz,nommz,mmzable)>
+%<*mmz,nommz>
 \def\ifmmz@loadstatus#1{%
   \ifnum#1=0\csname mmz@loadstatus\endcsname\relax
     \expandafter\@firstoftwo
@@ -285,11 +299,9 @@
     \expandafter\@secondoftwo
   \fi
 }
-%</(plain,context)&(mmz,nommz,mmzable)>
+%</mmz,nommz>
 %<*mmz>
-%<latex>\@ifpackageloaded{nomemoize}%
-%<plain,context>\ifmmz@loadstatus{3}%
-{%
+\ifmmz@loadstatus{3}{%
   \PackageError{memoize}{Cannot load the package, as "nomemoize" is already
     loaded. Memoization will NOT be in effect}{Packages "memoize" and
     "nomemoize" are mutually exclusive, please load either one or the other.}%
@@ -297,9 +309,7 @@
   %<latex>\ProcessPgfPackageOptions{/memoize/package options}
     \endinput
 }{}%
-%<latex>\@ifpackageloaded{memoizable}%
-%<plain,context>\ifmmz@loadstatus{2}%
-{%
+\ifmmz@loadstatus{2}{%
   \PackageError{memoize}{Cannot load the package, as "memoizable" is already
     loaded}{Package "memoizable" is loaded by packages which support
     memoization.  Memoize must be loaded before all such packages.  The
@@ -317,30 +327,20 @@
     %<latex>\ProcessPgfPackageOptions{/memoize/package options}
   \endinput
 }{}%
-%<plain,context>\ifmmz@loadstatus{1}{\endinput}{}%
-%<plain,context>\def\mmz@loadstatus{1}%
+\ifmmz@loadstatus{1}{\endinput}{}%
+\def\mmz@loadstatus{1}%
 %</mmz>
-%<*mmzable>
-%<latex>\@ifpackageloaded{memoize}%
-%<plain,context>\ifmmz@loadstatus{1}%
-{\endinput}{}
-%<latex>\@ifpackageloaded{nomemoize}%
-%<plain,context>\ifmmz@loadstatus{3}%
-{\endinput}{}%
-%<plain,context>\ifmmz@loadstatus{2}{\endinput}{}%
-%<plain,context>\def\mmz@loadstatus{2}%
-%</mmzable>
+%<*mmzable&generic>
+\ifcsname mmz@loadstatus\endcsname\endinput\fi
+\def\mmz@loadstatus{2}%
+%</mmzable&generic>
 %<*nommz>
-%<latex>\@ifpackageloaded{memoize}
-%<plain,context>\ifmmz@loadstatus{1}%
-{%
+\ifmmz@loadstatus{1}{%
   \PackageError{nomemoize}{Cannot load the package, as "memoize" is already
     loaded; memoization will remain in effect}{Packages "memoize" and
     "nomemoize" are mutually exclusive, please load either one or the other.}%
   \endinput }{}%
-%<latex>\@ifpackageloaded{memoizable}%
-%<plain,context>\ifmmz@loadstatus{2}%
-{%
+\ifmmz@loadstatus{2}{%
   \PackageError{nomemoize}{Cannot load the package, as "memoizable" is already
     loaded}{Package "memoizable" is loaded by packages which support
     memoization.  (No)Memoize must be loaded before all such packages.  The
@@ -356,8 +356,8 @@
     of that package.}%
   \endinput
 }{}%
-%<plain,context>\ifmmz@loadstatus{3}{\endinput}{}%
-%<plain,context>\def\mmz@loadstatus{3}%
+\ifmmz@loadstatus{3}{\endinput}{}%
+\def\mmz@loadstatus{3}%
 %</nommz>
 % 
 %<*mmz>
@@ -394,22 +394,22 @@
 % \label{sec:code:configuration}
 % 
 % \begin{macro}{\mmzset}
-%   The user primarily interacts with |Memoize| through the |pgfkeys|-based
+%   The user primarily interacts with Memoize through the |pgfkeys|-based
 %   configuration macro |\mmzset|, which executes keys in path |/mmz|.  In
 %   |nomemoize| and |memoizable|, is exists as a no-op.
 \def\mmzset#1{\pgfqkeys{/mmz}{#1}\ignorespaces}
 %</mmz>
-%<nommz,mmzable>\def\mmzset#1{\ignorespaces}
+%<nommz,mmzable&generic>\def\mmzset#1{\ignorespaces}
 % \end{macro}
-% 
-% \begin{macro}{\mmzset}
+%
+% \begin{macro}{\nommzkeys}
 %   Any |/mmz| keys used outside of |\mmzset| must be declared by this macro
 %   for |nomemoize| package to work.
 %<mmz>\def\nommzkeys#1{}
-%<*nommz,mmzable>
+%<*nommz,mmzable&generic>
 \def\nommzkeys{\pgfqkeys{/mmz}}
 \pgfqkeys{/mmz}{.unknown/.code={\pgfkeysdef{\pgfkeyscurrentkey}{}}}
-%</nommz,mmzable>
+%</nommz,mmzable&generic>
 % \end{macro}
 % 
 % \begin{key}{enable, disable}
@@ -426,7 +426,7 @@
 %
 %   |Nomemoize| does not need the keys themselves, but it does need the
 %   underlying conditional --- which will be always false.
-%<mmz,nommz,mmzable>\newif\ifmemoize
+%<mmz,nommz,mmzable&generic>\newif\ifmemoize
 %<*mmz>
 \mmzset{%
   enable/.style={begindocument/.append code=\memoizetrue},
@@ -855,6 +855,7 @@
 %<context>\let\startmemoize\startnomemoize
 %<context>\let\stopmemoize\stopnomemoize
 %</nommz>
+%</mmz,nommz>
 % \end{environment}
 % 
 % \subsection{The memoization process}
@@ -866,6 +867,7 @@
 %     anywhere else.  It is checked by |\Memoize| to prevent nested
 %     memoizations, deployed in advice run conditions set by |run only if
 %     memoizing|, etc.
+%<*mmz,nommz,mmzable&generic>
 \newif\ifmemoizing
 % \end{macro}
 % 
@@ -882,7 +884,7 @@
 %   An auxiliary macro which rescans the given
 %   code using |\scantokens| if the verbatim mode is active.  We also need it
 %   in NoMemoize, to properly grab verbatim manually memoized code.
-%</mmz,nommz>
+%</mmz,nommz,mmzable&generic>
 %<*mmz>
 \def\mmz@maybe@scantokens{%
   \ifmmz@verbatim
@@ -1447,9 +1449,6 @@
 % \end{macro}
 % \end{key}
 % 
-%</mmz>
-%<nommz,mmzable>\newcommand\IfMemoizing[2][]{\@secondoftwo}
-%<*mmz>
 % 
 % \subsection{Context}
 % \label{sec:code:context}
@@ -3609,6 +3608,28 @@
   \PackageWarning{memoize}{No memoization will be performed in the draft mode}%
 \fi
 %</mmz>
+% 
+% Several further things which need to be defined as dummies in
+% |nomemoize|\slash|memoizable|.
+%<*nommz,mmzable&generic>
+\pgfkeys{%
+  /handlers/.meaning to context/.code={},
+  /handlers/.value to context/.code={},
+}
+\let\mmzAbort\relax
+\let\mmzUnmemoizable\relax
+\newcommand\IfMemoizing[2][]{\@secondoftwo}
+\let\mmzNoRef\@gobble
+\let\mmzForceNoRef\@gobble
+\newtoks\mmzContext
+\newtoks\mmzContextExtra
+\newtoks\mmzCMemo
+\newtoks\mmzCCMemo
+\newcount\mmzExternPages
+\newcount\mmzExtraPages
+\let\mmzTracingOn\relax
+\let\mmzTracingOff\relax
+%</nommz,mmzable&generic>
 % 
 % \paragraph{The end} of |memoize|, |nomemoize| and |memoizable|.
 %<*mmz,nommz,mmzable>
