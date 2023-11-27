@@ -3377,11 +3377,16 @@
   \endgroup  
 }
 %</latex>
-%</mmz>
 %   
 % \end{macro}
 % 
 % \section{Support for various classes and packages}
+%
+%<*latex>
+\AddToHook{shipout/before}[memoize]{\global\advance\mmzExtraPages-1\relax}
+\AddToHook{shipout/after}[memoize]{\global\advance\mmzExtraPages1\relax}
+\mmzset{auto=\DiscardShipoutBox{outer handler=\global\advance\mmzExtraPages1\relax\AdviceOriginal}}
+%</latex>
 % 
 % \subsection{\TikZ;}
 % \label{sec:code:mmz:tikz}
@@ -3390,7 +3395,6 @@
 % Advice).  All the action happens at the end of the preamble, so that we can
 % detect whether \TikZ; was loaded (regardless of whether Memoize was loaded
 % before \TikZ;, or vice versa), but still input the definitions.
-%<*mmz>
 \mmzset{
   begindocument/before/.append code={%
     %<latex>\@ifpackageloaded{tikz}{%
