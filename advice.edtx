@@ -868,6 +868,7 @@
     \advice@activate@error@activated{#1}{#2}{Environment}{already}%
   }{%
     \csdef{\advice@original@csname{#1}{#2}}{}%
+    \PackageInfo{advice (#1)}{Activated environment "#2"}%
   }%
 }
 \def\advice@deactivate@env#1#2{%
@@ -875,6 +876,7 @@
     \csundef{\advice@original@csname{#1}{#2}}{}%
   }{%
     \advice@activate@error@activated{#1}{#2}{Environment}{not yet}%
+    \PackageInfo{advice (#1)}{Dectivated environment "#2"}%
   }%
 }
 % \end{macro}
