@@ -1120,7 +1120,8 @@
       % successfully memoized.
       \mmz@trace@endmemoize@aborted
       \PackageWarning{memoize}{Memoization was aborted}%
-      \mmz@write@empty@cmemo
+      \mmz@compute@context@mdfivesum
+      \mmz@write@cmemo
     \else
       % If memoization was not aborted, we compute the \meta{context md5sum},
       % open and write out the memos, and shipout the externs (as pages into the
@@ -1576,17 +1577,6 @@
   \pgfkeysalso{/mmz/record/new cmemo={\mmz@cmemo@path}}%
 }
 % \end{macro}
-% 
-% \begin{macro}{\mmz@write@empty@cmemo}
-%   This macro is used to create an empty c-memo on aborted memoization, to
-%   make sure that no leftover c-memo tricks Memoize into thinking that the
-%   code was successfully memoized.
-\def\mmz@write@empty@cmemo{%
-  \immediate\openout\mmz@out{\mmz@cmemo@path}%
-  \immediate\closeout\mmz@out
-}
-% \end{macro}
-% 
 % 
 % \begin{macro}{\mmzSource}
 %   The c-memo memoized code marker. This macro is synonymous with |\endinput|,
