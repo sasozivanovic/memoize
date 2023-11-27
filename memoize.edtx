@@ -1484,23 +1484,23 @@
   %   /handlers/.value to context}
   %   Utilities to put the meaning of various stuff into |context|.
   meaning to context/.code={\forcsvlist\mmz@mtoc{#1}},
-  csname meaning to context/.code={\mmz@mtoc@cs{#1}},
+  csname meaning to context/.code={\mmz@mtoc@csname{#1}},
   key meaning to context/.code={\forcsvlist\mmz@mtoc\mmz@mtoc@keycmd{#1}},
   key value to context/.code={\forcsvlist\mmz@mtoc@key{#1}},
   /handlers/.meaning to context/.code={%
-    \expanded{\noexpand\mmz@mtoc@cs{pgfk@\pgfkeyscurrentpath/.@cmd}}},
+    \expanded{\noexpand\mmz@mtoc@csname{pgfk@\pgfkeyscurrentpath/.@cmd}}},
   /handlers/.value to context/.code={%
-    \expanded{\noexpand\mmz@mtoc@cs{pgfk@\pgfkeyscurrentpath}}},
+    \expanded{\noexpand\mmz@mtoc@csname{pgfk@\pgfkeyscurrentpath}}},
 }
 \def\mmz@mtoc#1{%
   \collargs@cs@cases{#1}%
     {\mmz@mtoc@cmd{#1}}%
     {\mmz@mtoc@error@notcsorenv{#1}}%
     {%
-      \mmz@mtoc@cs{%
+      \mmz@mtoc@csname{%
         %<context>start%
         #1}%
-      \mmz@mtoc@cs{%
+      \mmz@mtoc@csname{%
         %<latex,plain>end%
         %<context>stop%
         #1}%
@@ -1510,15 +1510,15 @@
   \begingroup
   \escapechar=-1
   \expandafter\endgroup
-  \expandafter\mmz@mtoc@cs\expandafter{\string#1}%
+  \expandafter\mmz@mtoc@csname\expandafter{\string#1}%
 }
-\def\mmz@mtoc@cs#1{%
+\def\mmz@mtoc@csname#1{%
   \pgfkeysvalueof{/mmz/context/.@cmd}%
-  \expandafter\string\csname#1\endcsname={\expandafter\meaning\csname#1\endcsname}%
-  \pgfeov  
+  \detokenize{#1}={\expandafter\meaning\csname#1\endcsname}%
+  \pgfeov
 }
-\def\mmz@mtoc@key#1{\mmz@mtoc@cs{pgfk@#1}}
-\def\mmz@mtoc@key#1{\mmz@mtoc@cs{pgfk@#1/.@cmd}}
+\def\mmz@mtoc@key#1{\mmz@mtoc@csname{pgfk@#1}}
+\def\mmz@mtoc@keycmd#1{\mmz@mtoc@csname{pgfk@#1/.@cmd}}
 \def\mmz@mtoc@error@notcsorenv#1{%
   \PackageError{memoize}{'\detokenize{#1}' passed to key 'meaning to context' is neither a command nor an environment}{}%
 }
@@ -3022,6 +3022,7 @@
   %<plain,context>noop/.style={inner handler=\mmz@auto@noop},
   nomemoize/.style={noop, options=disable},
   replicate/.style={run if memoizing, inner handler=\mmz@auto@replicate},
+  to context/.style={run if memoizing, outer handler=\mmz@auto@tocontext},
 }
 %
 % \paragraph{Abortion}
@@ -3235,6 +3236,23 @@
 }
 % \end{macro}
 % \end{mmzautokey}
+%
+% \begin{mmzautokey}{to context}
+%   \begin{macro}{\mmz@auto@tocontext}
+%     This outer handler appends the original definition of the handled command
+%     to the context.  The |\expandafter| are there to expand |\AdviceName|
+%     once before fully expanding |\AdviceGetOriginalCsname|.
+\def\mmz@auto@tocontext{%
+  \expanded{%
+    \noexpand\mmz@mtoc@csname{%
+      \expandafter\AdviceGetOriginalCsname\expandafter{%
+        \expandafter\AdviceNamespace\expandafter}\expandafter{\AdviceName}%
+    }%
+  }%
+  \AdviceOriginal
+}
+% \end{macro}
+% \end{mmzautokey}
 % 
 % \subsection{\hologo{LaTeX}-specific handlers}
 %
@@ -3291,12 +3309,7 @@
 %   appends the reference key to the context.  |\mmzNoRef| only does that if
 %   the reference is defined, otherwise it aborts the memoization.
 \def\mmzForceNoRef#1{%
-  \ifmemoizing
-    \expandafter\gtoksapp\expandafter\mmzContextExtra
-  \else
-    \expandafter\toksapp\expandafter\mmzContext
-  \fi
-  {r@#1={\csname r@#1\endcsname}}%
+  \mmz@mtoc@csname{r@#1}%
   \ignorespaces
 }
 \def\mmzNoRef#1{%

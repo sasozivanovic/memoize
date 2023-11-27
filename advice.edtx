@@ -497,6 +497,29 @@
 }
 % \end{macro}
 % 
+% \begin{macro}{\AdviceGetOriginalCsname}
+%   This macro produces the name of the control sequence holding the original
+%   definition of the handled command, which may be input inside |\csname|
+%   \dots\ |\endcsname| under the normal category code (and |\escapechar|)
+%   regime: |advice@o#1//\expandafter\string\csname<csname of #2>\endcsname|;
+%   it is used to put the meaning of the original command into Memoize's
+%   c-memo.  The macro assumes that at its execution time, |\escapechar|$\neq
+%   1$.
+\def\AdviceGetOriginalCsname#1#2{%
+  \unexpanded\expandafter{%
+    \expanded{%
+      advice@o#1//%
+      \unexpanded{%
+        \expandafter
+        \string
+        \csname
+      }\expandafter\@gobble\string#2%
+      \noexpand\endcsname
+    }%
+  }%
+}
+% \end{macro}
+% 
 % \begin{macro}{\advice@activate,\advice@deactivate}
 %   These macros execute either the command, or the environment (de)activator.
 \def\advice@activate#1#2{%
