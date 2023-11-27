@@ -3405,11 +3405,22 @@
     % We define and activate the automemoization handlers for the \TikZ; command
     % and environment.
     \mmzset{%
+      auto/memoize tikz/.style={
+        memoize,
+        at begin memoization=\edef\mmz@pgfpictureid{%
+          \the\pgf@picture@serial@count
+        },
+        at end memoization=\xtoksapp\mmzCCMemo{%
+          \unexpanded{%
+            \global\expandafter\advance\csname pgf@picture@serial@count\endcsname
+          }%
+          \the\numexpr\pgf@picture@serial@count-\mmz@pgfpictureid\relax\relax
+        },
+      },
       % \begin{listingregion}{_auto-tikz-collector.tex}
-      auto=\tikz{memoize, collector=\AdviceCollectTikZArguments},
+      auto=\tikz{memoize tikz, collector=\AdviceCollectTikZArguments},
       % \end{listingregion}
-      %/utils/exec={\tracingall},
-      auto={tikzpicture}{memoize},
+      auto={tikzpicture}{memoize tikz},
       % A hack to prevent memoizing pictures which are accidentally marked as
       % remembered --- accidentally in the sense that because the document
       % changed, the |.aux| file contains a |\pgfsyspdfmark| command which
@@ -3430,7 +3441,6 @@
     }%
   },
 }
-%</mmz>
 % 
 %
 % \subsection{Forest}
@@ -3438,7 +3448,6 @@
 %
 % Forest will soon feature extensive memoization support, but for now, let's
 % just enable the basic, single extern externalization.
-%<*mmz>
 %<*latex>
 \mmzset{
   begindocument/before/.append code={%
