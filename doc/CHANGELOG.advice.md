@@ -14,6 +14,13 @@ those cases, please see [Memoize's GitHub
 repository](https://github.com/sasozivanovic/memoize) for the recent
 development history.
 
+## 2023/11/27 v1.0.2
+* Implement `\AdviceGetOriginalCsname`.
+* Add the missing info messages for environment (de)activation.
+* Add the original command meaning to trace.
+
+Manual: Memoize 2023/11/27 v1.1.0
+
 ## 2023/10/25 v1.0.1
 * Require package `xparse`, as `\GetDocumentCommandArgSpec` is being dropped
   from the LaTeX kernel.
