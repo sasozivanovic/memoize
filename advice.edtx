@@ -1025,6 +1025,8 @@
 %   Install the tracing code.
 \def\advice@trace@init@i#1#2{%
   \advice@trace{Advising \detokenize\expandafter{\string#2} (\detokenize{#1})}%
+  \advice@trace{\space\space Original command meaning:
+    \expandafter\expandafter\expandafter\meaning\advice@original@cs{#1}{#2}}%
   \advice@setup@init@i{#1}{#2}%
   \edef\AdviceRunConditions{%
     % We first execute the original run conditions, so that we can show the
