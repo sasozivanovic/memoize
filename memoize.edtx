@@ -461,7 +461,7 @@
 }
 % \end{key}
 % 
-% \begin{key}{path, path/relative, path/dir, path/prefix}
+% \begin{key}{prefix}
 %   Key |path| executes the given keylist in path |/mmz/path|, to determine the
 %   full \emph{path prefix} to memo and extern files
 %   (\MS\ref{sec:tut:memodir},\ref{sec:memos}): |relative|, true by default,
@@ -471,56 +471,77 @@
 %   under user control, and neither is the suffix.  These subkeys will be
 %   initialized a bit later, via |no memo dir|.
 \mmzset{%
-  path/.code={\pgfqkeys{/mmz/path}{#1}},
-  path/.cd,
-  relative/.is if=mmz@relativepath,
-  dir/.store in=\mmz@dir,
-  dir/.value required,
-  prefix/.store in=\mmz@prefix,
-  prefix/.value required,
+  prefix/.code={\mmz@parse@prefix{#1}},
 }
-\newif\ifmmz@relativepath
-% Key |path| concludes by performing two post-path-setting actions: creating
-% the given directory if |mkdir| is in effect, and noting the new path prefix
-% in record files (by eventually executing |record/prefix|, which typically
-% puts a |\mmzPrefix| line in the |.mmz| file).  These actions are the reason
-% for having the path setting keys grouped under |path| --- we don't want them
-% to be triggered by changes of the individual components of the path.
-% Similarly, we don't want them triggered by multiple invocations of |path| in
-% the preamble; only the final setting matters, so |path| is only equipped with
-% the action-triggering code at the beginning of the document.
+% \begin{macro}{\mmz@split@prefix}
+%   Stores the detokenized expansion of |#1| into |\mmz@prefix|, which it then
+%   splits into |\mmz@prefix@dir| and |\mmz@prefix@name| at the final |/|.  The
+%   slash goes into |\mmz@prefix@dir|.  If there is no slash, |\mmz@prefix@dir|
+%   is empty.
+\begingroup
+\catcode`\/=12
+\gdef\mmz@parse@prefix#1{%
+  \edef\mmz@prefix{\detokenize\expandafter{\expanded{#1}}}%
+  \def\mmz@prefix@dir{}%
+  \def\mmz@prefix@name{}%
+  \expandafter\mmz@parse@prefix@i\mmz@prefix/\mmz@eov
+}
+\gdef\mmz@parse@prefix@i#1/#2{%
+  \ifx\mmzeov#2%
+    \def\mmz@prefix@name{#1}%
+  \else
+    \appto\mmz@prefix@dir{#1/}%
+    \expandafter\mmz@parse@prefix@i\expandafter#2%
+  \fi
+}
+\endgroup
+% \end{macro}
+%
+% Key |prefix| concludes by performing two actions: it creates the given
+% directory if |mkdir| is in effect, and notes the new prefix in record files
+% (by eventually executing |record/prefix|, which typically puts a |\mmzPrefix|
+% line in the |.mmz| file).  In the preamble, only the final setting of
+% |prefix| matters, so this key is only equipped with the action-triggering
+% code at the beginning of the document.
 \mmzset{%
   begindocument/.append style={
-    path/.append code=\mmz@maybe@mkmemodir\mmz@record@prefix,
+    prefix/.append code=\mmz@maybe@mkmemodir\mmz@record@prefix,
   },
-  % Consequently, the post-path-setting actions must be triggered manually at
+  % Consequently, the post-prefix-setting actions must be triggered manually at
   % the beginning of the document.  Below, we trigger directory creation;
   % |record/prefix| will be called from |record/begin|, which is executed at
   % the beginning of the document, so it shouldn't be mentioned here.
   begindocument/.append code=\mmz@maybe@mkmemodir,
 }
-% Define the paths to the memo directory and the prefix.
-\def\mmz@dir@path{\ifmmz@relativepath.\fi/\mmz@dir}
-\def\mmz@prefix@path{\mmz@dir@path/\mmz@prefix}
 % \end{key}
 % 
 % \begin{key}{mkdir, mkdir command}
 %   Should we create the memo/extern directory if it doesn't exist?  And which
-%   command should we use to create it?  Of course, shell escape must be
-%   properly configured for this to work (\MS\ref{sec:shell-escape}).
-%   ^^A todo: What about quoting the paths containing spaces on Windows? Will this work?
+%   command should we use to create it?  There is no initial value for the
+%   latter, because |mkdir| cannot be executed out of the box, but note that
+%   |extract=perl| and |extract=python| will set the extraction script with
+%   option |--mkdir| as the value of |mkdir command|.
 \mmzset{
   mkdir/.is if=mmz@mkdir,
-  mkdir command/.code={\def\mmz@mkdir@command##1{#1}},
-  mkdir command={mkdir "#1"},
+  mkdir command/.store in=\mmz@mkdir@command,
+  mkdir command={},
 }
 % The underlying conditional \cs{ifmmz@mkdir} is only ever used in
 % |\mmz@maybe@mkmemodir| below, which is itself only executed at the end of
-% |path| and in |begindocument|.
+% |prefix| and in |begindocument|.
 \newif\ifmmz@mkdir
+\mmz@mkdirtrue
+% We only attempt to create the memo directory if |\ifmmz@mkdir| is in effect
+%   and if both |\mmz@mkdir@command| and |\mmz@prefix@dir| are specified (i.e.\
+%   non-empty).
 \def\mmz@maybe@mkmemodir{%
   \ifmmz@mkdir
-    \pdf@system{\mmz@mkdir@command{\mmzOutputDirectory\mmz@dir@path}}%
+    \ifdefempty\mmz@mkdir@command{}{%
+      \ifdefempty\mmz@prefix@dir{}{%
+        \mmz@remove@quotes{\mmz@prefix@dir}\mmz@temp
+        \pdf@system{\mmz@mkdir@command\space"\mmz@temp"}%
+      }%
+    }%
   \fi
 }
 % \end{key}
@@ -533,51 +554,49 @@
 %   filenames themselves have no prefix.  Furthermore, |memo dir| triggers the
 %   creation of the directory.
 \mmzset{%
-  memo dir/.style={
-    mkdir,
-    path={
-      relative,
-      dir={#1.memo.dir},
-      prefix={},
-    },
-  },
-  memo dir/.default=\mmzUnquote\jobname,
-  no memo dir/.style={
-    mkdir=false,
-    path={
-      relative,
-      dir={},
-      prefix={#1.},
-    },
-  },
-  no memo dir/.default=\mmzUnquote\jobname,
+  memo dir/.style={prefix={#1.memo.dir/}},
+  memo dir/.default=\jobname,
+  no memo dir/.style={prefix={#1.}},
+  no memo dir/.default=\jobname,
   no memo dir,
 }
 % \end{key}
 %   
-% \begin{macro}{\mmzUnquote}
-%   If the expanded argument is surrounded by double quotes, remove them. This
-%   relies on |#1| containing no quotes other than the potential surrounding
-%   quotes, which should be the case when applying the macro to |\jobname|.  An
-%   empty |#1| is dealt with correctly, even if |\jobname| can hardly ever be
-%   empty (needs |openout_any=a|).
+% \begin{macro}{\mmz@remove@quotes}
+%   This macro removes fully expands |#1|, detokenizes the expansion and then
+%   removes all double quotes the string.  The result is stored in the control
+%   sequence given in |#2|. 
 % 
 %   We use this macro when we are passing a filename constructed from
 %   |\jobname| to external programs.
-\def\mmzUnquote#1{\expanded{\noexpand\mmz@unquote#1}\mmz@unquote@end}
-\def\mmz@unquote#1{%
-  \ifx\mmz@unquote@end#1%
-  \else
-    \ifx"#1%
-      \expandafter\expandafter\expandafter\mmz@unquote@quotes
-    \else
-      \expandafter\expandafter\expandafter\mmz@unquote@noquotes
-      \expandafter\expandafter\expandafter#1%
-    \fi
-  \fi
+\def\mmz@remove@quotes#1#2{%
+  \def\mmz@remove@quotes@end{\let#2\mmz@temp}%
+  \def\mmz@temp{}%
+  \expanded{%
+    \noexpand\mmz@remove@quotes@i
+      \detokenize\expandafter{\expanded{#1}}%
+      "\noexpand\mmz@eov
+  }%
 }
-\def\mmz@unquote@quotes#1"\mmz@unquote@end{#1}
-\def\mmz@unquote@noquotes#1\mmz@unquote@end{#1}
+\def\mmz@remove@quotes@i{%
+  \CollectArgumentsRaw
+    {\collargsBraceCollectedfalse
+      \collargsNoDelimiterstrue
+      \collargsAppendPostwrap{{##1}}%
+    }%
+    {u"u\mmz@eov}%
+    \mmz@remove@quotes@ii
+}
+\def\mmz@remove@quotes@ii#1#2{%
+  \appto\mmz@temp{#1}%
+  \ifx&#2&%
+    \mmz@remove@quotes@end
+    \expandafter\@gobble
+  \else
+    \expandafter\@firstofone
+  \fi
+  {\mmz@remove@quotes@i#2\mmz@eov}%
+}
 % \end{macro}
 % 
 % \begin{key}{ignore spaces}
@@ -1512,7 +1531,7 @@
 % 
 % \paragraph{The path} to a c-memo consists of the path prefix, the MD5 sum of
 % the memoized code, and suffix |.memo|.
-\def\mmz@cmemo@path{\mmz@prefix@path\mmz@code@mdfivesum.memo}
+\def\mmz@cmemo@path{\mmz@prefix\mmz@code@mdfivesum.memo}
 % \begin{macro}{\mmzCMemo}
 %   The additional, free-form content of the c-memo is collected in this token
 %   register.
@@ -1644,7 +1663,7 @@
 % hyphen-separated MD5 sums of the memoized code and the (evaluated) context,
 % and suffix |.memo|.
 \def\mmz@ccmemo@path{%
-  \mmz@prefix@path\mmz@code@mdfivesum-\mmz@context@mdfivesum.memo}
+  \mmz@prefix\mmz@code@mdfivesum-\mmz@context@mdfivesum.memo}
 % 
 % \paragraph{The structure} of a cc-memo:
 % \begin{itemize}
@@ -1751,7 +1770,7 @@
   % might be produced by a failed \hologo{TeX}-based extraction, should count
   % as no file.  The |0| behind |\ifnum| is there because |\pdffilesize|
   %   returns an empty string when the file does not exist.
-  \ifnum0\pdf@filesize{\mmz@dir@path/#1}=0
+  \ifnum0\pdf@filesize{\mmz@prefix@dir/#1}=0
     \ifmmz@direct@ccmemo@input
       \let\mmzMemo\endinput
     \else
@@ -1865,11 +1884,11 @@
 % full path.
 \newcount\mmz@seq
 \def\mmz@extern@basename{%
-  \mmz@prefix\mmz@code@mdfivesum-\mmz@context@mdfivesum
+  \mmz@prefix@name\mmz@code@mdfivesum-\mmz@context@mdfivesum
   \ifnum\mmz@seq>0 -\the\mmz@seq\fi
 }
 \def\mmz@extern@name{\mmz@extern@basename.pdf}
-\def\mmz@extern@basepath{\mmz@dir@path/\mmz@extern@basename}
+\def\mmz@extern@basepath{\mmz@prefix@dir\mmz@extern@basename}
 \def\mmz@extern@path{\mmz@extern@basepath.pdf}
 % 
 % \begin{key}{padding left, padding right, padding top, padding bottom}
@@ -2363,7 +2382,7 @@
       \mmzvalueof{perl extraction options}%
     }%
     \mmz@check@extraction@log{perl}%
-    \def\mmz@mkdir@command##1{\mmzvalueof{perl extraction command}\space --mkdir "##1"}%
+    \def\mmz@mkdir@command{\mmzvalueof{perl extraction command} --mkdir}%
   },
   perl extraction command/.initial=memoize-extract.pl,
   perl extraction options/.initial={\space
@@ -2380,7 +2399,7 @@
       \mmzvalueof{python extraction options}%
     }%
     \mmz@check@extraction@log{python}%
-    \def\mmz@mkdir@command##1{\mmzvalueof{python extraction command}\space --mkdir "##1"}%
+    \def\mmz@mkdir@command{\mmzvalueof{python extraction command} --mkdir}%
   },
   python extraction command/.initial=memoize-extract.py,
   python extraction options/.initial={\space
@@ -2402,15 +2421,14 @@
 % communicate with the system command via the ``extraction log file,'' produced
 % by both \hologo{TeX}-based extraction and the Perl and Python extraction
 % script.  This file signals whether the embedded extraction was successful ---
-% if it is, the file contains |\mmzExtractionSuccessful| --- and also contains
-% any size-mismatch warnings (these are currently only thrown by the
-% \hologo{TeX}-based extraction).  As the log is really a \hologo{TeX} file,
-% the idea is to simply input it after extracting each extern (for
+% if it is, the file ends if |\endinput| --- and also contains any warnings and
+% errors thrown by the script.  As the log is really a \hologo{TeX} file, the
+% idea is to simply input it after extracting each extern (for
 % \hologo{TeX}-based extraction) or after the extraction of all externs (for
 % the external scripts).
 \def\mmz@clear@extraction@log{%
   \begingroup
-  \immediate\openout0{\mmzUnquote\jobname.mmz.log"}%
+  \immediate\openout0{\jobname.mmz.log}%
   \immediate\closeout0
   \endgroup
 }
@@ -2449,7 +2467,7 @@
       % surely occurs at the top of the |.mmz| file.  Listing each prefix type
       % separately in this hook ensures that |prefix| of a certain type is
       % executed after that type's |begin|.
-      /mmz/record/#1/prefix/.try/.expanded=\mmz@prefix@path,
+      /mmz/record/#1/prefix/.try/.expanded=\mmz@prefix,
     },
     record/prefix/.append style={/mmz/record/#1/prefix/.try={##1}},
     record/new extern/.append style={/mmz/record/#1/new extern/.try={##1}},
@@ -2493,7 +2511,7 @@
 % We define this macro because |\aftergroup|, used in |record/prefix|, only
 % accepts a token.
 \def\mmz@record@prefix{%
-  \mmzset{/mmz/record/prefix/.expanded=\mmz@prefix@path}%
+  \mmzset{/mmz/record/prefix/.expanded=\mmz@prefix}%
 }
 % \paragraph{Initialize} the hook keys, preactivate |mmz| record type, and
 % execute hooks |begin| and |end| at the edges of the document.

@@ -1260,13 +1260,13 @@ I like to keep a clean house by instructing Memoize to put memos and friends
 into their own directory.  This can be achieved by writing
 \refcmd{mmzset}\braces{\Emph{\refmmz{memo dir}}} into the preamble (anytime
 after loading the package).\footnote{The \refmmz{memo dir} key is in fact
-  merely an abbreviation for a sequence of \refmmzpath{dir} and
-  \refmmzpath{prefix} within \refmmz{path}; use these keys if you need more
-  control over the name and location of the auxiliary files. Furthermore, there
-  is also the \refmmz{no memo dir} key, which reverts the configuration back to
-  the dirty default.}  This will put the memo and the extern files into folder
-\meta{document name}|.memo.dir| (and it will also omit the \meta{document name}
-prefix in their filenames, because it makes no sense to repeat it there).
+  merely an abbreviation for \code{\refmmz{prefix}=\string\jobname.memo.dir};
+  use this key if you need more control over the name and location of the
+  auxiliary files. Furthermore, there is also the \refmmz{no memo dir} key,
+  which reverts the configuration back to the dirty default.}  This will put
+the memo and the extern files into folder \meta{document name}|.memo.dir| (and
+it will also omit the \meta{document name} prefix in their filenames, because
+it makes no sense to repeat it there).
 
 \makeexample{\examplename.pdf}
 {%
@@ -1503,8 +1503,7 @@ set), you will have a reasonably up-to-date set of externs.
   \meta{original document name}, which is then fed to \refmmz{memo dir}.  Now,
   the trick works automatically for any document.\footnote{The assumption here
     is that \refmmz{memo dir} is in effect for the original document.  If not,
-    the trick can be adapted to use (\refmmzpath{dir} and) \refmmzpath{prefix}
-    within \refmmz{path}.}
+    the trick can be adapted to use \refmmz{prefix}.}
 
   \tcbinputexample{
     title=\tt memoize.cfg,
@@ -3019,11 +3018,13 @@ cc-memo.  The number of externs mostly depends on the memoization driver (see
 section~\ref{sec:memoization-drivers}); the default driver always produces
 exactly one extern.
 
-A cc-memo is located in the directory given via subkey \refmmzpath{dir} (and
-\refmmzpath{relative}) of key \refmmz{path}.  You can recognize it by its filename,
-which has the following form (\meta{prefix} is set via subkey \refmmzpath{prefix}):
+A cc-memo is located in the \refmmz{prefix directory} determined by key
+\refmmz{prefix} (everything up to the final |/| in the value of this key, or
+the current directory if this value contains no |/|).  You can recognize it by
+its filename, which has the following form (\meta{prefix name} is everything
+following the final |/| in the value of \refmmz{prefix}):
 \begin{center}
-  \code{\meta{prefix}\meta{code md5sum}-\meta{context md5sum}.memo}
+  \code{\meta{prefix name}\meta{code md5sum}-\meta{context md5sum}.memo}
 \end{center}
 
 In fact, this is how Memoize recognizes --- or rather, searches for --- a
@@ -3177,13 +3178,12 @@ first learn about the context adjustments.  Here's where c-memos enter the
 picture: \emph{the primary job of a c-memo is to store the context adjustments
   made by the memoized code}.  Let's see how this works in detail.
 
-Same as cc-memos, c-memos are located in the directory given via subkey
-\refmmzpath{dir} (and \refmmzpath{relative}) of key \refmmz{path}.  However, a c-memo
-belonging to some memoized code is identified by the MD5 sum of that code
-alone; its filename has the following form, where \meta{prefix} is again set
-via subkey \refmmzpath{prefix}:
+Same as cc-memos, c-memos are located in the \meta{prefix directory} determined
+by key \refmmz{prefix}, and their filenames start by \meta{prefix name}
+determined by the same key.  However, a c-memo belonging to some memoized code
+is identified by the MD5 sum of that code alone:
 \begin{center}
-  \code{\meta{prefix}\meta{code md5sum}.memo}
+  \code{\meta{prefix name}\meta{code md5sum}.memo}
 \end{center}
 
 The c-memo is created at the end of the memoization process.  At that time, the
@@ -3692,12 +3692,11 @@ reflect this with \refcmd{mmzUsedCMemo}, \refcmd{mmzUsedCCMemo} and
 
 Finally, both versions illustrate that a \dmmz file always begins with command
 \refcmd{mmzPrefix} and ends with the |\endinput| marker.  The argument of
-\refcmd{mmzPrefix} is the path prefix to the memo and extern files, as
-determined by the invocation of key \refmmz{path} (and its subkeys
-\refmmzpath{relative}, \refmmzpath{dir} and \refmmzpath{prefix}).  The initial
+\refcmd{mmzPrefix} is the prefix to the memo and extern files, as
+determined by the invocation of key \refmmz{prefix}.  The initial
 \refcmd{mmzPrefix} line is written to the \dmmz file at the beginning of the
 document, but an additional \refcmd{mmzPrefix} line will occur for every
-invocation of \refmmz{path} in the document body.  Finally, the |\endinput|
+invocation of \refmmz{prefix} in the document body.  Finally, the |\endinput|
 marker signals that the \dmmz file is complete.
 
 As mentioned above, the full contingent of \dmmz file commands is only used by
@@ -3756,9 +3755,9 @@ not needed for the record file type may be left undefined):
 \item Key \refmmz{record/record type/end} will be executed at the end of the
   document; it will receive no argument.  Use it to close the record file.
 \item Key \refmmz{record/record type/prefix} will be executed at the end of the
-  document and at every invocation of key \refmmz{path} in the document body;
-  it will receive a single argument, the path prefix determined by key
-  \refmmz{path}.
+  document and at every invocation of key \refmmz{prefix} in the document body;
+  it will receive a single argument, the prefix determined by key
+  \refmmz{prefix}.
 \item Keys \refmmz{record/record type/new cmemo}, \refmmz{record/record
     type/used cmemo}, \refmmz{record/record type/new ccmemo} and
   \refmmz{record/record type/used ccmemo} will be executed after creating or
@@ -6106,160 +6105,139 @@ require.
 \begin{doc}{easy,
     key={name=memo dir,par=\meta{name}, desc={style, default \texttt{\string\jobname}}},
   }
-  A convenient way to store memos and externs in a dedicated directory (and
-  create this directory in case it does not exist).  Without an argument, this
-  key places these files in subdirectory \meta{document name}|.memo.dir| of the
-  current directory.  See section~\ref{sec:tut:memodir} for the tutorial.
+  A convenient way to store memos and externs in a dedicated directory (see
+  sections~\ref{sec:tut:memodir} and~\ref{sec:tut:multifile} for the tutorial).
 
-  This key sets \refmmzpath{relative} to |false|, \refmmzpath{dir} to
-  \meta{name}|.memo.dir|, \refmmzpath{prefix} to empty and \refmmz{mkdir} to
-  |true|.  In effect, memos and externs are placed in the subdirectory
-  \meta{name}|.memo.dir| of the directory containing the document; their
-  filenames contain no \meta{name} prefix, as \meta{name} already occurs in the
-  directory name.  The latter feature also makes it easy for projects (or parts
-  of a project) to share memos and externs; see section~\ref{sec:tut:multifile}
-  for a typical usage case.
+  Without an argument, this key places these files in subdirectory
+  \meta{document name}|.memo.dir| of the current directory.  With an argument,
+  these files are stored in subdirectory \meta{name}|.memo.dir|.  In both
+  cases, memo and extern filenames contain no prefix, as \meta{name} already
+  occurs in the directory name.
+
+  The definition of this style is very simple: |memo
+  dir/.style={|\refmmz{prefix}|={#1.memo.dir/}}| (note the slash).  Feel free
+  to redefine it, or to define another style to suit your needs.
 \end{doc}
 
 \begin{doc}{easy,key={name=no memo dir,desc=style}}
   A convenient way to undo the effect of \refmmz{memo dir} and revert to the
-  initial settings where memos and externs are located in the current
-  directory.  See section~\ref{sec:tut:memodir} for the tutorial.
-  
-  This key resets the subkeys of \refmmz{path} to their initial values, and
-  sets \refmmz{mkdir} to |false|.
+  initial \refmmz{prefix} setting which locates memos and externs in the
+  current directory, with filenames prefixed by \meta{document name}|.| (mind
+  the dot).
 \end{doc}
 
 \begin{doc}{
-    key={name=path, par=\meta{keylist}, desc=style},
+    key={name=prefix, par=\meta{prefix},
+      desc={no default, initially \texttt{\string\jobname.}}},
   }
+  This key determines the location of memo and extern files, and the initial
+  part of their filenames.
 
-  Set the \emph{path prefix} to memo and extern files by executing the given
-  \meta{keylist} in keypath \docaux{key path}{mmz/path}.
+  If \meta{prefix} contains no |/|, memos and externs are stored in the current
+  directory, alongside the output PDF, and their filenames begin with
+  \meta{prefix} (and continue with the identifier, see below).  For example,
+  this is what happens with the initial value of this key, where memo and
+  extern filenames are prefixed by \meta{jobname} (i.e.\ the name of the
+  document) plus |.| (a dot).  Such a situation is shown in the |dirty-house|
+  example in section~\ref{sec:tut:memodir}.
 
-  The path prefix contains both the location of the memo\slash extern files
-  (set by \refmmzpath{relative} and \refmmzpath{dir}) and the initial,
-  fixed part of their filenames (set by \refmmzpath{prefix}):
-  \begin{center}
-    \meta{path prefix}=[|./|]\meta{directory}|/|\meta{prefix}
-  \end{center}
-  where ``|./|'' is only present when \refmmzpath{relative} is in effect.
-  Given the \meta{path prefix}, this is how the paths to memos and externs are
-  constructed:
+  If \meta{prefix} contains slashes, everything up to the final slash
+  determines the directory which memos and externs will be stored into, and the
+  part after the final slash determines the starting part of their filenames; a
+  slash (|/|) as a directory separator should be used even on Windows, where
+  the system directory separator is a backslash (|\|).  For example,
+  \refmmz{memo dir} sets \refmmz{prefix} to |\jobname.memo.dir/|.  As shown in
+  the |clean-house| example in section~\ref{sec:tut:memodir}, this results in
+  memos and externs stored in directory \meta{jobname}|.memo.dir|, with their
+  filenames consisting solely of the identifier.
+  
+  In detail, the paths to memos and externs are constructed as shown below,
+  where \meta{code md5 sum} and \meta{context md5 sum} identify the memoized
+  code and the \refmmz{context} in effect at its memoization, and $N$ is the
+  sequential number of the extern with respect to that code and context ($N$ is
+  usually $0$, as memoization normally produces a single
+  extern).\footnote{Normally, these paths are relative to the current directory
+    (i.e.\ the directory where \hologo{TeX} is executed from; usually, this
+    will be the directory where the compiled |.tex| file resides).  However,
+    when \hologo{TeX} is invoked with option |-output-directory|, these paths
+    are relative to the specified output directory.  Furthermore, when a memo
+    or extern cannot be written into the current\slash output directory, it
+    will be stored into the temporary directory \docref{TEXMFOUTPUT}, if
+    specified.}
   \begin{center}
     \begin{tabular}{r@{ }l}
-      c-memo:&\meta{path prefix}\meta{code md5 sum}|.memo|\\
-      cc-memo:&\meta{path prefix}\meta{code md5 sum}|-|\meta{context md5 sum}|.memo|\\
-      extern:&\meta{path prefix}\meta{code md5 sum}|-|\meta{context md5 sum}-$N$|.pdf|\\
+      c-memo:&\meta{prefix}\meta{code md5 sum}|.memo|\\
+      cc-memo:&\meta{prefix}\meta{code md5 sum}|-|\meta{context md5 sum}|.memo|\\
+      extern:&\meta{prefix}\meta{code md5 sum}|-|\meta{context md5 sum}-$N$|.pdf|\\
       &(where ``-$N$'' is only present when $N\neq 0$, i.e.\ for non-first externs)\\
     \end{tabular}
   \end{center}
-
-  For example, the default \refmmz{no memo dir} \meta{path prefix} equals
-  \meta{jobname}|.| (note the dot), and after issuing \refmmz{memo dir}, the
-  \meta{path prefix} is \meta{jobname}|.memo.dir|.  Executing
-  \refmmz{path}|=|\bracestt{\refmmzpath{dir}=project-memo-dir,
-    \refmmzpath{prefix}=\string\jobname.} would set the memo prefix to
-  |./project-memo-dir/|\meta{jobname}|.|, allowing the author to keep the memo
-  files of all documents compiled from the project directory in the same place.
   
-  The following keys may occur in the \meta{keylist}:
-  \yadocset{keypath=/mmz/path}
+  \begin{tcolorbox}[warning,title=The final slash matters]
+    To reiterate, the presence vs.\ absence of a slash (|/|) determines whether
+    memos and externs are stored in a dedicated directory or not.  For example,
+    if you want to store memos and externs in directory |memos|, you should set
+    \code{\refmmz{prefix}=memos/}, with the final slash.  Without the final
+    slash, these files would end up in the current directory.
+  \end{tcolorbox}
 
-  \begin{doc}{
-      key={name=relative, conditional=true},
-    }
-    
-    This key determines whether the location is relative to the current
-    directory, i.e.\ the directory where \hologo{TeX} is executed from;
-    usually, this will be the directory where the compiled |.tex| file resides.
-    When set to |true| (the default), the directory set by \refmmzpath{dir}
-    is prefixed by ``|./|''.
+  In principle, the directory specified by this key must already exist.
+  However, Memoize does it best to create it for you, and should succeed at
+  least when extraction method is set to \refmmz{extract=perl} or
+  \refmmz{extract=python}.  See also \refmmz{mkdir} and \refmmz{mkdir command}.
 
-    You will probably need to set |openout_any=a| in \reffile{texmf.cnf}
-    to allow writing to an arbitrary directory --- but remember, this might be
-    dangerous!
-  \end{doc}
+  When invoked from the document body, each invocation of this key records the
+  new prefix by invoking \refmmz{record/record type/prefix} (this typically
+  results in a \refcmd{mmzPrefix} entry in the \dmmz file) and attempts to
+  create memo directory if \refmmz{mkdir} is in effect.  When \refmmz{prefix}
+  is executed in the document preamble, these actions are only carried out at
+  the beginning of the document, for the final value of the key.
+
   
-  \begin{doc}{
-      key={name=dir, par=\meta{name}, desc={no default, initially empty}},
-    }
-    
-    Set the \meta{directory} where Memoize will search for memos and externs
-    and\slash or create them in.
-
-    Unless \refmmzpath{relative} is set to |false|, this location is
-    relative to the current directory.  Given the empty default, memos and
-    externs are therefore created in the directory holding the source file by
-    default.
-
-    In principle, the given memo directory must already exist, but see
-    \refmmz{mkdir}.
-  \end{doc}
-
-  \begin{doc}{
-      key={name=prefix, par=\meta{name},
-        desc={no default, initially \texttt{\string\jobname.}}},
-    }
-
-    Set the \meta{prefix}, i.e.\ the initial part of the memo\slash extern
-    filename.  Initially, it is set to the document name.
-  \end{doc}
-
-  After processing the \meta{keylist}, \refmmz{path} records the new path
-  prefix by invoking \refmmz{record/record type/prefix}, which typically results
-  in a \refcmd{mmzPrefix} entry in the \dmmz file, and attempts to create the
-  \meta{directory} is \refmmz{mkdir} is in effect --- except when \refmmz{path}
-  is executed in the document preamble: then, these actions are only carried
-  out at the beginning of the document, for the final value of the keys.
 \end{doc}
 
-\begin{doc}{key={name=mkdir, conditional=false}}
-  When this key is set to true, Memoize will attempt to create the directory
-  set by \refmmz{path} if it does not yet exist.  The directory creation takes
-  place at the beginning of the document and at every subsequent invocation of
-  key \refmmz{path}, using the system command specified by \refmmz{mkdir
-    command}.
+\begin{doc}{key={name=mkdir, conditional=true}}
+  When this key is set to true and the value of \refmmz{mkdir command} is
+  non-empty, Memoize will attempt to create the memo directory set by
+  \refmmz{prefix} if it does not yet exist.
+
+  The directory is created using the system command specified by \refmmz{mkdir
+    command}.  The directory creation takes place at the beginning of the
+  document and at every subsequent invocation of key \refmmz{prefix}.
 \end{doc}
 
 \begin{doc}{
-    key={name=mkdir command, par=\meta{system command invocation},
-      desc={no default, initially |mkdir "\#1"|}},
+    key={name=mkdir command, par=\meta{system command},
+      desc={no default, initially empty}},
   }
-  Sets the command used to create \refmmzpath{dir} when \refmmz{mkdir} is in effect.
+  This key sets the command used to create the memo directory specified
+  by \refmmz{prefix} when \refmmz{mkdir} is in effect.
 
-  This is a system command, so an appropriate shell escape mode must be in
-  effect to execute it successfully.
+  Memoize attempts to create the directory by executing \meta{system command}
+  followed by (a space and) \meta{directory}, where \meta{directory} is the
+  directory part of the \meta{prefix} set by \refmmz{prefix}.  The directory
+  creation takes place at the beginning of the document and at every subsequent
+  invocation of key \refmmz{prefix}.
 
-  The default should work on Linux, MacOS and Windows.  On Linux systems, it
-  makes sense to change the default (using \reffile{memoize.cfg}) to |mkdir
-  -p "#1"|, which can create parent folders as necessary.
+  This key could be set to |mkdir| (on Linux, |mkdir -p| would be an even
+  better choice), however, this is not advisable as |mkdir| does not respect
+  \hologo{TeX}'s output restrictions, set by \docref{openout_any} in
+  \hologo{TeX}Live and |[Core]AllowUnsafeInputFiles| in MiK\hologo{TeX}.
+  Further note that as the value of this key is a system command, an
+  appropriate shell escape mode must be in effect to execute it successfully;
+  again, not something to be taken lightly.
 
-  Note that extraction methods \refmmz{extract=perl} and
+  The extractions scripts shipped with Memoize accept option
+  \refscript{memoize-extract.pl--mkdir}, which makes them behave as a safe
+  variant of |mkdir|, i.e.\ a |mkdir| which respects \hologo{TeX}'s output
+  restrictions.  Therefore, extraction methods \refmmz{extract=perl} and
   \refmmz{extract=python} set \refmmz{mkdir command} to
   \refscript{memoize-extract.pl} \refscript{memoize-extract.pl--mkdir} and
   \refscript{memoize-extract.py} \refscript{memoize-extract.pl--mkdir},
-  respectively.  Unlike system |mkdir|, these commands are safe in the sense
-  that they conform to the paranoid openout regime (|openout_any=p|).
-\end{doc}
-
-\begin{doc}{
-    key={name=output-directory, par=\meta{directory},
-      desc={no default, initially undefined, as package option only}},
-    cmd={name=mmzOutputDirectory, par=\meta{directory}, desc={pre-defineable}}
-  }
-  If the \hologo{TeX} binary was invoked with option |-output-directory|, one
-  should use this key or define this macro to inform Memoize this, as there is
-  no way to learn about it automatically.
-
-  The given \meta{directory} must end with a slash (|/|).
-
-  The key is only allowed as a package option.  But I imagine that defining the
-  macro from the command line, prior to inputting the document source, will be
-  more common:
-  \begin{center}
-    |pdftex -output-directory somedir '\def\mmzOutputDirectory{somedir/}\input doc'|
-  \end{center}
+  respectively.  In effect, as the initial extraction method is
+  \refmmz{extract=perl}, the memo directory (if set via \refmmz{prefix} or
+  \refmmz{memo dir}) should be created under the initial settings without any
+  user intervention.
 \end{doc}
 
 
@@ -6718,25 +6696,25 @@ require.
     script={name=memoize-clean.py, par=[\meta{options}] [\meta{name}\texttt{.mmz} \dots]},
   }
   This script removes memo and extern files whose filenames start with
-  \meta{path prefix}es mentioned in the given \dmmz files or by the
+  \meta{prefix}es mentioned in the given \dmmz files or by the
   \refscript{memoize-clean.pl--prefix} option.  Unless option
   \refscript{memoize-clean.pl--all} is given, the script only deletes the
   \emph{stale} files, i.e.\ the files not mentioned in any of the given \dmmz
   files.
 
-  A \meta{path prefix} of a memo or an extern is what was set by key
-  \refmmz{path}, or more commonly, one of the shortcut keys \refmmz{memo dir}
+  A \meta{prefix} of a memo or an extern is what was set by key
+  \refmmz{prefix}, or more commonly, one of the shortcut keys \refmmz{memo dir}
   and \refmmz{no memo dir}; see section~\ref{sec:ref:dirs} for details on the
   form of a memo/extern filename.
 
   In detail, the script scans the given \dmmz files for occurrences of
-  \refcmd{mmzPrefix}, and adds their \meta{path prefix} arguments to the list
-  of prefixes given on the command line by option
-  \refscript{memoize-clean.pl--prefix}; a \meta{path prefix} occurring in some
-  \dmmz file is interpreted relatively to the location of the \dmmz file.  The
-  script removes all files whose full pathname (relative to the current
-  directory) matches pattern \meta{path
-    prefix}\meta{md5sum}(|-|\meta{md5sum})(|.memo|\alt(|-|$N$)|.pdf|\alt|.log|),%
+  \refcmd{mmzPrefix}, and adds their \meta{prefix} arguments to the list of
+  prefixes given on the command line by option
+  \refscript{memoize-clean.pl--prefix}; a \meta{prefix} occurring in some \dmmz
+  file is interpreted relatively to the location of the \dmmz file.  The script
+  removes all files whose full pathname (relative to the current directory)
+  matches pattern
+  \meta{prefix}\meta{md5sum}(|-|\meta{md5sum})(|.memo|\alt(|-|$N$)|.pdf|\alt|.log|),%
   \footnote{The |.log| files are produced by the \hologo{TeX}-based extraction
     script.}  except those which occur as the \meta{filename} argument to one
   of \refcmd{mmzUsedCMemo}, \refcmd{mmzUsedCCMemo}, \refcmd{mmzUsedExtern},
@@ -6762,9 +6740,9 @@ require.
     },
   }
   \begin{doc}{
-      option={name=prefix, short name=p, par=\meta{path prefix}}
+      option={name=prefix, short name=p, par=\meta{prefix}}
     }
-    Add \meta{path prefix} to the list of prefixes; the given prefix is
+    Add \meta{prefix} to the list of prefixes; the given prefix is
     relative to the current directory.  This option may be given multiple
     times.
   \end{doc}
@@ -6821,7 +6799,7 @@ require.
   \yadocset{of=key:/mmz/record}
   \begin{doc}{value={name=mmz}}
     This record type produces a \dmmz file recording new/used
-    externs/c-memos/cc-memos and changes in the \refmmz{path} prefix to these
+    externs/c-memos/cc-memos and changes in the \refmmz{prefix} to these
     files; see section~\ref{sec:.mmz} for details.
 
     The produced file is named \docAux{file={name=mmz,
@@ -6834,8 +6812,8 @@ require.
     the \hologo{TeX} syntax, to be easily parsable by the external scripts such
     as \refscript{memoize-extract.pl}.  Each line of the file consists of a
     (possibly commented) invocation of one of the commands listed below; the
-    final line is |\endinput|.  The \meta{path prefix} below consists of the
-    path to memos/externs and the immutable \refmmzpath{prefix} of their filename.
+    final line is |\endinput|.  The \meta{prefix} below consists of the
+    path to memos/externs and the immutable \refmmz{prefix} of their filename.
     \begin{doc}{
         cmd={name=mmzUsedCMemo, par=\marg{filename}},
         cmd={name=mmzUsedCCMemo, par=\marg{filename}},
@@ -6860,8 +6838,8 @@ require.
       footnote~\ref{fn:tolerance}), where the height is the total height
       comprising both \hologo{TeX} height and depth.
     \end{doc}
-    \begin{doc}{cmd={name=mmzPrefix, par=\marg{path prefix}}}
-      Record that the \refmmz{path} prefix of memo and extern files was
+    \begin{doc}{cmd={name=mmzPrefix, par=\marg{prefix}}}
+      Record that the \refmmz{prefix} of memo and extern files was
       changed.
     \end{doc}
   \end{doc}
@@ -6900,7 +6878,7 @@ require.
     name prefix={\meta{record type}/}, ref prefix=,
     index annotation={key in \texttt{/mmz/\meta{record type}}},
     key={name=begin},
-    key={name=prefix, par=\marg{path prefix}},
+    key={name=prefix, par=\marg{prefix}},
     key={name=new extern, par=\marg{filename}},
     key={name=new cmemo, par=\marg{filename}},
     key={name=new ccmemo, par=\marg{filename}},
