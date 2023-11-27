@@ -3509,6 +3509,78 @@
 }
 %</latex>
 %
+% \subsection{Biblatex}
+% \label{sec:biblatex}
+%
+%<*latex>
+\mmzset{
+  begindocument/before/.append style={%
+    auto=\blx@bbl@entry{outer handler=\mmz@biblatex@entry},
+    auto/cite/.style={run if memoizing, outer handler=\mmz@biblatex@cite},
+    auto/cites/.style={run if memoizing, outer handler=\mmz@biblatex@cites},
+    auto=\cite{cite},
+    auto=\cites{cites},
+  }%
+}
+% |\entry|
+\def\mmz@biblatex@entry#1#2\endentry{%
+  \csxdef{mmz@bbl@#1}{\pdf@mdfivesum{#2}}%
+  \AdviceOriginal{#1}#2\endentry
+}
+
+% |\cite|
+\def\mmz@biblatex@cite#1#{\mmz@biblatex@cite@i{#1}}
+\def\mmz@biblatex@cite@i#1#2{%
+  \forcsvlist\mmz@biblatex@cite@do@key{#2}%
+  \xtoksapp\mmzCCMemo{%
+    \noexpand\setbox0\noexpand\hbox{%
+      \expandonce\AdviceOriginal\unexpanded{#1}{#2}%
+    }}%
+  \AdviceOriginal#1{#2}%
+}
+\def\mmz@biblatex@cite@do@key#1{%
+  \mmz@mtoc@csname{mmz@bbl@#1}%
+  \ifcsdef{mmz@bbl@#1}{}{\mmzAbort}%
+}
+% |\cites|
+\def\mmz@biblatex@cites{%
+  \mmz@temptoks{}%
+  \mmz@biblatex@cites@i
+}
+\def\mmz@biblatex@cites@i{%
+  \futurelet\mmz@temp\mmz@biblatex@cites@ii
+}
+\def\mmz@biblatex@cites@ii{%
+  \mmz@tempfalse
+  \ifx\mmz@temp\bgroup
+    \mmz@temptrue
+  \else
+    \ifx\mmz@temp[%]
+      \mmz@temptrue
+    \fi
+  \fi
+  \ifmmz@temp
+    \expandafter\mmz@biblatex@cites@iii
+  \else
+    \expandafter\mmz@biblatex@cites@z
+  \fi
+}
+\def\mmz@biblatex@cites@iii#1#{\mmz@biblatex@cites@iv{#1}}
+\def\mmz@biblatex@cites@iv#1#2{%
+  \forcsvlist\mmz@biblatex@cite@do@key{#2}%
+  \toksapp\mmz@temptoks{#1{#2}}%
+  \mmz@biblatex@cites@i
+}
+\def\mmz@biblatex@cites@z{%
+  \xtoksapp\mmzCCMemo{%
+    \noexpand\setbox0\noexpand\hbox{%
+      \expandonce\AdviceOriginal\the\mmz@temptoks
+    }}%
+  \expandafter\AdviceOriginal\the\mmz@temptoks
+}
+%
+%</latex>
+%
 %
 % \section{Initialization}
 % \label{sec:code:initialization}
