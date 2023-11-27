@@ -373,7 +373,7 @@
 %   Read \hologo{TeX} file |#2| into token register |#1| (under the current
 %   category code regime); |\toksapp| is defined in CollArgs.
 \def\filetotoks#1#2{%
-  \immediate\openin0{#2}%
+  \immediate\mmz@openin0{#2}%
   #1={}%
   \loop
   \unless\ifeof0
@@ -383,6 +383,12 @@
   \repeat
   \immediate\closein0
 }
+% \end{macro}
+% 
+% \begin{macro}{\mmz@openin,\mmz@openout}
+%   A workaround for |morewrites|.
+\let\mmz@openin\openin
+\let\mmz@openout\openout
 % \end{macro}
 % 
 % \paragraph{Other} little things.
@@ -1555,7 +1561,7 @@
 %   |\mmzCMemo|.
 \def\mmz@write@cmemo{%
   % Open the file for writing.
-  \immediate\openout\mmz@out{\mmz@cmemo@path}%
+  \immediate\mmz@openout\mmz@out{\mmz@cmemo@path}%
   % The memo starts with the |\mmzMemo| marker (a signal that the memo is valid).
   \immediate\write\mmz@out{\noexpand\mmzMemo}%
   % We store the content of |\mmzContextExtra| by writing out a command that
@@ -1718,7 +1724,7 @@
   % memoized code can update the context.  This is one of the two reasons why
   % we couldn't write the cc-memo directly into the file, but had to collect
   % its contents into token register |\mmzCCMemo|.
-  \immediate\openout\mmz@out{\mmz@ccmemo@path}%
+  \immediate\mmz@openout\mmz@out{\mmz@ccmemo@path}%
   % Token register |\mmz@ccmemo@resources| consists of calls to
   % |\mmz@ccmemo@append@resource|, so the following code writes down the list
   % of created externs into the cc-memo.  Wanting to have this list at the top
@@ -2428,7 +2434,7 @@
 % the external scripts).
 \def\mmz@clear@extraction@log{%
   \begingroup
-  \immediate\openout0{\jobname.mmz.log}%
+  \immediate\mmz@openout0{\jobname.mmz.log}%
   \immediate\closeout0
   \endgroup
 }
@@ -2545,7 +2551,7 @@
     % location (the current directory, i.e.\ the directory where \hologo{TeX}
     % is executed from; usually, this will be the directory containing the
     % \hologo{TeX} source).
-    \immediate\openout\mmz@mmzout{\jobname.mmz}%
+    \immediate\mmz@openout\mmz@mmzout{\jobname.mmz}%
   },
   % The |\mmzPrefix| is used by the clean-up script, which will remove all
   % files with the given path prefix but (unless called with |--all|) those
@@ -2608,7 +2614,7 @@
 % \begin{key}{record/sh/...} Define the Linux shell script record type.
   record/sh/begin/.code={%
     \newwrite\mmz@shout
-    \immediate\openout\mmz@shout{\mmz@shname}%
+    \immediate\mmz@openout\mmz@shout{\mmz@shname}%
   },
   record/sh/new extern/.code={%
     \begingroup
@@ -2627,7 +2633,7 @@
 %   Rinse and repeat for Windows.
   record/bat/begin/.code={%
     \newwrite\mmz@batout
-    \immediate\openout\mmz@batout{\mmz@batname}%
+    \immediate\mmz@openout\mmz@batout{\mmz@batname}%
   },
   record/bat/new extern/.code={%
     \begingroup
@@ -2665,7 +2671,7 @@
     % variables |.DEFAULT_GOAL| and |.PHONY|.
     \newwrite\mmz@makefileout
     \newtoks\mmz@makefile@externs
-    \immediate\openout\mmz@makefileout{\mmz@makefilename}%
+    \immediate\mmz@openout\mmz@makefileout{\mmz@makefilename}%
     \immediate\write\mmz@makefileout{.DEFAULT_GOAL = externs}%
     \immediate\write\mmz@makefileout{.PHONY: externs}%
   },
@@ -2863,7 +2869,7 @@
 \newwrite\extractionlog
 % Are we requested to produce a log file?
 \ifdefined\logfile
-  \immediate\openout\extractionlog{\logfile}%
+  \immediate\mmz@openout\extractionlog{\logfile}%
   % Define a macro which both outputs the warning message and writes it to the
   % extraction log.
   \def\doublewarning#1{%
@@ -3491,6 +3497,20 @@
   }%
   % \end{listingregion}
 }{}}
+%</latex>
+%
+% \subsection{Morewrites}
+% \label{sec:code:morewrites}
+% 
+% Use the old grammar for |\openin| and |\openout| as a temporary workaround.
+% |prefix|es containing spaces must be quoted manually.
+%<*latex>
+\AddToHook{begindocument/before}{%
+  \@ifpackageloaded{morewrites}{%
+    \def\mmz@openin#1#2{\openin#1=#2\relax}%
+    \def\mmz@openout#1#2{\openout#1=#2\relax}%
+  }{}%
+}
 %</latex>
 %
 %
