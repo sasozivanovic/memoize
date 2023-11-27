@@ -521,7 +521,19 @@
 \newif\ifcollargsNoDelimiters
 %   \end{macro}
 % \end{collargskey}
-%
+
+% \begin{collargskey}{brace collected}
+%   \begin{macro}{\ifcollargsBraceCollected}
+%       When this conditional is set to false, the collected arguments are not
+%       enclosed in braces when passed on to \meta{next-code}.
+\collargsSet{%
+  brace collected/.is if=collargsBraceCollected,
+}
+\newif\ifcollargsBraceCollected
+\collargsBraceCollectedtrue
+% \end{macro}
+% \end{collargskey}
+% 
 % \subsubsection{The central loop}
 % \label{sec:code:collargs:central-loop}
 %
@@ -678,7 +690,12 @@
   \expanded{%
     \endgroup
     \noexpand\collargs@fix{%
-      \expandonce\collargs@next{\the\collargs@toks}%
+      \expandonce\collargs@next
+        \ifcollargsBraceCollected
+          {\the\collargs@toks}%
+        \else
+          \the\collargs@toks
+        \fi
       \collargs@spaces
     }%
   }%

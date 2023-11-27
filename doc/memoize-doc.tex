@@ -8594,6 +8594,16 @@ grab the environment body in the verbatim mode.)
   \tcbinputexample{comment=\input{\examplepath.tex.c1}}
 \end{doc}
 
+\begin{doc}[
+    pi=\docaux{cmd}{ifcollargsBraceCollected}
+  ]{
+    key={name=brace collected, conditional=true},
+  }
+  When this conditional is set to false, the collected arguments are not
+  enclosed in braces when passed on to \meta{next-code}.  This probably only
+  makes sense when wrapping the individual arguments, e.g.\ by
+  \refcollargs{append postwrap}|={{#1}}|.
+\end{doc}
 
 \begin{doc}[
     pi={\docaux{cmd}{collargsVerbatim},
