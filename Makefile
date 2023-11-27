@@ -144,6 +144,11 @@ include Makefile.package
 include Makefile.runtimes
 
 VERSION-MAN = of Memoize v$(VERSION)
+
+link-all-runtimes: link-runtimes
+	$(MAKE) -f Makefile.advice link-runtimes
+	$(MAKE) -f Makefile.collargs link-runtimes
+
 test:
 	$(MAKE) -C testing PYL=py
 	$(MAKE) -C testing PYL=pl

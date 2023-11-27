@@ -683,7 +683,7 @@
   \ifregion{%
       \AddToHook{begindocument/before}{%
         \makeatletter
-        \InputIfFileExists{memoize.aux}{}{}%
+        \InputIfFileExists{memoize-doc.aux}{}{}%
         \makeatother
       }%
       \AddToHook{enddocument}{%

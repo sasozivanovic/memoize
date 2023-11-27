@@ -24,7 +24,8 @@ import argparse, re, sys, pathlib, os
 
 parser = argparse.ArgumentParser(
     description="Remove (stale) memo and extern files.",
-    epilog = "For details, see the man page or the Memoize documentation (https://ctan.org/pkg/memoize)."
+    epilog = "For details, see the man page or the Memoize documentation "
+             "(https://ctan.org/pkg/memoize)."
 )
 parser.add_argument('--yes', '-y', action = 'store_true',
                     help = 'Do not ask for confirmation.')
@@ -157,3 +158,8 @@ if tbdeleted:
         print("Bailing out.")
 elif not args.quiet:
     print('Nothing to do, the directory seems clean.')
+
+# Local Variables:
+# fill-column: 90
+# after-save-hook: py2dtx
+# End:

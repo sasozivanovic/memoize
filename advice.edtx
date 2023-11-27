@@ -1032,13 +1032,13 @@
       Executing collector:
       \detokenize\expandafter{\AdviceCollector}}%
     \noexpand\advice@trace{\space\space\space\space
-      argument specification:
+      Argument specification:
       \detokenize\expandafter{\AdviceArgs}}%
     \noexpand\advice@trace{\space\space\space\space
-      options:
+      Options:
       \detokenize\expandafter{\AdviceCollectorOptions}}%
     \noexpand\advice@trace{\space\space\space\space
-      raw options:
+      Raw options:
       \detokenize\expandafter{\AdviceRawCollectorOptions}}%
     \expandonce\AdviceCollector
   }%
@@ -1052,7 +1052,7 @@
       Received arguments:
       \noexpand\detokenize{##1}}%
     \noexpand\advice@trace{\space\space\space\space
-      options:
+      Options:
       \detokenize\expandafter{\AdviceOptions}}%
     \expandonce{\AdviceInnerHandler}{##1}%
   }%

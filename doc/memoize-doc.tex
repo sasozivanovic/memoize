@@ -474,6 +474,8 @@ section~\ref{sec:tut:test} to test if the setup was successful.
 \begingroup
 \setlength\intextsep{0pt}
 
+\vspace{-1ex}% manual
+
 \paragraph{Perl} If you're running GNU/Linux or macOS, Perl is most likely
 already installed on your system.  On Windows, you might have to install it. I
 tested Memoize with Strawberry Perl, available
@@ -507,6 +509,7 @@ package manager to install them.  Otherwise, install them from
 \hreftt{https://www.cpan.org}{CPAN} using
 \hreftt{https://metacpan.org/pod/CPAN}{cpan} tool, as shown in the box.
 
+\vspace{-1ex}% manual
 
 \paragraph{Python} Installing (Python and) the required Python library is only
 necessary if you decide to use the Python-based extraction script; see
@@ -641,12 +644,10 @@ once, only the final invocation takes effect.
 \end{tcblisting} 
 \end{tcbraster}
 
-I like to follow |\usepackage{memoize}| by \refcmd{mmzset}, but if you prefer, you
-can also provide the document-wide configuration as \Emph{package options.}
-Note, however, that \hologo{LaTeX} removes spaces from package
-options, so keys such as \refmmz{memo dir} won't work.  That said, the following are
-equivalent --- both will force re-externalization of all the externs in the
-document.
+I like to follow |\usepackage{memoize}| by \refcmd{mmzset}, but if you prefer,
+you can also provide the document-wide configuration as \Emph{package options.}
+For example, the following are equivalent --- both will force
+re-externalization of all the externs in the document.
 
 \begin{tcbraster}[raster columns=2, raster equal height=rows]
   \begin{tcblisting}{listing only}
@@ -734,8 +735,9 @@ directories; see section~\ref{sec:tut:memodir} for details.
 
 The \refmmz{extract} line concludes the story on ``permanently'' selecting the
 extraction method, started in chapter~\ref{sec:setup}.  As the final note,
-observe that key \refmmz{extract} only makes sense as a package option or as a
-\refcmd{mmzset} key in \reffile{memoize.cfg}.  It will have no effect as a
+observe that \refmmz{extract} and other extraction-related keys like
+\refmmz{perl extraction options} only make sense as a package option or as a
+\refcmd{mmzset} key in \reffile{memoize.cfg}.  They will have no effect as a
 \refcmd{mmzset} key in the document, because the extraction happens while the
 package is loaded.
 
@@ -5049,14 +5051,17 @@ with \refcmd{CollectArgumentsRaw} plus the following three arguments:
 In this section, the extra information about keys, offered at the right of a
 key in parenthesis, may contain the initial value of a key, and also a default
 value of a key.  In this context, the terms ``initial'' and ``default'' have
-the meaning employed by the \pkg{pgfkeys} utility.  Initial value refers to the
-value that is set by the package.  More often, we would call this the default
-or the package-default value, but in the \pkg{pgfkeys} parlance, the default value
-refers to the value that is passed to the key in the absence of the argument.
-Honestly, I only kept to this convention in the reference section; elsewhere,
-I often say ``default'' or ``package-default'' and mean the initial value.
+the meaning employed by the \pkg{pgfkeys} utility (\PGFmanual{87}).  The term
+``initial value'' applies to the setting underlying a key (when there is no
+such setting, the key is marked as a ``style''), and refers to the value of
+this setting that is set by the package.  In other contexts, we would call this
+the default or the package-default value, but in the \pkg{pgfkeys} parlance,
+the term ``default value'' applies to a key taking an argument, and refers to
+the value that is passed to the key in the absence of that argument.
+(Honestly, I only keep to this convention in the reference section; elsewhere,
+I often say ``default'' or ``package-default'' and mean the initial value.)
 
-Another convention I kept to in this section is the color-coding of the keys
+Another convention I keep to in this section is the color-coding of the keys
 and commands.  Green background indicates a basic key or command, which any
 user might want to know about.  Red background indicates other, more or less
 advanced keys and commands.
@@ -5373,7 +5378,7 @@ on how to handle this properly.
 \end{doc}
 
 \begin{doc}{easy,
-    key={name=normal, desc=the default mode},
+    key={name=normal, desc=the initial mode},
     key={name=readonly},
     key={name=recompile},
   }
@@ -5426,7 +5431,7 @@ on how to handle this properly.
     desc={style},
     key={name=verbatim},
     key={name=verb},
-    key={name=no verbatim},
+    key={name=no verbatim, desc={style, the initial mode}},
   }
   When \refmmz{verbatim} or \refmmz{verb} is in effect, the code submitted to
   memoization is read verbatim; \refmmz{no verbatim} reverts to the normal,
@@ -5549,7 +5554,7 @@ on how to handle this properly.
 \end{doc}
 
 \begin{doc}{
-    keypath={/handlers},
+    keypath={/handlers, desc=handler},
     key={easy, name=.meaning to context},
     key={name=.value to context},
   }
@@ -5584,7 +5589,7 @@ on how to handle this properly.
 \end{doc}
 
 \begin{doc}{easy, key={name=per overlay,desc=style}}
-  This key is only defined in the Beamer class.  When in effect, the memoized
+  This style is only defined in the Beamer class.  When applied, the memoized
   code will produce a cc-memo (and extern) for each overlay of the frame.  For
   implementation, see section~\ref{sec:per-overlay}.
 \end{doc}
@@ -5903,7 +5908,7 @@ on how to handle this properly.
 \end{doc}
 
 \begin{doc}{
-    key={keypath=/mmz/auto, name=integrated driver, par=\marg{name}}
+    key={keypath=/mmz/auto, name=integrated driver, par=\marg{name}, desc=style}
   }
   Use this key to easily setup a memoization driver which is integrated into
   the command itself.
@@ -5915,9 +5920,9 @@ on how to handle this properly.
   An integrated driver must have a way of telling whether it is memoizing or
   regularly compiling the code.  This key declares a driver-specific
   conditional which may be inspected, using \refcmd{IfMemoizing}, to determine
-  this.  The conditional is set to true by the formal driver of the command
-  (set up by the invocation of this key), executed at the start of memoization;
-  it should never be set elsewhere.  See
+  this.  The conditional is set to true by the formal \refmmz{driver} of the
+  command (set up by the invocation of this key), executed at the start of
+  memoization; it should never be set elsewhere.  See
   section~\ref{sec:memoization-multiple-externs} for details and an example.
 \end{doc}
 
@@ -6873,7 +6878,7 @@ require.
     utility, triggers \hologo{TeX}-based extraction of the new externs.
     \begin{doc}{
         key={name=makefile, par=\marg{filename}, desc={no default,
-            initially \texttt{memoize-extract.\jobname.makefile}}}
+            initially \texttt{memoize-extract.\string\jobname.makefile}}}
       }
       Use this key to change the filename of the produced makefile.
     \end{doc}
@@ -6887,9 +6892,9 @@ require.
     
     \begin{doc}{
         key={name=sh, par=\marg{filename}, desc={no default,
-            initially \texttt{memoize-extract.\jobname.sh}}},
+            initially \texttt{memoize-extract.\string\jobname.sh}}},
         key={name=bat, par=\marg{filename}, desc={no default,
-            initially \texttt{memoize-extract.\jobname.bat}}}
+            initially \texttt{memoize-extract.\string\jobname.bat}}}
       }
       Use these keys to change the filename of the produced shell script.
     \end{doc}
@@ -6966,7 +6971,7 @@ automatically memoize the results of compilation of selected commands and
 environments.
 
 \begin{doc}{
-    keypath={/handlers},
+    keypath={/handlers}, desc=handler,
     key={name=.install advice,
       sort index=install advice,
       par=\marg{configuration keylist},
@@ -7096,7 +7101,7 @@ headers.
 
 \begin{doc}{
     key={name=activation, par=\docAux{of=key:/mmz/activation, value={name=immediate},
-        text=\Alt, value={name=deferred}}, desc={style, no default}},
+        text=\Alt, value={name=deferred}}, desc={no default, initially set by \refkey{/handlers/.install advice}}},
     key={name=activate deferred, desc={style}},
   }
   Key \refmmz{activation} selects the activation regime.  Under the
@@ -7287,7 +7292,8 @@ headers.
  
   In general, the name of this key equals whatever was submitted to
   \refkey{/advice/install/setup key} during the installation of the advising
-  framework via \refkey{/handlers/.install advice}.
+  framework via \refkey{/handlers/.install advice}; the initial value is
+  |advice| (and Memoize sets the value to |auto|).
 \end{doc}
 
 \begin{doc}{
@@ -8465,10 +8471,10 @@ grab the environment body in the verbatim mode.)
       \docaux{cmd}{collargsAppendPostprocessor},
       \docaux{cmd}{collargsPrependPostprocessor}},
   ]{
-    key={name=append preprocessor, par=\meta{code}, desc={no default}},
-    key={name=prepend preprocessor, par=\meta{code}, desc={no default}},
-    key={name=append postprocessor, par=\meta{code}, desc={no default}},
-    key={name=prepend postprocessor, par=\meta{code}, desc={no default}},
+    key={name=append preprocessor, par=\meta{code}, desc={style, no default}},
+    key={name=prepend preprocessor, par=\meta{code}, desc={style, no default}},
+    key={name=append postprocessor, par=\meta{code}, desc={style, no default}},
+    key={name=prepend postprocessor, par=\meta{code}, desc={style, no default}},
   }
   These keys declare processors which will transform the collected argument
   before appending it to the argument list.
@@ -8513,8 +8519,8 @@ grab the environment body in the verbatim mode.)
     pi={\docaux{cmd}{collargsClearPreprocessors},
       \docaux{cmd}{collargsClearPostprocessors}},
   ]{
-    key={name=clear preprocessors},
-    key={name=clear postprocessors},
+    key={name=clear preprocessors}, desc=style,
+    key={name=clear postprocessors}, desc=style,
   }
   Clear the list of pre- or post-processors.
 \end{doc}
@@ -8526,10 +8532,10 @@ grab the environment body in the verbatim mode.)
       \docaux{cmd}{collargsPrependExpandablePostprocessor}
     },
   ]{
-    key={name=append expandable preprocessor, par=\meta{code}, desc={no default}},
-    key={name=prepend expandable preprocessor, par=\meta{code}, desc={no default}},
-    key={name=append expandable postprocessor, par=\meta{code}, desc={no default}},
-    key={name=prepend expandable postprocessor, par=\meta{code}, desc={no default}},
+    key={name=append expandable preprocessor, par=\meta{code}, desc={style, no default}},
+    key={name=prepend expandable preprocessor, par=\meta{code}, desc={style, no default}},
+    key={name=append expandable postprocessor, par=\meta{code}, desc={style, no default}},
+    key={name=prepend expandable postprocessor, par=\meta{code}, desc={style, no default}},
   }
   These keys may be used to add fully expandable processors.  A processor added
   with one of these keys will end up among the processors declared by
@@ -8551,10 +8557,10 @@ grab the environment body in the verbatim mode.)
       \docaux{cmd}{collargsAppendPostwrap},
       \docaux{cmd}{collargsPrependPostwrap}},
   ]{
-    key={name=append prewrap, par=\meta{macro definition}, desc={no default}},
-    key={name=prepend prewrap, par=\meta{macro definition}, desc={no default}},
-    key={name=append postwrap, par=\meta{macro definition}, desc={no default}},
-    key={name=prepend postwrap, par=\meta{macro definition}, desc={no default}},
+    key={name=append prewrap, par=\meta{macro definition}, desc={style, no default}},
+    key={name=prepend prewrap, par=\meta{macro definition}, desc={style, no default}},
+    key={name=append postwrap, par=\meta{macro definition}, desc={style, no default}},
+    key={name=prepend postwrap, par=\meta{macro definition}, desc={style, no default}},
   }
   These keys add processors which transform the collected argument in a single
   expansion.
@@ -8598,7 +8604,7 @@ grab the environment body in the verbatim mode.)
   ]{
     key={name=verbatim, desc=style},
     key={name=verb, desc=style},
-    key={name=no verbatim, desc=style},
+    key={name=no verbatim, desc={style, the initial mode}},
   }
   Select the full verbatim, the partial verbatim, or the non-verbatim mode of
   argument collection.
@@ -8672,7 +8678,7 @@ deficiency, this character pair is customizable via key
     pi=\docaux{cmd}{collargsBraces}
   ]{
     key={name=braces, par={\meta{begin-group char}\meta{end-group char}},
-      desc={no default, for details see below}},
+      desc={no default, for the initial value see below}},
   }% here
   This key sets the verbatim begin-group and end-group characters.  The setting
   affects collection of argument types \docref{xparse:m}, \docref{xparse:g},

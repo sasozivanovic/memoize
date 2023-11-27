@@ -1,5 +1,3 @@
-% \iffalse
-% 
 % memoize.edtx (this is not a .dtx file; to produce a .dtx, process it with edtx2dtx)
 % 
 %% This file is a part of Memoize, a TeX package for externalization of
@@ -20,8 +18,6 @@
 %% 
 %% The files belonging to this work and covered by LPPL are listed in
 %% (<texmf>/doc/generic/memoize/)FILES.
-% 
-% \fi
 % 
 %    \begin{macrocode}
 % 
@@ -2234,7 +2230,7 @@
   enddocument/afterlastpage/.append code={%
     \ifnum\mmzExternPages>0
       \PackageWarning{memoize}{The compilation produced \the\mmzExternPages\space
-        new extern\ifnum\mmzExternPages>1 s\fi.}%
+        new extern\ifnum\mmzExternPages>1 s\fi}%
     \fi
   },
 }
@@ -3602,10 +3598,11 @@
 }
 % 
 % Memoize was not really born for the draft mode, as it cannot produce new
-% externs there.  But we don't want to disable the package, as utilization is
-% still perfectly valid in this mode, so let's just warn the user.
+% externs there.  But we don't want to disable the package, as utilization and
+% pure memoization are still perfectly valid in this mode, so let's just warn
+% the user.
 \ifnum\pdf@draftmode=1
-  \PackageWarning{memoize}{No memoization will be performed in the draft mode}%
+  \PackageWarning{memoize}{No externalization will be performed in the draft mode}%
 \fi
 %</mmz>
 % 

@@ -18,16 +18,16 @@
 # The files belonging to this work and covered by LPPL are listed in
 # <texmf>/doc/generic/memoize/FILES.
 
+my $PROG = 'memoize-clean.pl';
+my $VERSION = '2023/10/10 v1.0.0';
+
 use strict;
 use Getopt::Long;
-# I intend to rewrite this script using Path::Class.
 use Cwd 'realpath';
 use File::Spec;
 use File::Basename;
 
-my $VERSION = '2023/10/10 v1.0.0';
-
-my $usage = "usage: memoize-clean.pl [-h] [--yes] [--all] [--quiet] [--prefix PREFIX] [mmz ...]\n";
+my $usage = "usage: $PROG [-h] [--yes] [--all] [--quiet] [--prefix PREFIX] [mmz ...]\n";
 my $Help = <<END;
 Remove (stale) memo and extern files produced by package Memoize.
 
@@ -111,8 +111,10 @@ sub populate_tbdeleted {
     opendir(MD, $dir) or die "Cannot open directory '$dir'";
     while( (my $fn = readdir(MD)) ) {
 	my $path = File::Spec->catfile(($dir),$fn);
-	if ($fn =~ /\Q$basename_prefix\E[0-9A-F]{32}(?:-[0-9A-F]{32})?(?:-[0-9]+)?(\.memo|(?:-[0-9]+)?\.pdf|\.log)/ and ($all || !exists($keep{$path}))) {
-	    push @tbdeleted, $path;
+	if ($fn =~
+	    /\Q$basename_prefix\E[0-9A-F]{32}(?:-[0-9A-F]{32})?(?:-[0-9]+)?(\.memo|(?:-[0-9]+)?\.pdf|\.log)/
+	    and ($all || !exists($keep{$path}))) {
+	      push @tbdeleted, $path;
 	}
     }
     closedir(MD);
@@ -161,3 +163,8 @@ if (scalar(@tbdeleted) != 0) {
 } elsif (!$quiet) {
     print "Nothing to do, the directory seems clean.\n";
 }
+
+# Local Variables:
+# fill-column: 90
+# after-save-hook: pl2dtx
+# End:

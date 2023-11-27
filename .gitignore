@@ -35,6 +35,10 @@ t-collargs.tex
 t-memoizable.tex
 t-memoize.tex
 t-nomemoize.tex
-test*
+/temp
+/test-*
+test.*
 *.1
-oldtest
+/oldtemp
+*.py.dtx
+*.pl.dtx
