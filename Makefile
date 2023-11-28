@@ -9,10 +9,10 @@ all: test ctan/memoize.zip
 # Prepare the CTAN submission.
 
 PACKAGE = memoize
-VERSION = 1.0.0
+VERSION = 1.1.0-wip
 YEAR = 2023
-MONTH = 10
-DAY = 10
+MONTH = 11
+DAY = 28
 
 FORMAT = generic
 
@@ -130,7 +130,7 @@ version:
 	$(call EDIT-VERSION-MAN,doc/memoize-clean.1.md)
 	$(call EDIT-DATE-CHANGELOG,CHANGELOG.md)
 define COLOR_VERSION
-grep -E --color '[0-9]{4}[/-][0-9]{2}[/-][0-9]{2}|v?[0-9]\.[0-9]\.[0-9]|(January|February|March|April|May|June|July|August|September|October|November|December) [0-9]+, [0-9]{4}'
+grep -E --color '[0-9]{4}[/-][0-9]{2}[/-][0-9]{2}|v?[0-9]\.[0-9]\.[0-9]([-a-z]*)|(January|February|March|April|May|June|July|August|September|October|November|December) [0-9]+, [0-9]{4}'
 endef
 
 versions-show:

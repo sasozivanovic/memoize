@@ -167,7 +167,7 @@ unlink-runtimes:
 # $1 = source file, $2 = package name
 VERSION-LATEX = $(YEAR)/$(MONTH)/$(DAY) v$(VERSION)
 define EDIT-VERSION-LATEX
-	sed -Ei 's!\\ProvidesPackage\{$(2)\}\[[0-9]{4}/[0-9]{2}/[0-9]{2} v[0-9.]* !\\ProvidesPackage{$(2)}[$(VERSION-LATEX) !' $(1)
+	sed -Ei 's!\\ProvidesPackage\{$(2)\}\[[0-9]{4}/[0-9]{2}/[0-9]{2} v[-0-9.a-z]* !\\ProvidesPackage{$(2)}[$(VERSION-LATEX) !' $(1)
 endef
 
 # $1 = source file
@@ -175,7 +175,7 @@ endef
 VERSION-CONTEXT = $(VERSION)
 DATE-CONTEXT = $(YEAR)-$(MONTH)-$(DAY)
 define EDIT-VERSION-CONTEXT
-	sed -Ei 's!(%D *version=)[0-9.]*,!\1$(VERSION-CONTEXT),!;s!(%D *date=)[-0-9]*,!\1$(DATE-CONTEXT),!' $(1)
+	sed -Ei 's!(%D *version=)[-0-9.a-z]*,!\1$(VERSION-CONTEXT),!;s!(%D *date=)[-0-9]*,!\1$(DATE-CONTEXT),!' $(1)
 endef
 
 # $1 = source .pl file, $2 = version
@@ -202,11 +202,11 @@ endef
 # $1 = source file, $2 = package name
 VERSION-PLAIN = $(VERSION-LATEX)
 define EDIT-VERSION-PLAIN
-	sed -Ei 's!^(%<[^\>]*>% Package $(2) ).*!\1$(VERSION-PLAIN)!' $(1)
+		sed -Ei 's!^(%<[^\>]*>% Package $(2) ).*!\1$(VERSION-PLAIN)!' $(1)
 endef
 
 # Change the date of the latest release (identified by the version) of the package.
 define EDIT-DATE-CHANGELOG
-	sed -Ei 's!^(#+) [0-9]{4}/[0-9]{2}/[0-9]{2} +v$(VERSION)!\1 $(YEAR)/$(MONTH)/$(DAY) v$(VERSION)!' $(1)
+	sed -Ei 's!^(#+|Manual: Memoize) [0-9]{4}/[0-9]{2}/[0-9]{2} +v$(VERSION)!\1 $(YEAR)/$(MONTH)/$(DAY) v$(VERSION)!' $(1)
 endef
 
