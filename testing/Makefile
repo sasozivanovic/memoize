@@ -30,6 +30,7 @@ mkdir test tmp
 endef
 
 CWD = $(shell pwd)
+DIFF=GIT_PAGER=cat git diff --no-index --word-diff=color --word-diff-regex=.
 
 define title
 @echo
@@ -47,11 +48,11 @@ build/nomemodir/doc.pdf: src/nomemodir/doc.tex
 	mkdir build/nomemodir/
 	cp src/nomemodir/doc.tex build/nomemodir/
 	cd build/nomemodir/ && pdflatex doc
-	diff {expected/nomemodir,build/nomemodir}/doc.mmz
-	diff {expected/nomemodir,build/nomemodir}/doc.799CD96D5634EBEB7E30191285AF4082.memo
-	diff {expected/nomemodir,build/nomemodir}/doc.799CD96D5634EBEB7E30191285AF4082-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo
-	diff {expected/nomemodir,build/nomemodir}/doc.7DBC7B29C0C49BCFD5C4A18740E06E80.memo
-	diff {expected/nomemodir,build/nomemodir}/doc.7DBC7B29C0C49BCFD5C4A18740E06E80-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo
+	$(DIFF) {expected/nomemodir,build/nomemodir}/doc.mmz
+	$(DIFF) {expected/nomemodir,build/nomemodir}/doc.799CD96D5634EBEB7E30191285AF4082.memo
+	$(DIFF) {expected/nomemodir,build/nomemodir}/doc.799CD96D5634EBEB7E30191285AF4082-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo
+	$(DIFF) {expected/nomemodir,build/nomemodir}/doc.7DBC7B29C0C49BCFD5C4A18740E06E80.memo
+	$(DIFF) {expected/nomemodir,build/nomemodir}/doc.7DBC7B29C0C49BCFD5C4A18740E06E80-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo
 
 build/memodir/doc.pdf: src/memodir/doc.tex
 	$(call title,"Compiling $@")
@@ -59,18 +60,18 @@ build/memodir/doc.pdf: src/memodir/doc.tex
 	mkdir -p build/memodir/doc.memo.dir
 	cp src/memodir/doc.tex build/memodir
 	cd build/memodir && pdflatex doc
-	diff {expected/memodir,build/memodir}/doc.mmz
-	diff {expected/memodir,build/memodir}/doc.memo.dir/799CD96D5634EBEB7E30191285AF4082.memo
-	diff {expected/memodir,build/memodir}/doc.memo.dir/799CD96D5634EBEB7E30191285AF4082-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo
-	diff {expected/memodir,build/memodir}/doc.memo.dir/7DBC7B29C0C49BCFD5C4A18740E06E80.memo
-	diff {expected/memodir,build/memodir}/doc.memo.dir/7DBC7B29C0C49BCFD5C4A18740E06E80-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo
+	$(DIFF) {expected/memodir,build/memodir}/doc.mmz
+	$(DIFF) {expected/memodir,build/memodir}/doc.memo.dir/799CD96D5634EBEB7E30191285AF4082.memo
+	$(DIFF) {expected/memodir,build/memodir}/doc.memo.dir/799CD96D5634EBEB7E30191285AF4082-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo
+	$(DIFF) {expected/memodir,build/memodir}/doc.memo.dir/7DBC7B29C0C49BCFD5C4A18740E06E80.memo
+	$(DIFF) {expected/memodir,build/memodir}/doc.memo.dir/7DBC7B29C0C49BCFD5C4A18740E06E80-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo
 
 success/extract-nomemodir.$(PYL): $(SRCDIR)/memoize-extract.$(PYL) build/nomemodir/doc.pdf
 	$(call title,"Extract from a [nomemodir] document")
 	$(CLEAN)
 	cp -r build/nomemodir/* test
 	cd test && memoize-extract.$(PYL) doc.mmz
-	diff expected/extract-nomemodir/doc.mmz test/doc.mmz
+	$(DIFF) expected/extract-nomemodir/doc.mmz test/doc.mmz
 	[[ -a test/doc.799CD96D5634EBEB7E30191285AF4082-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.pdf ]]
 	[[ -a test/doc.7DBC7B29C0C49BCFD5C4A18740E06E80-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.pdf ]]
 	touch $@
@@ -80,7 +81,7 @@ success/extract-memodir.$(PYL): $(SRCDIR)/memoize-extract.$(PYL) build/memodir/d
 	$(CLEAN)
 	cp -r build/memodir/* test
 	cd test && memoize-extract.$(PYL) doc
-	diff expected/extract-memodir/doc.mmz test/doc.mmz
+	$(DIFF) expected/extract-memodir/doc.mmz test/doc.mmz
 	[[ -a test/doc.memo.dir/799CD96D5634EBEB7E30191285AF4082-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.pdf ]]
 	[[ -a test/doc.memo.dir/7DBC7B29C0C49BCFD5C4A18740E06E80-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.pdf ]]
 	touch $@
@@ -149,11 +150,11 @@ success/compile-and-extract-to-tmp.$(PYL): src/nomemodir/doc.tex
 	cp src/nomemodir/doc.tex test
 	chmod -w test
 	cd test && TEXMFOUTPUT=$(CWD)/tmp pdflatex doc
-	diff {expected/nomemodir,$(CWD)/tmp}/doc.mmz
-	diff {expected/nomemodir,$(CWD)/tmp}/doc.799CD96D5634EBEB7E30191285AF4082.memo
-	diff {expected/nomemodir,$(CWD)/tmp}/doc.799CD96D5634EBEB7E30191285AF4082-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo
-	diff {expected/nomemodir,$(CWD)/tmp}/doc.7DBC7B29C0C49BCFD5C4A18740E06E80.memo
-	diff {expected/nomemodir,$(CWD)/tmp}/doc.7DBC7B29C0C49BCFD5C4A18740E06E80-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo
+	$(DIFF) {expected/nomemodir,$(CWD)/tmp}/doc.mmz
+	$(DIFF) {expected/nomemodir,$(CWD)/tmp}/doc.799CD96D5634EBEB7E30191285AF4082.memo
+	$(DIFF) {expected/nomemodir,$(CWD)/tmp}/doc.799CD96D5634EBEB7E30191285AF4082-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo
+	$(DIFF) {expected/nomemodir,$(CWD)/tmp}/doc.7DBC7B29C0C49BCFD5C4A18740E06E80.memo
+	$(DIFF) {expected/nomemodir,$(CWD)/tmp}/doc.7DBC7B29C0C49BCFD5C4A18740E06E80-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo
 	cd test && TEXMFOUTPUT=$(CWD)/tmp memoize-extract.$(PYL) doc.tex
 	[[ -a $(CWD)/tmp/doc.799CD96D5634EBEB7E30191285AF4082-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.pdf ]]
 	[[ -a $(CWD)/tmp/doc.7DBC7B29C0C49BCFD5C4A18740E06E80-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.pdf ]]
@@ -165,11 +166,11 @@ success/compile-and-extract-to-od.$(PYL): src/nomemodir/doc.tex
 	cp src/nomemodir/doc.tex test
 	mkdir test/od
 	cd test && pdflatex -output-directory=od doc
-	diff {expected/nomemodir,test/od}/doc.mmz
-	diff {expected/nomemodir,test/od}/doc.799CD96D5634EBEB7E30191285AF4082.memo
-	diff {expected/nomemodir,test/od}/doc.799CD96D5634EBEB7E30191285AF4082-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo
-	diff {expected/nomemodir,test/od}/doc.7DBC7B29C0C49BCFD5C4A18740E06E80.memo
-	diff {expected/nomemodir,test/od}/doc.7DBC7B29C0C49BCFD5C4A18740E06E80-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo
+	$(DIFF) {expected/nomemodir,test/od}/doc.mmz
+	$(DIFF) {expected/nomemodir,test/od}/doc.799CD96D5634EBEB7E30191285AF4082.memo
+	$(DIFF) {expected/nomemodir,test/od}/doc.799CD96D5634EBEB7E30191285AF4082-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo
+	$(DIFF) {expected/nomemodir,test/od}/doc.7DBC7B29C0C49BCFD5C4A18740E06E80.memo
+	$(DIFF) {expected/nomemodir,test/od}/doc.7DBC7B29C0C49BCFD5C4A18740E06E80-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo
 	cd test && TEXMF_OUTPUT_DIRECTORY=od memoize-extract.$(PYL) doc.tex
 	[[ -a test/od/doc.799CD96D5634EBEB7E30191285AF4082-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.pdf ]]
 	[[ -a test/od/doc.7DBC7B29C0C49BCFD5C4A18740E06E80-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.pdf ]]
