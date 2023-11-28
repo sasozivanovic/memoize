@@ -18,6 +18,7 @@ FORMAT = generic
 
 COMMON = memoize nomemoize memoizable
 PLAIN = memoize-extract-one.tex
+GENERIC = memoizable.code.tex
 SOURCE = memoize.edtx memoize.ins # $(makefiles)
 
 SCRIPTS := memoize-extract memoize-clean
