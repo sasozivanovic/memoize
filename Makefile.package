@@ -70,6 +70,7 @@ define CTAN-END
 	fi
 	rmdir -p --ignore-fail-on-non-empty `find $(CTAN-DIR) -type d`
 	cd ctan && zip -r $(PACKAGE).zip $(PACKAGE) $(PACKAGE).tds.zip
+	cp ctan/$(PACKAGE).zip ctan/$(PACKAGE)-$(YEAR)-$(MONTH)-$(DAY)-v$(VERSION).zip
 endef
 
 define MAKE-TDS
