@@ -1211,7 +1211,7 @@ long hexadecimal numbers.
 {
   \relaxmmzcommands
   \edef\marshal{%
-    \noexpand\def\noexpand\mynewextern.//\examplename
+    \noexpand\def\noexpand\mynewextern\examplename
   }\marshal.#1-#2.pdf\relax{%
     \forestset{
       append={[\examplename.#1.memo\vphantom{p},pointcolor]},
@@ -1274,7 +1274,7 @@ it makes no sense to repeat it there).
 {%
   \relaxmmzcommands
   \edef\marshal{%
-    \noexpand\def\noexpand\mynewextern./\examplename
+    \noexpand\def\noexpand\mynewextern\examplename
   }\marshal.memo.dir/#1-#2.pdf\relax{%
     \forestset{
       append={[#1.memo\vphantom{p},pointcolor]},
