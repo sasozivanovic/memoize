@@ -3421,23 +3421,6 @@
       auto=\tikz{memoize tikz, collector=\AdviceCollectTikZArguments},
       % \end{listingregion}
       auto={tikzpicture}{memoize tikz},
-      % A hack to prevent memoizing pictures which are accidentally marked as
-      % remembered --- accidentally in the sense that because the document
-      % changed, the |.aux| file contains a |\pgfsyspdfmark| command which
-      % erroneously refers to the picture being memoized.  We know that
-      % memoizing a remembered picture can't be right, as we always abort on
-      % |\pdfsavepos|.  This is implemented by hacking into PGF's
-      % |\pgfsys@getposition|, and aborting memoization if the mark does not
-      % equal |\relax|.  (We have to duplicate |#| because of |.append code|.)
-      auto=\pgfsys@getposition{
-        run if memoizing, outer handler=\mmz@pgfsys@getposition},
-    }%    
-    \def\mmz@pgfsys@getposition##1{%
-      \expandafter\ifx\csname pgf@sys@pdf@mark@pos@##1\endcsname\relax
-      \else
-        \mmzAbort
-      \fi
-      \AdviceOriginal{##1}%
     }%
   },
 }

@@ -46,6 +46,8 @@ repository](https://github.com/sasozivanovic/memoize).
 
 * Advance the counter underlying `\pgfpictureid` when utilizing a tikzpicture.
 
+* Remove the `\pgfsys@getposition` hack for `tikzpicture`s.
+
 ## 2023/10/10 v1.0.0
 
 * A complete, fully documented reimplementation.
