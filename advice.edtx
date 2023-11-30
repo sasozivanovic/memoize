@@ -151,7 +151,7 @@
     %   defined right away, as they don't change with the type of activation
     %   (immediate vs.\ deferred).
     activate csname/.style={activate/.expand once={\csname##1\endcsname}},
-    deactivate csname/.style={activate/.expand once={\csname##1\endcsname}},
+    deactivate csname/.style={deactivate/.expand once={\csname##1\endcsname}},
     % \end{key}
     % 
     % \begin{key}{activate key, deactivate key}
