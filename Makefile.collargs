@@ -32,3 +32,4 @@ version:
 	$(call EDIT-DATE-CHANGELOG,doc/CHANGELOG.collargs.md)
 
 include Makefile.package
+include Makefile.runtimes

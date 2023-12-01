@@ -32,9 +32,6 @@ SCRIPTS := $(SCRIPTS:%=%.pl) $(SCRIPTS:%=%.py)
 %.py.1: %.1
 	echo .so man1/$*.1 > $@     # link to .1 man page
 
-.PHONY: runtime test
-runtime: $(RUNTIME)
-
 README = doc/README.memoize.md
 INSTALL = INSTALL.md
 CHANGELOG = CHANGELOG.md
@@ -146,9 +143,19 @@ include Makefile.runtimes
 
 VERSION-MAN = of Memoize v$(VERSION)
 
+.PHONY: all-runtimes link-all-runtimes unlink-all-runtimes test
+
+all-runtimes: runtimes
+	$(MAKE) -f Makefile.advice runtimes
+	$(MAKE) -f Makefile.collargs runtimes
+
 link-all-runtimes: link-runtimes
 	$(MAKE) -f Makefile.advice link-runtimes
 	$(MAKE) -f Makefile.collargs link-runtimes
+
+unlink-all-runtimes: unlink-runtimes
+	$(MAKE) -f Makefile.advice unlink-runtimes
+	$(MAKE) -f Makefile.collargs unlink-runtimes
 
 test:
 	$(MAKE) -C testing PYL=py
