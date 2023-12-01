@@ -431,7 +431,7 @@ sub sanitize_output_dir {
 $texmfoutput = sanitize_output_dir($TEXMFOUTPUT);
 $texmf_output_directory = sanitize_output_dir($ENV{'TEXMF_OUTPUT_DIRECTORY'});
 
-# When don't delve into the real script when loaded from the testing code.
+# We don't delve into the real script when loaded from the testing code.
 return 1 if caller;
 
 # \subsubsection{Arguments}

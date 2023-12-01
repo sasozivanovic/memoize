@@ -262,7 +262,7 @@ texmf_output_directory = sanitize_output_dir(os.environ.get('TEXMF_OUTPUT_DIRECT
 class NotExtracted(UserWarning):
     pass
 
-# When don't delve into the real script when loaded from the testing code.
+# We don't delve into the real script when loaded from the testing code.
 if __name__ == '__main__':
 
     # \subsubsection{Arguments}
