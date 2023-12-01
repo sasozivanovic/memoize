@@ -173,7 +173,7 @@
   \end{enumerate*}
 \end{abstract}
 
-\bigskip
+\vfill
 
 \ExampleName{titlepage}
 \makeexample{\examplename.pdf N=2} % N=2, because we show the .mmz file later
@@ -210,8 +210,6 @@
   \end{tcboxedraster}
 \end{tcboxedraster}
 
-\medskip
-
 \begin{tcolorbox}[title=Using the externalized graphics]
   \begin{tcolorbox}[example title=doc.pdf,
     halign=center, remember as=pdf2]
@@ -227,17 +225,7 @@
   \end{tcolorbox}
 \end{tcolorbox}
 
-\begin{tikzpicture}[remember picture, overlay]
-  \draw[->, snake arrow, thick, red] (tex.west) to[out=-90-60, in=90+60] (pdf1.west);
-  \draw[->, snake arrow, thick, red] (tex.east) to[out=-90+19, in=90-19] (pdf2.east);
-  \draw[->, thick, red] (extern1.south) to[out=south, in=north] (externfile1);
-  \draw[->, thick, red] (extern2.south) to[out=south, out looseness=1.1, in=north, in looseness=0.9] (externfile2);
-  \draw[->, thick, red] (extern3.south) to[out=south, out looseness=0.7, in=north, in looseness=0.9] (externfile3);
-  \draw[->, thick,blue] (externfile1) to[out=south, in=north] ([yshift=0.8mm]used extern 1.north);
-  \draw[->, thick,blue] (externfile2) to[out=south, in=north] (used extern 2.north);
-  \draw[->, thick,blue] (externfile3) to[out=south, in=north] ([yshift=0.3mm]used extern 3.north);
-\end{tikzpicture}
-\endgroup
+\vfill
 
 \begin{tcolorbox}[colback=emphcolor, fontupper=\footnotesize]
   This manual also documents packages Advice
@@ -247,7 +235,18 @@
   independent packages as they might be useful outside the context of Memoize,
   as well.  See sections~\ref{sec:advice} and \ref{sec:ref:advice} for Advice, and
   sections~\ref{sec:collargs} and \ref{sec:ref:collargs} for CollArgs.
+  \begin{tikzpicture}[remember picture, overlay]
+    \draw[->, snake arrow, thick, red] (tex.west) to[out=-90-60, in=90+60] (pdf1.west);
+    \draw[->, snake arrow, thick, red] (tex.east) to[out=-90+19, in=90-19] (pdf2.east);
+    \draw[->, thick, red] (extern1.south) to[out=south, in=north] (externfile1);
+    \draw[->, thick, red] (extern2.south) to[out=south, out looseness=1.1, in=north, in looseness=0.9] (externfile2);
+    \draw[->, thick, red] (extern3.south) to[out=south, out looseness=0.7, in=north, in looseness=0.9] (externfile3);
+    \draw[->, thick,blue] (externfile1) to[out=south, in=north] ([yshift=0.8mm]used extern 1.north);
+    \draw[->, thick,blue] (externfile2) to[out=south, in=north] (used extern 2.north);
+    \draw[->, thick,blue] (externfile3) to[out=south, in=north] ([yshift=0.3mm]used extern 3.north);
+  \end{tikzpicture}  
 \end{tcolorbox}
+\endgroup
 
 
 
