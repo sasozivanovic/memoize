@@ -11,8 +11,8 @@ all: test ctan/memoize.zip
 PACKAGE = memoize
 VERSION = 1.1.0-wip
 YEAR = 2023
-MONTH = 11
-DAY = 28
+MONTH = 12
+DAY = 01
 
 FORMAT = generic
 

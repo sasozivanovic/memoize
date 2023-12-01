@@ -19,7 +19,7 @@
 # <texmf>/doc/generic/memoize/FILES.
 
 my $PROG = 'memoize-extract.pl';
-my $VERSION = '2023/11/28 v1.1.0-wip';
+my $VERSION = '2023/12/01 v1.1.0-wip';
 
 use strict;
 use File::Basename qw/basename/;
