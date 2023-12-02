@@ -70,24 +70,38 @@
 %<plain>\catcode`\@11\relax
 % 
 % \begin{macro}{\toksapp,\gtoksapp,\etoksapp,\xtoksapp}
-%   Our macros for appending to a token register only accept a control sequence
-%   defined by |\toksdef| (like |\mytoks|) but not an explicit register
-%   designation like |\toks0|, so we only define them if noone else did; the
-%   names of the macros match the \hologo{LuaTeX} primitives, so they surely
-%   won't be defined there.
-\ifdefined\toksapp\else
-  \long\def\toksapp#1#2{#1\expandafter{\the#1#2}}%
+%   Macros for appending to a token register.  We don't have to define them in
+%   \hologo{LuaTeX}, where they exist as primitives.  Same as these primitives,
+%   out macros accept either a register number or a |\toksdef|fed control
+%   sequence as the (unbraced) |#1|; |#2| is the text to append.
+\ifdefined\luatexversion
+\else
+  \def\toksapp{\toks@cs@or@num\@toksapp}
+  \def\gtoksapp{\toks@cs@or@num\@gtoksapp}
+  \def\etoksapp{\toks@cs@or@num\@etoksapp}
+  \def\xtoksapp{\toks@cs@or@num\@xtoksapp}
+  \def\toks@cs@or@num#1#2#{%
+    % Test whether |#2| (the original |#1|) is a number or a control sequence.
+    \ifnum-2>-1#2
+      % It is a number. |\toks@cs@or@num@num| will gobble |\toks@cs@or@num@cs|
+      % below.
+      \expandafter\toks@cs@or@num@num
+      % The register control sequence in |#2| is skipped over in the false
+      % branch.
+    \fi
+    \toks@cs@or@num@cs{#1}{#2}%
+  }
+  % |#1| is one of |\@toksapp| and friends.  The second macro prefixes the
+  % register number by |\toks|.
+  \def\toks@cs@or@num@cs#1#2{#1{#2}}
+  \def\toks@cs@or@num@num\toks@cs@or@num@cs#1#2{#1{\toks#2 }}
+  % Having either |\tokscs| or |\toks<number>| in |#1|, we can finally do the
+  % real job.
+  \long\def\@toksapp#1#2{#1\expandafter{\the#1#2}}%
+  \long\def\@etoksapp#1#2{#1\expandafter{\expanded{\the#1#2}}}%
+  \long\def\@gtoksapp#1#2{\global#1\expandafter{\the#1#2}}%
+  \long\def\@xtoksapp#1#2{\global#1\expandafter{\expanded{\the#1#2}}}%
 \fi
-\ifdefined\etoksapp\else
-  \long\def\etoksapp#1#2{#1\expandafter{\expanded{\the#1#2}}}%
-\fi
-\ifdefined\gtoksapp\else
-  \long\def\gtoksapp#1#2{\global#1\expandafter{\the#1#2}}%
-\fi
-\ifdefined\xtoksapp\else
-  \long\def\xtoksapp#1#2{\global#1\expandafter{\expanded{\the#1#2}}}%
-\fi
-\ifdefined\toks@\else\toksdef\toks@=0 \fi
 % \end{macro}
 % 
 % \begin{macro}{\CollectArguments,\CollectArgumentsRaw}
@@ -1697,7 +1711,7 @@
   \collargs@CPT@def\collargs@gobbleOneB\collargs@begintag{%
     % Assign the collected tokens into a register.  The first token in |##1|
     % will be |\collargs@empty|, so we expand to get rid of it.
-    \expandafter\toks@\expandafter{##1}%
+    \toks0\expandafter{##1}%
     % |cprotect| simply grabs the token following the |\collargs@begintag| with
     % a parameter. We can't do this, because we need the code to work in the
     % non-verbatim mode, as well, and we might stumble upon a brace there.  So
@@ -1709,13 +1723,13 @@
   \ifcollargs@long\long\fi
   \collargs@CPT@def\collargs@gobbleUntilE\collargs@endtag{%
     % Expand |\collargs@empty| at the start of |##1|.
-    \expandafter\toksapp\expandafter\toks@\expandafter{##1}%
+    \expandafter\toksapp\expandafter0\expandafter{##1}%
     \collargs@gobbleUntilE@i
   }%
   % Initialize.
   \collargs@begins=0\relax
   \collargsArg{}%
-  \toks@{}%
+  \toks0{}%
   % We will call |\collargs@gobbleUntilE| via the caller control sequence.
   \collargs@letusecollector\collargs@gobbleUntilE
   % We insert |\collargs@empty| to avoid the potential debracing problem.
@@ -1743,7 +1757,7 @@
     \expandafter\collargs@gobbleOneB@v
   \else
     % Append the real begin-tag to the temporary tokens.
-    \etoksapp\toks@{\expandonce\collargs@begintag}%
+    \etoksapp0{\expandonce\collargs@begintag}%
     \expandafter\collargs@gobbleOneB@ii
   \fi
 }%
@@ -1771,14 +1785,14 @@
   \fi
   % Whatever the result was, we have to append the gobbled group to the
   % temporary toks.
-  \etoksapp\toks@{\collargs@grabbed@spaces\unexpanded{{#1}}}%
+  \etoksapp0{\collargs@grabbed@spaces\unexpanded{{#1}}}%
   \collargs@init@grabspaces
   \collargs@gobbleOneB@vi
 }
 \def\collargs@gobbleOneB@v#1{\collargs@gobbleOneB@vi}
 \def\collargs@gobbleOneB@vi{%
   % Store.
-  \etoksapp\collargsArg{\the\toks@}%
+  \etoksapp\collargsArg{\the\toks0}%
   % Advance the begin-tag counter.
   \advance\collargs@begins\collargs@begins@increment\relax
   % Find more begin-tags, unless this was the final one.
@@ -1802,7 +1816,7 @@
   }%
 }
 \def\collargs@gobbleUntilE@iii#1{%
-  \etoksapp\toks@{\collargs@grabbed@spaces}%
+  \etoksapp0{\collargs@grabbed@spaces}%
   \collargs@init@grabspaces
   \def\collargs@tempa{#1}%
   \ifx\collargs@tempa\collargs@tagarg
@@ -1811,7 +1825,7 @@
   \else
     % Nope, this |\end| belongs to someone else.  Insert the end tag plus the
     % tag argument, and collect until the next |\end|.
-    \expandafter\toksapp\expandafter\toks@\expandafter{\collargs@endtag{#1}}%
+    \expandafter\toksapp\expandafter0\expandafter{\collargs@endtag{#1}}%
     \expandafter\collargs@letusecollector\expandafter\collargs@gobbleUntilE
   \fi
 }
@@ -1819,7 +1833,7 @@
   % Invoke |\collargs@gobbleOneB| with the collected material, plus a fake
   % begin-tag and a quark guard.
   \ifcollargsIgnoreNesting
-    \expandafter\collargsArg\expandafter{\the\toks@}%
+    \expandafter\collargsArg\expandafter{\the\toks0}%
     \expandafter\collargs@commandatend
   \else
     \expandafter\collargs@gobbleUntilE@v
@@ -1829,7 +1843,7 @@
   \expanded{%
     \noexpand\collargs@letusecollector\noexpand\collargs@gobbleOneB
     \noexpand\collargs@empty
-    \the\toks@
+    \the\toks0
     % Add a fake begin-tag and a quark guard.
     \expandonce\collargs@begintag
     \noexpand\collargs@qend
@@ -1842,7 +1856,7 @@
       \expandafter\ifx\expandafter\relax\collargs@tagarg\relax\else{%
           \expandonce\collargs@tagarg}\fi
     }%
-    \toks@={}%
+    \toks0={}%
     \expandafter\collargs@letusecollector\expandafter\collargs@gobbleUntilE
     \expandafter\collargs@empty
   \fi
