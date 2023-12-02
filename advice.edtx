@@ -1106,38 +1106,38 @@
 % The \TikZ; code resides in a special file.  It is meant to be |\input| at any
 % time, so we need to temporarily assign |@| category code 11.
 %<*tikz>
-\edef\mmzresetatcatcode{\catcode`\noexpand\@\the\catcode`\@\relax}%
+\edef\adviceresetatcatcode{\catcode`\noexpand\@\the\catcode`\@\relax}%
 \catcode`\@=11
 \def\AdviceCollectTikZArguments{%
-% We initialize the token register which will hold the collected arguments, and
-% start the collection.  Nothing of note happens until \dots
-  \mmz@temptoks={}%
-  \mmz@tikz@anim
+  % We initialize the token register which will hold the collected arguments,
+  % and start the collection.  Nothing of note happens until \dots
+  \toks0={}%
+  \advice@tikz@anim
 }
-\def\mmz@tikz@anim{%
-  \pgfutil@ifnextchar[{\mmz@tikz@opt}{%
-      \pgfutil@ifnextchar:{\mmz@tikz@anim@a}{%
-        \mmz@tikz@code}}%]
+\def\advice@tikz@anim{%
+  \pgfutil@ifnextchar[{\advice@tikz@opt}{%
+      \pgfutil@ifnextchar:{\advice@tikz@anim@a}{%
+        \advice@tikz@code}}%]
 }
-\def\mmz@tikz@anim@a#1=#2{%
-  \toksapp\mmz@temptoks{#1={#2}}%
-  \mmz@tikz@anim
+\def\advice@tikz@anim@a#1=#2{%
+  \toksapp0{#1={#2}}%
+  \advice@tikz@anim
 }
-\def\mmz@tikz@opt[#1]{%
-  \toksapp\mmz@temptoks{[#1]}%
-  \mmz@tikz@code
+\def\advice@tikz@opt[#1]{%
+  \toksapp0{[#1]}%
+  \advice@tikz@code
 }
-\def\mmz@tikz@code{%
-  \pgfutil@ifnextchar\bgroup\mmz@tikz@braced\mmz@tikz@single
+\def\advice@tikz@code{%
+  \pgfutil@ifnextchar\bgroup\advice@tikz@braced\advice@tikz@single
 }
-\long\def\mmz@tikz@braced#1{\toksapp\mmz@temptoks{{#1}}\mmz@tikz@done}
-\def\mmz@tikz@single#1;{\toksapp\mmz@temptoks{#1;}\mmz@tikz@done}
+\long\def\advice@tikz@braced#1{\toksapp0{{#1}}\advice@tikz@done}
+\def\advice@tikz@single#1;{\toksapp0{#1;}\advice@tikz@done}
 % \dots\ we finish collecting the arguments, when we execute the inner handler,
 % with the (braced) collected arguments is its sole argument.
-\def\mmz@tikz@done{%
-  \expandafter\AdviceInnerHandler\expandafter{\the\mmz@temptoks}%
+\def\advice@tikz@done{%
+  \expandafter\AdviceInnerHandler\expandafter{\the\toks0}%
 }
-\mmzresetatcatcode
+\adviceresetatcatcode
 %</tikz>
 %    \end{macrocode}
 %
