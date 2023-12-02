@@ -242,7 +242,9 @@ sub access_out {
 	my $rw = -w $f; my $rd = -d $f; my $rx = -x $f;
 	return -w $f && (! -d $f || -x $f);
     } else {
-        # For a non-existing file, the parent directory should be writable.
+        # For a non-existing file, the parent directory should be writable.  (This is the
+        # only place where function |parent| is used, so it's ok that it returns the
+        # logical parent.)
 	my $p = parent($f);
 	return -w $p;
     }
@@ -292,7 +294,6 @@ sub find_out {
 # Note that on Windows, which has no concept of symlinks, |..| is resolved to the parent.
 # This affects subs |join_paths|, |parent|, |is_ancestor|, and consequently |find_in|,
 # |find_out|, . The resolution is implemented by |File::Spec|'s canonpath.
-# TODO: canonpath should not remove ..s
 
 sub name {
     my $path = shift;
@@ -336,18 +337,15 @@ sub join_paths {
     return catpath($volume1, catdir($dir1, $dir2), $filename2);
 }
 
-# todo: logical parent!
+# The logical parent.  Almost the same as |pathlib.parent| in Python, the differences only
+# arise due to |canonpath|, which e.g.\ eliminates |.| components.
 sub parent {
+    # Use |canonpath| to eliminate the final |/|.
     my $path = canonpath(shift);
-    if ($path =~ /\Q$dirsep\E\.\.$/) {
-	return $path . "$dirsep..";
-    } elsif ($path =~ /\Q$dirsep\E/) {
+    #print("canonpath: $path\n");
+    if ($path =~ /\Q$dirsep\E/) {
 	my $parent = $path =~ s/\Q$dirsep\E[^\Q$dirsep\E]+$//r;
 	return $parent ? $parent : $dirsep;
-    } elsif ($path eq '.') {
-	return '..';
-    } elsif ($path eq '..') {
-	return "..$dirsep..";
     } else {
 	return '.';
     }

@@ -429,3 +429,14 @@ with Test('od', '../tmp', 'p', 'p'):
     test(paranoia_out, Path('').cwd().resolve() / 'foo/baz.txt', False)
     test(paranoia_out, texmfoutput.resolve() / 'baz.txt', False)
     test(paranoia_out, texmf_output_directory.resolve() / 'baz.txt', False)
+
+with Test(None, None, 'p', 'p'):
+    tmp = Path('tmp')
+    mkdir('tmp/foo')
+    mkdir('tmp/foo/bar')
+    chmod(tmp, '-w')
+    test(access_out, tmp / 'foo', True)
+    test(access_out, tmp / 'foo/bar', True)
+    test(access_out, tmp / 'foo/bar/baz', True)
+    test(access_out, tmp / 'foo/bar/..', True)
+    test(access_out, tmp / 'foo/bar/../..', False)

@@ -151,8 +151,10 @@ def access_out(f):
         # executable.
         return os.access(f, os.W_OK) and (not f.is_dir() or os.access(f, os.X_OK))
     else:
-        # For a non-existing file, the parent directory should be writable.
-        return os.access(f.parent, os.W_OK) # TODO
+        # For a non-existing file, the parent directory should be writable.  (This is the
+        # only place where function |pathlib.parent| is used, so it's ok that it returns
+        # the logical parent.)
+        return os.access(f.parent, os.W_OK)
 
 # This function finds the location for an input file, respecting |TEXMF_OUTPUT_DIRECTORY|
 # and |TEXMFOUTPUT|, and the permissions in the filesystem.  It returns an absolute file
