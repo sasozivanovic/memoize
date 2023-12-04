@@ -24,8 +24,8 @@ my $VERSION = '2023/12/01 v1.1.0-wip';
 use strict;
 use File::Basename qw/basename/;
 use Getopt::Long;
-use File::Spec::Functions qw/canonpath splitpath catpath splitdir catdir catfile rootdir
-    file_name_is_absolute/;
+use File::Spec::Functions qw/splitpath catpath splitdir rootdir file_name_is_absolute
+    catdir /;
 use File::Path qw(make_path);
 # We will set up the error log before trying to import the PDF processing library.
 
@@ -207,18 +207,31 @@ sub _paranoia {
 		  )))));
 }
 
-# On Windows, we disallow ``semi-absolute'' filenames, i.e.\ filenames starting with the
+# Only removes final "/"s. This is unlike File::Spec's canonpath, which also removes '.'
+# components, collapses multiple '/' --- and unfortunately also goes up for '..' on
+# Windows.
+sub normalize_path {
+    my $path = shift;
+    my ($v, $d, $n) = splitpath($path);
+    if ($n eq '' && $d =~ /[^\Q$dirsep\E]\Q$dirsep\E+$/) {
+	$path =~ s/\Q$dirsep\E+$//;
+    }
+    return $path;
+}
+
+#
+# On Windows, we disallow ``semi-absolute'' paths, i.e.\ paths starting with the
 # |\| but lacking the drive.  |File::Spec|'s function |file_name_is_absolute| returns 2 if
 # the path is absolute with a volume, 1 if it's absolute with no volume, and 0 otherwise.
-# After a filename was sanitized using this function, |file_name_is_absolute| will work as
+# After a path was sanitized using this function, |file_name_is_absolute| will work as
 # we want it to.
-sub sanitize_filename {
+sub sanitize_path {
+    my $f = normalize_path(shift);
+    my ($v, $d, $n) = splitpath($f);
     if ($on_windows) {
-	my $f = shift;
 	my $a = file_name_is_absolute($f);
-	my ($v, $d, $n) = splitpath($f);
 	if ($a == 1 || ($a == 0 && $v) ) {
-	    error("\"Semi-absolute\" filenames are disallowed: $f",
+	    error("\"Semi-absolute\" paths are disallowed: " . $f,
 		  "The path must either both contain the drive letter and " .
 		  "start with '\\', or none of these; paths like 'C:foo\\bar' " .
 		  "and '\\foo\\bar' are disallowed");
@@ -258,7 +271,7 @@ sub access_out {
 # directory is returned.
 sub find_in {
     my $f = shift;
-    sanitize_filename($f);
+    sanitize_path($f);
     return $f if file_name_is_absolute($f);
     for my $df (
 	$texmf_output_directory ? join_paths($texmf_output_directory, $f) : undef,
@@ -277,7 +290,7 @@ sub find_in {
 # is found, the file in either the current or the output directory is returned.
 sub find_out {
     my $f = shift;
-    sanitize_filename($f);
+    sanitize_path($f);
     return $f if file_name_is_absolute($f);
     for my $df (
 	$texmf_output_directory ? join_paths($texmf_output_directory, $f) : undef,
@@ -328,37 +341,37 @@ sub with_name {
 }
 
 sub join_paths {
-    my ($path1, $path2) = @_;
+    my $path1 = normalize_path(shift);
+    my $path2 = normalize_path(shift);
     return $path2 if !$path1 || file_name_is_absolute($path2);
     my ($volume1, $dir1, $filename1) = splitpath($path1, 'no_file');
     my ($volume2, $dir2, $filename2) = splitpath($path2);
-    # this should never happen
     die if $volume2;
-    return catpath($volume1, catdir($dir1, $dir2), $filename2);
+    return catpath($volume1,
+		   join($dirsep, ($dir1 eq $dirsep ? '' : $dir1, $dir2)),
+		   $filename2);
 }
 
-# The logical parent.  Almost the same as |pathlib.parent| in Python, the differences only
-# arise due to |canonpath|, which e.g.\ eliminates |.| components.
+# The logical parent. The same as |pathlib.parent| in Python.
 sub parent {
-    # Use |canonpath| to eliminate the final |/|.
-    my $path = canonpath(shift);
-    #print("canonpath: $path\n");
-    if ($path =~ /\Q$dirsep\E/) {
-	my $parent = $path =~ s/\Q$dirsep\E[^\Q$dirsep\E]+$//r;
-	return $parent ? $parent : $dirsep;
-    } else {
-	return '.';
+    my $f = normalize_path(shift);
+    my ($v, $dn, $_dummy) = splitpath($f, 1);
+    my $p_dn = $dn =~ s/[^\Q$dirsep\E]+$//r;
+    if ($p_dn eq '') {
+	$p_dn = $dn =~ /^\Q$dirsep\E/ ? $dirsep : '.';
     }
+    my $p = catpath($v, $p_dn, '');
+    $p = normalize_path($p);
+    return $p;
 }
 
 # This function assumes that both paths are absolute; ancestor may be '', signaling a
 # non-path.
 sub is_ancestor {
-    my ($ancestor, $descendant) = @_;
+    my $ancestor = normalize_path(shift);
+    my $descendant = normalize_path(shift);
     return if ! $ancestor;
-    $ancestor = catfile(canonpath($ancestor),'');
     $ancestor .= $dirsep unless $ancestor =~ /\Q$dirsep\E$/;
-    $descendant = canonpath($descendant);
     return $descendant =~ /^\Q$ancestor/;
 }
 
@@ -386,33 +399,34 @@ sub unquote {
 # Get the values of |openin_any|, |openout_any|, |TEXMFOUTPUT| and
 # |TEXMF_OUTPUT_DIRECTORY|.
 
-my $kpsewhich_query = 'openin_any=\$openin_any,openout_any=\$openout_any,TEXMFOUTPUT=\$TEXMFOUTPUT';
-my $kpsewhich_output = `kpsewhich -expand-var=$kpsewhich_query`;
-my $TEXMFOUTPUT;
-# When the variables are not expanded, we assume we're running MiKTeX.
-if ($kpsewhich_output eq "$kpsewhich_query\n") {
-    $kpsewhich_query = 'initexmf --show-config-value=[Core]AllowUnsafeInputFiles ' .
-	'--show-config-value=[Core]AllowUnsafeOutputFiles';
-    $kpsewhich_output = `$kpsewhich_query`;
-    $kpsewhich_output =~ /^(.*)\n(.*)\n/m;
-    $openin_any = $1 eq 'true' ? 'a' : 'p';
-    $openout_any = $2 eq 'true' ? 'a' : 'p';
-    $TEXMFOUTPUT = '';
-# Otherwise, we're running TeXLive.
-} else {
-    $kpsewhich_output =~ /^openin_any=(.*),openout_any=(.*),TEXMFOUTPUT=(.*)/;
-    ($openin_any, $openout_any, $TEXMFOUTPUT) = @{^CAPTURE};
-}
+my $maybe_backslash = $on_windows ? '' : '\\';
+my $kpsewhich_output = `kpsewhich -expand-var=openin_any=$maybe_backslash\$openin_any,openout_any=$maybe_backslash\$openout_any,TEXMFOUTPUT=$maybe_backslash\$TEXMFOUTPUT`;
 if (! $kpsewhich_output) {
+    # No TeX? (Note that |kpsewhich| should exist in MiKTeX as well.)  In absence of
+    # |kpathsea| information, we get very paranoid.
+    ($openin_any, $openout_any, $texmfoutput, $texmf_output_directory) = ('p', 'p', '', '');
     # Unfortunately, this warning can't make it into the log.  But then again, the chances
     # of a missing |kpsewhich| are very slim, and its absence would show all over the
-    # place anyway.  We don't bother throwing a different warning for MiKTeX.
-    warning('I failed to execute "kpsewhich"; assuming openin_any = openout_any = "p" ' .
+    # place anyway.
+    warning('I failed to execute "kpsewhich", is there no TeX system installed? ' .
+	    'Assuming openin_any = openout_any = "p" ' .
 	    '(i.e. restricting all file operations to non-hidden files in the current ' .
 	    'directory of its subdirectories).');
-    # In absence of |kpathsea| information, we get very paranoid, but still try to get
-    # |TEXMFOUTPUT| from an environment variable.
-    ($openin_any, $openout_any, $TEXMFOUTPUT) = ('p', 'p', $ENV{'TEXMFOUTPUT'});
+} else {
+    $kpsewhich_output =~ /^openin_any=(.*),openout_any=(.*),TEXMFOUTPUT=(.*)/;
+    ($openin_any, $openout_any, $texmfoutput) = @{^CAPTURE};
+    $texmf_output_directory = $ENV{'TEXMF_OUTPUT_DIRECTORY'};
+    if ($openin_any =~ '^\$openin_any') {
+	# When the |open*_any| variables are not expanded, we assume we're running
+	# MiKTeX. The two config settings below correspond to TeXLive's |openin_any| and
+	# |openout_any|; afaik, there is no analogue to |TEXMFOUTPUT|.
+	my $initexmf_output = `initexmf --show-config-value=[Core]AllowUnsafeInputFiles --show-config-value=[Core]AllowUnsafeOutputFiles`;
+	$initexmf_output =~ /^(.*)\n(.*)\n/m;
+	$openin_any = $1 eq 'true' ? 'a' : 'p';
+	$openout_any = $2 eq 'true' ? 'a' : 'p';
+	$texmfoutput = '';
+	$texmf_output_directory = '';
+    }
 }
 
 # An output directory should exist, and may not point to the root on Linux. On Windows, it
@@ -420,14 +434,13 @@ if (! $kpsewhich_output) {
 # |sanitize_filename|.  The returned path is canonized.
 sub sanitize_output_dir {
     return unless my $d = shift;
-    $d = canonpath($d);
-    sanitize_filename($d);
+    sanitize_path($d);
     # On Windows, |rootdir| returns |\|, so it cannot possibly match |$d|.
     return $d if -d $d && $d ne rootdir();
 }
 
-$texmfoutput = sanitize_output_dir($TEXMFOUTPUT);
-$texmf_output_directory = sanitize_output_dir($ENV{'TEXMF_OUTPUT_DIRECTORY'});
+$texmfoutput = sanitize_output_dir($texmfoutput);
+$texmf_output_directory = sanitize_output_dir($texmf_output_directory);
 
 # We don't delve into the real script when loaded from the testing code.
 return 1 if caller;

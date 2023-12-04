@@ -4,6 +4,8 @@ from memoize_extract import *
 import memoize_extract
 import shutil, stat, pathlib, platform
 
+on_windows = platform.system() == 'Windows'
+
 class Test:
     batch = 0
     n = 0
@@ -95,7 +97,7 @@ def create(f, text = ''):
         print(text, file = fh)
 
 _modes = { 'r': stat.S_IRUSR, 'w': stat.S_IWUSR, 'x': stat.S_IXUSR }
-def chmod(f, pm_mode):
+def chmod(pm_mode, f):
     assert isinstance(pm_mode, str) and len(pm_mode) == 2
     pm = pm_mode[0]
     assert pm in '+-'
@@ -127,11 +129,11 @@ with Test(None, None):
     
     test(find_in, cur, cur)
     test(find_out, cur, cur)
-    chmod(cur, '-r')
+    chmod('-r', cur)
     test(find_in, cur, cur)
-    chmod(cur, '-w')
+    chmod('-w', cur)
     test(find_in, cur, cur)
-    chmod(cur, '+r')
+    chmod('+r', cur)
     test(find_in, cur, cur)
 
 with Test(None, 'tmp'):
@@ -146,19 +148,19 @@ with Test(None, 'tmp'):
     test(find_out, none, none)
     test(find_out, tmp, tmp)
     
-    chmod('.', '-w')
+    chmod('-w', '.')
     test(find_in, none, none)
     test(find_in, tmp, tmp_tmp)
     test(find_out, none, unix = tmp_none) # fail on win (no permissions on dir)
     test(find_out, tmp, unix = tmp_tmp) # fail on win (no permissions on dir)
     
-    chmod('.', '-r')
+    chmod('-r', '.')
     test(find_in, none, none)
     test(find_in, tmp, tmp_tmp)
     test(find_out, none, unix = tmp_none) # fail on win (no permissions on dir)
     test(find_out, tmp, unix = tmp_tmp) # fail on win (no permissions on dir)
     
-    chmod('.', '+w')
+    chmod('+w', '.')
     test(find_in, none, none)
     test(find_in, tmp, tmp_tmp)
     test(find_out, none, none)
@@ -190,23 +192,23 @@ with Test('od', None):
     test(find_in, curod, od_curod)
     test(find_out, curod, od_curod)
     
-    chmod('od', '-w')
+    chmod('-w', 'od')
     test(find_in, none, none)
     test(find_out, none, od_none)
-    chmod('od', '+w')
-    chmod('od', '-x')
+    chmod('+w', 'od')
+    chmod('-x', 'od')
     test(find_in, od, unix = od) # fail on win --> od_od
     test(find_out, od, od_od)
     test(find_in, curod, unix = curod) # fail on win --> od_curod
     test(find_out, curod, od_curod)
-    chmod('od', '+x')
+    chmod('+x', 'od')
     
-    chmod(od_od, '-r')
+    chmod('-r', od_od)
     test(find_in, od, unix = od) # fail on win --> od_od
-    chmod(od_od, '+r')
-    chmod(od_od, '-w')
+    chmod('+r', od_od)
+    chmod('-w', od_od)
     test(find_out, od, od_od)
-    chmod(od_od, '+w')
+    chmod('+w', od_od)
 
 with Test('od', 'tmp'):
     none = Path('none.txt')
@@ -270,7 +272,7 @@ with Test('od', 'tmp'):
     test(find_in, curodtmp, od_curodtmp)
     test(find_out, curodtmp, od_curodtmp)
     
-    chmod('od', '-w')
+    chmod('-w', 'od')
     test(find_out, none, unix = tmp_none) # fail on win --> od_none
     test(find_out, cur, unix = tmp_cur) # fail on win --> od_cur
     test(find_out, od, od_od)
@@ -279,18 +281,18 @@ with Test('od', 'tmp'):
     test(find_out, curtmp, unix = tmp_curtmp) # fail on win --> od_curtmp
     test(find_out, odtmp, od_odtmp)
     test(find_out, curodtmp, od_curodtmp)
-    chmod('od', '+w')
+    chmod('+w', 'od')
     
-    chmod(od_od, '-w')
+    chmod('-w', od_od)
     test(find_in, od, od_od)
     test(find_out, od, tmp_od)
-    chmod(od_od, '-r')
+    chmod('-r', od_od)
     test(find_in, od, unix = od) # fail on win --> od_od
     test(find_out, od, tmp_od)
-    chmod(od_od, '+w')
+    chmod('+w', od_od)
     test(find_in, od, unix = od) # fail on win --> od_od
     test(find_out, od, od_od)
-    chmod(od_od, '+r')
+    chmod('+r', od_od)
 
 # Testing paranoia; more precisely, "_paranoia". We redefine "paranoia_out" to
 # return True/False rather than throw an error.
@@ -430,13 +432,16 @@ with Test('od', '../tmp', 'p', 'p'):
     test(paranoia_out, texmfoutput.resolve() / 'baz.txt', False)
     test(paranoia_out, texmf_output_directory.resolve() / 'baz.txt', False)
 
-with Test(None, None, 'p', 'p'):
-    tmp = Path('tmp')
-    mkdir('tmp/foo')
-    mkdir('tmp/foo/bar')
-    chmod(tmp, '-w')
-    test(access_out, tmp / 'foo', True)
-    test(access_out, tmp / 'foo/bar', True)
-    test(access_out, tmp / 'foo/bar/baz', True)
-    test(access_out, tmp / 'foo/bar/..', True)
-    test(access_out, tmp / 'foo/bar/../..', False)
+if not on_windows: # Directories don't have permissions on Windows.
+    with Test(None, None, 'p', 'p'):
+        tmp = Path('tmp')
+        mkdir('tmp/foo')
+        mkdir('tmp/foo/bar')
+        chmod('-w', tmp)
+        test(access_out, tmp / 'foo', True)
+        test(access_out, tmp / 'foo/bar', True)
+        test(access_out, tmp / 'foo/bar/baz', True)
+        test(access_out, tmp / 'foo/bar/..', True)
+        test(access_out, tmp / 'foo/bar/../..', False)
+
+print('Done.')

@@ -158,5 +158,4 @@ unlink-all-runtimes: unlink-runtimes
 	$(MAKE) -f Makefile.collargs unlink-runtimes
 
 test:
-	$(MAKE) -C testing PYL=py
-	$(MAKE) -C testing PYL=pl
+	cd testing && ./MakeTests.py

@@ -29,19 +29,16 @@ sub test { # only for string arguments
 	    return;
 	}
     }
-    # For windows, replace / by \.
+    # For windows, replace / in args and result by \.
     $expected_result =~ tr'/'\\' if $on_windows;
-    my @args = @_;
-    # For windows, replace / by \, but as the arguments will be surrounded by
-    # quotes, interpolation requires us to replace / at the end of each
-    # argument by \\.
-    @args =  map(tr'/'\\'r =~ s/\\$/\\\\/r, @_) if $on_windows;
-    # Surround the arguments by quotes.
-    @args = map("'$_'", @args);
-    # Compose the function call.
-    my $call = "$func(" . join(',', @args) . ')';
-    my $result = eval $call;
-    print("$n. $call --> '$result'\n");
+    my @args =  $on_windows ? map(tr'/'\\'r, @_) : @_;
+    # Print the function call.
+    my @quoted_args = map("'" . $_ . "'", @args);
+    print("$n. $func(", join(',', @quoted_args), ") --> ");
+    # Evaluate the function.
+    my $result = eval "$func(\@args)";
+    # Print the result, or the error.
+    print($@ ? $@ : "'$result'\n");
     die "Expected: '$expected_result'" unless $result eq $expected_result;
 }
 
@@ -58,6 +55,8 @@ $" = ',';
 sub BEGIN_TEST {
     ($original_texmf_output_directory, $original_texmfoutput, $original_openin_any, $original_openout_any) = ($main::texmf_output_directory, $main::texmfoutput, $main::openin_any, $main::openout_any);
     ($main::texmf_output_directory, $main::texmfoutput, $main::openin_any, $main::openout_any) = @_;
+    $main::texmf_output_directory =~ tr'/'\\' if $on_windows;
+    $main::texmfoutput =~ tr'/'\\' if $on_windows;
     $main::openin_any = 'a' unless $main::openin_any;
     $main::openout_any = 'p' unless $main::openout_any;
     remove_tree('test');
@@ -83,7 +82,7 @@ sub create {
 use Fcntl qw( :mode );
 my %modes = ( r => S_IRUSR, w => S_IWUSR, x => S_IXUSR );
 sub mychmod {
-    my ($f, $pm_mode) = @_;
+    my ($pm_mode, $f) = @_;
     $pm_mode =~ /^([+-])([rwx])$/;
     my $mode = $modes{$2};
     my $fmode = (stat($f))[2];
@@ -123,28 +122,28 @@ test('with_name', '/', 'foo', '/foo');
 
 test('join_paths', '~/temp', 'foo.txt', '~/temp/foo.txt');
 test('join_paths', '~/temp/', 'foo.txt', '~/temp/foo.txt');
-test('join_paths', '~/temp/', './foo.txt', '~/temp/foo.txt');
+test('join_paths', '~/temp/', './foo.txt', '~/temp/./foo.txt');
 
-# on Win, ".." goes up
-test('join_paths', '~/temp/', '../foo.txt', {unix => '~/temp/../foo.txt', win => '~/foo.txt'});
-unixtest('join_paths', '~/temp/', '/tmp/foo.txt', '/tmp/foo.txt');
-unixtest('join_paths', '~/temp/', '/tmp/foo.txt', '/tmp/foo.txt');
+test('join_paths', '~/temp/', '../foo.txt', '~/temp/../foo.txt');
+test('join_paths', '~/temp/', '/tmp/foo.txt', '/tmp/foo.txt');
+test('join_paths', '~/temp/', '/tmp/foo.txt', '/tmp/foo.txt');
 wintest('join_paths', '~/temp/', 'C:/tmp/foo.txt', 'C:/tmp/foo.txt');
 wintest('join_paths', '~/temp', 'D:/tmp/foo.txt', 'D:/tmp/foo.txt');
 
 test('join_paths', '~/temp/', 'foo.dir/foo.txt', '~/temp/foo.dir/foo.txt');
-test('join_paths', '~/temp/', './foo.dir/foo.txt', '~/temp/foo.dir/foo.txt');
+test('join_paths', '~/temp/', './foo.dir/foo.txt', '~/temp/./foo.dir/foo.txt');
 test('join_paths', '', 'foo.dir/foo.txt', 'foo.dir/foo.txt');
 test('join_paths', '/', 'foo.dir/foo.txt', '/foo.dir/foo.txt');
-test('join_paths', '.', 'foo.dir/foo.txt', 'foo.dir/foo.txt');
-test('join_paths', './', 'foo.dir/foo.txt', 'foo.dir/foo.txt');
+test('join_paths', '.', 'foo.dir/foo.txt', './foo.dir/foo.txt');
+test('join_paths', '', 'foo.dir/foo.txt', 'foo.dir/foo.txt');
+test('join_paths', './', 'foo.dir/foo.txt', './foo.dir/foo.txt');
 test('join_paths', '', '/foo.dir/foo.txt', '/foo.dir/foo.txt');
 test('join_paths', '', './foo.txt', './foo.txt');
 test('join_paths', '.', 'foo.txt', './foo.txt');
 
 test('parent', 'foo/bar', 'foo');
 test('parent', 'foo/bar/baz', 'foo/bar');
-test('parent', 'foo/bar/./baz', 'foo/bar');
+test('parent', 'foo/bar/./baz', 'foo/bar/.');
 test('parent', '/foo/bar', '/foo');
 test('parent', '/foo/bar/', '/foo');
 test('parent', 'foo/bar/', 'foo');
@@ -154,25 +153,30 @@ test('parent', '..', '.');
 test('parent', '/', '/');
 test('parent', '/foo.txt', '/');
 test('parent', './foo.txt', '.');
-test('parent', '/../foo.txt', '/');
+test('parent', '/../foo.txt', '/..');
 test('parent', '../foo.txt', '..');
-test('parent', '//foo/bar', '/foo');
 test('parent', 'foo/bar/..', 'foo/bar');
 test('parent', 'foo/bar/baz/..', 'foo/bar/baz');
+test('parent', '//vboxsvr/user/foo/bar.txt', '//vboxsvr/user/foo');
+test('parent', '//srv/share/bar.txt',
+     # On Win, "//srv/share" is the volume. The dir is then "/".
+     {unix => '//srv/share', win => '//srv/share/'});
+test('parent', '//srv/bar.txt', {unix => '//srv', win => '//srv/bar.txt/.'});
+test('parent', '//foo', '//');
 wintest('parent', 'C:/foo/bar', 'C:/foo');
 wintest('parent', 'C:foo/bar', 'C:foo');
-# wintest('parent', 'C:foo/bar/..', 'C:');
+wintest('parent', 'C:foo/bar/..', 'C:foo/bar');
 
 test('is_ancestor', '~/TeX/memoize', '~/TeX/memoize/temp', 1);
 test('is_ancestor', '~/TeX/memoize', '~/TeX', '');
 test('is_ancestor', '~/TeX/memoize/', '~/TeX/memoize/temp', 1);
-test('is_ancestor', '/tmp/./foo', '/tmp/foo/bar', 1);
+test('is_ancestor', '/tmp/./foo', '/tmp/foo/bar', '');
 test('is_ancestor', '/', '/tmp/foo/bar', 1);
 wintest('is_ancestor', 'C:/', 'C:/tmp/foo/bar', 1);
 test('is_ancestor', '/foo/bar', '/foo/barbar', '');
 test('is_ancestor', '', '/foo/bar', '');
 test('is_ancestor', '/tmp', '', '');
-test('is_ancestor', '/foo/bar/..', '/foo/baz', {unix => '', win => 1});
+test('is_ancestor', '/foo/bar/..', '/foo/baz', '');
 
 
 my $none = 'none.txt'; my $od_none = 'od/none.txt'; my $tmp_none = 'tmp/none.txt';
@@ -197,11 +201,11 @@ create($od_cur);
 create($tmp_cur);
 test('find_in', $cur, $cur);
 test('find_out', $cur, $cur);
-mychmod($cur, '-r');
+mychmod('-r', $cur);
 test('find_in', $cur, $cur);
-mychmod($cur, '-w');
+mychmod('-w', $cur);
 test('find_in', $cur, $cur);
-mychmod($cur, '+r');
+mychmod('+r', $cur);
 test('find_in', $cur, $cur);
 END_TEST;
 
@@ -214,19 +218,19 @@ test('find_in', $tmp, $tmp_tmp);
 test('find_out', $none, $none);
 test('find_out', $tmp, $tmp);
 
-mychmod('.', '-w');
+mychmod('-w', '.');
 test('find_in', $none, $none);
 test('find_in', $tmp, $tmp_tmp);
-unixtest('find_out', $none, $tmp_none); # fail on win (no permissions on dir)
-unixtest('find_out', $tmp, $tmp_tmp); # fail on win (no permissions on dir)
+unixtest('find_out', $none, $tmp_none); # no permissions on dirs on win
+unixtest('find_out', $tmp, $tmp_tmp); # no permissions on dirs on win
 
-mychmod('.', '-r');
+mychmod('-r', '.');
 test('find_in', $none, $none);
 test('find_in', $tmp, $tmp_tmp);
-unixtest('find_out', $none, $tmp_none); # fail on win (no permissions on dir)
-unixtest('find_out', $tmp, $tmp_tmp); # fail on win (no permissions on dir)
+unixtest('find_out', $none, $tmp_none); # no permissions on dirs on win
+unixtest('find_out', $tmp, $tmp_tmp); # no permissions on dirs on win
 
-mychmod('.', '+w');
+mychmod('+w', '.');
 test('find_in', $none, $none);
 test('find_in', $tmp, $tmp_tmp);
 test('find_out', $none, $none);
@@ -249,23 +253,23 @@ test('find_out', $od, $od_od);
 test('find_in', $curod, $od_curod);
 test('find_out', $curod, $od_curod);
 
-mychmod('od', '-w');
+mychmod('-w', 'od');
 test('find_in', $none, $none);
 test('find_out', $none, $od_none);
-mychmod('od', '+w');
-mychmod('od', '-x');
-unixtest('find_in', $od, $od); # fail on win --> od_od
+mychmod('+w', 'od');
+mychmod('-x', 'od');
+unixtest('find_in', $od, $od); # no x permission on win
 test('find_out', $od, $od_od);
-unixtest('find_in', $curod, $curod); # fail on win --> od_curod
+unixtest('find_in', $curod, $curod); # no x permission on win
 test('find_out', $curod, $od_curod);
-mychmod('od', '+x');
+mychmod('+x', 'od');
 
-mychmod($od_od, '-r');
-unixtest('find_in', $od, $od); # fail on win --> od_od
-mychmod($od_od, '+r');
-mychmod($od_od, '-w');
+mychmod('-r', $od_od);
+unixtest('find_in', $od, $od); # no r permission on win
+mychmod('+r', $od_od);
+mychmod('-w', $od_od);
 test('find_out', $od, $od_od);
-mychmod($od_od, '+w');
+mychmod('+w', $od_od);
 END_TEST;
 
 
@@ -300,27 +304,27 @@ test('find_out', $odtmp, $od_odtmp);
 test('find_in', $curodtmp, $od_curodtmp);
 test('find_out', $curodtmp, $od_curodtmp);
 
-mychmod('od', '-w');
-unixtest('find_out', $none, $tmp_none); # fail on win (no permissions on dir)
-unixtest('find_out', $cur, $tmp_cur); # fail on win (no permissions on dir)
+mychmod('-w', 'od');
+unixtest('find_out', $none, $tmp_none); # no permissions on dirs on win
+unixtest('find_out', $cur, $tmp_cur); # no permissions on dirs on win
 test('find_out', $od, $od_od);
-unixtest('find_out', $tmp, $tmp_tmp); # fail on win (no permissions on dir)
+unixtest('find_out', $tmp, $tmp_tmp); # no permissions on dirs on win
 test('find_out', $curod, $od_curod);
-unixtest('find_out', $curtmp, $tmp_curtmp); # fail on win (no permissions on dir)
+unixtest('find_out', $curtmp, $tmp_curtmp); # no permissions on dirs on win
 test('find_out', $odtmp, $od_odtmp);
 test('find_out', $curodtmp, $od_curodtmp);
-mychmod('od', '+w');
+mychmod('+w', 'od');
 
-mychmod($od_od, '-w');
+mychmod('-w', $od_od);
 test('find_in', $od, $od_od);
 test('find_out', $od, $tmp_od);
-mychmod($od_od, '-r');
-unixtest('find_in', $od, $od); # fail on win (no -r permission)
+mychmod('-r', $od_od);
+unixtest('find_in', $od, $od); # no r permission on win
 test('find_out', $od, $tmp_od);
-mychmod($od_od, '+w');
-unixtest('find_in', $od, $od); # fail on win (no -r permission)
+mychmod('+w', $od_od);
+unixtest('find_in', $od, $od); # no r permission on win
 test('find_out', $od, $od_od);
-mychmod($od_od, '+r');
+mychmod('+r', $od_od);
 END_TEST;
 
 
@@ -330,7 +334,8 @@ sub paranoia_out {
 }
 my $drive = $on_windows ? 'C:' : '';
 
-# All these tests should also work with $slash='/'.
+# All these tests should also work with
+# my $slash='/';
 my $slash = '';
 
 
@@ -466,14 +471,17 @@ test('paranoia_out', join_paths(realpath($main::texmfoutput), 'baz.txt'), '');
 test('paranoia_out', join_paths(realpath($main::texmf_output_directory), 'baz.txt'), '');
 END_TEST;
 
-
-BEGIN_TEST;
-mkdir('tmp/foo');
-mkdir('tmp/foo/bar');
-mychmod('tmp', '-w');
-test('access_out', 'tmp/foo', 1);
-test('access_out', 'tmp/foo/bar', 1);
-test('access_out', 'tmp/foo/bar/baz', 1);
-test('access_out', 'tmp/foo/bar/..', 1);
-test('access_out', 'tmp/foo/bar/../..', '');
-END_TEST;
+if ($on_windows) { # Directories don't have permissions on Windows.
+    $batch += 1;
+} else {
+    BEGIN_TEST;
+    mkdir('tmp/foo');
+    mkdir('tmp/foo/bar');
+    mychmod('-w', 'tmp');
+    test('access_out', 'tmp/foo', 1);
+    test('access_out', 'tmp/foo/bar', 1);
+    test('access_out', 'tmp/foo/bar/baz', 1);
+    test('access_out', 'tmp/foo/bar/..', 1);
+    test('access_out', 'tmp/foo/bar/../..', '');
+    END_TEST;
+}

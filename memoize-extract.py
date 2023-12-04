@@ -123,12 +123,12 @@ def _paranoia(f, mode):
                    is_ancestor(texmfoutput, f)
                    )))))
 
-# On Windows, we disallow ``semi-absolute'' filenames, i.e.\ filenames starting with the
+# On Windows, we disallow ``semi-absolute'' paths, i.e.\ paths starting with the
 # |\| but lacking the drive.  On Windows, |pathlib|'s |is_absolute| returns |True| only
 # for paths starting with |\| and containing the drive.
 def sanitize_filename(f):
     if f and platform.system() == 'Windows' and not (f.is_absolute() or not f.drive):
-        error(f"\"Semi-absolute\" filenames are disallowed: '{f}'",
+        error(f"\"Semi-absolute\" paths are disallowed: '{f}'",
               r"The path must either both contain the drive letter and start with '\', "
               r"or none of these; paths like 'C:foo' and '\foo' are disallowed")
 
@@ -221,33 +221,39 @@ def unquote(fn):
 # Get the values of |openin_any|, |openout_any|, |TEXMFOUTPUT| and
 # |TEXMF_OUTPUT_DIRECTORY|.
 
-kpsewhich_query = 'openin_any=$openin_any,openout_any=$openout_any,TEXMFOUTPUT=$TEXMFOUTPUT'
-kpsewhich_output = subprocess.run(['kpsewhich', f'-expand-var={kpsewhich_query}'],
-                                  capture_output = True).stdout.decode().strip()
-# When the variables are not expanded, we assume we're running MiKTeX.
-if kpsewhich_output == kpsewhich_query:
-    kpsewhich_output = subprocess.run(
-        ['initexmf', '--show-config-value=[Core]AllowUnsafeInputFiles',
-         '--show-config-value=[Core]AllowUnsafeOutputFiles'],
-        capture_output = True).stdout.decode().strip()
-    openin_any, openout_any = kpsewhich_output.split()
-    openin_any = 'a' if openin_any == 'true' else 'p'
-    openout_any = 'a' if openout_any == 'true' else 'p'
-    TEXMFOUTPUT = None
-# Otherwise, we're running TeXLive.
-else:
-    m = re.fullmatch(r'openin_any=(.*),openout_any=(.*),TEXMFOUTPUT=(.*)', kpsewhich_output)
-    openin_any, openout_any, TEXMFOUTPUT = m.groups()
+kpsewhich_output = subprocess.run(
+    ['kpsewhich',
+     f'-expand-var=openin_any=$openin_any,openout_any=$openout_any,TEXMFOUTPUT=$TEXMFOUTPUT'],
+    capture_output = True).stdout.decode().strip()
 if not kpsewhich_output:
+    # No TeX? (Note that |kpsewhich| should exist in MiKTeX as well.)  In absence of
+    # |kpathsea| information, we get very paranoid, but still try to get |TEXMFOUTPUT|
+    # from an environment variable.
+    openin_any, openout_any, texmfoutput, texmf_output_directory = 'p', 'p', None, None
     # Unfortunately, this warning can't make it into the log.  But then again, the chances
     # of a missing |kpsewhich| are very slim, and its absence would show all over the
-    # place anyway.  We don't bother throwing a different warning for MiKTeX.
-    warning('I failed to execute "kpsewhich"; assuming openin_any = openout_any = "p" '
+    # place anyway.
+    warning('I failed to execute "kpsewhich"; , is there no TeX system installed? '
+            'Assuming openin_any = openout_any = "p" '
             '(i.e. restricting all file operations to non-hidden files '
             'in the current directory of its subdirectories).')
-    # In absence of |kpathsea| information, we get very paranoid, but still try to get
-    # |TEXMFOUTPUT| from an environment variable.
-    openin_any, openout_any, TEXMFOUTPUT = 'p', 'p', os.environ.get('TEXMFOUTPUT', None)
+else:
+    m = re.fullmatch(r'openin_any=(.*),openout_any=(.*),TEXMFOUTPUT=(.*)', kpsewhich_output)
+    openin_any, openout_any, texmfoutput = m.groups()
+    texmf_output_directory = os.environ.get('TEXMF_OUTPUT_DIRECTORY', None)
+    if openin_any == '$openin_any':
+	# When the |open*_any| variables are not expanded, we assume we're running
+	# MiKTeX. The two config settings below correspond to TeXLive's |openin_any| and
+	# |openout_any|; afaik, there is no analogue to |TEXMFOUTPUT|.
+        initexmf_output = subprocess.run(
+            ['initexmf', '--show-config-value=[Core]AllowUnsafeInputFiles',
+             '--show-config-value=[Core]AllowUnsafeOutputFiles'],
+            capture_output = True).stdout.decode().strip()
+        openin_any, openout_any = initexmf_output.split()
+        openin_any = 'a' if openin_any == 'true' else 'p'
+        openout_any = 'a' if openout_any == 'true' else 'p'
+        texmfoutput = None
+        texmf_output_directory = None
 
 # An output directory should exist, and may not point to the root on Linux. On Windows, it
 # may point to the root, because we only allow absolute filenames containing the drive,
@@ -258,8 +264,8 @@ def sanitize_output_dir(d_str):
     return d if d and d.is_dir() and \
         (not d.is_absolute() or len(d.parts) != 1 or d.drive) else None
 
-texmfoutput = sanitize_output_dir(TEXMFOUTPUT)
-texmf_output_directory = sanitize_output_dir(os.environ.get('TEXMF_OUTPUT_DIRECTORY', None))
+texmfoutput = sanitize_output_dir(texmfoutput)
+texmf_output_directory = sanitize_output_dir(texmf_output_directory)
 
 class NotExtracted(UserWarning):
     pass
@@ -390,10 +396,11 @@ if __name__ == '__main__':
                     # Found |\mmzNewExtern|: extract the extern page into an extern file.
                     done_message = "Done"
                     # The extern filename, as specified in |.mmz|:
-                    extern_file = Path(unquote(m_ne['extern_path']))
+                    unquoted_extern_path = unquote(m_ne['extern_path'])
+                    extern_file = Path(unquoted_extern_path)
                     # We parse the extern filename in a separate step because we have to
                     # unquote the entire path.
-                    if not (m_ep := re_extern_path.match(str(extern_file))):
+                    if not (m_ep := re_extern_path.match(unquoted_extern_path)):
                         warning(f"Cannot parse line {line.strip()}")
                     # The actual extern filename:
                     extern_file_out = find_out(extern_file)
