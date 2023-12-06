@@ -1,0 +1,23 @@
+\documentclass{article}
+
+\usepackage[
+  prefix=\jobname.memo.dir/prefix with spaces.,
+  recompile,
+  extract=no,
+  mkdir command=memoize-extract.py --mkdir,
+]{memoize}
+
+\begin{document}
+
+This \mmz{extern} will be extracted into directory
+\texttt{\string\jobname.memo.dir}.
+
+This is \mmz{another extern} which will be extracted into folder
+\texttt{\string\jobname.memo.dir}.
+
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:

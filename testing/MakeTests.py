@@ -17,8 +17,9 @@ def Test(targets, deps, title = '', remark = '', work_dirs = ('test', 'tmp')):
             print('Up to date.')
         else:
             for d in work_dirs:
-                recursive_chmod('+w', d)
-                shutil.rmtree(d, ignore_errors = True)
+                if Path(d).exists():
+                    recursive_chmod('+w', d)
+                    shutil.rmtree(d, ignore_errors = True)
                 Path(d).mkdir(parents = True, exist_ok = True)
             yield TestData(targets, deps, work_dirs)
             Path(targets[0]).touch()
@@ -159,24 +160,37 @@ for test in Test(['nomemodir', 'build/nomemodir/doc.pdf'], ['src/nomemodir/doc.t
                  'Compiling sources', work_dirs = ['build/nomemodir']):
     cp('src/nomemodir/doc.tex', 'build/nomemodir')
     assert run('pdflatex -interaction batchmode doc'.split(), cwd = 'build/nomemodir')
-    assert diff('{expected/nomemodir,build/nomemodir}/doc.mmz')
-    assert diff('{expected/nomemodir,build/nomemodir}/doc.799CD96D5634EBEB7E30191285AF4082.memo')
-    assert diff('{expected/nomemodir,build/nomemodir}/doc.799CD96D5634EBEB7E30191285AF4082-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo')
-    assert diff('{expected/nomemodir,build/nomemodir}/doc.7DBC7B29C0C49BCFD5C4A18740E06E80.memo')
-    assert diff('{expected/nomemodir,build/nomemodir}/doc.7DBC7B29C0C49BCFD5C4A18740E06E80-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo')
+    assert diff('{expected,build}/nomemodir/doc.mmz')
+    assert diff('{expected,build}/nomemodir/doc.799CD96D5634EBEB7E30191285AF4082.memo')
+    assert diff('{expected,build}/nomemodir/doc.799CD96D5634EBEB7E30191285AF4082-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo')
+    assert diff('{expected,build}/nomemodir/doc.7DBC7B29C0C49BCFD5C4A18740E06E80.memo')
+    assert diff('{expected,build}/nomemodir/doc.7DBC7B29C0C49BCFD5C4A18740E06E80-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo')
 
 
 for test in Test(['memodir', 'build/memodir/doc.pdf'], ['src/memodir/doc.tex'],
                  'Compiling sources', work_dirs = ['build/memodir']):
     cp('src/memodir/doc.tex', 'build/memodir')
     assert run('pdflatex -interaction batchmode doc'.split(), cwd = 'build/memodir')
-    assert diff('{expected/memodir,build/memodir}/doc.mmz')
-    assert diff('{expected/memodir,build/memodir}/doc.memo.dir/799CD96D5634EBEB7E30191285AF4082.memo')
-    assert diff('{expected/memodir,build/memodir}/doc.memo.dir/799CD96D5634EBEB7E30191285AF4082-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo')
-    assert diff('{expected/memodir,build/memodir}/doc.memo.dir/7DBC7B29C0C49BCFD5C4A18740E06E80.memo')
-    assert diff('{expected/memodir,build/memodir}/doc.memo.dir/7DBC7B29C0C49BCFD5C4A18740E06E80-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo')
+    assert diff('{expected,build}/memodir/doc.mmz')
+    assert diff('{expected,build}/memodir/doc.memo.dir/799CD96D5634EBEB7E30191285AF4082.memo')
+    assert diff('{expected,build}/memodir/doc.memo.dir/799CD96D5634EBEB7E30191285AF4082-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo')
+    assert diff('{expected,build}/memodir/doc.memo.dir/7DBC7B29C0C49BCFD5C4A18740E06E80.memo')
+    assert diff('{expected,build}/memodir/doc.memo.dir/7DBC7B29C0C49BCFD5C4A18740E06E80-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo')
 
 
+for test in Test(['memodir with spaces', 'build/memodir with spaces/doc with spaces.pdf'],
+                 ['src/memodir with spaces/doc with spaces.tex'],
+                 'Compiling sources', work_dirs = ['build/memodir with spaces']):
+    cp('src/memodir with spaces/doc with spaces.tex', 'build/memodir with spaces')
+    assert run('pdflatex -interaction batchmode'.split() + ['doc with spaces'],
+               cwd = 'build/memodir with spaces')
+    assert diff('{expected,build}/memodir with spaces/doc with spaces.mmz')
+    assert diff('{expected,build}/memodir with spaces/doc with spaces.memo.dir/prefix with spaces.799CD96D5634EBEB7E30191285AF4082.memo')
+    assert diff('{expected,build}/memodir with spaces/doc with spaces.memo.dir/prefix with spaces.799CD96D5634EBEB7E30191285AF4082-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo')
+    assert diff('{expected,build}/memodir with spaces/doc with spaces.memo.dir/prefix with spaces.7DBC7B29C0C49BCFD5C4A18740E06E80.memo')
+    assert diff('{expected,build}/memodir with spaces/doc with spaces.memo.dir/prefix with spaces.7DBC7B29C0C49BCFD5C4A18740E06E80-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo')
+
+    
 for pyl in ('py', 'pl'):
     inexisting_absolute = ('C:\\' if platform.system() == 'Windows' else '/') + 'inexisting'
     
@@ -200,6 +214,15 @@ for pyl in ('py', 'pl'):
         assert exists('test/doc.memo.dir/7DBC7B29C0C49BCFD5C4A18740E06E80-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.pdf')
     
 
+    for test in Test([f'extract-memodir-with-spaces.{pyl}'],
+                     [f'memoize-extract.{pyl}', f'build/memodir with spaces/doc with spaces.pdf'],
+                     'Extract from a [memodir] document with spaces in paths'):
+        cp('build/memodir with spaces', 'test')
+        assert run([f'memoize-extract.{pyl}', 'doc with spaces.mmz'], cwd = 'test')
+        assert diff('expected/extract-memodir-with-spaces/doc with spaces.mmz', 'test/doc with spaces.mmz')
+        assert exists('test/doc with spaces.memo.dir/prefix with spaces.799CD96D5634EBEB7E30191285AF4082-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.pdf')
+        assert exists('test/doc with spaces.memo.dir/prefix with spaces.7DBC7B29C0C49BCFD5C4A18740E06E80-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.pdf')
+    
     for test in Test([f'extract-from-subdir.{pyl}'],
                      [f'memoize-extract.{pyl}', f'build/nomemodir/doc.pdf'],
                      ".mmz in a parent directory without -k"):
