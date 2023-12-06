@@ -12,7 +12,7 @@ PACKAGE = memoize
 VERSION = 1.1.0-wip
 YEAR = 2023
 MONTH = 12
-DAY = 01
+DAY = 06
 
 FORMAT = generic
 
@@ -91,7 +91,7 @@ doc/memoize-code.pdf: $(SOURCE) $(codedoc-source) \
                       advice.edtx advice.ins collargs.edtx collargs.ins \
                       $(SCRIPTS:%=%.dtx)
 
-doc/memoize.pdf: $(manual-source) $(examples-src)
+doc/memoize.pdf: $(manual-source) $(examples-src) memoize.edtx advice.edtx collargs.edtx
 
 %.pdf: %.tex
 	latexmk -cd -lualatex -bibtex- $<  && touch $@

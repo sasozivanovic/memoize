@@ -7,7 +7,7 @@ PACKAGE = advice
 VERSION = 1.1.0-wip
 YEAR = 2023
 MONTH = 12
-DAY = 01
+DAY = 06
 
 FORMAT = generic
 

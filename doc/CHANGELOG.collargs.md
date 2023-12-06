@@ -14,10 +14,10 @@ those cases, please see [Memoize's GitHub
 repository](https://github.com/sasozivanovic/memoize) for the recent
 development history.
 
-## 2023/12/01 v1.1.0-wip
+## 2023/12/06 v1.1.0-wip
 * Implement `brace collected`.
 
-Manual: Memoize 2023/12/01 v1.1.0-wip
+Manual: Memoize 2023/12/06 v1.1.0-wip
 
 ## 2023/10/10 v1.0.0
 * The initial release.

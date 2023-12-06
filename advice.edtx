@@ -29,14 +29,14 @@
 % \relax
 %
 %<*main>
-%<latex>\ProvidesPackage{advice}[2023/12/01 v1.1.0-wip Extend commands and environments]
+%<latex>\ProvidesPackage{advice}[2023/12/06 v1.1.0-wip Extend commands and environments]
 %<context>%D \module[
 %<context>%D         file=t-advice.tex,
 %<context>%D      version=1.1.0-wip,
 %<context>%D        title=Advice,
 %<context>%D     subtitle=Extend commands and environments,
 %<context>%D       author=Saso Zivanovic,
-%<context>%D         date=2023-12-01,
+%<context>%D         date=2023-12-06,
 %<context>%D    copyright=Saso Zivanovic,
 %<context>%D      license=LPPL,
 %<context>%D ]
