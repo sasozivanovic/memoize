@@ -23,7 +23,8 @@
 \RequirePackage{memoize-doc-common}
 
 % Typesetting the code & indentation
-\MacroIndent=0pt
+%\MacroIndent=0pt
+\AddToHook{begindocument}{\MacroIndent=0pt }
 \MacroTopsep = 0pt
 \MacrocodeTopsep = 7pt plus 2pt minus 2pt
 \AddToHook{env/macrocode/before}{\macrocodepar}%
@@ -137,22 +138,33 @@
 \newcommand\hang[2]{%
   \setbox0=\hbox{\MacroFont \string#2\relax}% "\relax" is short enough to never trigger a hanging indent
   \ifdim\wd0>\dimexpr\marginparwidth\relax
-    \hangindent\dimexpr\wd0-\marginparwidth\relax
+    \hangindent\dimexpr\wd0-\marginparwidth+\hang@next@extra\relax
     \hangafter-#1\relax
+    \gdef\hang@next@extra{0pt}%
     \AddToHookNext{env/macrocode/before}{\par\nohang}%
     \AddToHookNext{para/after}{\aftergroup\nohang}%
   \fi
   \ignorespaces
 }
-\newcommand\nohang{\hangindent 0pt\relax}
-\newcommand\indentmacrocode{%
-  \settowidth\MacroIndent{\theCodelineNo\ }%
-  \addtolength\MacroIndent{\hangindent}%
+\def\AdjustNextHang#1{\gdef\hang@next@extra{#1}\ignorespaces}
+\gdef\hang@next@extra{0pt}
+\newcommand\nohang{%
+  \hangindent 0pt\relax
+  \gdef\hang@next@extra{0pt}%
 }
+\newcommand\indentmacrocode[1][0pt]{%
+  \settowidth\@tempdima{\reset@font\scriptsize\arabic{CodelineNo}\ }%
+  \setlength\ExtraMacroIndent{#1}%
+  \addtolength\MacroIndent{\dimexpr\hangindent+\@tempdima+\ExtraMacroIndent}%
+}
+\newdimen\ExtraMacroIndent
 \newcommand\noindentmacrocode{%
   \setlength\MacroIndent{0em}%
   \AddToHookNext{env/macrocode/begin}{\MacrocodeTopsep 0pt\relax}%
 }
+\def\theCodelineNo{%
+  \reset@font\scriptsize\textcolor{gray}{\arabic{CodelineNo}}%
+  \hspace*{\dimexpr\leftskip-\MacroIndent+\ExtraMacroIndent}}%
 
 % and now ... autohang!
 % (the macros should be listed without spaces after commas)
@@ -165,6 +177,7 @@
   advice=\macro{hang},
   advice=\autokey{hang},
   advice=\mmzautokey{hang},
+  advice=\advicekey{hang},
   advice=\collargskey{hang},
   advice=\handlerskey{hang},
   advice=\adviceinstallkey{hang},
@@ -204,7 +217,7 @@
 \def\doline{%
   \expandafter\futurelet\expandafter\firsttoken\expandafter\dolinei\line\fi}
 \def\dolinei{\ifx\firsttoken\newlabel}%
-\openin0=memoize.aux
+\openin0=memoize-doc.aux
 \loop
   \unless\ifeof0
   \read0 to \line

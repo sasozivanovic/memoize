@@ -64,7 +64,8 @@ for mmz_fn in args.mmz:
                 
                 elif endinput:
                     raise RuntimeError(
-                        r'Bailing out, \endinput is not the last line of file $mmz_fn.')
+                        rf'Bailing out, '
+                        rf'\endinput is not the last line of file {mmz_fn}.')
                 
                 elif m := re_prefix.match(line):
                     prefix = m[1]
@@ -110,7 +111,8 @@ tbdeleted = []
 def populate_tbdeleted(folder, basename_prefix):
     re_aux = re.compile(
         re.escape(basename_prefix) + 
-        '[0-9A-F]{32}(?:-[0-9A-F]{32})?(?:-[0-9]+)?(?:\.memo|(?:-[0-9]+)?\.pdf|\.log)$')
+        '[0-9A-F]{32}(?:-[0-9A-F]{32})?'
+        '(?:-[0-9]+)?(?:\.memo|(?:-[0-9]+)?\.pdf|\.log)$')
     try:
         for f in folder.iterdir():
             if re_aux.match(f.name) and (args.all or f not in keep):
@@ -160,6 +162,6 @@ elif not args.quiet:
     print('Nothing to do, the directory seems clean.')
 
 # Local Variables:
-# fill-column: 90
+# fill-column: 79
 # after-save-hook: py2dtx
 # End:

@@ -96,7 +96,9 @@
     %   namespace is hard-coded into these keys via |#1|; their arguments are
     %   the command/environment (cs)name, and setup keys belonging to path
     %   \meta{installation keypath}|/\meta{setup key name}|.
+    %   \indentmacrocode
     #2/.code 2 args={%
+      % \noindentmacrocode
       % Call the internal setup macro, wrapping the received keylist into a
       % |pgfkeys| invocation.
       \AdviceSetup{#1}{#2}{##1}{\pgfqkeys{#1/#2}{##2}}%
@@ -178,7 +180,8 @@
     %   These keys are used to setup the handling of the command or
     %   environment.  The storage macros (|\AdviceRunConditions| etc.) have
     %   public names as they also play a crucial role in the handler
-    %   definitions, see section~\ref{sec:code:advice:handle}. \indentmacrocode
+    %   definitions, see section~\ref{sec:code:advice:handle}.
+    % \indentmacrocode[-0.5em]
     run conditions/.store in=\AdviceRunConditions,
     bailout handler/.store in=\AdviceBailoutHandler,
     outer handler/.store in=\AdviceOuterHandler,
@@ -215,7 +218,7 @@
     reset/.code={\csname\advice@setup@init@\AdviceType\endcsname},
     % \end{mmzautokey}
     % 
-    % \begin{mmzautokey}
+    % \begin{mmzautokey}{after setup}
     %   The code given here will be executed once we exit the setup group.
     %   |integrated driver| of Memoize uses it to declare a conditional.
     after setup/.code={\appto\AdviceAfterSetup{##1}},
@@ -399,7 +402,8 @@
     \noexpand\csdef{advice@I#1//\string#2}{%
       \def\noexpand\AdviceOuterHandler{\expandonce\AdviceOuterHandler}%
       \def\noexpand\AdviceCollector{\expandonce\AdviceCollector}%
-      \def\noexpand\AdviceRawCollectorOptions{\expandonce\AdviceRawCollectorOptions}%
+      \def\noexpand\AdviceRawCollectorOptions{%
+                                        \expandonce\AdviceRawCollectorOptions}%
       \def\noexpand\AdviceCollectorOptions{\expandonce\AdviceCollectorOptions}%
       \def\noexpand\AdviceArgs{\expandonce\AdviceArgs}%
       \def\noexpand\AdviceInnerHandler{\expandonce\AdviceInnerHandler}%
@@ -412,9 +416,9 @@
 % \label{sec:code:advice:activation}
 % 
 % \begin{advicekey}{activation/immediate, activation/deferred}
-%   The two subkeys of |/advice/activation| install the immediate and the
+%   These two subkeys of |/advice/activation| install the immediate and the
 %   deferred activation code into the installation keypath.  They are invoked
-%   by \meta{installation keypath}|/activation=|\meta{type}.
+%   by key \meta{installation keypath}|/activation=|\meta{type}.
 % 
 %   Under the deferred activation regime, the commands are not (de)activated
 %   right away.  Rather, the (de)activation calls are collected in style
@@ -501,10 +505,10 @@
 %   This macro produces the name of the control sequence holding the original
 %   definition of the handled command, which may be input inside |\csname|
 %   \dots\ |\endcsname| under the normal category code (and |\escapechar|)
-%   regime: |advice@o#1//\expandafter\string\csname<csname of #2>\endcsname|;
-%   it is used to put the meaning of the original command into Memoize's
-%   c-memo.  The macro assumes that at its execution time, |\escapechar|$\neq
-%   1$.
+%   regime: |advice@o#1//\expandafter\string\csname|\meta{csname of
+%   \texttt{\#2}}|\endcsname|; it is used to put the meaning of the original
+%   command into Memoize's c-memo.  The macro assumes that at its execution
+%   time, |\escapechar|$\neq 1$.
 \def\AdviceGetOriginalCsname#1#2{%
   \unexpanded\expandafter{%
     \expanded{%
@@ -768,18 +772,22 @@
 %   CollArgs' command |\CollectArgumentsRaw|.  It will provide that command
 %   with:
 %   \begin{itemize}
-%   \item the collector options, given in the raw format: the caller
-%     (|\collargsCaller|), the raw options (|\AdviceRawCollectorOptions|) and the
-%     user options (|\AdviceRawCollectorOptions|, wrapped in |\collargsSet|;
+%   \item the collector options, given in the raw format:
+%     \begin{itemize}
+%     \item the caller (|\collargsCaller|),
+%     \item the raw options (|\AdviceRawCollectorOptions|), and
+%     \item the user options (|\AdviceRawCollectorOptions|, wrapped in
+%       |\collargsSet|;
+%     \end{itemize}
 %   \item the argument specification |\AdviceArgs| of the handled command; and
 %   \item the inner handler |\AdviceInnerHandler| to execute after collecting the
 %     arguments; the inner handler receives the collected arguments as a single
 %     braced argument.
 %   \end{itemize}
-%   If the argument specification is not defined (either the user did not set
-%   it, or has reset it by writing |args| without a value), it is assumed that
-%   the handled command was defined by |xparse| and |\AdviceArgs| will be
-%   retrieved by |\GetDocumentCommandArgSpec|.
+%   \hangindent=0pt If the argument specification is not defined (either the user
+%   did not set it, or has reset it by writing |args| without a value), it is
+%   assumed that the handled command was defined by |xparse| and |\AdviceArgs|
+%   will be retrieved by |\GetDocumentCommandArgSpec|.
 %   \begin{listingregion}{_advice-CollectArgumentsRaw.tex}
 \def\advice@CollectArgumentsRaw{%
   \AdviceIfArgs{}{%

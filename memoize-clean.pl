@@ -27,7 +27,8 @@ use Cwd 'realpath';
 use File::Spec;
 use File::Basename;
 
-my $usage = "usage: $PROG [-h] [--yes] [--all] [--quiet] [--prefix PREFIX] [mmz ...]\n";
+my $usage = "usage: $PROG [-h] [--yes] [--all] [--quiet] [--prefix PREFIX] " .
+            "[mmz ...]\n";
 my $Help = <<END;
 Remove (stale) memo and extern files produced by package Memoize.
 
@@ -41,9 +42,10 @@ options:
   --all, -a             Remove *all* memos and externs.
   --quiet, -q
   --prefix PREFIX, -p PREFIX
-                        A path prefix to clean; this option can be specified multiple times.
+                        A path prefix to clean;
+                        this option can be specified multiple times.
 
-For details, see the man page or the Memoize documentation (https://ctan.org/pkg/memoize).
+For details, see the man page or the Memoize documentation.
 END
 
 my ($yes, $all, @prefixes, $quiet, $help, $print_version);
@@ -112,7 +114,8 @@ sub populate_tbdeleted {
     while( (my $fn = readdir(MD)) ) {
 	my $path = File::Spec->catfile(($dir),$fn);
 	if ($fn =~
-	    /\Q$basename_prefix\E[0-9A-F]{32}(?:-[0-9A-F]{32})?(?:-[0-9]+)?(\.memo|(?:-[0-9]+)?\.pdf|\.log)/
+	    /\Q$basename_prefix\E[0-9A-F]{32}(?:-[0-9A-F]{32})?(?:-[0-9]+)?#
+	     (\.memo|(?:-[0-9]+)?\.pdf|\.log)/x
 	    and ($all || !exists($keep{$path}))) {
 	      push @tbdeleted, $path;
 	}
@@ -165,6 +168,5 @@ if (scalar(@tbdeleted) != 0) {
 }
 
 # Local Variables:
-# fill-column: 90
 # after-save-hook: pl2dtx
 # End:

@@ -64,7 +64,7 @@
 % listing options app={basicstyle=\ttfamily\scriptsize}}}
 % 
 % \begin{tcbraster}[raster columns=100]
-%   \tcbinputlisting{raster multicolumn=55, ins listing, top=1mm, bottom=1mm, title=memoize.ins,listing file=../memoize.ins, linerange={27-38}, leftupper=1mm}
+%   \tcbinputlisting{raster multicolumn=55, ins listing, top=1mm, bottom=1mm, title=memoize.ins,listing file=../memoize.ins, linerange={27-39}, leftupper=1mm}
 %   \begin{tcboxedraster}[raster columns=1]{blankest, raster multicolumn=45}
 %     \tcbinputlisting{ins listing, title=advice.ins, listing file=../advice.ins, linerange=28-31}
 %     \tcbinputlisting{ins listing, title=collar\raisebox{0pt}[\height][0pt]{g}s.ins, listing file=../collargs.ins, linerange=29-31}
@@ -73,8 +73,7 @@
 % 
 % Memoize also contains two scripts, |memoize-extract| and |memoize-clean|.
 % Both come in two functionally equivalent implementations: Perl (|.pl|) and a
-% Python (|.py|).  The code is listed in \S\ref{sec:code:scripts}, I believe it
-% is self-explanatory enough to lack more than a occasional comment.
+% Python (|.py|).  Their code is listed in \S\ref{sec:code:scripts}.
 % 
 % 
 % \thispagestyle{empty}
@@ -395,7 +394,9 @@
 %   |nomemoize| and |memoizable|, is exists as a no-op.
 \def\mmzset#1{\pgfqkeys{/mmz}{#1}\ignorespaces}
 %</mmz>
-%<nommz,mmzable&generic>\def\mmzset#1{\ignorespaces}
+%<*nommz,mmzable&generic>
+\def\mmzset#1{\ignorespaces}
+%</nommz,mmzable&generic>
 % \end{macro}
 %
 % \begin{macro}{\nommzkeys}
@@ -422,7 +423,9 @@
 %
 %   |Nomemoize| does not need the keys themselves, but it does need the
 %   underlying conditional --- which will be always false.
-%<mmz,nommz,mmzable&generic>\newif\ifmemoize
+%<*mmz,nommz,mmzable&generic>
+\newif\ifmemoize
+%</mmz,nommz,mmzable&generic>
 %<*mmz>
 \mmzset{%
   enable/.style={begindocument/.append code=\memoizetrue},
@@ -474,10 +477,10 @@
   prefix/.code={\mmz@parse@prefix{#1}},
 }
 % \begin{macro}{\mmz@split@prefix}
-%   Stores the detokenized expansion of |#1| into |\mmz@prefix|, which it then
-%   splits into |\mmz@prefix@dir| and |\mmz@prefix@name| at the final |/|.  The
-%   slash goes into |\mmz@prefix@dir|.  If there is no slash, |\mmz@prefix@dir|
-%   is empty.
+%   This macro stores the detokenized expansion of |#1| into |\mmz@prefix|,
+%   which it then splits into |\mmz@prefix@dir| and |\mmz@prefix@name| at the
+%   final |/|.  The slash goes into |\mmz@prefix@dir|.  If there is no slash,
+%   |\mmz@prefix@dir| is empty.
 \begingroup
 \catcode`\/=12
 \gdef\mmz@parse@prefix#1{%
@@ -1484,15 +1487,18 @@
   %   context, key value to context, /handlers/.meaning to context,
   %   /handlers/.value to context}
   %   Utilities to put the meaning of various stuff into |context|.
+  %   \indentmacrocode
   meaning to context/.code={\forcsvlist\mmz@mtoc{#1}},
   csname meaning to context/.code={\mmz@mtoc@csname{#1}},
-  key meaning to context/.code={\forcsvlist\mmz@mtoc\mmz@mtoc@keycmd{#1}},
+  key meaning to context/.code={%
+    \forcsvlist\mmz@mtoc\mmz@mtoc@keycmd{#1}},
   key value to context/.code={\forcsvlist\mmz@mtoc@key{#1}},
-  /handlers/.meaning to context/.code={%
-    \expanded{\noexpand\mmz@mtoc@csname{pgfk@\pgfkeyscurrentpath/.@cmd}}},
+  /handlers/.meaning to context/.code={\expanded{%
+      \noexpand\mmz@mtoc@csname{pgfk@\pgfkeyscurrentpath/.@cmd}}},
   /handlers/.value to context/.code={%
     \expanded{\noexpand\mmz@mtoc@csname{pgfk@\pgfkeyscurrentpath}}},
 }
+% \noindentmacrocode
 \def\mmz@mtoc#1{%
   \collargs@cs@cases{#1}%
     {\mmz@mtoc@cmd{#1}}%
@@ -1521,7 +1527,8 @@
 \def\mmz@mtoc@key#1{\mmz@mtoc@csname{pgfk@#1}}
 \def\mmz@mtoc@keycmd#1{\mmz@mtoc@csname{pgfk@#1/.@cmd}}
 \def\mmz@mtoc@error@notcsorenv#1{%
-  \PackageError{memoize}{'\detokenize{#1}' passed to key 'meaning to context' is neither a command nor an environment}{}%
+  \PackageError{memoize}{'\detokenize{#1}' passed to key 'meaning to context'
+    is neither a command nor an environment}{}%
 }
 % \end{key}
 % 
@@ -1776,8 +1783,10 @@
 % 
 % \begin{macro}{\mmz@process@ccmemo,\mmzThisContext,\mmzEndMemo}
 %   This macro processes the cc-memo.
+%   \indentmacrocode
 \def\mmz@process@ccmemo{%
   \mmz@trace@process@ccmemo
+  % \noindentmacrocode
   % The following conditional signals whether cc-memo was successfully
   % utilized.  If the cc-memo file does not exist, |\ifmmz@abort| will remain
   %   true.  If it exists, it is headed by the list of resources.  If a
@@ -2132,12 +2141,14 @@
   % |\mmzExternPages| holds the number of shipped-out extern pages; and
   % |\mmzExtraPages| holds, or at least should hold, the number of pages
   % shipped out using any other means.
-  \edef\pagenumber{\the\numexpr\mmzRegularPages
+  \edef\pagenumber{%
+    \the\numexpr\mmzRegularPages
     % In \hologo{LaTeX}, the |\mmzRegularPages| holds to number of pages
     % already shipped out.  In \hologo{ConTeXt}, the counter is already
     % increased while processing the page, so we need to subtract $1$.
 %<context>    -1%
-    +\mmzExternPages+\mmzExtraPages}%
+    +\mmzExternPages+\mmzExtraPages
+  }%
   % Record the creation of the new extern.  We do this after shipping out the
   % extern page, so that the recording mechanism can serve as an after-shipout
   % hook, for the unlikely situation that some package really needs to do
@@ -2312,13 +2323,13 @@
 %
 % \begin{macro}{\mmz@include@extern@from@tbe@box}
 %   Include the extern number |#1| residing in |\mmz@tbe@box| into the
-%   document.  This helper macro makes it possible for a complex memoization
-%   driver to process the cc-memo right after memoization --- by using the
-%   |\mmzkeepexternstrue\xtoksapp\mmzAfterMemoizationExtra{\the\mmzCCMemo}|
-%   trick --- to ensure that the result of the memoizing compilation matches
-%   the result of inputting the cc-memo.  The rest of the arguments are
-%   gobbled, as we don't have to do any size adjustment or checking here, and
-%   the box is of the correct type.
+%   document.  It may be called as |\mmzIncludeExtern| from |after memoization|
+%   hook if |\ifmmzkeepexterns| was set to true during memoization.  The macro
+%     takes the same arguments as |\mmzIncludeExtern| but disregards all but
+%     the first one, the extern sequential number.  Using this macro, a complex
+%     memoization driver can process the cc-memo right after memoization, by
+%     issuing
+%     |\global\mmzkeepexternstrue\xtoksapp\mmzAfterMemoizationExtra{\the\mmzCCMemo}|.
 \def\mmz@include@extern@from@tbe@box#1#2#3#4#5#6#7#8#9{%
   \setbox0\vbox{%
     \@tempcnta#1\relax
@@ -2521,12 +2532,11 @@
 % contains are intentionally as simple as possible (just a macro plus braced
 % arguments), to facilitate parsing by the external scripts.
 % 
-% These hooks simply put the calls of the corresponding macros into the file.
-% All but hooks but |begin| and |end| receive the full path to the relevant
-% file as the only argument (ok, |prefix| receives the full path prefix, as set
-% by key |path|).
-% 
 % \begin{key}{record/mmz/...}
+%   These hooks simply put the calls of the corresponding macros into the file.
+%   All but hooks but |begin| and |end| receive the full path to the relevant
+%   file as the only argument (ok, |prefix| receives the full path prefix, as
+%   set by key |path|).
 \mmzset{
   record/mmz/begin/.code={%
     \newwrite\mmz@mmzout
@@ -2698,11 +2708,10 @@
 }
 % \end{key}
 %
-% \begingroup
-% \setlength\MacroIndent{2em}
 % \begin{macro}{\mmzUsedCMemo,\mmzUsedCCMemo,\mmzUsedExtern,\mmzNewCMemo,\mmzNewCCMemo,\mmzPrefix}
 %   We can ignore everything but |\mmzNewExtern|s.  All these macros receive a
 %   single argument.
+% \indentmacrocode
 \def\mmzUsedCMemo#1{}
 \def\mmzUsedCCMemo#1{}
 \def\mmzUsedExtern#1{}
@@ -2710,7 +2719,6 @@
 \def\mmzNewCCMemo#1{}
 \def\mmzPrefix#1{}
 % \end{macro}
-% \endgroup
 % 
 % \begin{macro}{\mmzNewExtern}
 %   Command |\mmzNewExtern| takes four arguments.  It instructs us to extract
@@ -3385,7 +3393,8 @@
 %<*latex>
 \AddToHook{shipout/before}[memoize]{\global\advance\mmzExtraPages-1\relax}
 \AddToHook{shipout/after}[memoize]{\global\advance\mmzExtraPages1\relax}
-\mmzset{auto=\DiscardShipoutBox{outer handler=\global\advance\mmzExtraPages1\relax\AdviceOriginal}}
+\mmzset{auto=\DiscardShipoutBox{
+    outer handler=\global\advance\mmzExtraPages1\relax\AdviceOriginal}}
 %</latex>
 % 
 % \subsection{\TikZ;}
@@ -3518,13 +3527,16 @@
     auto=\cites{cites},
   }%
 }
-% |\entry|
+% \begin{macro}{\mmz@biblatex@entry}
+%   This macro stores the MD5 sum of the |\entry| when reading the |.bbl| file.
 \def\mmz@biblatex@entry#1#2\endentry{%
   \csxdef{mmz@bbl@#1}{\pdf@mdfivesum{#2}}%
   \AdviceOriginal{#1}#2\endentry
 }
-
-% |\cite|
+% \end{macro}
+% \begin{macro}{\mmz@biblatex@cite}
+%   This macro puts the cites reference keys into the context, and adds the
+%   handled |\cite| command to the cc-memo.
 \def\mmz@biblatex@cite#1#{\mmz@biblatex@cite@i{#1}}
 \def\mmz@biblatex@cite@i#1#2{%
   \forcsvlist\mmz@biblatex@cite@do@key{#2}%
@@ -3538,7 +3550,10 @@
   \mmz@mtoc@csname{mmz@bbl@#1}%
   \ifcsdef{mmz@bbl@#1}{}{\mmzAbort}%
 }
-% |\cites|
+% \end{macro}
+% \begin{macro}{\mmz@biblatex@cites}
+%   This macro puts the cites reference keys into the context, and adds the
+%   handled |\cites| command to the cc-memo.
 \def\mmz@biblatex@cites{%
   \mmz@temptoks{}%
   \mmz@biblatex@cites@i
@@ -3574,8 +3589,8 @@
     }}%
   \expandafter\AdviceOriginal\the\mmz@temptoks
 }
-%
 %</latex>
+% \end{macro}
 %
 %
 % \section{Initialization}

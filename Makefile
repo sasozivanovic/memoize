@@ -2,7 +2,7 @@
 
 PACKAGES = memoize advice collargs
 
-all: test ctan/memoize.zip
+all: ctan/memoize.zip
 	$(MAKE) -f Makefile.advice ctan/advice.zip
 	$(MAKE) -f Makefile.collargs ctan/collargs.zip
 

@@ -5882,8 +5882,8 @@ on how to handle this properly.
 
 \begin{doc}{
     cmd={name=ifmmzkeepexterns, desc={initially \cs{iffalse}}},
-    cmd={name=mmzkeepexternstrue},
-    cmd={name=mmzkeepexternsfalse},
+    cmd={head prefix=\texttt{\string\global}, name=mmzkeepexternstrue},
+    cmd={head prefix=\texttt{\string\global}, name=mmzkeepexternsfalse},
   }
   Setting this conditional to true makes Memoize keep the extern boxes in the
   global temporary storage even after shipping them out as extern pages.  (The
@@ -5903,7 +5903,8 @@ on how to handle this properly.
   from the temporary storage rather than from (at that point still
   non-existing) extern files.  However, as this mechanism requires Memoize to
   keep the externs around even after memoization, it is not enabled by default:
-  it must be enabled by setting conditional \refcmd{ifmmzkeepexterns} to true.
+  it must be enabled by (globally) setting conditional
+  \refcmd{ifmmzkeepexterns} to true.
 \end{doc}
 
 \begin{doc}{
