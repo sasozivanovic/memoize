@@ -6475,6 +6475,13 @@ require.
     it is extracting.  This option disables this behaviour.
   \end{doc}
   \begin{doc}{
+    option={name=library, short name=L,
+      par=\texttt{PDF::API2\Alt PDF::Builder}, desc=Perl-only}
+  }
+  Use the specified library for PDF processing.  If this option is not given,
+  the script uses the first available library (in the order given above).
+  \end{doc}
+  \begin{doc}{
       option={name=mkdir, short name=m}
     }
     When given this option, the extraction script transforms into a paranoid
