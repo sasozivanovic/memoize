@@ -427,10 +427,9 @@ there's a silver lining: once Memoize is set up, it is set up for good.
 \begin{tcolorbox}[title=What do I have to do?]
 
   In principle, all you have to do for Memoize to work \emph{under the default
-    configuration} is install Perl libraries
-  \hreftt{https://metacpan.org/pod/PDF::API2}{PDF::API2} and
-  \hreftt{https://metacpan.org/pod/Path::Class}{Path::Class}; see the Perl
-  section below for the installation guideline.
+    configuration} is install Perl library
+  \hreftt{https://metacpan.org/pod/PDF::API2}{PDF::API2}; see the Perl section
+  below for the installation guideline.
 
 \end{tcolorbox}
 
@@ -481,11 +480,11 @@ tested Memoize with Strawberry Perl, available
 at \url(https://){strawberryperl.com}; see \url(https://){www.perl.org} for
 other options.
 
-\begin{wrapfigure}[3]{r}{0.25\linewidth}
+\begin{wrapfigure}[2]{r}{0.25\linewidth}
   \raisebox{0.5mm}[\dimexpr\height-0.5mm][\depth]{%
     \mmznext{no verbatim}
     \begin{tcolorbox}[
-        % example title=Installing the required libraries in Perl,
+        % example title=Installing the required library in Perl,
         % attach shifted boxed title to top right,
         % top=2.5mm,
         fontupper=\small,
@@ -493,18 +492,14 @@ other options.
         force nobeforeafter,
       ]
       |cpan PDF::API2|
-      
-      |cpan Path::Class|
     \end{tcolorbox}%
   }%
 \end{wrapfigure}
-Once Perl is installed on your system, you will need to install two Perl
-libraries as well: the PDF processing library
-\hreftt{https://metacpan.org/pod/PDF::API2}{PDF::API2}, and the cross-platform
-path specification manipulation library
-\hreftt{https://metacpan.org/pod/Path::Class}{Path::Class}.  On some GNU/Linux
-distributions, these libraries are included as packages --- just use your
-package manager to install them.  Otherwise, install them from
+Once Perl is installed on your system, you will also need to install the PDF
+processing library \hreftt{https://metacpan.org/pod/PDF::API2}{PDF::API2} (or
+its fork, \hreftt{https://metacpan.org/pod/PDF::Builder}{PDF::Builder}).  On
+some GNU/Linux distributions, this library is included as a package --- just
+use your package manager to install it.  Otherwise, install it from
 \hreftt{https://www.cpan.org}{CPAN} using
 \hreftt{https://metacpan.org/pod/CPAN}{cpan} tool, as shown in the box.
 
@@ -535,10 +530,10 @@ the ``Install launcher for all users'' when running the installer.
   }%
 \end{wrapfigure}
 
-Once Python is installed on your system, you will also need to install the
-|pdfrw2| library (or its predecessor, |pdfrw|, which will work just as well).
-Some GNU/Linux distributions offer this library as a package; if this is not
-the case, and on other operating systems, install it
+Once Python is installed on your system, you will also need to install the PDF
+processing library |pdfrw2| library (or its predecessor, |pdfrw|, which will
+work just as well).  Some GNU/Linux distributions offer this library as a
+package; if this is not the case, and on other operating systems, install it
 from \href{https://pypi.org}{The Python Package Index}
 using \href{https://pip.pypa.io}{pip} tool (if you
 run \href{https://pip.pypa.io}{pip} as a superuser, it will install the library
@@ -2027,9 +2022,9 @@ extern extraction.  It ships with three \emph{extraction methods}:
 \item[\refmmz{extract=perl}] A Perl script, \refscript{memoize-extract.pl}.
   This method is the default because it is fast and because Perl is usually
   already installed on a system running \hologo{TeX}.  However, you will most
-  likely still need to install two pieces of software that the script depends
-  on: Perl libraries \hreftt{https://metacpan.org/pod/PDF::API2}{PDF::API2} and
-  the \hreftt{https://metacpan.org/pod/Path::Class}{Path::Class}, the
+  likely still need to install the PDF processing library
+  \hreftt{https://metacpan.org/pod/PDF::API2}{PDF::API2}, or its fork
+  \hreftt{https://metacpan.org/pod/PDF::Builder}{PDF::Builder}; the
   installation guidelines can be found in section~\ref{sec:install}.
 \item[\refmmz{extract=python}] A Python script, \refscript{memoize-extract.py}.
   This method is even faster than the Perl script, though not by much.  Try it
