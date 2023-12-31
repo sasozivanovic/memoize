@@ -260,6 +260,7 @@
   % Open a group, so that we allow for embedded |auto| invocations.
   \begingroup
   \def\AdviceName{#3}%
+  \advice@def@AdviceCsname
   % Command, complain, or environment?
   \collargs@cs@cases{#3}{%
     \def\AdviceType{command}%
@@ -494,33 +495,27 @@
 \def\advice@original@cs#1#2{\csname advice@o#1//\string#2\endcsname}
 \def\AdviceGetOriginal#1#2{%
   \ifcsname advice@o#1//\string#2\endcsname
-    \csname advice@o#1//\string#2\expandafter\endcsname
+    \expandonce{\csname advice@o#1//\string#2\expandafter\endcsname\expandafter}%
   \else
-    \expandafter#2%
+    \expandafter\noexpand\expandafter#2%
   \fi
 }
 % \end{macro}
 % 
-% \begin{macro}{\AdviceGetOriginalCsname}
-%   This macro produces the name of the control sequence holding the original
-%   definition of the handled command, which may be input inside |\csname|
-%   \dots\ |\endcsname| under the normal category code (and |\escapechar|)
-%   regime: |advice@o#1//\expandafter\string\csname|\meta{csname of
-%   \texttt{\#2}}|\endcsname|; it is used to put the meaning of the original
-%   command into Memoize's c-memo.  The macro assumes that at its execution
-%   time, |\escapechar|$\neq 1$.
-\def\AdviceGetOriginalCsname#1#2{%
-  \unexpanded\expandafter{%
-    \expanded{%
-      advice@o#1//%
-      \unexpanded{%
-        \expandafter
-        \string
-        \csname
-      }\expandafter\@gobble\string#2%
-      \noexpand\endcsname
-    }%
-  }%
+% \begin{macro}{\AdviceCsnameGetOriginal}
+%   A version of |\AdviceGetOriginal| which accepts a control sequence name as
+%   the second argument.
+\begingroup
+\catcode`\/=0
+\catcode`\\=12
+/gdef/advice@backslash@other{\}%
+/endgroup
+\def\AdviceCsnameGetOriginal#1#2{%
+  \ifcsname advice@o#1//\advice@backslash@other#2\endcsname
+    \expandonce{\csname advice@o#1//\advice@backslash@other#2\expandafter\endcsname\expandafter}%
+  \else
+    \expandonce{\csname#2\expandafter\endcsname\expandafter}%
+  \fi
 }
 % \end{macro}
 % 
@@ -723,6 +718,7 @@
 \def\advice@handle@outer#1#2{%
   \def\AdviceNamespace{#1}%
   \def\AdviceName{#2}%
+  \advice@def@AdviceCsname
   \let\AdviceReplaced\AdviceName
   \def\AdviceOriginal{\AdviceGetOriginal{#1}{#2}}%
   % We then load the stage-two settings.  This defines the following macros:
@@ -750,6 +746,14 @@
   \advice@init@I{#1}{#2}%
   % All prepared, we execute the outer handler.
   \AdviceOuterHandler
+}
+\def\advice@def@AdviceCsname{%
+  \begingroup
+  \escapechar=-1
+  \expandafter\expandafter\expandafter\endgroup
+  \expandafter\expandafter\expandafter\def
+  \expandafter\expandafter\expandafter\AdviceCsname
+  \expandafter\expandafter\expandafter{\expandafter\string\AdviceName}%
 }
 % \end{macro}
 % 
@@ -944,6 +948,7 @@
 \def\advice@begin@env@outer#1#2#3{%
   \def\AdviceNamespace{#1}%
   \def\AdviceName{#3}%
+  \let\AdviceCsname\advice@undefined
   \def\AdviceReplaced{#2{#3}}%
   \def\AdviceOriginal{\AdviceGetOriginal{#1}{#2}{#3}}%
   \advice@init@I{#1}{#3}%

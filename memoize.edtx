@@ -3242,11 +3242,15 @@
 %     once before fully expanding |\AdviceGetOriginalCsname|.
 \def\mmz@auto@tocontext{%
   \expanded{%
-    \noexpand\mmz@mtoc@csname{%
-      \expandafter\AdviceGetOriginalCsname\expandafter{%
-        \expandafter\AdviceNamespace\expandafter}\expandafter{\AdviceName}%
+    \noexpand\pgfkeysvalueof{/mmz/context/.@cmd}%
+    original "\AdviceNamespace" csname "\AdviceCsname"={%
+      \noexpand\expanded{%
+        \noexpand\noexpand\noexpand\meaning
+        \noexpand\AdviceCsnameGetOriginal{\AdviceNamespace}{\AdviceCsname}%
+      }%
     }%
   }%
+  \pgfeov
   \AdviceOriginal
 }
 % \end{macro}

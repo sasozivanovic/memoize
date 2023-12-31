@@ -7471,9 +7471,10 @@ headers.
     commonly used.
   \item the macros holding information about the namespace and the advised
     command or environment: \refcmd{AdviceNamespace}, \refcmd{AdviceName},
-    \refcmd{AdviceReplaced} and \refcmd{AdviceOriginal}.  (Command
-    \refcmd{AdviceGetOriginal} might also be useful, although using
-    \refcmd{AdviceOriginal} will likely be more practical.)
+    \refcmd{AdviceCsname}, \refcmd{AdviceReplaced} and \refcmd{AdviceOriginal}.
+    (Commands \refcmd{AdviceGetOriginal} and \refcmd{AdviceCsnameGetOriginal}
+    might also be useful, although using \refcmd{AdviceOriginal} will likely be
+    more practical.)
   \end{itemize}
 
   This key is initially set to an internal control sequence which merely
@@ -7726,8 +7727,8 @@ the begin tag, e.g.\ |\begin{foo}|) and \refcmd{AdviceOriginal} (which executes
   The inner handler has access to all the macros available to the outer
   handler, but given that most of them have already fulfilled their function,
   only the following will likely be useful in the inner handler:
-  \refcmd{AdviceNamespace}, \refcmd{AdviceName}, \refcmd{AdviceReplaced},
-  \refcmd{AdviceOriginal}, and \refcmd{AdviceOptions}.
+  \refcmd{AdviceNamespace}, \refcmd{AdviceName}, \refcmd{AdviceCsname},
+  \refcmd{AdviceReplaced}, \refcmd{AdviceOriginal}, and \refcmd{AdviceOptions}.
 
   Because there is clearly no reasonable default for the inner handler, this key
   is initially set to an internal control sequence producing an ``undefined
@@ -7794,14 +7795,15 @@ the begin tag, e.g.\ |\begin{foo}|) and \refcmd{AdviceOriginal} (which executes
 
 \paragraph{Commands available during the execution of advice}
 
-With the exception of \refcmd{AdviceGetOriginal}, the commands listed below
-only become available in the outer handler, and if that handler does nothing
-funky, they should be available in the collector and the inner handler, as
-well.  However, once the advice yields control to foreign code, these macros
-are not guaranteed to hold the expected values anymore, because the foreign
-code might trigger another piece of advice.  Consequently, these macros
-should be expanded, once, before integrating them into arbitrary (non-advice)
-code; in particular, this applies to \refcmd{AdviceOriginal}.
+With the exception of \refcmd{AdviceGetOriginal} and
+\refcmd{AdviceCsnameGetOriginal}, the commands listed below only become
+available in the outer handler, and if that handler does nothing funky, they
+should be available in the collector and the inner handler, as well.  However,
+once the advice yields control to foreign code, these macros are not guaranteed
+to hold the expected values anymore, because the foreign code might trigger
+another piece of advice.  Consequently, these macros should be expanded, once,
+before integrating them into arbitrary (non-advice) code; in particular, this
+applies to \refcmd{AdviceOriginal}.
 
 \begin{doc}{cmd={name=AdviceNamespace}}
   This macro holds the \meta{namespace}, i.e.\ the keypath which this instance
@@ -7813,6 +7815,12 @@ code; in particular, this applies to \refcmd{AdviceOriginal}.
   name which was used as the first argument to \refmmz{auto}.  For a command,
   this will be a control sequence, e.g.\ |\foo|; for environments (in any
   \hologo{TeX} format), their name, e.g.\ |foo|.
+\end{doc}
+
+\begin{doc}{cmd={name=AdviceCsname}}
+  This macro holds the control sequence name of the advised command; it is
+  undefined for environments.  For example, when \refcmd{AdviceName} contains
+  |\foo@bar|, this macro will hold |foo@bar|.
 \end{doc}
 
 \begin{doc}{cmd={name=AdviceReplaced}}
@@ -7843,6 +7851,9 @@ code; in particular, this applies to \refcmd{AdviceOriginal}.
   |\AdviceGetOriginal{/ns}{\foo}| will recall the original definition of |\foo|
   if |\foo| is activated, and simply execute |\foo| otherwise.
 
+  The full expansion of this macro produces the control sequence holding the
+  original definition of \meta{control sequence}.
+
   The second argument of this command should \emph{not} be an environment name.
   To execute the original environment |foo| in \hologo{TeX} or
   \hologo{ConTeXt}, use \refcmd{AdviceGetOriginal} with the appropriate macro:
@@ -7852,7 +7863,7 @@ code; in particular, this applies to \refcmd{AdviceOriginal}.
 
   Within the advice, you will probably never have to use this command directly,
   but will rather rely on the (plain or pre-expanded) \refcmd{AdviceOriginal}.
-  However, outside the advice, this command provides the only means to
+  However, outside the advice, this command provides the only official means to
   access the original definition of an advised command.  (Unlike the
   commands described above, this command is available throughout the
   document.)
@@ -7872,7 +7883,17 @@ code; in particular, this applies to \refcmd{AdviceOriginal}.
     (|/|), but has no slash at the end.
   \end{tcolorbox}  
 \end{doc}
-    
+
+\begin{doc}{cmd={name=AdviceCsnameGetOriginal,
+      par=\marg{namespace}\marg{control sequence name}}}
+  This is a version of \refcmd{AdviceGetOriginal} which accepts a control
+  sequence name as the second argument.
+
+  This macro is used by auto-key \refmmzauto{to context} to include the meaning
+  of any command (even internal commands containing |@|, or |expl3| commands)
+  into the context.
+\end{doc}
+
 \paragraph{Support for specific packages}
 At the moment, Advice only implements specific support for \TikZ, by defining a
 \refmmzauto{collector} for command \refcmd{tikz}.
