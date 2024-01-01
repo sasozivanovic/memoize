@@ -2860,7 +2860,7 @@
 \newwrite\extractionlog
 % Are we requested to produce a log file?
 \ifdefined\logfile
-  \immediate\mmz@openout\extractionlog{\logfile}%
+  \immediate\openout\extractionlog{\logfile}%
   % Define a macro which both outputs the warning message and writes it to the
   % extraction log.
   \def\doublewarning#1{%
