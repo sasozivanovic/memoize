@@ -3430,9 +3430,7 @@
           \the\numexpr\pgf@picture@serial@count-\mmz@pgfpictureid\relax\relax
         },
       },
-      % \begin{listingregion}{_auto-tikz-collector.tex}
       auto=\tikz{memoize tikz, collector=\AdviceCollectTikZArguments},
-      % \end{listingregion}
       auto={tikzpicture}{memoize tikz},
     }%
   },

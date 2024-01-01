@@ -4685,13 +4685,15 @@ key \refmmzauto{collector} in addition to executing \refmmzauto{memoize}.  For
 example, Memoize submits \refcmd{tikz} to automemoization by loading
 \reffile{advice-tikz.code.tex}, which contains Advice's definition of the
 \cs{tikz} collector \refcmd{AdviceCollectTikZArguments}, and issuing the
-following declaration.
+following declaration.\footnote{This is a simplification, see
+  \refmmzauto{memoize tikz} for the full story.}
 
-\makeexcerpt{_auto-tikz-collector}
-\tcbinputexample[.tex][.excerpt]{%
-  listing only, one file, no attachment,
-  title={Declaring automemoization of command \cs{tikz}},
-}
+\begin{tcblisting}{
+    example title={Declaring automemoization of command \cs{tikz}},
+    listing only,
+  }
+  auto=\tikz{memoize, collector=\AdviceCollectTikZArguments},  
+\end{tcblisting}
 
 \paragraph{\refmmzauto[show keypath]{ref}}
 
@@ -7990,21 +7992,23 @@ be generalized to \meta{namespace} and \meta{setup key} of
     \midrule
     \refcmd{begin}&custom&Only in \hologo{LaTeX}; declared by Advice.\\
     \refcmd{errmessage}&\refmmzauto{abort}&Not available in \hologo{LuaTeX},
-                                            where better error-detection is implemented.\\
+    where better error-detection is implemented.\\
     \refenv{forest}&\refmmzauto{memoize}\\
     \refcmd{Forest}&\refmmzauto{memoize}\\
     \refcmd{index}&\refmmzauto{replicate}&The argument is expanded prior to replication.\\
-    \refcmd{label}&custom&Globally appends \refcmd{mmzLabel}\marg{label key}\marg{current label}
-                           to register \refcmd{mmzCCMemo}; \refmmzauto{run if memoizing}.\\
+    \refcmd{label}&custom&\refmmzauto{run if memoizing}; globally appends
+    \refcmd{mmzLabel}\marg{label key}\marg{current label}
+    to register \refcmd{mmzCCMemo}.\\
     \refcmd{pageref}&\refmmzauto{ref}\\
     \refcmd[into index=false]{pdfsavepos}&\refmmzauto{abort}&Not available in \hologo{LuaTeX}.\\
     \refcmd{pgfsys@getposition}&\refmmzauto{abort}&Available only in \TikZ is
-                                                    loaded, it aborts memoization of a picture which gets accidentally marked as
-                                                    ``remembered''.\\
+    loaded, it aborts memoization of a picture which gets accidentally marked
+    as
+    ``remembered''.\\
     \refcmd{ref}&\refmmzauto{ref}\\
     \refcmd[short]{savepos}&\refmmzauto{abort}&Available only in \hologo{LuaTeX}.\\
-    \refcmd{tikz}&\refmmzauto{memoize}\\
-    \refenv{tikzpicture}&\refmmzauto{memoize}\\
+    \refcmd{tikz}&\refmmzauto{memoize tikz}\\
+    \refenv{tikzpicture}&\refmmzauto{memoize tikz}\\
     \bottomrule
   \end{tabularx}
   \caption{Commands advised by Memoize}
@@ -8149,6 +8153,15 @@ be generalized to \meta{namespace} and \meta{setup key} of
   preferred.
 \end{doc}
 
+\begin{doc}{key={name=memoize tikz,desc=style}}
+  This key is used to declare memoization of \TikZ pictures; it may also be
+  used for PGF pictures.  Besides executing \refmmzauto{memoize}, it uses
+  \refmmz{at begin memoization} and \refmmz{at end memoization} to add the code
+  which measures the increase of the PGF picture ID during memoization of a
+  picture, and increases this ID for the measured amount upon the utilization
+  of the extern, thereby making sure that a utilized \TikZ\slash\PGF extern
+  advances the PGF picture ID as if the picture was compiled.
+\end{doc}
 
 \begin{doc}{easy, 
     key={name=ref,desc=style},
