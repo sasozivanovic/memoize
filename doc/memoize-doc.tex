@@ -7860,22 +7860,23 @@ applies to \refcmd{AdviceOriginal}.
 
 \begin{doc}{cmd={name=AdviceGetOriginal, par=\marg{namespace}\marg{control sequence}}}
   This command invokes the original definition of the \meta{control sequence}
-  advised by the \meta{namespace} instantiation of Advice.  It may be safely
-  used outside the advice, even if the advised command is not activated.
+  advised by the \meta{namespace} instantiation of Advice; more precisely, the
+  full expansion of this macro produces the (internal) control sequence holding
+  the definition of \meta{control sequence} in effect when this control
+  sequence was activated in \meta{namespace}.  This macro may be safely used
+  outside the advice, even if the advised command is not activated.
 
   For example, upon executing key |/ns/|\refmmz{auto}|=\foo{...}|,
   |\AdviceGetOriginal{/ns}{\foo}| will recall the original definition of |\foo|
   if |\foo| is activated, and simply execute |\foo| otherwise.
 
-  The full expansion of this macro produces the control sequence holding the
-  original definition of \meta{control sequence}.
-
   The second argument of this command should \emph{not} be an environment name.
-  To execute the original environment |foo| in \hologo{TeX} or
+  To execute the original environment |foo| in \hologo{plainTeX} or
   \hologo{ConTeXt}, use \refcmd{AdviceGetOriginal} with the appropriate macro:
   |\AdviceGetOriginal{/ns}{\foo}| or |\AdviceGetOriginal{/ns}{\startfoo}|.  In
   \hologo{LaTeX}, one should use |\AdviceGetOriginal{/ns}{\begin}{foo}|, which
-    executes the original \refcmd{begin} and provides it with the environment name.
+    executes the original \refcmd{begin} and provides it with the environment
+    name. 
 
   Within the advice, you will probably never have to use this command directly,
   but will rather rely on the (plain or pre-expanded) \refcmd{AdviceOriginal}.
