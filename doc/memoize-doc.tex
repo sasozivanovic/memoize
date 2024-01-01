@@ -5061,7 +5061,7 @@ user might want to know about.  Red background indicates other, more or less
 advanced keys and commands.
 
 
-\subsection{Loading}
+\subsection{Loading and initialization}
 \label{sec:ref:loading}
 \paragraph{\hologo{LaTeX}}
 
@@ -5078,15 +5078,16 @@ the rare situations requiring key handling in the package options, use option
 \refmmz{options}.
 
 Second, key \refmmz{extract} and other extraction-related keys such as
-\refmmz{perl extraction options} only make sense as a package option, or
-within \reffile{memoize.cfg}.  Internal extern extraction can only be performed
-before the output PDF is opened, and to maximize chances of that, Memoize is
-designed to extract as soon as it can: while it is being loaded.  Consequently,
-changing the extraction method in the document preamble has no effect.
+\refmmz{perl extraction options} should normally be used as a package option,
+or within \reffile{memoize.cfg}.  Because Memoize extracts the externs while it
+is being loaded, executing these keys after the package is loaded will have a
+different effect; see the documentation of \refmmz{extract} for details.
 
-The necessity of performing extraction before the output PDF is opened is also
-why Memoize prefers to be loaded early with respect to other packages.  In
-particular, it must be loaded before \PGF library |fadings| (see
+Memoize extracts the externs while it is being loaded (and not, say, at the
+beginning of the document) because extern extraction can only be performed
+before the output PDF is opened, and some packages cause it to be opened when
+they are loaded.  This also implies that Memoize must be loaded before any such
+package.  In particular, it must be loaded before \PGF library |fadings| (see
 section~\ref{sec:fadings-problem}) and before the \pkg{beamer} class (see
 section~\ref{sec:tut:beamer}).
 
@@ -6279,11 +6280,14 @@ require.
 
   Out of the box, Memoize recognizes the following \meta{extraction method}
   keywords: \docAux{easy, of=key:/mmz/extract, value={name=perl}, comma,
-    value={name=python}, comma, value={name=tex}, and, value={name=no}}.  The final
-  keyword (not available in \hologo{plainTeX}) instructs Memoize to \emph{not}
-  perform to extraction; it should be used when extraction is performed
-  externally (for details, see section~\ref{sec:setup}).  Additional methods
-  may be installed by defining key \docaux{key
+    value={name=python}, comma, value={name=tex}, and, value={name=no}}.  The
+  first three keywords trigger extern extraction using the methods documented
+  in sections~\ref{sec:ref:extraction-perl-python}
+  and~\ref{sec:ref:extraction-tex}.  The final keyword (not available in
+  \hologo{plainTeX}) instructs Memoize to \emph{not} perform the extraction at
+  the end of loading the package; it should be used when extraction is
+  performed externally (for details, see section~\ref{sec:setup}).  Additional
+  methods may be installed by defining key \docaux{key
     path}{mmz/extract}|/|\meta{extraction method}.
   
   When invoked from \reffile{memoize.cfg} or used as a package option, this key
@@ -6293,26 +6297,31 @@ require.
   \reffile{memoize.cfg}, which in turn overrides the package-initial value
   \refmmz{extract=perl}.
 
-  In \hologo{LaTeX} and \hologo{ConTeXt}, the selected method is executed at
-  the end of loading the package.  Afterwards, the key is disabled.  If you
-  really need to invoke extraction in the preamble, or again, write
-  \refmmz{extract}|/|\meta{method}.
+  In \hologo{LaTeX} and \hologo{ConTeXt}, the selected method is automatically
+  executed at the end of loading the package.  This does not happen in
+  \hologo{plainTeX}, because we want to allow the author to override the
+  initial extraction method (\refmmz{extract=perl}) or the extraction method
+  specified in \reffile{memoize.cfg}, even if \hologo{plainTeX} has no package
+  options.  In \hologo{plainTeX}, internal extraction must be triggered by an
+  explicit invocation of \refmmz{extract} in the ``document preamble'' ---
+  i.e.\ between |\input memoize| and \refcmd{mmzset}\braces{\refmmz{begin
+      document}}.  If given an \meta{extraction method} argument, the key will
+  execute the given extraction method; otherwise, it will execute either the
+  initial method, \refmmz{extract=perl}, or the overwide specified in
+  \reffile{memoize.cfg}.
 
-  When invoked from a \refcmd{mmzset} in the document preamble, this key
-  immediately \emph{executes} the given extraction method.  In the preamble
-  incarnation, the key may be invoked without a value to execute the previously
-  selected method.
-
-  As we want to allow a \hologo{plainTeX} author to override the extraction
-  method specified by the package (\refmmz{extract=perl}) or in
-  \reffile{memoize.cfg}, Memoize does \emph{not} perform extern extraction
-  while loading the package in this format.  In \hologo{plainTeX}, internal
-  extraction can only be triggered by an explicit invocation of
-  \refmmz{extract} in the ``document preamble'' --- i.e.\ between |\input
-  memoize| and \refcmd{mmzset}\braces{\refmmz{begin document}}.  In this case,
-  the key does not require an argument; invoking it without the argument will
-  execute either the package-default, \refmmz{extract=perl}, or whatever the
-  user had selected in \reffile{memoize.cfg}.
+  In general, Memoize guards against triggering the extraction more than once.
+  In formats other than \hologo{plainTeX}, invoking key \refmmz{extract} from
+  the document preamble is thus only allowed when
+  \refmmz{extract}|=|\refmmz{extract=no} was previously selected.  In this
+  case, \refmmz{extract} in the document preamble behaves as in
+  \hologo{plainTeX}, i.e.\ it triggers the given extraction method; if no
+  extraction method is given, Memoize executes either the initial extraction
+  method \refmmz{extract=perl}, or the extraction method specified in
+  \reffile{memoize.cfg}.  The possibility of invoking key \refmmz{extract} from
+  the document preamble makes it possible to bake Memoize into a user format
+  (with \refmmz{extract}|=|\refmmz{extract=no}), and trigger the internal
+  extraction manually.
 
   Executing extraction method \refmmz{extract=perl} or \refmmz{extract=python}
   has an additional effect of setting the \refmmz{mkdir command} to the
@@ -6323,6 +6332,10 @@ require.
 
 \subsubsection{Perl- and Python-based extraction}
 \label{sec:ref:extraction-perl-python}
+
+Perl- and Python-based extraction is triggered by
+\refmmz{extract}|=|\refmmz{extract=perl} and
+\refmmz{extract}|=|\refmmz{extract=python}, respectively.
 
 \begin{doc}{
     key={name=perl extraction command, par=\meta{system command},
@@ -6538,6 +6551,9 @@ require.
 
 \subsubsection{\texorpdfstring{\hologo{TeX}}{TeX}-based extraction}
 \label{sec:ref:extraction-tex}
+
+\hologo{TeX}-based extraction is triggered by
+\refmmz{extract}|=|\refmmz{extract=tex}.
 
 \begin{doc}{
     key={name=tex extraction command, par=\meta{system command},

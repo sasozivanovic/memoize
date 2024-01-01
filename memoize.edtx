@@ -2363,7 +2363,7 @@
 \mmzset{
   extract/.estore in=\mmz@extraction@method,
   extract/.value required,
-  begindocument/.append style={extract/.code=\mmz@preamble@only@warning},
+  begindocument/.append style={extract/.code=\mmz@preamble@only@error},
   % \end{key}
   % 
   % \begin{key}{extract/perl, extract/python}
@@ -2409,10 +2409,10 @@
     \jobname\space
   },
 }
-\def\mmz@preamble@only@warning{%
-  \PackageWarning{memoize}{%
+\def\mmz@preamble@only@error{%
+  \PackageError{memoize}{%
     Ignoring the invocation of "\pgfkeyscurrentkey".
-    This key may only be executed in the preamble}%
+    This key may only be executed in the preamble}{}%
 }
 % \end{key}
 % 
@@ -3630,6 +3630,10 @@
 %</plain,context>
 % \end{key}
 % 
+% Formats other than \hologo{plainTeX} need a way to prevent extraction during
+% package-loading.
+%<!plain>\mmzset{extract/no/.code={}}
+% 
 % \paragraph{\texttt{memoize.cfg}} Load the configuration file.  Note that
 % |nomemoize| must input this file as well, because any special
 % memoization-related macros defined by the user should be available; for
@@ -3639,11 +3643,12 @@
 %<mmz,nommz>\InputIfFileExists{memoize.cfg}{}{}
 %<*mmz>
 %
-% Formats other than \hologo{plainTeX} need a way to prevent extraction during
-% package-loading.
-\mmzset{
-  %<!plain>extract/no/.code={},
-}
+% For formats other than \hologo{plainTeX}, we also save the current (initial
+% or |memoize.cfg|-set) value of |extract|, so that we can restore it when
+% package options include |extract=no|.  Then, |extract| can be called without
+% an argument in the preamble, triggering extraction using this method; this is
+% useful e.g.\ if Memoize is compiled into a format.
+%<!plain>\let\mmz@initial@extraction@method\mmz@extraction@method
 % 
 % \paragraph{Process} the package options (except in \hologo{plainTeX}).
 %<*latex>
@@ -3660,32 +3665,37 @@
 \DeclareUnknownKeyHandler[mmz]{}
 \ProcessKeyOptions[mmz]
 %</latex&nommz>
+% \paragraph{Extern extraction}
+% We redefine |extract| to immediately trigger extraction.  This is crucial in
+% \hologo{plainTeX}, where extraction must be invoked after loading the
+% package, but also potentially useful in other formats when package options
+% include |extract=no|.
 %<*mmz>
-% 
 \mmzset{
-  % \paragraph{Extract} the externs using the method given by |memoize.cfg| or
-  % the package options --- unless we're running \hologo{plainTeX}.
-  %<*!plain>
-  extract/\mmz@extraction@method,
-  % In non-\hologo{plainTeX} formats, also disable |extract| in the preamble.
-  extract/.code={\PackageError{memoize}{Key "extract" is only allowed as a
-      package option.}{If you really want to extract in the preamble, execute
-      "extract/<method>".}},
-  %</!plain>
-  %<*plain>
-  % In \hologo{plainTeX}, where extraction must be invoked after
-  % loading the package, we now have to redefine |extract|, so that it will
-  % immediately trigger extraction.  
   extract/.is choice,
   extract/.default=\mmz@extraction@method,
   % But only once:
   extract/.append style={
-    extract/.code={\PackageError{memoize}{Key "extract" is only allowed to
-        be used once.}{If you really want to extract again, execute
-        "extract/<method>".}},
+    extract/.code={\PackageError{memoize}{Key "extract" was invoked twice.}{In
+        principle, externs should be extracted only once.  If you really want
+        to extract again, execute "extract/<method>".}},
   },
-  %</plain>
+  % In formats other than \hologo{plainTeX}, we remember the current |extract|
+  % code and then trigger the extraction.
+  %<!plain>/utils/exec={\pgfkeysgetvalue{/mmz/extract/.@cmd}\mmz@temp@extract},
+  %<!plain>extract=\mmz@extraction@method,
 }
+% Option |extract=no| (which only exists in formats other than
+% \hologo{plainTeX}) should allow for an explicit invocation of |extract| in
+% the preamble.
+%<*!plain>
+\def\mmz@temp{no}
+\ifx\mmz@extraction@method\mmz@temp
+  \pgfkeyslet{/mmz/extract/.@cmd}\mmz@temp@extract
+  \let\mmz@extraction@method\mmz@initial@extraction@method
+\fi
+\let\mmz@temp@extract\relax
+%</!plain>
 % 
 % Memoize was not really born for the draft mode, as it cannot produce new
 % externs there.  But we don't want to disable the package, as utilization and
