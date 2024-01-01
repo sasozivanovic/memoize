@@ -7251,6 +7251,15 @@ headers.
   details, see sections~\ref{sec:tut:automemoization},
   \ref{sec:tut:working-on-a-picture} and~\ref{sec:tut:verbatim}.
 
+  Note that in \hologo{LaTeX}, advising an environment (say, |bar|) is
+  different than advising the internal command (|\bar|) containing the
+  \meta{begin-code} of the environment, created by \cs{newenvironment}.
+  Advising environment |bar| effectively replaces the entire
+  |\begin{bar}...\end{bar}| construction, so that \hologo{LaTeX}'s |\begin|
+    code is never executed.  The advice of command |\bar|, on the other hand,
+    is executed after |\begin| initializes the environment; in particular, it
+      is executed within the group introduced by the environment.
+
   The advice is configured by the given \meta{keylist}, which is executed with
   the default keypath set to \docaux{key path}{mmz/auto}.  Any unknown keys in
   \meta{keylist} are passed on to key \refmmzauto{options}; for example, a
