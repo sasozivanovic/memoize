@@ -3,7 +3,7 @@
 For the development history, see [Memoize's GitHub
 repository](https://github.com/sasozivanovic/memoize).
 
-## 2023/12/06 v1.1.0-wip
+## 2024/1/02 v1.1.0
 
 * Improve the extraction scripts:
   * respect `TEXMF_OUTPUT_DIRECTORY`;

@@ -2,8 +2,8 @@
 title: memoize-clean
 section: 1
 header: User Manual
-footer: memoize-clean of Memoize v1.1.0-wip
-date: December 06, 2023
+footer: memoize-clean of Memoize v1.1.0
+date: January 02, 2024
 hyphenate: false
 ---
 
