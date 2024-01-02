@@ -8226,6 +8226,19 @@ be generalized to \meta{namespace} and \meta{setup key} of
 \end{doc}
 
 \begin{doc}{
+    key={name=to context, desc=style}
+  }
+  This key sets up advice which appends the original meaning of the advised
+  command to the context.  It invokes \refmmzauto{run if memoizing}, so that
+  the command is only advised during memoization.
+
+  It is safe to apply this key to internal commands such as commands whose name
+  contains |@|, or \pkg{expl3} commands.  It is not necessary to provide the
+  argument structure of the advised command (using \refmmzauto{args}).
+  
+\end{doc}
+
+\begin{doc}{
     key={name=replicate, desc=style}
   }
   This key sets up advice which replicates the invocation of the command in
