@@ -11,6 +11,7 @@ repository](https://github.com/sasozivanovic/memoize).
   * implement `--format`;
   * improve error reporting;
   * drop the `Path::Class` dependency for the Perl script;
+  * allow for `PDF::Builder` in the Perl script;
   * implement `--library` in the Perl script;
   * set an appropriate exit code on exit;
   * and several further minor changes.
@@ -44,7 +45,8 @@ repository](https://github.com/sasozivanovic/memoize).
 
 * Support `\DiscardShipoutBox`.
 
-* Advance the counter underlying `\pgfpictureid` when utilizing a tikzpicture.
+* Advance the counter underlying `\pgfpictureid` when utilizing a tikzpicture
+  (`memoize tikz`).
 
 * Remove the `\pgfsys@getposition` hack for `tikzpicture`s.
 

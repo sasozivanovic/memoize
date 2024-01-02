@@ -16,6 +16,8 @@ development history.
 
 ## 2024/01/02 v1.1.0
 * Implement `\AdviceCsnameGetOriginal`.
+* Change `\AdviceGetOriginal` to expand to the internal control sequence
+  holding the original definition of the advised command under full expansion.
 * Add the missing info messages for environment (de)activation.
 * Add the original command meaning to trace.
 
