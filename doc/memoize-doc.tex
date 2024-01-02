@@ -1224,7 +1224,7 @@ long hexadecimal numbers.
               font=\scriptsize\tt, grow'=0, folder, s sep=0}},
           [\meta{the document folder}, inner xsep=0,
             TeX={%
-              \def\mmzNewExtern##1##2##3##4##5{\mynewextern##1\relax}%
+              \def\mmzNewExtern##1##2##3##4{\mynewextern##1\relax}%
               \input{\examplepath.mmz}%
             },
             [\examplename.tex]
@@ -1294,7 +1294,7 @@ it makes no sense to repeat it there).
               % tikz={\draw[dotted](.east)--+(9em,0ex) node [anchor=south west, yshift=-1ex, font=\footnotesize, emphshade=black!5!white, text width=15em, align=justify]{You need to create this directory by hand, or allow Memoize to create it by adding |mkdir| to the list of restricted shell escape commands.};},
               tikz={\draw[dotted](.east)--+(9em,0ex) node [anchor=west, font=\footnotesize, emphshade=black!5!white]{This directory must be created, somehow.};},
               TeX={%
-                \def\mmzNewExtern##1##2##3##4##5{\mynewextern##1\relax}%
+                \def\mmzNewExtern##1##2##3##4{\mynewextern##1\relax}%
                 \input{\examplepath.mmz}%
               },
             ]
@@ -3014,10 +3014,10 @@ cc-memo.  The number of externs mostly depends on the memoization driver (see
 section~\ref{sec:memoization-drivers}); the default driver always produces
 exactly one extern.
 
-A cc-memo is located in the \refmmz{prefix directory} determined by key
-\refmmz{prefix} (everything up to the final |/| in the value of this key, or
-the current directory if this value contains no |/|).  You can recognize it by
-its filename, which has the following form (\meta{prefix name} is everything
+A cc-memo is located in the directory determined by key \refmmz{prefix}
+(everything up to the final |/| in the value of this key, or the current
+directory if this value contains no |/|).  You can recognize it by its
+filename, which has the following form (\meta{prefix name} is everything
 following the final |/| in the value of \refmmz{prefix}):
 \begin{center}
   \code{\meta{prefix name}\meta{code md5sum}-\meta{context md5sum}.memo}
@@ -3051,7 +3051,7 @@ cc-memo (it belongs to the titlepage penguin):
 \input{\exampledir titlepage.mmz.c1}
 \sed{%
   s/\cmd{quitvmode} \cmd{mmzIncludeExtern}/\cmd{quitvmode}\n\cmd{mmzIncludeExtern}/;
-  s/\(\marg\marg\marg\)\(\marg\marg\marg\marg\marg\)/\1\space\2/;
+  s/\(\marg\)\cmd{global}/\1\n\cmd{global}/;
 }{\exampledir\myccmemo}
 \tcbinputlisting{
   listing only,
@@ -3174,10 +3174,10 @@ first learn about the context adjustments.  Here's where c-memos enter the
 picture: \emph{the primary job of a c-memo is to store the context adjustments
   made by the memoized code}.  Let's see how this works in detail.
 
-Same as cc-memos, c-memos are located in the \meta{prefix directory} determined
-by key \refmmz{prefix}, and their filenames start by \meta{prefix name}
-determined by the same key.  However, a c-memo belonging to some memoized code
-is identified by the MD5 sum of that code alone:
+Same as cc-memos, c-memos are located in the directory determined by key
+\refmmz{prefix}, and their filenames start by \meta{prefix name} determined by
+the same key.  However, a c-memo belonging to some memoized code is identified
+by the MD5 sum of that code alone:
 \begin{center}
   \code{\meta{prefix name}\meta{code md5sum}.memo}
 \end{center}
@@ -3599,7 +3599,7 @@ when preceded by no \cs{pause} command (|pauses=1|).
   s/\(\cmd{quitvmode}\) \(\cmd{only}\)/\1\n\2/;
   s/\rbrace\(\cmd{mmzIncludeExtern}\)/\rbrace\percentchar\n\1/;
   s/\rbrace\(\cmd{setcounter}\)/\rbrace\percentchar\n\1/;
-  s/\(\marg\marg\marg\)\(\marg\marg\marg\marg\marg\)/\1\space\2/;
+  s/\(\marg\)\cmd{global}/\1\n\cmd{global}/;
 }{\exampledir\myccmemo}
 
 \tcbinputlisting{
@@ -4055,7 +4055,7 @@ be externalized into separate externs, as shown below.
       \restoreexpandmode
       \relaxmmzcommands
     }%
-    \def\mmzNewExtern##1##2##3##4##5{\mmzUsedExtern{##1}}
+    \def\mmzNewExtern##1##2##3##4{\mmzUsedExtern{##1}}
     \def\myexternname##1{extern \dots\texttt{\mytemp##1.pdf}}%
     \input{\examplepath.mmz}%
     \begin{tabular}{ccc}
@@ -5551,7 +5551,7 @@ on how to handle this properly.
 \end{doc}
 
 \begin{doc}{
-    keypath={/handlers, desc=handler},
+    keypath={/handlers}, desc=handler,
     key={easy, name=.meaning to context},
     key={name=.value to context},
   }
@@ -6398,10 +6398,11 @@ Perl- and Python-based extraction is triggered by
   The script inspects the given record file, \meta{name}\dmmz, for lines of
   form \refcmd{mmzNewExtern}\marg{extern filename}\marg{extern page
     number}\braces{\meta{expected width}\texttt{pt}}\braces{\meta{expected
-      height}\texttt{pt}}.  For each such line, page number
-  \meta{extern page number} is extracted from \meta{name}|.pdf| into
-  \meta{extern filename}. Other lines are ignored (and so are commented
-  invocations of \refcmd{mmzNewExtern}).
+      height}\texttt{pt}}.  For each such line, page number \meta{extern page
+    number} is extracted from \meta{name}|.pdf| into \meta{extern filename}.
+  (The script also creates directories specified by \refcmd{mmzPrefix} lines.
+  Other lines are ignored, and so are commented invocations of
+  \refcmd{mmzNewExtern} and \refcmd{mmzPrefix}.)
 
   The \meta{extern filename} may contain a (relative or absolute) path to the
   new extern file.  The relative paths are relative to the location of the
@@ -7918,8 +7919,8 @@ applies to \refcmd{AdviceOriginal}.
   sequence name as the second argument.
 
   This macro is used by auto-key \refmmzauto{to context} to include the meaning
-  of any command (even internal commands containing |@|, or |expl3| commands)
-  into the context.
+  of any command (even internal commands containing |@|, or \pkg{expl3}
+  commands) into the context.
 \end{doc}
 
 \paragraph{Support for specific packages}
@@ -9129,7 +9130,7 @@ Errors:
     executed, it should've announced itself by \code{Extracting externs from
       \meta{jobname}.pdf}; are there any further messages between this header
     and the error message?
-  \item Inspect \meta{the path to the extern}|.log|, if you are using the
+  \item Inspect \meta{the path to the extern}|.log|, if you are using 
     \hologo{TeX}-based extraction
     (\code{\refmmz{extract}=\refmmz{extract=tex}}).
   \end{itemize}

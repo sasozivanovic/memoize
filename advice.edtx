@@ -512,7 +512,8 @@
 /endgroup
 \def\AdviceCsnameGetOriginal#1#2{%
   \ifcsname advice@o#1//\advice@backslash@other#2\endcsname
-    \expandonce{\csname advice@o#1//\advice@backslash@other#2\expandafter\endcsname\expandafter}%
+    \expandonce{\csname advice@o#1//\advice@backslash@other#2\expandafter\endcsname
+      \expandafter}%
   \else
     \expandonce{\csname#2\expandafter\endcsname\expandafter}%
   \fi
