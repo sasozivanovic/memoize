@@ -1766,7 +1766,7 @@
   % might be produced by a failed \hologo{TeX}-based extraction, should count
   % as no file.  The |0| behind |\ifnum| is there because |\pdffilesize|
   %   returns an empty string when the file does not exist.
-  \ifnum0\pdf@filesize{\mmz@prefix@dir/#1}=0
+  \ifnum0\pdf@filesize{\mmz@prefix@dir#1}=0
     \ifmmz@direct@ccmemo@input
       \let\mmzMemo\endinput
     \else
