@@ -170,7 +170,7 @@ unlink-runtimes:
 # $1 = source file, $2 = package name
 VERSION-LATEX = $(YEAR)/$(MONTH)/$(DAY) v$(VERSION)
 define EDIT-VERSION-LATEX
-	sed -Ei 's!\\ProvidesPackage\{$(2)\}\[[0-9]{4}/[0-9]{2}/[0-9]{2} v[-0-9.a-z]* !\\ProvidesPackage{$(2)}[$(VERSION-LATEX) !' $(1)
+	sed -Ei 's!\\ProvidesPackage\{$(2)\}\[[0-9]{4}/[0-9]{1,2}/[0-9]{1,2} v[-0-9.a-z]* !\\ProvidesPackage{$(2)}[$(VERSION-LATEX) !' $(1)
 endef
 
 # $1 = source file
@@ -210,6 +210,6 @@ endef
 
 # Change the date of the latest release (identified by the version) of the package.
 define EDIT-DATE-CHANGELOG
-	sed -Ei 's!^(#+|Manual: Memoize) [0-9]{4}/[0-9]{2}/[0-9]{2} +v$(VERSION)!\1 $(YEAR)/$(MONTH)/$(DAY) v$(VERSION)!' $(1)
+	sed -Ei 's!^(#+|Manual: Memoize) [0-9]{4}/[0-9]{1,2}/[0-9]{1,2} +v$(VERSION)!\1 $(YEAR)/$(MONTH)/$(DAY) v$(VERSION)!' $(1)
 endef
 

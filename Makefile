@@ -5,6 +5,7 @@ PACKAGES = memoize advice collargs
 all: ctan/memoize.zip
 	$(MAKE) -f Makefile.advice ctan/advice.zip
 	$(MAKE) -f Makefile.collargs ctan/collargs.zip
+	@echo "Don't forget to run the tests!"
 
 # Prepare the CTAN submission.
 
@@ -19,7 +20,7 @@ FORMAT = generic
 COMMON = memoize nomemoize memoizable
 PLAIN = memoize-extract-one.tex
 GENERIC = memoizable.code.tex
-SOURCE = memoize.edtx memoize.ins # $(makefiles)
+SOURCE = memoize.edtx memoize.ins
 
 SCRIPTS := memoize-extract memoize-clean
 man-src := $(SCRIPTS:%=doc/%.1.md)
@@ -37,6 +38,9 @@ INSTALL = INSTALL.md
 CHANGELOG = CHANGELOG.md
 MAKEFILE = Makefile
 LICENCE = LICENCE
+
+PACKAGES.edtx = $(PACKAGES:%=%.edtx)
+PACKAGES.ins = $(PACKAGES:%=%.ins)
 
 makefiles = Makefile.package Makefile.runtimes Makefile.advice Makefile.collargs 
 
@@ -87,14 +91,13 @@ ctan/$(PACKAGE).zip:
 	edtx2dtx -s -c '#' -B '^my \$$PROG' -E '^# Local Variables:' $< \
 		| sed -e '/^% Local Variables:/Q' > $@
 
-doc/memoize-code.pdf: $(SOURCE) $(codedoc-source) \
-                      advice.edtx advice.ins collargs.edtx collargs.ins \
-                      $(SCRIPTS:%=%.dtx)
+doc/memoize-code.pdf: $(codedoc-source) \
+                      $(PACKAGES.edtx) $(PACKAGES.ins) $(SCRIPTS:%=%.dtx)
 
-doc/memoize.pdf: $(manual-source) $(examples-src) memoize.edtx advice.edtx collargs.edtx
+doc/memoize.pdf: $(manual-source) $(examples-src) $(PACKAGES.edtx)
 
 %.pdf: %.tex
-	latexmk -cd -lualatex -bibtex- $<  && touch $@
+	latexmk -cd -lualatex -bibtex- $(LATEXMK) $<  && touch $@
 
 
 
@@ -128,11 +131,11 @@ version:
 	$(call EDIT-VERSION-MAN,doc/memoize-clean.1.md)
 	$(call EDIT-DATE-CHANGELOG,CHANGELOG.md)
 define COLOR_VERSION
-grep -E --color '[0-9]{4}[/-][0-9]{2}[/-][0-9]{2}|v?[0-9]\.[0-9]\.[0-9]([-a-z]*)|(January|February|March|April|May|June|July|August|September|October|November|December) [0-9]+, [0-9]{4}'
+grep -E --color '[0-9]{4}[/-][0-9]{1,2}[/-][0-9]{1,2}|v?[0-9]\.[0-9]\.[0-9]([-a-z]*)|(January|February|March|April|May|June|July|August|September|October|November|December) [0-9]+, [0-9]{4}'
 endef
 
 versions-show:
-	@grep -E '%<latex>\\ProvidesPackage|^%<context>%D\s*(version|date)=' $(PACKAGES:%=%.edtx) | ${COLOR_VERSION}
+	@grep -E '%<latex>\\ProvidesPackage|^%<context>%D\s*(version|date)=' $(PACKAGES.edtx) | ${COLOR_VERSION}
 	@grep __version__ *.py | ${COLOR_VERSION}
 	@grep VERSION *.pl | ${COLOR_VERSION}
 	@grep -E '^(footer|date):' doc/memoize-*.md | ${COLOR_VERSION}

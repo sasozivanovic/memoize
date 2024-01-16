@@ -24,8 +24,8 @@ N = 1
 %.sty: %.sty.c1
 	cp $*.sty.c$N $@
 
-.ONESHELL:
-%.excerpt: ${SOURCE}
+%.excerpt: $(SOURCE)
+	if [[ -z '$(SOURCE)' ]] ; then echo Empty SOURCE! ; false ; fi
 	perl -e '$$f=q{$*}; while(<>) {$$r &&= !/^ *% *\\\Qend{listingregion}/; print if $$r; $$r ||= /^ *% *\\\Qbegin{listingregion}{$$f}/; }' ${SOURCE} > $@
 
 %.listing.attachment: %.listing

@@ -3360,7 +3360,7 @@ to memoize environment |listii|, we will at that point redefine \cs{label} to do
 that.  In effect, changing the location of |listii| will only recompile it if
 it contains a \cs{label}.
 
-At announced, we redefine \cs{label} once the memoization of |listii| begins,
+As announced, we redefine \cs{label} once the memoization of |listii| begins,
 so within \refmmz{at begin memoization}.\footnote{Another generally good
   location for such redefinitions is among the auto-options of |listii|.  We
   could include an \refmmz{auto}\cs{label}\marg{...} there, or a |/utils/exec|
