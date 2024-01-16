@@ -90,55 +90,55 @@
 % 
 % \paragraph{Identification} of |memoize|, |memoizable| and |nomemoize|.
 %<*mmz>
-%<latex>\ProvidesPackage{memoize}[2024/1/02 v1.1.0 Fast and flexible externalization]
+%<latex>\ProvidesPackage{memoize}[2024/01/16 v1.1.1 Fast and flexible externalization]
 %<context>%D \module[
 %<context>%D         file=t-memoize.tex,
-%<context>%D      version=1.1.0,
+%<context>%D      version=1.1.1,
 %<context>%D        title=Memoize,
 %<context>%D     subtitle=Fast and flexible externalization,
 %<context>%D       author=Saso Zivanovic,
-%<context>%D         date=2024-01-02,
+%<context>%D         date=2024-01-16,
 %<context>%D    copyright=Saso Zivanovic,
 %<context>%D      license=LPPL,
 %<context>%D ]
 %<context>\writestatus{loading}{ConTeXt User Module / memoize}
 %<context>\unprotect
 %<context>\startmodule[memoize]
-%<plain>% Package memoize 2024/01/02 v1.1.0
+%<plain>% Package memoize 2024/01/16 v1.1.1
 %</mmz>
 %<*mmzable>
-%<latex>\ProvidesPackage{memoizable}[2024/1/02 v1.1.0 A programmer's stub for Memoize]
+%<latex>\ProvidesPackage{memoizable}[2024/01/16 v1.1.1 A programmer's stub for Memoize]
 %<context>%D \module[
 %<context>%D         file=t-memoizable.tex,
-%<context>%D      version=1.1.0,
+%<context>%D      version=1.1.1,
 %<context>%D        title=Memoizable,
 %<context>%D     subtitle=A programmer's stub for Memoize,
 %<context>%D       author=Saso Zivanovic,
-%<context>%D         date=2024-01-02,
+%<context>%D         date=2024-01-16,
 %<context>%D    copyright=Saso Zivanovic,
 %<context>%D      license=LPPL,
 %<context>%D ]
 %<context>\writestatus{loading}{ConTeXt User Module / memoizable}
 %<context>\unprotect
 %<context>\startmodule[memoizable]
-%<plain>% Package memoizable 2024/01/02 v1.1.0
+%<plain>% Package memoizable 2024/01/16 v1.1.1
 %</mmzable>
 %<*nommz>
-%<latex>\ProvidesPackage{nomemoize}[2024/1/02 v1.1.0 A no-op stub for Memoize]
+%<latex>\ProvidesPackage{nomemoize}[2024/01/16 v1.1.1 A no-op stub for Memoize]
 %<context>%D \module[
 %<context>%D         file=t-nomemoize.tex,
-%<context>%D      version=1.1.0,
+%<context>%D      version=1.1.1,
 %<context>%D        title=Memoize,
 %<context>%D     subtitle=A no-op stub for Memoize,
 %<context>%D       author=Saso Zivanovic,
-%<context>%D         date=2024-01-02,
+%<context>%D         date=2024-01-16,
 %<context>%D    copyright=Saso Zivanovic,
 %<context>%D      license=LPPL,
 %<context>%D ]
 %<context>\writestatus{loading}{ConTeXt User Module / nomemoize}
 %<context>\unprotect
 %<context>\startmodule[nomemoize]
-%<mmz>% Package nomemoize 2024/01/02 v1.1.0
+%<mmz>% Package nomemoize 2024/01/16 v1.1.1
 %</nommz>
 % 
 % \paragraph{Required packages} and \hologo{LaTeX}ization of \hologo{plainTeX}

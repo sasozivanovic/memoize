@@ -3,7 +3,12 @@
 For the development history, see [Memoize's GitHub
 repository](https://github.com/sasozivanovic/memoize).
 
-## 2024/1/02 v1.1.0
+## 2024/01/16 v1.1.1
+
+* Fix a bug where, under `no memo dir`, Memoize was checking whether the extern
+  exists in the root folder.
+
+## 2024/01/02 v1.1.0
 
 * Improve the extraction scripts:
   * respect `TEXMF_OUTPUT_DIRECTORY`;
