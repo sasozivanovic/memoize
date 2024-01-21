@@ -3,6 +3,10 @@
 For the development history, see [Memoize's GitHub
 repository](https://github.com/sasozivanovic/memoize).
 
+## 2024/01/21 v1.1.2
+
+* Fix a bug in Biblatex support.
+
 ## 2024/01/16 v1.1.1
 
 * Fix a bug where, under `no memo dir`, Memoize was checking whether the extern
