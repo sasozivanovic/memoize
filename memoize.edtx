@@ -3532,7 +3532,8 @@
 % \begin{macro}{\mmz@biblatex@entry}
 %   This macro stores the MD5 sum of the |\entry| when reading the |.bbl| file.
 \def\mmz@biblatex@entry#1#2\endentry{%
-  \csxdef{mmz@bbl@#1}{\pdf@mdfivesum{#2}}%
+  \protected@edef\mmz@temp{\pdf@mdfivesum{#2}}%
+  \global\cslet{mmz@bbl@#1}\mmz@temp
   \AdviceOriginal{#1}#2\endentry
 }
 % \end{macro}
