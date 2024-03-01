@@ -409,24 +409,10 @@
   append postprocessor/.code={\collargsAppendPostprocessor{#1}},
   prepend postprocessor/.code={\collargsPrependPostprocessor{#1}},
 }
-\def\collargsAppendPreprocessor{%
-  \collargs@addprocessor\appto\collargs@preprocess@arg}
-\def\collargsPrependPreprocessor{%
-  \collargs@addprocessor\preto\collargs@preprocess@arg}
-\def\collargsAppendPostprocessor{%
-  \collargs@addprocessor\appto\collargs@postprocess@arg}
-\def\collargsPrependPostprocessor{%
-  \collargs@addprocessor\preto\collargs@postprocess@arg}
-% Here, |#1| will be either |\appto| or |\preto|, and |#2| will be either
-% |\collargs@preprocess@arg| or |\collargs@postprocess@arg|.  |#3| is the
-% processor code.
-\def\collargs@addprocessor#1#2#3{%
-  #1#2{%
-    \expanded{%
-      \unexpanded{#3}{\the\collargsArg}%
-    }%
-  }%
-}
+\def\collargsAppendPreprocessor#1{\appto\collargs@preprocess@arg{#1}}
+\def\collargsPrependPreprocessor#1{\preto\collargs@preprocess@arg{#1}}
+\def\collargsAppendPostprocessor#1{\appto\collargs@postprocess@arg{#1}}
+\def\collargsPrependPostprocessor#1{\preto\collargs@postprocess@arg{#1}}
 % \end{macro}
 % \end{collargskey}
 % \end{macro}
@@ -451,53 +437,14 @@
 % \end{collargskey}
 % \end{macro}
 % \end{collargskey}
-% 
-% \begin{collargskey}[noindex]{(append/prepend) expandable (pre/post)processor}
-%   \begin{macro}[noindex]{\collargs(Append/Prepend)Expandable(Pre/Post)processor}
-%     \begin{collargskey}[noprint]{append expandable preprocessor, prepend expandable preprocessor, append expandable postprocessor, prepend expandable postprocessor}
-%       \begin{macro}[noprint]{\collargsAppendExpandablePreprocessor,\collargsPrependExpandablePreprocessor,\collargsAppendExpandablePostprocessor,\collargsPrependExpandablePostprocessor}
-%     These keys
-%     and macros simplify the definition of fully expandable processors.  Note
-%     that expandable processors are added to the same list as non-expandable
-%     processors.
-\collargsSet{
-  append expandable preprocessor/.code={%
-    \collargsAppendExpandablePreprocessor{#1}},
-  prepend expandable preprocessor/.code={%
-    \collargsPrependExpandablePreprocessor{#1}},
-  append expandable postprocessor/.code={%
-    \collargsAppendExpandablePostprocessor{#1}},
-  prepend expandable postprocessor/.code={%
-    \collargsPrependExpandablePostprocessor{#1}},
-}
-\def\collargsAppendExpandablePreprocessor{%
-  \collargs@addeprocessor\appto\collargs@preprocess@arg}
-\def\collargsPrependExpandablePreprocessor{%
-  \collargs@addeprocessor\preto\collargs@preprocess@arg}
-\def\collargsAppendExpandablePostprocessor{%
-  \collargs@addeprocessor\appto\collargs@postprocess@arg}
-\def\collargsPrependExpandablePostprocessor{%
-  \collargs@addeprocessor\preto\collargs@postprocess@arg}
-\def\collargs@addeprocessor#1#2#3{%
-  #1#2{%
-    \expanded{%
-      \edef\noexpand\collargs@temp{\unexpanded{#3}{\the\collargsArg}}%
-      \unexpanded{\expandafter\collargsArg\expandafter{\collargs@temp}}%
-    }%
-  }%
-}
-% \end{macro}
-% \end{collargskey}
-% \end{macro}
-% \end{collargskey}
-% 
+%
 % \begin{collargskey}[noindex]{(append/prepend) (pre/post)wrap}
 %   \begin{macro}[noindex]{\collargs(Append/Prepend)(Pre/Post)wrap}
 %     \begin{collargskey}[noprint]{append prewrap, prepend prewrap, append postwrap, prepend postwrap}
 %       \begin{macro}[noprint]{\collargsAppendPrewrap,\collargsPrependPrewrap,\collargsAppendPostwrap,\collargsPrependPostwrap}
-%      These keys and macros
-%     simplify the definition of processors which yield the result after a
-%     single expansion.  Again, they are added to the same list as other
+%     These keys
+%     and macros simplify the definition of expandable processors.  Note
+%     that expandable processors are added to the same list as non-expandable
 %     processors.
 \collargsSet{
   append prewrap/.code={\collargsAppendPrewrap{#1}},
@@ -505,17 +452,24 @@
   append postwrap/.code={\collargsAppendPostwrap{#1}},
   prepend postwrap/.code={\collargsPrependPostwrap{#1}},
 }
-\def\collargsAppendPrewrap{\collargs@addwrap\appto\collargs@preprocess@arg}
-\def\collargsPrependPrewrap{\collargs@addwrap\preto\collargs@preprocess@arg}
-\def\collargsAppendPostwrap{\collargs@addwrap\appto\collargs@postprocess@arg}
-\def\collargsPrependPostwrap{\collargs@addwrap\preto\collargs@postprocess@arg}
-\def\collargs@addwrap#1#2#3{%
-  #1#2{%
-    \long\def\collargs@temp##1{#3}%
-    \expandafter\expandafter\expandafter\collargsArg
-    \expandafter\expandafter\expandafter{%
-      \expandafter\collargs@temp\expandafter{\the\collargsArg}%
-    }%
+\def\collargsAppendPrewrap#1{%
+  \appto\collargs@preprocess@arg{%
+    \expandafter\collargsArg\expandafter{\expanded{#1}}%
+  }%
+}
+\def\collargsPrependPrewrap#1{%
+  \preto\collargs@preprocess@arg{%
+    \expandafter\collargsArg\expandafter{\expanded{#1}}%
+  }%
+}
+\def\collargsAppendPostwrap#1{%
+  \appto\collargs@postprocess@arg{%
+    \expandafter\collargsArg\expandafter{\expanded{#1}}%
+  }%
+}
+\def\collargsPrependPostwrap#1{%
+  \preto\collargs@postprocess@arg{%
+    \expandafter\collargsArg\expandafter{\expanded{#1}}%
   }%
 }
 % \end{macro}
@@ -761,7 +715,15 @@
 %   defined by the argument type handler.  Note that this macro \emph{appends}
 %   a wrapper, so multiple wrappers are allowed --- this is used by type |e|
 %   handler.
-\def\collargs@wrap{\collargs@addwrap\appto\collargs@process@arg}
+\def\collargs@wrap#1{%
+  \appto\collargs@process@arg{%
+    \long\def\collargs@temp##1{#1}%
+    \expandafter\expandafter\expandafter\collargsArg
+    \expandafter\expandafter\expandafter{%
+      \expandafter\collargs@temp\expandafter{\the\collargsArg}%
+    }%
+  }%
+}
 \def\collargs@process@arg{}
 % \end{macro}
 %

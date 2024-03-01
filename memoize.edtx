@@ -585,7 +585,7 @@
   \CollectArgumentsRaw
     {\collargsBraceCollectedfalse
       \collargsNoDelimiterstrue
-      \collargsAppendPostwrap{{##1}}%
+      \collargsAppendPostwrap{{\the\collargsArg}}%
     }%
     {u"u\mmz@eov}%
     \mmz@remove@quotes@ii
