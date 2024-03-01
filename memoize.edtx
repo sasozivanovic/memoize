@@ -3573,7 +3573,7 @@
 \def\mmz@biblatex@cites@i{%
   \futurelet\mmz@temp\mmz@biblatex@cites@ii
 }
-% If the following token is an opening brace, bracket or parenthesis, the
+% If the following token is an opening brace or bracket, the
 % multicite arguments continue.
 \def\mmz@biblatex@cites@ii{%
   \mmz@tempfalse
@@ -3582,10 +3582,6 @@
   \else
     \ifx\mmz@temp[%]
       \mmz@temptrue
-    \else
-      \ifx\mmz@temp(%)
-        \mmz@temptrue
-      \fi
     \fi
   \fi
   \ifmmz@temp
