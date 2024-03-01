@@ -3551,12 +3551,12 @@
 %   handled |\cite| command to the cc-memo.
 \def\mmz@biblatex@cite#1#{\mmz@biblatex@cite@i{#1}}
 \def\mmz@biblatex@cite@i#1#2{%
-  \forcsvlist\mmz@biblatex@cite@do@key{#2}%
-  \xtoksapp\mmzCCMemo{%
-    \noexpand\setbox0\noexpand\hbox{%
-      \expandonce\AdviceOriginal\unexpanded{#1}{#2}%
-    }}%
+  \mmz@biblatex@cite@do@keys{#2}%
   \AdviceOriginal#1{#2}%
+}
+\def\mmz@biblatex@cite@do@keys#1{%
+  \forcsvlist\mmz@biblatex@cite@do@key{#1}%
+  \gtoksapp\mmzCCMemo{\AdviceGetOriginal{/mmz}{\nocite}{#1}}%
 }
 \def\mmz@biblatex@cite@do@key#1{%
   \mmz@mtoc@csname{mmz@bbl@#1}%
@@ -3573,6 +3573,8 @@
 \def\mmz@biblatex@cites@i{%
   \futurelet\mmz@temp\mmz@biblatex@cites@ii
 }
+% If the following token is an opening brace, bracket or parenthesis, the
+% multicite arguments continue.
 \def\mmz@biblatex@cites@ii{%
   \mmz@tempfalse
   \ifx\mmz@temp\bgroup
@@ -3580,6 +3582,10 @@
   \else
     \ifx\mmz@temp[%]
       \mmz@temptrue
+    \else
+      \ifx\mmz@temp(%)
+        \mmz@temptrue
+      \fi
     \fi
   \fi
   \ifmmz@temp
@@ -3590,15 +3596,11 @@
 }
 \def\mmz@biblatex@cites@iii#1#{\mmz@biblatex@cites@iv{#1}}
 \def\mmz@biblatex@cites@iv#1#2{%
-  \forcsvlist\mmz@biblatex@cite@do@key{#2}%
+  \mmz@biblatex@cite@do@keys{#2}%
   \toksapp\mmz@temptoks{#1{#2}}%
   \mmz@biblatex@cites@i
 }
 \def\mmz@biblatex@cites@z{%
-  \xtoksapp\mmzCCMemo{%
-    \noexpand\setbox0\noexpand\hbox{%
-      \expandonce\AdviceOriginal\the\mmz@temptoks
-    }}%
   \expandafter\AdviceOriginal\the\mmz@temptoks
 }
 %</latex>
