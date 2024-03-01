@@ -3522,7 +3522,16 @@
 %<*latex>
 \mmzset{
   begindocument/before/.append style={%
-    auto=\blx@bbl@entry{outer handler=\mmz@biblatex@entry},
+    auto=\blx@bbl@entry{
+      inner handler=\mmz@biblatex@entry,
+      args={%
+        m%
+        &&{\collargsVerb
+          \collargsAppendPostwrap{{\the\collargsArg}}%
+        }u{\endentry}%
+      },
+      raw collector options=\collargsBraceCollectedfalse,
+    },
     auto/cite/.style={run if memoizing, outer handler=\mmz@biblatex@cite},
     auto/cites/.style={run if memoizing, outer handler=\mmz@biblatex@cites},
     auto=\cite{cite},
@@ -3531,10 +3540,10 @@
 }
 % \begin{macro}{\mmz@biblatex@entry}
 %   This macro stores the MD5 sum of the |\entry| when reading the |.bbl| file.
-\def\mmz@biblatex@entry#1#2\endentry{%
-  \protected@edef\mmz@temp{\pdf@mdfivesum{#2}}%
+\def\mmz@biblatex@entry#1#2{%
+  \edef\mmz@temp{\pdf@mdfivesum{#2}}%
   \global\cslet{mmz@bbl@#1}\mmz@temp
-  \AdviceOriginal{#1}#2\endentry
+  \mmz@scantokens{\AdviceOriginal{#1}#2}%
 }
 % \end{macro}
 % \begin{macro}{\mmz@biblatex@cite}
