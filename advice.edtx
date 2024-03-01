@@ -497,7 +497,7 @@
   \ifcsname advice@o#1//\string#2\endcsname
     \expandonce{\csname advice@o#1//\string#2\expandafter\endcsname\expandafter}%
   \else
-    \expandafter\noexpand\expandafter#2%
+    \unexpanded\expandafter{\expandafter#2\expandafter}%
   \fi
 }
 % \end{macro}
