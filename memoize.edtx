@@ -3552,24 +3552,61 @@
 % \subsection{Biblatex}
 % \label{sec:biblatex}
 %
+% Presumably, |cites| and |volcite(s)| support could be implemented through the
+% |cite|s they deploy, but doing so would require peeking into |biblatex|
+% internals.  Brute force it is.
+% 
 %<*latex>
-\mmzset{
-  begindocument/before/.append style={%
-    auto=\blx@bbl@entry{
-      inner handler=\mmz@biblatex@entry,
-      args={%
-        m%
-        &&{\collargsVerb
-          \collargsAppendPostwrap{{\the\collargsArg}}%
-        }u{\endentry}%
-      },
-      raw collector options=\collargsBraceCollectedfalse,
+\mmz@if@package@loaded{biblatex}{}{%
+  \input memoize-biblatex.code.tex
+}
+%</latex>
+%</mmz>
+%<*biblatex>
+\edef\memoizeresetatcatcode{\catcode`\noexpand\@\the\catcode`\@\relax}%
+\catcode`\@=11
+\mmzset{%
+  auto=\blx@bbl@entry{
+    inner handler=\mmz@biblatex@entry,
+    args={%
+      m%
+      &&{\collargsVerb
+        \collargsAppendPostwrap{{\the\collargsArg}}%
+      }u{\endentry}%
     },
-    auto/cite/.style={run if memoizing, outer handler=\mmz@biblatex@cite},
-    auto/cites/.style={run if memoizing, outer handler=\mmz@biblatex@cites},
-    auto=\cite{cite},
-    auto=\cites{cites},
-  }%
+    raw collector options=\collargsReturnPlain,
+  },
+  auto/cite/.style={run conditions=\mmz@biblatex@rc@notinvolcite,
+    outer handler=\mmz@biblatex@cite, args=l&&{\mmz@biblatex@grabkey}m,
+  },
+  auto/volcite/.style={run if memoizing,
+    outer handler=\mmz@biblatex@cite, args=lml&&{\mmz@biblatex@grabkey}m,
+  },
+  auto/cites/.style={run conditions=\mmz@biblatex@rc@notinvolcite,
+    outer handler=\mmz@biblatex@cites, args=l&&{\mmz@biblatex@grabkey}m,
+  },
+  auto/volcites/.style={run if memoizing,
+    outer handler=\mmz@biblatex@cites, args=lml&&{\mmz@biblatex@grabkey}m,
+  },
+  biblatex ccmemo cite/.is choice,
+  biblatex ccmemo cite/no cite/.code={%
+    \let\mmz@biblatex@do@ccmemo\mmz@biblatex@do@nocite
+  },
+  biblatex ccmemo cite/replicate/.code={%
+    \let\mmz@biblatex@do@ccmemo\mmz@biblatex@do@replicate
+  },
+}%
+\def\mmz@biblatex@rc@notinvolcite{%
+  \ifmemoizing
+    \ifcsname ifvolcite\endcsname
+      \ifvolcite{}{\AdviceRuntrue}%
+    \else
+      \AdviceRuntrue
+    \fi
+  \fi
+}
+\def\mmz@biblatex@grabkey{%
+  \collargsAppendPreprocessor{\xappto\mmz@biblatex@keys{,\the\collargsArg}}%
 }
 % \begin{macro}{\mmz@biblatex@entry}
 %   This macro stores the MD5 sum of the |\entry| when reading the |.bbl| file.
@@ -3580,35 +3617,69 @@
 }
 % \end{macro}
 % \begin{macro}{\mmz@biblatex@cite}
-%   This macro puts the cites reference keys into the context, and adds the
-%   handled |\cite| command to the cc-memo.
-\def\mmz@biblatex@cite#1#{\mmz@biblatex@cite@i{#1}}
-\def\mmz@biblatex@cite@i#1#2{%
-  \mmz@biblatex@cite@do@keys{#2}%
-  \AdviceOriginal#1{#2}%
+%   This macro puts the cites reference keys into the context, and adds
+%   |\nocite|, or the handled citation command, to the cc-memo.
+\def\mmz@biblatex@cite{%
+  \gdef\mmz@biblatex@keys{}%
+  \expanded{%
+    \noexpand\CollectArgumentsRaw
+      {\noexpand\collargsReturnNo}%
+      {\expandonce\AdviceArgs}%
+      \noexpand\mmz@biblatex@cite@z
+  }%
 }
-\def\mmz@biblatex@cite@do@keys#1{%
-  \forcsvlist\mmz@biblatex@cite@do@key{#1}%
-  \gtoksapp\mmzCCMemo{\AdviceGetOriginal{/mmz}{\nocite}{#1}}%
+\def\mmz@biblatex@cite@z{%
+  \mmz@biblatex@do@context
+  \mmz@biblatex@do@ccmemo
+  \expandafter\AdviceOriginal\the\collargsArgs
 }
-\def\mmz@biblatex@cite@do@key#1{%
+\def\mmz@biblatex@do@context{%
+  \expandafter\forcsvlist
+    \expandafter\mmz@biblatex@do@context@one
+    \expandafter{\mmz@biblatex@keys}%
+}
+\def\mmz@biblatex@do@context@one#1{%
   \mmz@mtoc@csname{mmz@bbl@#1}%
   \ifcsdef{mmz@bbl@#1}{}{\mmzAbort}%
 }
+\def\mmz@biblatex@do@nocite{%
+  \xtoksapp\mmzCCMemo{%
+    \noexpand\AdviceGetOriginal{/mmz}{\noexpand\nocite}%
+      {\mmz@biblatex@keys}%
+  }%
+}
+\def\mmz@biblatex@do@replicate{%
+  \xtoksapp\mmzCCMemo{%
+    {%
+      \nullfont
+      \expandonce\AdviceOriginal\the\collargsArgs
+    }%
+  }%
+}
+\let\mmz@biblatex@do@ccmemo\mmz@biblatex@do@nocite
 % \end{macro}
 % \begin{macro}{\mmz@biblatex@cites}
 %   This macro puts the cites reference keys into the context, and adds the
 %   handled |\cites| command to the cc-memo.
 \def\mmz@biblatex@cites{%
-  \mmz@temptoks{}%
+  \global\collargsArgs{}%
+  \gdef\mmz@biblatex@keys{}%
   \mmz@biblatex@cites@i
 }
 \def\mmz@biblatex@cites@i{%
-  \futurelet\mmz@temp\mmz@biblatex@cites@ii
+  \expanded{%
+    \noexpand\CollectArgumentsRaw
+      {\noexpand\collargsClearArgsfalse\noexpand\collargsReturnNo}%
+      {\expandonce\AdviceArgs}%
+      \noexpand\mmz@biblatex@cites@ii
+  }%
+}
+\def\mmz@biblatex@cites@ii{%
+  \futurelet\mmz@temp\mmz@biblatex@cites@iii
 }
 % If the following token is an opening brace or bracket, the
 % multicite arguments continue.
-\def\mmz@biblatex@cites@ii{%
+\def\mmz@biblatex@cites@iii{%
   \mmz@tempfalse
   \ifx\mmz@temp\bgroup
     \mmz@temptrue
@@ -3618,21 +3689,88 @@
     \fi
   \fi
   \ifmmz@temp
-    \expandafter\mmz@biblatex@cites@iii
+    \expandafter\mmz@biblatex@cites@i
   \else
     \expandafter\mmz@biblatex@cites@z
   \fi
 }
-\def\mmz@biblatex@cites@iii#1#{\mmz@biblatex@cites@iv{#1}}
-\def\mmz@biblatex@cites@iv#1#2{%
-  \mmz@biblatex@cite@do@keys{#2}%
-  \toksapp\mmz@temptoks{#1{#2}}%
-  \mmz@biblatex@cites@i
-}
 \def\mmz@biblatex@cites@z{%
-  \expandafter\AdviceOriginal\the\mmz@temptoks
+  \mmz@biblatex@do@context
+  \mmz@biblatex@do@ccmemo
+  \expandafter\AdviceOriginal\the\collargsArgs
 }
-%</latex>
+\mmzset{
+  auto=\cite{cite},
+  auto=\Cite{cite},
+  auto=\parencite{cite},
+  auto=\Parencite{cite},
+  auto=\footcite{cite},
+  auto=\footcitetext{cite},
+  auto=\textcite{cite},
+  auto=\Textcite{cite},
+  auto=\smartcite{cite},
+  auto=\Smartcite{cite},
+  auto=\supercite{cite},
+  auto=\cites{cites},
+  auto=\Cites{cites},
+  auto=\parencites{cites},
+  auto=\Parencites{cites},
+  auto=\footcites{cites},
+  auto=\footcitetexts{cites},
+  auto=\smartcites{cites},
+  auto=\Smartcites{cites},
+  auto=\textcites{cites},
+  auto=\Textcites{cites},
+  auto=\supercites{cites},
+  auto=\autocite{cite},
+  auto=\Autocite{cite},
+  auto=\autocites{cites},
+  auto=\Autocites{cites},
+  auto=\citeauthor{cite},
+  auto=\Citeauthor{cite},
+  auto=\citetitle{cite},
+  auto=\citeyear{cite},
+  auto=\citedate{cite},
+  auto=\citeurl{cite},
+  auto=\nocite{cite},
+  auto=\fullcite{cite},
+  auto=\footfullcite{cite},
+  auto=\volcite{volcite},
+  auto=\Volcite{volcite},
+  auto=\volcites{volcites},
+  auto=\Volcites{volcites},
+  auto=\pvolcite{volcite},
+  auto=\Pvolcite{volcite},
+  auto=\pvolcites{volcites},
+  auto=\Pvolcite{volcites},
+  auto=\fvolcite{volcite},
+  auto=\ftvolcite{volcite},
+  auto=\fvolcites{volcites},
+  auto=\Fvolcites{volcites},
+  auto=\svolcite{volcite},
+  auto=\Svolcite{volcite},
+  auto=\svolcites{volcites},
+  auto=\Svolcites{volcites},
+  auto=\tvolcite{volcite},
+  auto=\Tvolcite{volcite},
+  auto=\tvolcites{volcites},
+  auto=\Tvolcites{volcites},
+  auto=\avolcite{volcite},
+  auto=\Avolcite{volcite},
+  auto=\avolcites{volcites},
+  auto=\Avolcites{volcites},
+  auto=\notecite{cite},
+  auto=\Notecite{cite},
+  auto=\pnotecite{cite},
+  auto=\Pnotecite{cite},
+  auto=\fnotecite{cite},
+  auto=\citename{cite},
+  auto=\citelist{cite},
+  auto=\citefield{cite},
+}
+\memoizeresetatcatcode
+%</biblatex>
+%<*mmz>
 % \end{macro}
 %
 %

@@ -20,6 +20,7 @@ FORMAT = generic
 COMMON = memoize nomemoize memoizable
 PLAIN = memoize-extract-one.tex
 GENERIC = memoizable.code.tex
+LATEX = memoize-biblatex.code.tex
 SOURCE = memoize.edtx memoize.ins
 
 SCRIPTS := memoize-extract memoize-clean
