@@ -3401,6 +3401,57 @@
     outer handler=\global\advance\mmzExtraPages1\relax\AdviceOriginal}}
 %</latex>
 % 
+% Utility macro for clarity below. |#1| is the name of the package which should
+% be loaded (used with \hologo{LaTeX}) and |#2| is the name of the command
+% which should be defined (used with \hologo{plainTeX} and \hologo{ConTeXt})
+% for |#3| to be executed at the beginning of the document.  We make sure that
+% we can use |#1| etc.\ inside |#3|.
+\def\mmz@if@package@loaded#1#2#3{%
+  \mmzset{%
+    begindocument/before/.append code={%
+      %<latex>\@ifpackageloaded{#1}{%
+      %<plain,context>\ifdefined#2%
+        #3%
+        %<plain,context>\fi
+      %<latex>}{}%
+    }%
+  }%
+}
+% 
+% \subsection{\pkg{PGF}}
+%
+\mmz@if@package@loaded{pgf}{%
+  %<plain>\pgfpicture
+  %<plain>\startpgfpicture
+}{%
+  \def\mmzPgfAtBeginMemoization{%
+    \edef\mmz@pgfpictureid{%
+      \the\pgf@picture@serial@count
+    }%
+  }%
+  \def\mmzPgfAtEndMemoization{%
+    \edef\mmz@temp{%
+      \the\numexpr\pgf@picture@serial@count-\mmz@pgfpictureid\relax
+    }%
+    \ifx\mmz@temp=0
+    \else
+      \xtoksapp\mmzCCMemo{%
+        \unexpanded{%
+          \global\expandafter\advance\csname pgf@picture@serial@count\endcsname
+        }%
+        \mmz@temp
+      }%
+    \fi
+  }%
+  % \begin{listingregion}{_support-pgf.tex}
+  \mmzset{%
+    at begin memoization=\mmzPgfAtBeginMemoization,
+    at end memoization=\mmzPgfAtEndMemoization,
+  }%
+  % \end{listingregion}
+}
+% 
+% 
 % \subsection{\TikZ;}
 % \label{sec:code:mmz:tikz}
 %
@@ -3408,32 +3459,16 @@
 % Advice).  All the action happens at the end of the preamble, so that we can
 % detect whether \TikZ; was loaded (regardless of whether Memoize was loaded
 % before \TikZ;, or vice versa), but still input the definitions.
-\mmzset{
-  begindocument/before/.append code={%
-    %<latex>\@ifpackageloaded{tikz}{%
-    %<plain,context>\ifdefined\tikz
-      \input advice-tikz.code.tex
-    %<latex>}{}%
-    %<plain,context>\fi
-    % We define and activate the automemoization handlers for the \TikZ; command
-    % and environment.
-    \mmzset{%
-      auto/memoize tikz/.style={
-        memoize,
-        at begin memoization=\edef\mmz@pgfpictureid{%
-          \the\pgf@picture@serial@count
-        },
-        at end memoization=\xtoksapp\mmzCCMemo{%
-          \unexpanded{%
-            \global\expandafter\advance\csname pgf@picture@serial@count\endcsname
-          }%
-          \the\numexpr\pgf@picture@serial@count-\mmz@pgfpictureid\relax\relax
-        },
-      },
-      auto=\tikz{memoize tikz, collector=\AdviceCollectTikZArguments},
-      auto={tikzpicture}{memoize tikz},
-    }%
-  },
+\mmz@if@package@loaded{tikz}{\tikz}{%
+  \input advice-tikz.code.tex
+  % We define and activate the automemoization handlers for the \TikZ; command
+  % and environment.
+  % \begin{listingregion}{_support-tikz.tex}
+  \mmzset{%
+    auto={tikzpicture}{memoize},
+    auto=\tikz{memoize, collector=\AdviceCollectTikZArguments},
+  }%
+  % \end{listingregion}
 }
 % 
 %
@@ -3441,18 +3476,16 @@
 % \label{sec:code:forest}
 %
 % Forest will soon feature extensive memoization support, but for now, let's
-% just enable the basic, single extern externalization.
+% just enable the basic, single extern externalization.  Command |\Forest| is
+% defined using |xparse|, so |args| is unnecessary.
 %<*latex>
-\mmzset{
-  begindocument/before/.append code={%
-    \@ifpackageloaded{forest}{%
-      \mmzset{
-        auto={forest}{memoize},
-% Yes, |\Forest| is defined using |xparse|.
-        auto=\Forest{memoize},
-      }%
-    }{}%
-  },
+\mmz@if@package@loaded{forest}{\Forest}{%
+  % \begin{listingregion}{_support-forest.tex}
+  \mmzset{
+    auto={forest}{memoize},
+    auto=\Forest{memoize},
+  }%
+  % \end{listingregion}
 }
 %</latex>
 % 
