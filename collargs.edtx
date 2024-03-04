@@ -145,7 +145,9 @@
   % Remember the code to execute after collection.
   \def\collargs@next{#3}%
   % Initialize the token register holding the collected arguments.
-  \global\collargs@toks{}%
+  \ifcollargsClearArgs
+    \global\collargsArgs{}%
+  \fi
   % Execute the central loop macro, which expects the argument specification
   % |#2| to be delimited from the following argument tokens by a dot.
   \collargs@#2.%
@@ -489,17 +491,33 @@
 \newif\ifcollargsNoDelimiters
 %   \end{macro}
 % \end{collargskey}
-
-% \begin{collargskey}{brace collected}
-%   \begin{macro}{\ifcollargsBraceCollected}
-%       When this conditional is set to false, the collected arguments are not
-%       enclosed in braces when passed on to \meta{next-code}.
+%
+% \begin{collargskey}{clear args}
+%   \begin{macro}{\ifcollargsClearArgs}
+%       When this conditional is set to |false|, the global token register
+%       |\collargsArgs| receiving the collected arguments is not cleared prior
+%       to argument collection.
 \collargsSet{%
-  brace collected/.is if=collargsBraceCollected,
+  clear args/.is if=collargsClearArgs,
 }
-\newif\ifcollargsBraceCollected
-\collargsBraceCollectedtrue
-% \end{macro}
+\newif\ifcollargsClearArgs
+\collargsClearArgstrue
+%     \end{macro}
+%   \end{collargskey}
+%
+% \begin{collargskey}{return}
+%   \begin{macro}{\collargsReturn}
+\collargsSet{%
+  return/.is choice,
+  return/braced/.code=\collargsReturnBraced,
+  return/plain/.code=\collargsReturnPlain,
+  return/no/.code=\collargsReturnNo,
+}
+\def\collargsReturnBraced{\def\collargsReturn{0}}
+\def\collargsReturnPlain{\def\collargsReturn{1}}
+\def\collargsReturnNo{\def\collargsReturn{2}}
+\collargsReturnBraced
+%   \end{macro}
 % \end{collargskey}
 % 
 % \subsubsection{The central loop}
@@ -631,11 +649,11 @@
 }
 % \end{macro}
 % 
-% \begin{macro}{\collargs@toks}
+% \begin{macro}{\collargsArgs}
 %   This token register is where we store the collected argument tokens.  All
 %   assignments to this register are global, because it needs to survive the
 %   groups opened for individual arguments.
-\newtoks\collargs@toks
+\newtoks\collargsArgs
 % \end{macro}
 %
 % \begin{macro}{\collargsArg}
@@ -659,10 +677,10 @@
     \endgroup
     \noexpand\collargs@fix{%
       \expandonce\collargs@next
-        \ifcollargsBraceCollected
-          {\the\collargs@toks}%
-        \else
-          \the\collargs@toks
+        \ifcase\collargsReturn\relax
+          {\the\collargsArgs}%
+        \or
+          \the\collargsArgs
         \fi
       \collargs@spaces
     }%
@@ -676,7 +694,7 @@
 % \begin{macro}{\collargs@appendarg}
 %   This macro is used by the argument type
 %   handlers to append the collected argument to the storage
-%   (|\collargs@toks|).
+%   (|\collargsArgs|).
 \long\def\collargs@appendarg#1{%
   % Temporarily store the collected argument into a token register.  The
   % processors will manipulate the contents of this register.
@@ -698,7 +716,7 @@
   \collargs@postprocess@arg
   % Append the processed argument, preceded by any grabbed spaces (in the
   % correct mode), to the storage.
-  \xtoksapp\collargs@toks{\collargs@grabbed@spaces\the\collargsArg}%
+  \xtoksapp\collargsArgs{\collargs@grabbed@spaces\the\collargsArg}%
   % Initialize the space-grabber.
   \collargs@init@grabspaces
   % Once the argument was appended to the list, we can close its group, opened
@@ -1008,7 +1026,7 @@
   % which will put everything up to the first opening brace into the first
   % argument, looks funky, but that's all.
   \collargs@defusecollector##1##{%
-    % We append the collected argument, |##1|, to |\collargs@toks|, the token
+    % We append the collected argument, |##1|, to |\collargsArgs|, the token
     % register holding the collected argument tokens.
     \collargs@appendarg{##1}%
     % Back to the central loop, with the rest of the argument specification
@@ -1410,7 +1428,7 @@
   \collargs@readContent
 }
 % This macro appends the result given by the heavy machinery, waiting for us in
-% macro |\collargsArg|, to |\collargs@toks|, but not before dressing
+% macro |\collargsArg|, to |\collargsArgs|, but not before dressing
 % it up (via |\collargs@wrap|) in a pair of verbatim braces.
 \def\collargs@m@verb@group@i{%
   \edef\collargs@temp{%

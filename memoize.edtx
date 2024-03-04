@@ -583,7 +583,7 @@
 }
 \def\mmz@remove@quotes@i{%
   \CollectArgumentsRaw
-    {\collargsBraceCollectedfalse
+    {\collargsReturnPlain
       \collargsNoDelimiterstrue
       \collargsAppendPostwrap{{\the\collargsArg}}%
     }%
