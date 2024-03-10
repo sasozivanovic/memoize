@@ -1081,23 +1081,64 @@
     \noexpand\advice@trace{\space\space\space\space
       Raw options:
       \detokenize\expandafter{\AdviceRawCollectorOptions}}%
+    % Collargs' |return| complicates tracing of the received argument.  We put
+    % the code for remembering its value among the raw collector options.  The
+    % default is 0; it is needed when we're using a collector other that
+    % |\CollectArguments|, the assumption being that external collectors will
+    % always return the collected arguments braced.
+    \unexpanded{%
+      \gdef\advice@collargs@return{0}%
+      \appto\AdviceRawCollectorOptions{\advice@remember@collargs@return}%
+    }%
     \expandonce\AdviceCollector
   }%
-  % The tracing inner handler must grab the provided argument, if it's to show
-  % what it is.
-  \edef\advice@inner@handler@trace##1{%
+  \edef\advice@inner@handler@trace@do{%
     \noexpand\advice@trace{\space\space
       Executing inner handler:
       \detokenize\expandafter{\AdviceInnerHandler}}%
+    % When this macro is executed, the received arguments are waiting for us in
+    % |\toks0|.
     \noexpand\advice@trace{\space\space\space\space
-      Received arguments:
-      \noexpand\detokenize{##1}}%
+      Received arguments\noexpand\advice@inner@handler@trace@printcollargsreturn:
+      \noexpand\detokenize\noexpand\expandafter{\unexpanded{\the\toks0}}}%
     \noexpand\advice@trace{\space\space\space\space
       Options:
       \detokenize\expandafter{\AdviceOptions}}%
-    \expandonce{\AdviceInnerHandler}{##1}%
+    \expandonce{\AdviceInnerHandler}%
   }%
   \def\AdviceInnerHandler{\advice@inner@handler@trace}%
+}
+\def\advice@remember@collargs@return{%
+  \global\let\advice@collargs@return\collargsReturn
+}
+% This is the entry point into the tracing inner handler.  It will either get
+% the received arguments as a braced argument (when Collargs' |return=0|), or
+% from |\collargsArgs| otherwise.  We don't simply always inspect
+% |\collargsArgs| because foreign argument collectors will not use this token
+% register; the assumption is that they will always return the collected
+% arguments braced.
+\def\advice@inner@handler@trace{%
+  \ifnum\advice@collargs@return=0
+    \expandafter\advice@inner@handler@trace@i
+  \else
+    \expandafter\advice@inner@handler@trace@ii
+  \fi
+}
+\def\advice@inner@handler@trace@i#1{%
+  \toks0={#1}%
+  \advice@inner@handler@trace@do{#1}%
+}
+\def\advice@inner@handler@trace@ii{%
+  \expandafter\toks\expandafter0\expandafter{\the\collargsArgs}%
+  \advice@inner@handler@trace@do
+}
+\def\advice@inner@handler@trace@printcollargsreturn{%
+  \ifnum\advice@collargs@return=0
+  \else
+    \space(collargs return=%
+    \ifcase\advice@collargs@return braced\or plain\or no\fi
+    )%
+  \fi
 }
 % \end{macro}
 %<plain>\resetatcatcode
