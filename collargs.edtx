@@ -679,7 +679,7 @@
     \endgroup
     \noexpand\collargs@fix{%
       \expandonce\collargs@next
-        \ifcase\collargsReturn\relax
+        \ifcase\collargsReturn\space
           {\the\collargsArgs}%
         \or
           \the\collargsArgs
