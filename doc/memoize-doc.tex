@@ -100,6 +100,10 @@
       cmd={name=tikzexternalize},
       cmd={name=pgfsys@getposition},
     },
+    scope={
+      pkg=beamer,
+      env={name=frame},
+    },
     file={name=texmf.cnf},
     env={name=tcblisting, pkg=tcolorbox},
     cmd={name=vref, pkg=varioref},
@@ -5585,12 +5589,6 @@ on how to handle this properly.
   likely have no need of these macros.
 \end{doc}
 
-\begin{doc}{easy, key={name=per overlay,desc=style}}
-  This style is only defined in the Beamer class.  When applied, the memoized
-  code will produce a cc-memo (and extern) for each overlay of the frame.  For
-  implementation, see section~\ref{sec:per-overlay}.
-\end{doc}
-
 \begin{doc}{
     key={name=capture, par=\docAux{of=key:/mmz/capture, value={name=hbox}, text=\alt,
       value={name=vbox,of=key:/mmz/capture}},
@@ -8154,16 +8152,6 @@ be generalized to \meta{namespace} and \meta{setup key} of
   preferred.
 \end{doc}
 
-\begin{doc}{key={name=memoize tikz,desc=style}}
-  This key is used to declare memoization of \TikZ pictures; it may also be
-  used for PGF pictures.  Besides executing \refmmzauto{memoize}, it uses
-  \refmmz{at begin memoization} and \refmmz{at end memoization} to add the code
-  which measures the increase of the PGF picture ID during memoization of a
-  picture, and increases this ID for the measured amount upon the utilization
-  of the extern, thereby making sure that a utilized \TikZ\slash\PGF extern
-  advances the PGF picture ID as if the picture was compiled.
-\end{doc}
-
 \begin{doc}{easy, 
     key={name=ref,desc=style},
     key={name=force ref,desc=style},
@@ -8936,6 +8924,273 @@ as follows: \docref{xparse:o}, \docref{xparse:d}, \docref{xparse:s},
 
 \endgroup % /collargs
 
+
+\subsection{Support for specific classes and packages}
+
+\subsubsection{\PGF}
+
+When package \PGF is loaded, commands \refcmd{mmzPgfAtBeginMemoization}
+and \refcmd{mmzPgfAtEndMemoization} are defined and appended to hooks
+\refmmz{at begin memoization} and \refmmz{at end memoization}, respectively.
+
+Note that environment \env{pgfpicture} is \emph{not} submitted to
+automemoization.  Doing this would probably not be a good idea, as it is used
+by many other commands and environments.
+
+\makeexcerpt{_support-pgf}
+\tcbinputexample[.tex][.excerpt]{%
+  listing only, one file, no attachment,
+  title=\hypercolor{url}{white}\PGF support,
+}
+
+\begin{doc}{
+    cmd={name=mmzPgfAtBeginMemoization},
+    cmd={name=mmzPgfAtEndMemoization},
+  }
+  These commands are meant to be executed inside hooks \refmmz{at begin
+    memoization} and \refmmz{at end memoization}.  Together, they make sure
+  that utilizing an extern containing PGF/\TikZ pictures advances the PGF
+  picture ID (\cs{pgf@picture@serial@count}) as if the pictures were compiled.
+  
+  This avoids potential problems for various mechanisms which rely on a stable
+  PGF picture ID.  For example, in absence of advancing the ID, placing a \TikZ
+  picture scaled by |ext.scalepicture| of \pkg{tikz-ext} \emph{after} some
+  memoized \TikZ picture would confuse the scaled picture, as its ID would
+  depend on whether the extern of the previous (unrelated!)  picture was
+  memoized or utilized.
+
+  Command \refcmd{mmzPgfAtBeginMemoization}, executed in hook \refmmz{at begin
+    memoization}, remembers the PGF picture ID at the beginning of memoization.
+  Command \refcmd{mmzPgfAtEndMemoization}, executed in hook \refmmz{at end
+    memoization}, checks whether the ID was advanced during memoization, and if
+  so, appends to the cc-memo the code advancing the ID counter accordingly.
+
+  Note that out of the box, \refcmd{mmzPgfAtBeginMemoization} and
+  \refcmd{mmzPgfAtEndMemoization} reside in their respective hooks at all
+  times, not only when memoizing \refenv{tikzpicture} and \refcmd{tikz}.  This
+  way, the PGF picture ID mechanism is applied to all pictures deploying PGF
+  pictures under the hook, e.g.\ \pkg{forest} trees.
+\end{doc}
+
+
+\subsubsection{\TikZ}
+
+When package \TikZ is loaded, environment \refenv{tikzpicture} and command
+\refcmd{tikz} and are automatically submitted to automemoization; this may be
+prevented by \code{\refmmz{deactivate}=\refenv{tikzpicture}} and\slash or
+\code{\refmmz{deactivate}=\refcmd{tikz}}, or by \refmmz{manual}.  Note that
+command \refcmd{tikz} requires a dedicated argument collector,
+\refcmd{AdviceCollectTikZArguments}.
+
+\makeexcerpt{_support-tikz}
+\tcbinputexample[.tex][.excerpt]{%
+  listing only, one file, no attachment,
+  title=\hypercolor{url}{white}\TikZ support,
+}
+
+
+\subsubsection{Forest}
+
+When package \pkg{forest} is loaded, environment \refenv{forest} and command
+\refcmd{Forest} are automatically submitted to automemoization; this may be
+prevented by \code{\refmmz{deactivate}=\refenv{forest}} and\slash or
+\code{\refmmz{deactivate}=\refcmd{Forest}}, or by \refmmz{manual}.  Note that
+command \refcmd{Forest} is defined by \refcmd{NewDocumentCommand}, which makes
+specifying option \refmmzauto{args} unnecessary.
+
+\makeexcerpt{_support-forest}
+\tcbinputexample[.tex][.excerpt]{%
+  listing only, one file, no attachment,
+  title=\pkg[white]{Forest} support,
+}
+
+
+\subsubsection{Beamer}
+
+Memoize should be loaded by writing |\RequirePackage{memoize}| (rather than
+|\usepackage{memoize}|) before (rather than after) |\documentclass{beamer}|.
+
+\begin{doc}{easy, key={name=per overlay,desc=style}}
+  Applying this style to a piece of memoized code contained in a Beamer
+  \refenv{frame} will produce a separate cc-memo (and extern) for each overlay
+  of the frame.  See section~\ref{sec:tut:beamer} for the tutorial.
+
+  Note that this style is \emph{not} intended for externalization of entire
+  frames.
+
+  The implementation, documented in section~\ref{sec:per-overlay}, is not
+  trivial, but only deploys the public interface offered by Memoize.
+\end{doc}
+
+\subsubsection{Biblatex}
+
+\begin{doc}{
+    key={name=biblatex, par=\braces{\meta{additional configuration}}, desc=style},
+  }
+  This key loads the \pkg{biblatex} support (if package \pkg{biblatex} is
+  loaded, anywhere in the preamble).
+
+  When \pkg{biblatex} support is loaded, all citation commands defined by this
+  package\footnote{In \pkg{biblatex} version 3.19: \cs{cite}, \cs{Cite},
+    \cs{parencite}, \cs{Parencite}, \cs{footcite}, \cs{footcitetext},
+    \cs{textcite}, \cs{Textcite}, \cs{smartcite}, \cs{Smartcite},
+    \cs{supercite}, \cs{cites}, \cs{Cites}, \cs{parencites}, \cs{Parencites},
+    \cs{footcites}, \cs{footcitetexts}, \cs{smartcites}, \cs{Smartcites},
+    \cs{textcites}, \cs{Textcites}, \cs{supercites}, \cs{autocite},
+    \cs{Autocite}, \cs{autocites}, \cs{Autocites}, \cs{citeauthor},
+    \cs{Citeauthor}, \cs{citetitle}, \cs{citeyear}, \cs{citedate},
+    \cs{citeurl}, \cs{nocite}, \cs{fullcite}, \cs{footfullcite}, \cs{volcite},
+    \cs{Volcite}, \cs{volcites}, \cs{Volcites}, \cs{pvolcite}, \cs{Pvolcite},
+    \cs{pvolcites}, \cs{Pvolcites}, \cs{fvolcite}, \cs{Fvolcite},
+    \cs{fvolcites}, \cs{Fvolcites}, \cs{ftvolcite}, \cs{ftvolcites},
+    \cs{Ftvolcite}, \cs{Ftvolcites}, \cs{svolcite}, \cs{Svolcite},
+    \cs{svolcites}, \cs{Svolcites}, \cs{tvolcite}, \cs{Tvolcite},
+    \cs{tvolcites}, \cs{Tvolcites}, \cs{avolcite}, \cs{Avolcite},
+    \cs{avolcites}, \cs{Avolcites}, \cs{notecite}, \cs{Notecite},
+    \cs{pnotecite}, \cs{Pnotecite}, \cs{fnotecite}, \cs{citename},
+    \cs{citelist}, \cs{citefield}.} behave like \refcmd{ref} in the sense that
+  changing a bibliography entry referred to by a citation command within a
+  piece of memoized code triggers recompilation of that code.  For example, it
+  is safe to use \code{\cs{textcite}\braces{\meta{citation key}}} inside
+  memoized code, in the sense that the extern will be recompiled when the entry
+  for the \meta{citation key} is changed in the |.bib| file.
+
+  Furthermore, Memoize takes care that even once an extern which contains a
+  reference to \meta{citation key} is utilized (i.e.\ included into the
+  document as a picture), the \meta{citation key} is marked (by \cs{nocite}) as
+  used, and will appear among the items listed by \cs{printbibliography}.
+
+  In most cases, the out-of-the-box level of \refmmz{biblatex} support will
+  suffice.  However:
+  \begin{itemize}
+  \item To support an additional citation command (most likely defined via
+    \cs{DeclareCiteCommand} etc.), advise it by one of \refmmzauto{cite} and
+    friends below.
+  \item To have ibid (and similar) tracking sensitive to citation commands
+    within memoized code, execute \refmmz{biblatex ccmemo cite}.
+  \end{itemize}
+
+  Under the hood, \pkg{biblatex} support does two things:
+  \begin{itemize}
+  \item It declares advice for \pkg{biblatex}'s internal macro
+    \cs{blx@bbl@entry}, executed while processing the |.bbl| file, which makes
+    it possible for Memoize to detect changes in bibliography entries.
+  \item It defines the \refmmz{auto}-keys of the \refmmzauto{cite} family,
+    documented below, and advises all \pkg{biblatex}'s citation commands with
+    these keys.
+  \end{itemize}
+\end{doc}
+
+
+\begin{doc}{
+    key={keypath=/mmz/auto, name=cite, desc=style},
+    key={keypath=/mmz/auto, name=cites, desc=style},
+    key={keypath=/mmz/auto, name=volcite, desc=style},
+    key={keypath=/mmz/auto, name=volcites, desc=style},
+  }
+  When a citation command is advised by one of these \refmmz{auto}-keys, a
+  piece of memoized code containing the citation command will be recompiled
+  upon changing the bibliography entry of a citation key used by the command;
+  in other words, the citation command will behave in a fashion analogous to
+  \refmmzauto{ref}.
+  
+  Furthermore, the memo corresponding to the memoized piece of code will
+  contain a \cs{nocite} command for each citation key occurring within the
+  code; in effect, citation keys continue to be marked as used even when
+  utilizing the memo\slash extern.  For further details, see \refmmz{biblatex
+    ccmemo cite}.
+
+  Out of the box, Memoize advises all \pkg{biblatex}'s (v3.19) citation
+  commands with these keys.  If a new citation command is defined, it may be
+  submitted to these keys by the author.  Use
+  \begin{itemize}
+  \item \code{\refmmz{auto}=\meta{citation command}\braces{\refmmzauto{cite}}}
+    for a \meta{citation command} in the \cs{cite} family,
+  \item \code{\refmmz{auto}=\meta{citation command}\braces{\refmmzauto{cites}}}
+    for a \meta{citation command} in the \cs{cites} family,
+  \item \code{\refmmz{auto}=\meta{citation command}\braces{\refmmzauto{volcite}}}
+    for a \meta{citation command} in the \cs{volcite} family, and
+  \item \code{\refmmz{auto}=\meta{citation command}\braces{\refmmzauto{volcites}}}
+    for a \meta{citation command} in the \cs{volcites} family.
+  \end{itemize}
+  
+  Which key should be used with which command depends on the argument structure
+  of the citation command, as documented in section 3.9 of the \pkg{biblatex}
+  manual.  Accordingly, the auto-keys of the \refmmzauto{cite} family set
+  \refmmzauto{args} as follows:
+
+  \begin{center}
+    \begin{tabular}{rl}
+      &\refmmzauto{args}\\
+      \midrule
+      \refmmzauto{cite}, \refmmzauto{cites}
+      &\code{l\&\&\braces{\cs{mmzBiblatexMarkCitationKey}}m}\\
+      \refmmzauto{volcite}, \refmmzauto{volcites}
+      &\code{lm l\&\&\braces{\cs{mmzBiblatexMarkCitationKey}}m}\\
+    \end{tabular}
+  \end{center}
+  
+  Looking at \refmmzauto{cite}, |l| grabs everything up to the first opening
+  brace (and will receive the optional star, prenote and postnote), while |m|
+  receives the braced \meta{citation key} argument.  The |&&| construct
+  preceding |m| specifies the \refmmzauto{raw collector options} for that
+  argument: \docaux{cmd}{mmzBiblatexMarkCitationKey} applies an argument
+  processor storing the citation key in an internal macro.  Key
+  \refmmzauto{volcite} precedes \refmmzauto{cite}'s \refmmzauto{args} by |lm|,
+  grabs the optional arguments and the volume; note that the citation key is
+  the second braced argument of |\volcite| and friends.  The two
+  \refmmzauto{cites} variants iterate the given \refmmzauto{args} as long as
+  the citation arguments continue.
+
+  When advising new citation commands, the author may override the given
+  \refmmzauto{args} if necessary.  In fact, this is what Memoize does do
+  support \cs{citename}, \cs{citelist} and \cs{citefield}.  With these
+  commands, the braced \meta{citation key} is followed by optional arguments
+  followed by another braced mandatory argument, which implies |lm| following
+  \refmmzauto{cite}'s \refmmzauto{args}.  For example, \cs{citename} is advised
+  by \code{\refmmz{auto}=\braces{%
+        \refmmzauto{cite},
+        \refmmzauto{args}=l\&\&\braces{\cs{mmzBiblatexMarkCitationKey}}m lm%
+      }%
+    }.
+\end{doc}
+
+\begin{doc}{
+    key={
+      name=biblatex ccmemo cite,
+      par={%
+        \docAux{
+          of=key:/mmz/biblatex ccmemo cite,
+          value={name=nocite},
+          text=\Alt,
+          value={name=replicate},
+        }
+      },
+      desc={initially \code{nocite}, no default}
+    }
+  }
+  Select the citation command which Memoize puts into the cc-memo in order to
+  broadcast that the citation key was used in the compilation of the extern.
+
+  By default, this citation command is \cs{nocite}.  Even if the memoized code
+  uses e.g.\ \cs{textcite}\braces{\meta{citation key}}, the cc-memo contains
+  \code{\cs{nocite}\braces{\meta{citation key}}}.  This usually suffices, as we
+  normally only have to inform \pkg{biblatex} that the \meta{citation key} was
+  used in the utilized extern.
+
+  However, in the rare situations where a tracker (page, cite, ibid, opcit,
+  loccit or idem tracker) depends on the citation used in the extern, the
+  \cs{nocite} approach does not suffice.  If such tracking is required, the
+  author should issue \code{\refmmz{biblatex ccmemo cite}=\refmmz{biblatex
+      ccmemo cite=replicate}} to have the cc-memo contain the original citation
+  command; note that if the cc-memo was already created, recompilation is
+  necessary.
+
+  The replication approach has the downside of yielding lots of `Missing
+  character' warnings.  This happens because, in order to use the original
+  citation command but not produce an actual citation, Memoize precedes the
+  invocation of the original citation command by \cs{nullfont}.
+\end{doc}
 
 \section{Varia}
 

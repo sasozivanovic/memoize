@@ -507,6 +507,8 @@
 %
 % \begin{collargskey}{return}
 %   \begin{macro}{\collargsReturn}
+%     Exiting |\CollectArguments|, should the next-command be followed by the
+%     braced collected arguments, collected arguments as they are, or nothing?
 \collargsSet{%
   return/.is choice,
   return/braced/.code=\collargsReturnBraced,
