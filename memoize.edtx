@@ -2567,6 +2567,8 @@
     \immediate\write\mmz@mmzout{%
       \noexpand\mmzNewExtern{#1}{\pagenumber}{\expectedwidth}{\expectedheight}%
     }%
+    % Support |latexmk|:
+    %<latex>\typeout{No file #1}%
   },
   record/mmz/new cmemo/.code={%
     \immediate\write\mmz@mmzout{\noexpand\mmzNewCMemo{#1}}%
