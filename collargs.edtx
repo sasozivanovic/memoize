@@ -440,38 +440,37 @@
 % \end{macro}
 % \end{collargskey}
 %
-% \begin{collargskey}[noindex]{(append/prepend) (pre/post)wrap}
-%   \begin{macro}[noindex]{\collargs(Append/Prepend)(Pre/Post)wrap}
-%     \begin{collargskey}[noprint]{append prewrap, prepend prewrap, append postwrap, prepend postwrap}
-%       \begin{macro}[noprint]{\collargsAppendPrewrap,\collargsPrependPrewrap,\collargsAppendPostwrap,\collargsPrependPostwrap}
-%     These keys
-%     and macros simplify the definition of expandable processors.  Note
-%     that expandable processors are added to the same list as non-expandable
-%     processors.
+% \begin{collargskey}[noindex]{(append/prepend) expandable (pre/post)processor}
+%   \begin{macro}[noindex]{\collargs(Append/Prepend)Expandable(Pre/Post)processor}
+%     \begin{collargskey}[noprint]{append expandable preprocessor, prepend expandable preprocessor, append expandable postprocessor, prepend expandable postprocessor}
+%       \begin{macro}[noprint]{\collargsAppendExpandablePreprocessor,\collargsPrependExpandablePreprocessor,\collargsAppendExpandablePostprocessor,\collargsPrependExpandablePostprocessor}
+%         These keys and macros simplify the definition of expandable
+%         processors.  Note that expandable processors are added to the same
+%         list as non-expandable processors.
 \collargsSet{
-  append prewrap/.code={\collargsAppendPrewrap{#1}},
-  prepend prewrap/.code={\collargsPrependPrewrap{#1}},
-  append postwrap/.code={\collargsAppendPostwrap{#1}},
-  prepend postwrap/.code={\collargsPrependPostwrap{#1}},
+  append expandable preprocessor/.code={\collargsAppendExpandablePreprocessor{#1}},
+  prepend expandable preprocessor/.code={\collargsPrependExpandablePreprocessor{#1}},
+  append expandable postprocessor/.code={\collargsAppendExpandablePostprocessor{#1}},
+  prepend expandable postprocessor/.code={\collargsPrependExpandablePostprocessor{#1}},
 }
-\def\collargsAppendPrewrap#1{%
+\def\collargsAppendExpandablePreprocessor#1{%
   \appto\collargs@preprocess@arg{%
-    \expandafter\collargsArg\expandafter{\expanded{#1}}%
+    \collargsArg\expandafter{\expanded{#1}}%
   }%
 }
-\def\collargsPrependPrewrap#1{%
+\def\collargsPrependExpandablePreprocessor#1{%
   \preto\collargs@preprocess@arg{%
-    \expandafter\collargsArg\expandafter{\expanded{#1}}%
+    \collargsArg\expandafter{\expanded{#1}}%
   }%
 }
-\def\collargsAppendPostwrap#1{%
+\def\collargsAppendExpandablePostprocessor#1{%
   \appto\collargs@postprocess@arg{%
-    \expandafter\collargsArg\expandafter{\expanded{#1}}%
+    \collargsArg\expandafter{\expanded{#1}}%
   }%
 }
-\def\collargsPrependPostwrap#1{%
+\def\collargsPrependExpandablePostprocessor#1{%
   \preto\collargs@postprocess@arg{%
-    \expandafter\collargsArg\expandafter{\expanded{#1}}%
+    \collargsArg\expandafter{\expanded{#1}}%
   }%
 }
 % \end{macro}

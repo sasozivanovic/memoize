@@ -585,7 +585,7 @@
   \CollectArgumentsRaw
     {\collargsReturnPlain
       \collargsNoDelimiterstrue
-      \collargsAppendPostwrap{{\the\collargsArg}}%
+      \collargsAppendExpandablePostprocessor{{\the\collargsArg}}%
     }%
     {u"u\mmz@eov}%
     \mmz@remove@quotes@ii
@@ -783,11 +783,11 @@
     }%
     % Spaces at the beginning of the environment body are trimmed by setting
     % the first argument to |!t<space>| and disappearing it with
-    % |\collargsAppendPostwrap{}|; note that this removes any number of space
+    % |\collargsAppendExpandablePostprocessor{}|; note that this removes any number of space
     % tokens.  |\CollectArgumentsRaw| automatically adapts the argument type
     % |b| to the format.
     % 
-  }{&&{\collargsAppendPostwrap{}}!t{ }+b{memoize}}{\mmz@do}%
+  }{&&{\collargsAppendExpandablePostprocessor{}}!t{ }+b{memoize}}{\mmz@do}%
 }%
 %</mmz>
 % \end{environment}
@@ -3576,7 +3576,7 @@
     args={%
       m%
       &&{\collargsVerb
-        \collargsAppendPostwrap{{\the\collargsArg}}%
+        \collargsAppendExpandablePostprocessor{{\the\collargsArg}}%
       }u{\endentry}%
     },
     % No braces around the collected arguments, as each is already braced on
