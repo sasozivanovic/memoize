@@ -1,0 +1,25 @@
+%<att>\documentclass{article}
+%<att>\usepackage{collargs}
+\newcommand\CollectOptionalArguments{%
+  ~\global\collargsArgs{}~%
+  \CollectOptionalArgument
+}
+\newbool{CollectedOptionalArgument}
+\newcommand\CollectOptionalArgument{%
+  \global\boolfalse{CollectedOptionalArgument}%
+  \CollectArguments
+    [~clear args=false~, ~return=no~,
+      append postprocessor=\global\booltrue{CollectedOptionalArgument}]
+    {o d()}
+    {%
+      \ifbool{CollectedOptionalArgument}%
+        \CollectOptionalArgument
+        \FinishCollectOptionalArguments
+    }%
+}
+\newcommand\FinishCollectOptionalArguments{%
+  The collected arguments: \texttt{``~\the\collargsArgs~''}.
+}
+%<att>\begin{document}
+\CollectOptionalArguments[opt1][opt2](opt3)[opt4] Some text.
+%<att>\end{document}

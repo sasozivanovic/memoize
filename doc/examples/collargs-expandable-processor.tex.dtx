@@ -1,0 +1,23 @@
+%<*att>
+\documentclass{article}
+\usepackage{collargs}
+%</att>
+\long\def\ScanMultilineTokens#1{%
+  \expanded{%
+    \newlinechar=13
+    \unexpanded{\scantokens{#1\endinput}}%
+    \newlinechar=\the\newlinechar
+  }%
+}
+\newcommand\CollectAndRescan[1]{%
+  \CollectArguments[
+    verb,
+    ~append expandable preprocessor~=\noexpand\ScanMultilineTokens{~\the\collargsArg~},
+  ]{m}#1%
+}
+%<att>
+%<att>\begin{document}
+%<att>
+Remember that \CollectAndRescan\fbox{command \verb!\foo! is important.} Really!
+%<att>
+%<att>\end{document}

@@ -8377,12 +8377,26 @@ be generalized to \meta{namespace} and \meta{setup key} of
   \end{tcblisting}
   
   Withing the option-setting code, the programmer may also deploy macro
-  \docaux{cmd}{collargsSet}, which processes the \meta{options} in the keylist
+  \refcmd{collargsSet}, which processes the \meta{options} in the keylist
   format.  One idea could be to execute this macro at the end of the low-level
   options; this would set the ``defaults'' using the fast programmer's
   interface, but still allow for user customization.
 \end{doc}
 
+\begin{doc}{
+    cmd={name=collargsSet, par=\meta{options}}
+  }
+  Locally update the CollArgs configuration.
+
+  The \meta{options} are a comma-separated list of \meta{key}|=|\meta{value}
+  pairs.  They are processed using the \pkg{pgfkeys} utility of PGF/\TikZ (see
+  \PGFmanual{87}), with the default path set to \docaux{key path}{collargs}.
+
+  This key may be used either outside an invocation of
+  \refcmd{CollectArguments}\slash \refcmd{CollectArgumentsRaw}, to set defaults
+  or define additional styles, or within the \meta{option-setting code} in the
+  invocation of \refcmd{CollectArgumentsRaw}.
+\end{doc}
 
 \begin{doc}[
     pi={\docaux{cmd}{collargsCaller}},
@@ -8542,6 +8556,9 @@ grab the environment body in the verbatim mode.)
   }
   These keys declare processors which will transform the collected argument
   before appending it to the argument list.
+
+  A processor should be a macro taking no arguments, (locally) transforming the
+  contents of token register \docaux{cmd}{collargsArg} as it sees fit.
   
   A collected argument undergoes the following transformations:
   \begin{itemize}
@@ -8555,28 +8572,22 @@ grab the environment body in the verbatim mode.)
     |prepend|.
   \end{itemize}
 
-  \meta{code} will typically consist of a single control sequence pointing to a
-  one-argument macro, which will receive the collected argument (possibly
-  modified by the processors already applied).  In general, however, the value
-  of this key may be any code; Collargs will execute \meta{code}\marg{collected
-    argument}.
-
-  The processed argument should be returned by storing it into token register
-  \docaux{cmd}{collargsArg}.
-
   The following example illustrates how one could go about reimplementing Bruno
-  Le Floch ingenious package \pkg{cprotect}.\footnote{This example is merely a
+  Le Floch ingenious package \pkg{cprotect},\footnote{This example is merely a
     proof of concept.  For the bells and whistles which would make it useful in
-    real life, see the documentation of \pkg{cprotect}.} We define processor
-  |\writetofile| which dumps the argument into a file, replacing it with the
-  |\input| statement.  (Of course, to allow for verbatim content in the
-  footnote, we also have to mark the argument as \refcollargs{verbatim}.
-  And we use \refcollargs{no delimiters} to get rid of the braces around the
-  footnote text.)
+    real life, see the documentation of \pkg{cprotect}.} which allows the
+  author to use verbatim text in arguments.  Below, we will end up with with
+  \cs{footnote}\braces{\meta{footnote text}} replaced by |\footnote{\input
+    _fn.tex}|, with \meta{footnote text} waiting in file |_fn.tex|.  To achieve
+  this, we define processor |\writetofile| which dumps the argument into a
+  file, replacing it with the |\input| statement.  (Of course, to allow for
+  verbatim content in the footnote, we also have to mark the argument as
+  \refcollargs{verbatim}.  And we use \refcollargs{no delimiters} to get rid of
+  the braces around the footnote text.)
   
   \ExampleName{collargs-processor}
   \makeexample{\examplename.tex.c1}
-  \tcbinputexample{listing and text, listing file=\examplepath.tex.c1}
+  \tcbinputexample{comment=\input{\examplepath.tex.c1}}
 \end{doc}
 
 \begin{doc}[
@@ -8601,46 +8612,50 @@ grab the environment body in the verbatim mode.)
     key={name=append expandable postprocessor, par=\meta{code}, desc={style, no default}},
     key={name=prepend expandable postprocessor, par=\meta{code}, desc={style, no default}},
   }
-  These keys may be used to add fully expandable processors.  A processor added
-  with one of these keys will end up among the processors declared by
-  \refcollargs{append preprocessor} et al.
+  These keys may be used to simplify the definition of processors which can
+  arrive at the result by means of full expansion.  A processor declared by one
+  of these keys assigns the full expansion of \meta{code} to
+  \refcmd{collargsArg}, i.e.\ it is defined as
+  \code{\refcmd{collargsArg}\cs{expandafter}\braces{%
+      \cs{expanded}\braces{\meta{code}}}}.
 
-  A processor declared by one of these keys will define the processed argument
-  as the full expansion (|\edef|) of \meta{code}\marg{collected argument}.
-  \meta{code} will typically consist of a single control sequence pointing to a
-  fully expandable one-argument macro.
+  A processor added with one of these keys will end up among the processors
+  declared by \refcollargs{append preprocessor} et al.
 
-  For example, |\trim@spaces@noexp| from package \pkg{trimspaces} could be used
-  as an expandable processor of environment body to remove the spaces around
-  the grabbed environment body.
-\end{doc}
+  \meta{code} will typically contain \code{\cs{the}\refcmd{collargsArg}} to
+  refer to the input state of the argument.  For example, to add quotes around
+  the collected argument: \code{\refcollargs{append expandable preprocessor}=%
+    \nohyphen``\cs{the}\refcmd{collargsArg}''}.  Or, to trim spaces from an
+  argument using |\trim@spaces@noexp| from package \pkg{trimspaces}:
+  \code{\refcollargs{append expandable preprocessor}=%
+    \cs{expandafter}\cs{trim@spaces@noexp}\cs{expandafter}\braces{%
+      \cs{the}\refcmd{collargsArg}}}.  A pre-processor is the right choice in
+  both these cases because we want to modify the argument before it is dressed
+  up in the original delimiters.
 
-\begin{doc}[
-    pi={\docaux{cmd}{collargsAppendPrewrap},
-      \docaux{cmd}{collargsPrependPrewrap},
-      \docaux{cmd}{collargsAppendPostwrap},
-      \docaux{cmd}{collargsPrependPostwrap}},
-  ]{
-    key={name=append prewrap, par=\meta{macro definition}, desc={style, no default}},
-    key={name=prepend prewrap, par=\meta{macro definition}, desc={style, no default}},
-    key={name=append postwrap, par=\meta{macro definition}, desc={style, no default}},
-    key={name=prepend postwrap, par=\meta{macro definition}, desc={style, no default}},
+  Let us consider another, more involved example.  As the example for
+  \refcollargs{append preprocessor} above, it is inspired by \pkg{cprotect},
+  but instead of writing the argument into a file and then reading it back, we
+  rescan it using |\scantokens|.  Remarks:
+  \begin{enumerate*}[(a)]
+  \item rescanning only happens when processing |\fbox|; \refcollargs{append
+      expandable preprocessor} merely inserts |\ScanMultilineTokens| in front
+    of the argument.
+  \item |\ScanMultilineTokens| below temporarily changes the |\newlinechar| to
+    13 to allow for linebreaks in (the source code of) the argument;
+  \item |\endinput| is added to prevent the extra end-of-file space creeping
+    in;
+  \item we have used \refmmz{verb} instead of \refmmz{verbatim} so that the
+    argument is eventually dressed up in a pair of real, category code 1 and 2,
+    braces.
+  \end{enumerate*}
+  
+  \ExampleName{collargs-expandable-processor}
+  \makeexample{\examplename.tex.c1}
+  \tcbinputexample{comment=\input{\examplepath.tex.c1},
+    %listing options app={numbers=left, numberstyle=\tiny, numbersep=0.5em},
   }
-  These keys add processors which transform the collected argument in a single
-  expansion.
-
-  The declared processor will use \meta{macro definition} to define a temporary
-  one-argument \meta{macro}, and then set the \meta{processed argument} to be
-  the single expansion of \meta{macro}\marg{collected argument}.
-
-  For example, to add quotes around the collected argument, write
-  \refcollargs{append prewrap}|={``#1''}| (doubling the hash when executing
-  \refcmd{CollectArguments} from a macro, of course).  Or, perhaps more
-  usefully, \refcollargs{append prewrap}|={\scantokens{#1}}| can be used to
-  retokenize a verbatim argument (during the execution of the
-  \meta{next-code}).
 \end{doc}
-
 
 \begin{doc}[
     pi=\docaux{cmd}{ifcollargsNoDelimiters}
@@ -8649,24 +8664,99 @@ grab the environment body in the verbatim mode.)
   }
   When this key is in effect, the collected argument will not be dressed up
   into delimiters that it was dressed up in \meta{argument tokens}.  For
-  example, an optional argument, encountered as [\meta{argument}] inside
-  \meta{argument tokens}, will be spit out simply as \meta{argument}.
+  example, an optional argument, encountered as \code{[\meta{argument}]}, will
+  be spit out simply as \meta{argument}.
 
-  Any user-specified pre- or post-processing will still be applied.
+  Any user-specified pre- or post-processing will still be applied (and usually
+  is, when this key is used).
+  
   \ExampleName{collargs-nodelimiters}
   \makeexample{\examplename.tex.c1}
-  \tcbinputexample{comment=\input{\examplepath.tex.c1}}
+  \tcbinputexample{comment=\small\input{\examplepath.tex.c1}}
+\end{doc}
+
+\begin{doc}[%
+    pi=\docaux{cmd}{collargsReturn}
+  ]{
+    key={name=return,
+      par=\docAux{
+        of=key:/collargs/return,
+        value={name=braced},
+        text=\Alt,
+        value={name=plain},
+        text=\Alt,
+        value={name=no},
+      },
+      desc={initially \code{braced}, no default}
+    }
+  }
+  This key determines the form in which the collected arguments are passed on
+  to \meta{next-code}:
+  \begin{itemize}
+  \item When set to \refcollargs{return=braced} (the default), \meta{next-code}
+    receives the collected arguments as a single, braced argument.
+  \item When set to \refcollargs{return=plain}, the collected arguments are
+    simply inserted behind \meta{next-code}.  Combined with other keys, this
+    keys makes it possible to transform the collected arguments into form
+    expected by \meta{next-code}.  For example, |&{...} b| below transforms the
+    body of an environment into a mandatory argument (after trimming the
+    surrounding spaces); the preceding optional argument remains unmodified.
+    Without \code{\refcollargs{return}=\refcollargs{return=plain}},
+    |\processbody| would receive a single argument, containing both the
+    optional argument and the transformed environment body; with
+    \code{\refcollargs{return}=\refcollargs{return=plain}}, which makes
+    CollArgs refrain from bracing the collected arguments, it receives an
+    optional plus a mandatory argument.\footnote{For further examples, see the
+      definition of \cs{mmz@remove@quotes} and advising of \cs{blx@bbl@entry}
+      in the Memoize source.}
+
+    \ExampleName{collargs-return-plain}
+    \makeexample{\examplename.tex.c1}
+    \tcbinputexample{comment=\small\input{\examplepath.tex.c1}}
+  \item When set to \refcollargs{return=no}, the collected arguments are not
+    inserted into the input stream; \meta{next-code} can access them through
+    \refcmd{collargsArgs}, a token register dedicated to holding the
+    collected arguments (regardless of the value of \refcollargs{return}).
+
+    In conjunction with \code{\refcollargs{clear args}=false}, this setup can
+    be useful for reiterating command \refcmd{CollectArguments}.\footnote{The
+      idea illustrated with this example is deployed in the definition of
+      \refmmzauto{cites} in the Memoize source.}  Command
+    |\CollectOptionalArguments| defined below collects any number of optional
+    arguments given either in square brackets or in parentheses.  To achieve
+    this, we instruct CollArgs to neither clear \refcmd{collargsArgs} at the
+    start of argument collection, nor insert it into the input stream once the
+    collection is finished; we thus have to clear this token register manually
+    at the start, and use it directly at the end.  (There's a number of ways of
+    detecting whether further arguments follow.  We use a pure Collargs
+    solution below: we define a postprocessor which sets an internal
+    conditional to true if any argument was found, and test for that
+    conditional in the \meta{next-code}.)
+    
+    \ExampleName{collargs-return-no}
+    \makeexample{\examplename.tex.c1}
+    \tcbinputexample{comment=\small\input{\examplepath.tex.c1}}
+  \end{itemize}
+\end{doc}
+
+\begin{doc}{
+    cmd={name=collargsArgs, desc={token register, global}},
+  }
+  This token register holds the collected arguments upon the exit from
+  \refcmd{CollectArguments}; the token register is assigned to globally.
+
+  This register may be manipulated by the user, both within and outside an
+  invocation of \refcmd{CollectArguments}; all assignments should be global.
 \end{doc}
 
 \begin{doc}[
-    pi=\docaux{cmd}{ifcollargsBraceCollected}
+    pi=\docaux{cmd}{ifcollargsClearArgs}
   ]{
-    key={name=brace collected, conditional=true},
+    key={name=clear args, conditional=true},
   }
-  When this conditional is set to false, the collected arguments are not
-  enclosed in braces when passed on to \meta{next-code}.  This probably only
-  makes sense when wrapping the individual arguments, e.g.\ by
-  \refcollargs{append postwrap}|={{#1}}|.
+  When this conditional is set to |false|, token register \refcmd{collargsArgs}
+  is not cleared upon entering \refcmd{CollectArguments}; see
+  \code{\refcollargs{return}=\refcollargs{return=no}} for an example.
 \end{doc}
 
 \begin{doc}[
@@ -9233,10 +9323,8 @@ regular pages of the document will be of the same size as that extern page.
 
 Due to an unfortunate design decision, CollArgs does not accept a dot |.| as
 the \meta{token} argument of types, \docref{xparse:r}, \docref{xparse:R},
-\docref{xparse:d}, \docref{xparse:D}, and \docref{xparse:t}.  Furthermore,
-\refcollargs{append prewrap} and friends (and their macro counterparts) do not
-accept a parameter symbol consistently.  These issues will be fixed in the next
-release.
+\docref{xparse:d}, \docref{xparse:D}, and \docref{xparse:t}.  The issue will be
+fixed in a subsequent release.
 
 
 \subsection{Troubleshooting}

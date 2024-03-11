@@ -1,0 +1,27 @@
+%<*att>
+\documentclass{article}
+\usepackage{collargs}
+\usepackage{trimspaces}
+%</att>
+%<!lst>\makeatletter
+\collargsSet{
+  brace/.style={
+    no delimiters,
+    append expandable postprocessor=\empty{\the\collargsArg},
+  },
+  trim spaces/.style={
+    append expandable preprocessor=
+    \expandafter\trim@spaces@noexp\expandafter{\the\collargsArg},
+  },
+}
+%<!lst>\makeatother
+\newcommand\processbody[2][default]{optional=`#1', body=`#2'}
+%<att>\begin{document}
+\CollectArguments
+  [~return=plain~, environment=foo]
+  {o &{trim spaces, brace} b}
+  \processbody
+  [optional] % may be omitted
+  some text
+\end{foo}
+%<att>\end{document}

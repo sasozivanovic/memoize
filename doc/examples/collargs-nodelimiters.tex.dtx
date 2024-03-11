@@ -3,10 +3,8 @@
 %<att>\usepackage{xcolor}
 %<!lst>\long\def\ShowArguments#1{{\color{green!50!black}\tt\detokenize{#1}}}
 %<att>\begin{document}
-before
-\CollectArguments
-  {&{~no delimiters~, ~append postwrap={{{{#1}}}}~}o m}
-  \ShowArguments
-  [optional]{mandatory}
-after
+\texttt{no delimiters=false}: 
+\CollectArguments{o m}\ShowArguments[optional]{mandatory},
+\texttt{no delimiters=true}:
+\CollectArguments[~no delimiters~]{o m}\ShowArguments[optional]{mandatory},
 %<att>\end{document}

@@ -4,19 +4,19 @@
 
 %</att>
 \newwrite\argfile
-\newcommand\writetofile[2]{%
+\newcommand\writetofile[1]{%
   \immediate\openout\argfile{#1}%
   \newlinechar=13
-  \immediate\write\argfile{#2}%
+  \immediate~\write~\argfile{~\the\collargsArg~}%
   \immediate\closeout\argfile
-  \collargsArg={\input{#1}}%
+  ~\collargsArg=~{~\input~{#1}}%
 }
 %<att>
 %<att>\begin{document}
 %<att>
 We write the argument of \verb!\footnote! into a file,%
 \CollectArguments{
-  &{verbatim, ~append preprocessor=\writetofile{_fn.tex}~, no delimiters}
+  &{verbatim, ~append preprocessor~=\writetofile{_fn.tex}, no delimiters}
   m
 }{\footnote}{This footnote was read from a file by command \verb!\input!, 
   so it may contain verbatim material!} and then read it back in.
