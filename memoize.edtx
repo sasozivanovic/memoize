@@ -3588,8 +3588,8 @@
   auto/cite/.style={
     run conditions=\mmz@biblatex@cite@rc,
     outer handler=\mmz@biblatex@cite@outer,
-    args=l&&{\mmzBiblatexMarkCitationKey}m,
-    raw collector options=\collargsReturnNo,
+    args=l*m,
+    raw collector options=\mmz@biblatex@def@star\collargsReturnNo,
     inner handler=\mmz@biblatex@cite@inner,
   },
   % We need a dedicated |volcite| even though |\volcite| executes |\cite|
@@ -3598,22 +3598,22 @@
   auto/volcite/.style={
     run if memoizing,
     outer handler=\mmz@biblatex@cite@outer,
-    args=lml&&{\mmzBiblatexMarkCitationKey}m,
-    raw collector options=\collargsReturnNo,
+    args=lml*m,
+    raw collector options=\mmz@biblatex@def@star\collargsReturnNo,
     inner handler=\mmz@biblatex@cite@inner,
   },
   auto/cites/.style={
     run conditions=\mmz@biblatex@cite@rc,
     outer handler=\mmz@biblatex@cites@outer,
-    args=l&&{\mmzBiblatexMarkCitationKey}m,
-    raw collector options=\collargsClearArgsfalse\collargsReturnNo,
+    args=l*m,
+    raw collector options=\mmz@biblatex@def@star\collargsClearArgsfalse\collargsReturnNo,
     inner handler=\mmz@biblatex@cites@inner,
   },
   auto/volcites/.style={
     run if memoizing,
     outer handler=\mmz@biblatex@cites@outer,
-    args=lml&&{\mmzBiblatexMarkCitationKey}m,
-    raw collector options=\collargsClearArgsfalse\collargsReturnNo,
+    args=lml*m,
+    raw collector options=\mmz@biblatex@def@star\collargsClearArgsfalse\collargsReturnNo,
     inner handler=\mmz@biblatex@cites@inner,
   },
   % \end{mmzautokey}
@@ -3660,11 +3660,14 @@
   \AdviceCollector
 }
 % \end{macro}
-% \begin{macro}{\mmzBiblatexMarkCitationKey}
+% \begin{macro}{\mmz@biblatex@mark@citation@key}
 %   We \emph{append} to |\mmz@biblatex@keys| to automatically collect all
 %   citation keys of a |\cites| command; note that we use this system for
 %   |\cite| as well.
-\def\mmzBiblatexMarkCitationKey{%
+\def\mmz@biblatex@def@star{%
+  \collargsAlias{*}{&&{\mmz@biblatex@mark@citation@key}}%
+}
+\def\mmz@biblatex@mark@citation@key{%
   \collargsAppendPreprocessor{\xappto\mmz@biblatex@keys{,\the\collargsArg}}%
 }
 % \end{macro}
@@ -3809,9 +3812,9 @@
   auto=\fnotecite{cite},
   % Similar to |volcite|, these commands must be handled specifically in order
   % to function correctly with |biblatex ccmemo cite=replicate|.
-  auto=\citename{cite, args=l&&{\mmzBiblatexMarkCitationKey}mlm},
-  auto=\citelist{cite, args=l&&{\mmzBiblatexMarkCitationKey}mlm},
-  auto=\citefield{cite, args=l&&{\mmzBiblatexMarkCitationKey}mlm},
+  auto=\citename{cite, args=l*mlm},
+  auto=\citelist{cite, args=l*mlm},
+  auto=\citefield{cite, args=l*mlm},
 }
 \memoizeresetatcatcode
 %</biblatex>

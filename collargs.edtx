@@ -105,15 +105,14 @@
 % \end{macro}
 % 
 % \begin{macro}{\CollectArguments,\CollectArgumentsRaw}
-%   These are the only public commands provided by the
-%   package. |\CollectArguments| takes three arguments: the optional |#1| is
-%   the option list, processed by |pgfkeys| (given the grouping structure,
-%   these options will apply to all arguments); the mandatory |#2| is the
-%   |xparse|-style argument specification; the mandatory |#3| is the ``next''
-%   command (or a sequence of commands).  The argument list is expected to
-%   start immediately after the final argument; |\CollectArguments| parses it,
-%   effectively figuring out its extent, and then passes the entire argument
-%   list to the ``next'' command (as a single argument).
+%   |\CollectArguments| takes three arguments: the optional |#1| is the option
+%   list, processed by |pgfkeys| (given the grouping structure, these options
+%   will apply to all arguments); the mandatory |#2| is the |xparse|-style
+%   argument specification; the mandatory |#3| is the ``next'' command (or a
+%   sequence of commands).  The argument list is expected to start immediately
+%   after the final argument; |\CollectArguments| parses it, effectively
+%   figuring out its extent, and then passes the entire argument list to the
+%   ``next'' command (as a single argument).
 % 
 %   |\CollectArgumentsRaw| differs only in how it takes and processes the
 %   options.  For one, these should be given as a mandatory argument.
@@ -164,7 +163,6 @@
 \def\collargsSet#1{\pgfqkeys{/collargs}{#1}}
 % \end{macro}
 %
-% 
 % \subsubsection{The keys}
 % \label{sec:code:collargs:keys}
 % 
@@ -520,6 +518,20 @@
 \collargsReturnBraced
 %   \end{macro}
 % \end{collargskey}
+% 
+% \begin{collargskey}{alias}
+%   \begin{macro}{\collargsAlias}
+%
+\collargsSet{%
+  alias/.code 2 args=\collargsAlias{#1}{#2}%
+}
+\def\collargsAlias#1#2{%
+  \csdef{collargs@#1}{\collargs@@@#2}%
+}
+% \end{macro}
+% \end{collargskey}
+% 
+% 
 % 
 % \subsubsection{The central loop}
 % \label{sec:code:collargs:central-loop}

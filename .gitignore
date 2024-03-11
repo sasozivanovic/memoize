@@ -35,6 +35,7 @@ t-collargs.tex
 t-memoizable.tex
 t-memoize.tex
 t-nomemoize.tex
+memoize-biblatex.code.tex
 /temp
 /test-*
 test.*

@@ -8398,6 +8398,21 @@ be generalized to \meta{namespace} and \meta{setup key} of
   invocation of \refcmd{CollectArgumentsRaw}.
 \end{doc}
 
+\yadocset{keypath=/collargs}\begin{doc}[
+    pi={\docaux{cmd}{collargsAlias}},
+  ]{
+    key={name=alias, par=\marg{symbol}\marg{definition}, desc=style},
+  }
+  Define \meta{symbol} as an abbreviation of \marg{definition} within the
+  \meta{argument specification} passed to \refcmd{CollectArguments}.
+
+  For example, Memoize's \pkg{biblatex} support sets
+  \code{\refcollargs{alias}=%
+    \braces{*}\braces{\&\&\braces{\cs{mmz@biblatex@mark@citation@key}}}}, with
+  \cs{mmz@biblatex@mark@citation@key} an internal macro which stores the
+  contents of \refcmd{collargsArg} into another internal macro.
+\end{doc}
+
 \begin{doc}[
     pi={\docaux{cmd}{collargsCaller}},
   ]{
@@ -9214,23 +9229,24 @@ Memoize should be loaded by writing |\RequirePackage{memoize}| (rather than
       &\refmmzauto{args}\\
       \midrule
       \refmmzauto{cite}, \refmmzauto{cites}
-      &\code{l\&\&\braces{\cs{mmzBiblatexMarkCitationKey}}m}\\
+      &\code{l\,*m}\\
       \refmmzauto{volcite}, \refmmzauto{volcites}
-      &\code{lm l\&\&\braces{\cs{mmzBiblatexMarkCitationKey}}m}\\
+      &\code{l\,m l\,*m}\\
     \end{tabular}
   \end{center}
-  
-  Looking at \refmmzauto{cite}, |l| grabs everything up to the first opening
-  brace (and will receive the optional star, prenote and postnote), while |m|
-  receives the braced \meta{citation key} argument.  The |&&| construct
-  preceding |m| specifies the \refmmzauto{raw collector options} for that
-  argument: \docaux{cmd}{mmzBiblatexMarkCitationKey} applies an argument
-  processor storing the citation key in an internal macro.  Key
-  \refmmzauto{volcite} precedes \refmmzauto{cite}'s \refmmzauto{args} by |lm|,
-  grabs the optional arguments and the volume; note that the citation key is
-  the second braced argument of |\volcite| and friends.  The two
-  \refmmzauto{cites} variants iterate the given \refmmzauto{args} as long as
-  the citation arguments continue.
+
+  Commands like |\cite| take one mandatory argument (the citation key), which
+  may be preceded by an optional star, prenote and postnote.  Key
+  \refmmzauto{cite} grabs all the optional arguments by |l|, while |*m|
+  receives the braced \meta{citation key} argument; |*| is locally defined to
+  mark the following argument as the citation key.  Commands like |\volcite|
+  take two mandatory arguments: the volume and the citation key, in this order;
+  each may be preceded by an optional argument.  Again, the optional arguments
+  are collected by |l|s, and the mandatory arguments by |m|s, with the second
+  argument being marked as the citation key by |*|.  The two \refmmzauto{cites}
+  variants use the given \refmmzauto{args} unconventionally: they iterate the
+  given pattern as long as the citation arguments continue (see
+  \refcollargs{return} for the gist of how they achieve this).
 
   When advising new citation commands, the author may override the given
   \refmmzauto{args} if necessary.  In fact, this is what Memoize does do
@@ -9240,7 +9256,7 @@ Memoize should be loaded by writing |\RequirePackage{memoize}| (rather than
   \refmmzauto{cite}'s \refmmzauto{args}.  For example, \cs{citename} is advised
   by \code{\refmmz{auto}=\braces{%
         \refmmzauto{cite},
-        \refmmzauto{args}=l\&\&\braces{\cs{mmzBiblatexMarkCitationKey}}m lm%
+        \refmmzauto{args}=l\,*m l\,m%
       }%
     }.
 \end{doc}
