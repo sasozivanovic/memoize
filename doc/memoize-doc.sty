@@ -391,6 +391,7 @@
 
 \newcommand\therefore{\ensuremath{\Rightarrow}}
 \newcommand\nohyphen{\discretionary{}{}{}}
+\hyphenation{Coll-Args}
 \let\gobble\@gobble
 
 \lstset{
@@ -700,6 +701,13 @@
 
 \newcommand\noprint[1]{\setbox0=\hbox{#1}}
 \usepackage{wrapfig}
+
+\newcommand\footnoteagain[1]{%
+  \def\@thefnmark{\ref{#1}}%
+  \@footnotemark
+}%
+
+\usepackage{varioref}
 
 
 % \usepackage{caption}

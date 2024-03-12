@@ -388,7 +388,7 @@
   Package Advice implements a generic framework for extending the functionality
   of selected commands and environments, while package CollArgs provides a
   command which can determine the argument scope of any command whose argument
-  structure conforms to \pkg{xparse}'s argument specification.
+  structure conforms to \hologo{LaTeX3} argument specification.
 \end{tcolorbox}
 
 \begin{tcolorbox}[
@@ -899,18 +899,17 @@ environment is clearly marked).  With commands, we must inform Memoize about
 their argument structure, which we achieve using key \refmmzauto{args} in the
 second argument of key \refmmz{auto}:
 \EmphTT{\refmmz{auto}=\meta{command}\braces{\refmmzauto{memoize},
-    \refmmzauto{args}=\marg{argument specification}}}.  We can only leave out
-\refmmzauto{args} if the command was defined by \refcmd{NewDocumentCommand} or
-similar; in this case, Memoize can retrieve the argument specification on its
-own.
+    \refmmzauto{args}=\marg{argument specification}}}.
 
 And how does the \meta{argument specification} look like?  It is a sequence of
 letters, each letter determining an argument type.  Memoize recognizes the same
-argument types and their letters as package \pkg{xparse} (which defines
-\refcmd{NewDocumentCommand} and friends), so you should look at (section 1 of)
-the documentation of that package for details, if and when you need them.
-Here, we focus on the two most commonly used types, \docref{xparse:m} and \docref{xparse:o}, and add the
-optional star for good measure:
+argument types as \refcmd{NewDocumentCommand}, the \hologo{LaTeX3} command for
+defining new commands, available in core \hologo{LaTeX} since 2020.  For
+the complete story, see the reference for \refmmzauto{args} in
+section~\ref{sec:ref:advice} and the frame on page~\pageref{tab:argspec} in
+section~\ref{sec:ref:collargs}; here, we focus on the two most commonly used
+types, \docref{xparse:m} and \docref{xparse:o}, and add the optional star for
+good measure:
 \begin{center}
   \begin{tabular}{lll}
     \toprule
@@ -939,14 +938,18 @@ argument (in braces).
   },
 }
 
+If the command we're submitting to automemoization was defined by
+\refcmd{NewDocumentCommand} or similar, \refmmzauto{args} may be omitted, as in
+this case, Memoize can retrieve the argument specification on its own.
+
 This should get you started with automemoization.  We'll provide some further
 basic information in sections~\ref{sec:tut:working-on-a-picture}
 and~\ref{sec:tut:verbatim} of the tutorial, but only package writers will
 probably ever need the gory details from
 section~\ref{sec:tut:automemoization-details}.  It is my sincere hope that they
-will support Memoize in their packages, where necessary, so that you don't even
-have to write the \refmmz{auto} declarations, but there is one thing you should
-know if you encounter a package supporting Memoize: you should load it
+will support Memoize in their packages, where necessary, so that you don't ever
+have to write the \refmmz{auto} declarations.  However, there is one thing you
+should know if you encounter a package supporting Memoize: you should load it
 \emph{after} Memoize!
 
 
@@ -4336,7 +4339,8 @@ automemoization deploying two specifically developed auxiliary packages:
 package Advice, which provides a generic framework for extending the
 functionality of selected commands and environments, and package CollArgs,
 which provides a command for collection of the arguments conforming to the
-given (slightly extended) \pkg{xparse} argument specification.
+given (slightly extended) \hologo{LaTeX3}\slash \pkg{xparse} argument
+specification.
 
 This section lists the considerations which went into designing the system,
 followed by short tutorials on both auxiliary packages, which include several
@@ -4373,14 +4377,14 @@ arguments of a command can, and quite often do, differ wildly.  The author (or t
 package writer) will need to tell Memoize about the argument structure of the
 command.  And as there is already a nice and general argument specification on
 the market --- I'm obviously referring to the argument specification of package
-\pkg{xparse}, which was recently even integrated into the core \hologo{LaTeX}
+\pkg{xparse}, which was recently integrated into the core \hologo{LaTeX}
 --- why not use that?  Memoize comes with an auxiliary package CollArgs, which
 (given the slightly extended \pkg{xparse}-style argument specification)
 collects the arguments of a command into a single entity.  All the user needs
 to write to enable automemoization for a command is thus
 \refmmz{auto}|=|\meta{command}\braces{\refmmzauto{memoize},
   \refmmzauto{args}|=|\braces{\meta{argument specification}}}.  Even simpler,
-when it comes to commands defined by \pkg{xparse}'s \refcmd{NewDocumentCommand}
+when it comes to commands defined by \hologo{LaTeX3}'s \refcmd{NewDocumentCommand}
 or friends, writing \refmmz{auto}|=|\meta{command}\braces{\refmmzauto{memoize}}
 will suffice, as the argument specification of these commands can be retrieved
 by \refcmd{GetDocumentCommandArgSpec}.
@@ -4785,8 +4789,8 @@ complain.
 \paragraph{A simple collector}
 
 Let us implement a collector for a command which accepts one (standard
-\hologo{LaTeX}) optional argument and one mandatory argument; in \pkg{xparse}
-terms, a command with argument specification |om|.
+\hologo{LaTeX}) optional argument and one mandatory argument; in
+\hologo{LaTeX3} terms, a command with argument specification |om|.
 
 Using \cs{NewDocumentCommand}, such a collector is very easy to implement.  We
 simply define a command with signature |om| and distinguish two possibilities
@@ -4846,7 +4850,8 @@ The package provides two public commands, \refcmd{CollectArguments} and
 \refcmd{CollectArgumentsRaw}; we'll focus on the former first.
 \refcmd{CollectArguments} takes three arguments: optional \meta{options} in the
 form of a \pkg{pgfkeys} keylist; a mandatory \meta{argument specification} in a
-(slightly extended) \pkg{xparse} format; and the \meta{next-code}:
+(slightly extended) \hologo{LaTeX3}\slash\pkg{xparse} format; and the
+\meta{next-code}:
 \begin{center}
   \refcmd{CollectArguments}\oarg{options}\marg{argument specification}\marg{next-code}%
   \textcolor{gray}{\meta{tokens}}
@@ -4895,27 +4900,28 @@ conform to the given specification.  In the example above, it is only in |#1#2|
 of |\PrintAndDo| that |\makebox| is ``reunited'' with its arguments, but note
 that the reunion is far from obligatory.
 
-CollArgs supports all the argument types (and modifiers) that \pkg{xparse}
-does, including the environment type \docref{xparse:b}, as exemplified below.
-Again, the code below might seem strange, as it features an |\end{minipage}|
-without the matching |\begin{minipage}|, but the logic is similar as for
-  commands: just as \refcmd{CollectArguments} occurs in front of the command
-  arguments, without the command itself, so it occurs in front of the
-  environment body, without the opening of that body.  However, while
-  \refcmd{CollectArguments} never needs to know the command name, we need to
-  inform it of the environment name, so that it can find the end of the
-  environment.  This can be achieved as shown below, using key
-  \refcollargs{environment} in the optional argument of the command, or by our
-  extension to the \pkg{xparse} argument specification, where the environment
-  argument type \docref{xparse:b} may be followed by a braced environment name.
-  In the example below, we could therefore also invoke argument collection by
-  \refcmd{CollectArguments}\braces
-  {\docref{xparse:+}\docref{xparse:b}\braces{\env{minipage}}} (we have preceded
-  \docref{xparse:b} with a \docref{xparse:+} to allow for an environment body
-  containing paragraph tokens).\footnote{CollArgs automatically adapts to the
-    format, i.e.\ it knows that environments are tagged by \cs{}\meta{name} and
-    \cs{end}\meta{name} in \hologo{plainTeX} and by \cs{start}\meta{name} and
-    \cs{stop}\meta{name} in \hologo{ConTeXt}.}
+CollArgs supports all the argument types (and modifiers) that \hologo{LaTeX3}
+does, complete with the uncommon\slash historical types only available upon
+loading package \pkg{xparse}.  Below, we provide an example of the environment
+type \docref{xparse:b}.  Again, the code might seem strange, as it features an
+|\end{minipage}| without the matching |\begin{minipage}|, but the logic is
+similar as for commands: just as \refcmd{CollectArguments} occurs in front of
+the command arguments, without the command itself, so it occurs in front of the
+environment body, without the opening of that body.  However, while
+\refcmd{CollectArguments} never needs to know the command name, we need to
+inform it of the environment name, so that it can find the end of the
+environment.  This can be achieved as shown below, using key
+\refcollargs{environment} in the optional argument of the command, or by our
+extension to the \hologo{LaTeX3}\slash\pkg{xparse} argument specification,
+where the environment argument type \docref{xparse:b} may be followed by a
+braced environment name.  In the example below, we could therefore also invoke
+argument collection by \refcmd{CollectArguments}\braces
+{\docref{xparse:+}\docref{xparse:b}\braces{\env{minipage}}} (we have preceded
+\docref{xparse:b} with a \docref{xparse:+} to allow for an environment body
+containing paragraph tokens).\footnote{CollArgs automatically adapts to the
+  format, i.e.\ it knows that environments are tagged by \cs{}\meta{name} and
+  \cs{end}\meta{name} in \hologo{plainTeX} and by \cs{start}\meta{name} and
+  \cs{stop}\meta{name} in \hologo{ConTeXt}.}
 
 \ExampleName{collargs-minipage}
 \makeexample{\examplename.tex.c1}
@@ -4931,7 +4937,7 @@ arguments, and grabbing everything until |\end{minipage}| is the same as first
 grabbing the optional argument, maybe, then the mandatory argument, and finally
 the argument body.
 
-\refcmd{CollectArguments} not only supports \pkg{xparse}'s verbatim argument
+\refcmd{CollectArguments} not only supports the verbatim argument
 type \docref{xparse:v}, it can grab an argument of \emph{any} type in the
 verbatim mode, triggered by option \refcollargs{verbatim}.\footnote{We refer to
   the verbatim mode triggered by \refcollargs{verbatim} as the full verbatim
@@ -4952,12 +4958,12 @@ its limitations.
 \makeexample{\examplename.tex.c1}
 \tcbinputexample{listing and compile}
 
-Finally, CollArgs extends the \pkg{xparse} specification by modifier
-\docref{xparse:amp}, which allows the user to specify options which apply only
-to the following argument, as opposed to the options given as the optional
-argument of \refcmd{CollectArguments}, which apply to all the arguments.  A
-third way to invoke the environment body collection in the above example is
-thus \refcmd{CollectArguments}%
+Finally, CollArgs extends the \hologo{LaTeX3}\slash\pkg{xparse} specification
+by modifier \docref{xparse:amp}, which allows the user to specify options which
+apply only to the following argument, as opposed to the options given as the
+optional argument of \refcmd{CollectArguments}, which apply to all the
+arguments.  A third way to invoke the environment body collection in the above
+example is thus \refcmd{CollectArguments}%
 \bracestt{\docref{xparse:amp}\bracestt{\refcollargs{environment}=minipage}+b}.
 
 Both the single-argument and the common options can be given not only as
@@ -7482,7 +7488,7 @@ headers.
   \emph{not} collected before invoking the outer handler --- in fact, avoiding
   the argument collection is the raison d'être of the outer handler!  (In the case
   of an advised environment, the environment body can be seen as an argument of
-  \pkg{xparse} type \docref{xparse:+}\docref{xparse:b}.)
+  \hologo{LaTeX3} type \docref{xparse:+}\docref{xparse:b}.)
   
   The outer handler (and any other component of the advice it invokes) has
   access to the following auxiliary macros, defined by the framework:
@@ -7571,74 +7577,48 @@ headers.
 
   This key describes the \meta{argument specification} of the advised command.
 
-  Assuming that the initial value of \refmmzauto{collector} has not been
-  modified, the given \meta{argument specification} is eventually interpreted
-  by command \refcmd{CollectArguments} of package CollArgs, which expects an
-  argument specification in the format specified by package \pkg{xparse}; the
-  format is summarized in the frame below for convenience, for details, see the
-  \pkg{xparse} manual.  If the specification is not given, the initial collector
-  assumes that the advised command was defined using \refcmd{NewDocumentCommand}
-  (or similar) of package \pkg{xparse}, and will attempt to retrieve the argument
-  specification automatically via \refcmd{GetDocumentCommandArgSpec}.
+  The value of this key is intended to be interpreted by the
+  \refmmzauto{collector}.  Assuming this key retained its initial value, the
+  given \meta{argument specification} is eventually interpreted by command
+  \refcmd{CollectArguments} of package CollArgs, which expects an argument
+  specification in the format specified by \hologo{LaTeX3}, also allowing for
+  the uncommon\slash historical types only defined upon loading package
+  \pkg{xparse}, and several CollArgs-specific extensions.  For further
+  information, see the following sources:
+  \begin{itemize}
+  \item The \hologo{LaTeX3} version
+    of \href{https://www.latex-project.org/help/documentation/usrguide.pdf}
+    {``\LaTeX\ for authors''} documents the standard argument types.
+  \item The \pkg{xparse} manual additionally documents the uncommon\slash
+    historical types only available upon loading package \pkg{xparse}.
+  \item CollArgs extensions are documented in section~\ref{sec:ref:collargs}.
+  \item For convenience, the entire \hologo{LaTeX3} argument specification
+    format, complete with \pkg{xparse} and CollArgs extensions, is summarized
+    in the frame on page~\pageref{tab:argspec} in
+    section~\ref{sec:ref:collargs}.
+  \end{itemize}
+
+  If \meta{argument specification} is not provided, the initial collector
+  assumes that the advised command was defined using \hologo{LaTeX3}'s
+  \refcmd{NewDocumentCommand} (or similar), and will attempt to retrieve the
+  argument specification automatically.\footnote{The automatic retrieval
+    deploys command \refcmd{GetDocumentCommandArgSpec} of package \pkg{xparse},
+    which is the sole reason that Advice loads this package in \hologo{LaTeX}.}
   
-  \begin{tcolorbox}[float, before float=\hfill,
-      title={The {\pkg[white]{xparse}} argument specification
-        (as understood by \refcmd[link color=white]{CollectArguments})}]
-    \begin{tabularx}{\linewidth}{>{\tt}lX}
-      \multicolumn{2}{l}{\rm\textbf{Mandatory argument types}}\\
-      m&standard (a single token or multiple tokens in braces)\\
-      r\meta{token$_1$}\meta{token$_2$}&delimited by 
-                                         \meta{token$_1$} and \meta{token$_2$} \\
-      v&verbatim, in the style of \cs{verb}\\
-      b&the body of an environment\\
-      [1ex]\multicolumn{2}{l}{\rm\textbf{Optional argument types}}\\
-      o&in square brackets\\
-      d\meta{token$_1$}\meta{token$_2$}&delimited by
-                                         \meta{token$_1$} and \meta{token$_2$}\\
-      s&an optional star\\
-      t\meta{token}&an optional \meta{token}\\
-      e\marg{tokens}&a set of embellishments\\
-      [1ex]\multicolumn{2}{l}{\rm\textbf{Weird argument types}}\\
-      l&a mandatory argument until the first begin-group token\\
-      u\marg{tokens}&\hologo{TeX}'s delimited argument\\
-      g&an optional argument inside braces\\
-      [1ex]\multicolumn{2}{l}{\rm\textbf{Modifiers}}\\
-      +&allow the next argument to be long\\
-      !&disallow spaces before arguments of type \docref{xparse:d} and \docref{xparse:t}\\
-      >\marg{processor}&process the next argument\\
-      [1ex]\multicolumn{2}{l}{\rm\textbf{CollArgs extensions}}\\
-      \docref{xparse:b}\marg{name}&set the environment name for this environment\\
-      \docref{xparse:amp}\marg{options}&apply CollArgs options to the next argument\\
-      \docref{xparse:amp}\docref{xparse:amp}\marg{raw options}&apply raw CollArgs options to the next argument\\
-    \end{tabularx}
-
-    \smallskip
-    
-    \refcmd{CollectArguments} can grab an argument of any type in the
-    \refcollargs{verbatim} mode.
-    
-    As \refcmd{CollectArguments} does not use the arguments but only collects
-    them, it does not care about the default values of optional arguments.
-    Therefore, argument types with defaults (\docref{xparse:O},
-    \docref{xparse:D} and \docref{xparse:R}) may be substituted by their
-    \texttt{-NoValue-} counterparts (\docref{xparse:o}, \docref{xparse:d} and
-    \docref{xparse:r}) and are therefore not included in the above table.
-  \end{tcolorbox}
-
-  In general, however, an argument collector may this interpret this setting it
+  In general, however, an argument collector may this interpret this setting 
   in any way it sees fit --- or not at all.  For example, in Memoize the value
   of \refmmzauto{args} is ignored for command \refcmd{tikz}, which requires a special
   collector (\refcmd{mmzCollectTikZArguments}).
   
-  When setting up advice for a \emph{command}, this key is initially
-  ``unset,'' i.e.\ it holds a special value indicating that the argument
-  specification is not provided.  Note that this special value is not an empty
-  string --- \refmmzauto{args}|={}|, or simply \refmmzauto{args}|=|, indicates
-  a command which takes no arguments.  During the execution of the advice, one
-  may use the \hologo{LaTeX}-style conditional
-  \docaux{cmd}{AdviceIfArgs}\marg{true branch}\marg{false branch} to test
-  whether the argument specification was provided.  Executing this key without
-  a value restores it to the initial, unset value.
+  When setting up advice for a \emph{command}, this key is initially ``unset,''
+  i.e.\ it holds a special value indicating that the argument specification is
+  not provided.  Note that this special value is not an empty string;
+  \refmmzauto{args}|={}|, or simply \refmmzauto{args}|=|, indicates a command
+  which takes no arguments.  During the execution of the advice, one may use
+  the \hologo{LaTeX}-style conditional \docaux{cmd}{AdviceIfArgs}\marg{true
+    branch}\marg{false branch} to test whether the argument specification was
+  provided.  Executing this key without a value restores it to the initial,
+  unset value.
   
   When setting up the advice of an \emph{environment}, this key is
   initialized to \docref{xparse:+}\docref{xparse:b} (a long environment body),
@@ -8305,15 +8285,22 @@ be generalized to \meta{namespace} and \meta{setup key} of
   \docaux{key path}{collargs}.  The given options apply to all the arguments in
   \meta{argument specification}.  The recognized keys are listed in the rest of
   the section.
-  
-  The \meta{argument specification} should be given in the \pkg{xparse} format
-  (we summarize this format in the documentation for \refmmzauto{args} in
-  section~\ref{sec:ref:advice}), with several extensions:\footnote{Collargs
-    internally uses a dot (|.|) to delimit the argument specification from the
-    following argument tokens.  Therefore, the dot really counts as an extra
-    argument type, in the sense that Collargs will stop working if the dot
-    becomes an argument type or a modifier in some future release of
-    \pkg{xparse}.}
+
+  \refcmd{CollectArguments} expects the \meta{argument specification} to
+  conform to the \hologo{LaTeX3} argument specification format, i.e.\ it
+  accepts the same kind of \meta{argument specification} as
+  \refcmd{NewDocumentCommand} and friends, complete with extensions available
+  upon loading package \pkg{xparse}.\footnote{Note that CollArgs collects the
+    arguments by its own means.  It does \emph{not} require either
+    \hologo{LaTeX3} or \pkg{xparse} to do its job.  Specifically, it may be
+    used in \hologo{plainTeX} and \hologo{ConTeXt} as well.}  Furthermore,
+  CollArgs introduces several extensions to the
+  \hologo{LaTeX3}\slash\pkg{xparse} argument specification
+  format:\footnote{Collargs internally uses a dot (|.|) to delimit the argument
+    specification from the following argument tokens.  Therefore, the dot
+    really counts as an extra argument type, in the sense that CollArgs will
+    stop working if the dot becomes an argument type or a modifier in some
+    future release of \hologo{LaTeX}.}
   \begin{itemize}
   \item We introduce modifier \docAux{xparse modifier={name=\&,label=amp,index
         annotation/.prefix={additional\ }, index annotation/.append={\
@@ -8328,14 +8315,80 @@ be generalized to \meta{namespace} and \meta{setup key} of
   \item The number of collected ``arguments'' is unlimited.
   \end{itemize}
 
-  Also note that the effect of \docref{xparse:O}\marg{default} is the same as
-  the effect of \docref{xparse:o}, and similarly for other pairs of types with
-  and without defaults (\docref{xparse:R} and \docref{xparse:r},
-  \docref{xparse:D} and \docref{xparse:d}, and \docref{xparse:E} and
-  \docref{xparse:e}).  CollArgs is dedicated to collecting the argument tokens
-  precisely as they are given: if an optional argument is missing, its default
-  value is \emph{not} inserted among the collected arguments --- consequently,
-  \refcmd{CollectArguments} is utterly uninterested in the default value.
+  For convenience, the entire \hologo{LaTeX3} argument specification format,
+  complete with \pkg{xparse} and CollArgs extensions, is summarized in the
+  frame \vpageref{tab:argspec}.  For the official documentation of the format,
+  consult the following sources:
+  \begin{itemize}
+  \item The \hologo{LaTeX3} version
+    of \href{https://www.latex-project.org/help/documentation/usrguide.pdf}
+    {``\LaTeX\ for authors''} documents the standard argument types.
+  \item The \pkg{xparse} manual additionally documents the uncommon\slash
+    historical types only available upon loading package \pkg{xparse}.
+  \end{itemize}
+  
+  \begin{tcolorbox}[float, before float=\hfill, label=tab:argspec,
+      title={The \hologo{LaTeX3}\slash\pkg[white]{xparse} argument specification,
+        with CollArgs extensions}]
+    \begin{tabularx}{\linewidth}{>{\tt}lX}
+      \multicolumn{2}{l}{\rm\textbf{Mandatory argument types}}\\
+      m&standard (a single token or multiple tokens in braces)\\
+      r\meta{token$_1$}\meta{token$_2$}
+      &delimited by \meta{token$_1$} and \meta{token$_2$} \\
+      R\meta{token$_1$}\meta{token$_2$}\marg{default}\footnote{\label{fn:ODRE}As
+        \refcmd{CollectArguments} does not use the arguments but only collects
+        them, it does not care about the default values of optional arguments.
+        Therefore, while CollArgs recognizes argument types with defaults
+        (\docref{xparse:O}, \docref{xparse:D}, \docref{xparse:R}, and
+        \docref{xparse:E}), they may be safely substituted by their
+        \texttt{-NoValue-} counterparts (\docref{xparse:o}, \docref{xparse:d},
+        \docref{xparse:r} and \docref{xparse:e}).}
+      &delimited by \meta{token$_1$} and \meta{token$_2$}, with a default value\\
+      v&verbatim, in the style of \cs{verb}\footnote{\refcmd{CollectArguments}
+        can grab an argument of any type in the \refcollargs{verbatim} mode.}\\
+      b&the body of an environment\\
+      [1ex]\multicolumn{2}{l}{\rm\textbf{Optional argument types}}\\
+      o&in square brackets\\
+      O\marg{default}\footnoteagain{fn:ODRE}&in square brackets, with a default value\\
+      d\meta{token$_1$}\meta{token$_2$}
+      &delimited by \meta{token$_1$} and \meta{token$_2$}\\
+      D\meta{token$_1$}\meta{token$_2$}\marg{default}\footnoteagain{fn:ODRE}
+      &delimited by \meta{token$_1$} and \meta{token$_2$}, with a default value\\
+      s&an optional star\\
+      t\meta{token}&an optional \meta{token}\\
+      e\marg{tokens}&a set of embellishments\\
+      E\marg{tokens}\marg{defaults}\footnoteagain{fn:ODRE}
+      &a set of embellishments, with default values\\
+      [1ex]\multicolumn{2}{l}{\rm\textbf{Weird argument types}}\\
+      l\footnote{\label{fn:lug}Argument types \docref{xparse:l},
+        \docref{xparse:u} and \docref{xparse:g} are not defined by the core
+        \hologo{LaTeX3}; they are only available upon loading package
+        \pkg{xparse}.  As noted in the main text, CollArgs does not make any
+        difference between standard \hologo{LaTeX3} types and the \pkg{xparse}
+        extensions; it supports them all at all times, and even in
+        \hologo{plainTeX} and \hologo{ConTeXt}.}
+      &a mandatory argument until the first begin-group token\\
+      u\marg{tokens}\footnoteagain{fn:lug}&\hologo{TeX}'s delimited argument\\
+      g\footnoteagain{fn:lug}&an optional argument inside braces\\
+      [1ex]\multicolumn{2}{l}{\rm\textbf{Modifiers}}\\
+      +&allow the next argument to be long\\
+      !&disallow spaces before arguments of type \docref{xparse:d} and \docref{xparse:t}\\
+      >\marg{processor}&process the next argument\\
+      [1ex]\multicolumn{2}{l}{\rm\textbf{CollArgs extensions}}\\
+      \docref{xparse:b}\marg{name}&the body of an environment with the given \meta{name}\\
+      \docref{xparse:amp}\marg{options}&apply CollArgs options to the next argument\\
+      \docref{xparse:amp}\docref{xparse:amp}\marg{raw options}&apply raw CollArgs options to the next argument\\
+    \end{tabularx}
+  \end{tcolorbox}
+  
+  Note that in CollArgs, \docref{xparse:O}\marg{default} has the same effect as
+  \docref{xparse:o}, and similarly for other pairs of types with and without
+  defaults (\docref{xparse:R} and \docref{xparse:r}, \docref{xparse:D} and
+  \docref{xparse:d}, and \docref{xparse:E} and \docref{xparse:e}).  CollArgs is
+  dedicated to collecting the argument tokens precisely as they are given: if
+  an optional argument is missing, its default value is \emph{not} inserted
+  among the collected arguments --- consequently, \refcmd{CollectArguments} is
+  utterly uninterested in the default value.
 
   Collection of environments automatically adapts to the format, i.e.\ given
   environment body name |foo|, \refcmd{CollectArguments} knows to search for
@@ -8398,7 +8451,7 @@ be generalized to \meta{namespace} and \meta{setup key} of
   invocation of \refcmd{CollectArgumentsRaw}.
 \end{doc}
 
-\yadocset{keypath=/collargs}\begin{doc}[
+\begin{doc}[
     pi={\docaux{cmd}{collargsAlias}},
   ]{
     key={name=alias, par=\marg{symbol}\marg{definition}, desc=style},
