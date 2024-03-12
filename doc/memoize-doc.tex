@@ -32,7 +32,7 @@
 \usepackage{makeidx}
 \pdfsystem{makeindex -s memoize-doc.mst \jobname.idx}
 \makeindex
-\usepackage[hangindent=1em,justific=raggedright,font=small]{idxlayout}
+\usepackage[hangindent=1em,justific=raggedright,font=small,totoc]{idxlayout}
 \appto\indexfont{\def\pkgcolor{gray}}
 
 \AddToHook{begindocument}{% so that the region compilation takes these in
