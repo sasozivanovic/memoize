@@ -3418,7 +3418,7 @@
 %
 \mmz@if@package@loaded{pgf}{%
   %<plain>\pgfpicture
-  %<plain>\startpgfpicture
+  %<context>\startpgfpicture
 }{%
   \def\mmzPgfAtBeginMemoization{%
     \edef\mmz@pgfpictureid{%
