@@ -3834,6 +3834,14 @@
   end document/.style={enddocument/afterlastpage},
 }
 %</plain,context>
+% We clear the hooks after executing the last of them.
+\mmzset{
+  begindocument/end/.append style={
+    begindocument/before/.code={},
+    begindocument/.code={},
+    begindocument/end/.code={},
+  }
+}
 % \end{key}
 % 
 % Formats other than \hologo{plainTeX} need a way to prevent extraction during
