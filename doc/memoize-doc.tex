@@ -4694,8 +4694,7 @@ key \refmmzauto{collector} in addition to executing \refmmzauto{memoize}.  For
 example, Memoize submits \refcmd{tikz} to automemoization by loading
 \reffile{advice-tikz.code.tex}, which contains Advice's definition of the
 \cs{tikz} collector \refcmd{AdviceCollectTikZArguments}, and issuing the
-following declaration.\footnote{This is a simplification, see
-  \refmmzauto{memoize tikz} for the full story.}
+following declaration.
 
 \begin{tcblisting}{
     example title={Declaring automemoization of command \cs{tikz}},
@@ -7986,8 +7985,8 @@ be generalized to \meta{namespace} and \meta{setup key} of
     ``remembered''.\\
     \refcmd{ref}&\refmmzauto{ref}\\
     \refcmd[short]{savepos}&\refmmzauto{abort}&Available only in \hologo{LuaTeX}.\\
-    \refcmd{tikz}&\refmmzauto{memoize tikz}\\
-    \refenv{tikzpicture}&\refmmzauto{memoize tikz}\\
+    \refcmd{tikz}&\refmmzauto{memoize}\\
+    \refenv{tikzpicture}&\refmmzauto{memoize}\\
     \bottomrule
   \end{tabularx}
   \caption{Commands advised by Memoize}
@@ -9131,7 +9130,7 @@ by many other commands and environments.
 \end{doc}
 
 
-\subsubsection{\TikZ*}
+\subsubsection[TikZ]{\TikZ*}
 
 When package \TikZ is loaded, environment \refenv{tikzpicture} and command
 \refcmd{tikz} and are automatically submitted to automemoization; this may be
