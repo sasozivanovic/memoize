@@ -3,6 +3,28 @@
 For the development history, see [Memoize's GitHub
 repository](https://github.com/sasozivanovic/memoize).
 
+## 2024/03/15 v1.2.0
+
+* Biblatex support:
+  * Allow for entries containing verbatim material.
+  * Support `\volcite` commands.
+  * Implement `biblatex ccmemo cite`.
+  * Submit all known citation commands to `auto`-keys `(vol)cite(s)`.
+	* The support must be explicitly loaded by `\mmzset{biblatex}`.
+* Minor changes:
+	* Separate generic PGF support out of TikZ support.
+	* Support `latexmk`.
+	* Drop the obsolete workaround for package `morewrites`.
+	* Clear Memoize's `begindocument` hooks after executing them.
+* Documentation:
+  * Introduce section "Support for specific classes and packages".
+  * Improve the documentation of argument specification accepted by CollArgs'
+		command `\CollectArguments` and Advice's key `args`, in particular with
+		reference to the fact that since 2020, the functionality of package
+		`xparse` is mostly integrated into the LaTeX kernel.
+	* Add a note about `TEXLIVE_WINDOWS_TRY_EXTERNAL_PERL`.
+	* Various minor changes.
+	
 ## 2024/01/21 v1.1.2
 
 * Fix a bug in Biblatex support.

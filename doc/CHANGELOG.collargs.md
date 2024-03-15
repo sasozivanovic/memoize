@@ -14,6 +14,16 @@ those cases, please see [Memoize's GitHub
 repository](https://github.com/sasozivanovic/memoize) for the recent
 development history.
 
+## 2024/03/15 v1.2.0
+* Argument processors:
+  * They now work without a formal argument, taking token register
+    `\collargsArg` as input. The processors taking a formal argument were
+    impossible (or at least too hard for me) to define.
+	* Remove `append/prepend pre/postwrap`, as they become useless with the above
+    change.
+* Implement keys `clear args` and `return`, and expose `\collargsArgs`.
+* Implement key `alias`.
+
 ## 2024/01/02 v1.1.0
 * Implement `brace collected`.
 

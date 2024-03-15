@@ -14,6 +14,10 @@ those cases, please see [Memoize's GitHub
 repository](https://github.com/sasozivanovic/memoize) for the recent
 development history.
 
+## 2024/03/15 v1.1.1
+* Bugfix in `\AdviceGetOriginal`.
+* Simplify the definition of the initial outer handler.
+
 ## 2024/01/02 v1.1.0
 * Implement `\AdviceCsnameGetOriginal`.
 * Change `\AdviceGetOriginal` to expand to the internal control sequence

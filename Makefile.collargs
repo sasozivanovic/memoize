@@ -4,10 +4,10 @@
 # should also contain collargs.edtx and collargs.ins.
 
 PACKAGE = collargs
-VERSION = 1.1.0
+VERSION = 1.2.0
 YEAR = 2024
-MONTH = 01
-DAY = 02
+MONTH = 03
+DAY = 15
 
 FORMAT = generic
 

@@ -9182,10 +9182,11 @@ Memoize should be loaded by writing |\RequirePackage{memoize}| (rather than
 \subsubsection{Biblatex}
 
 \begin{doc}{
-    key={name=biblatex, par=\braces{\meta{additional configuration}}, desc=style},
+    key={name=biblatex, par=\marg{additional configuration}, desc=style},
   }
-  This key loads the \pkg{biblatex} support (if package \pkg{biblatex} is
-  loaded, anywhere in the preamble).
+  This key loads the \pkg{biblatex} support, but only if package \pkg{biblatex}
+  is loaded (anywhere in the preamble); after loading the support,
+  \meta{additional configuration} is executed within \refcmd{mmzset}.
 
   When \pkg{biblatex} support is loaded, all citation commands defined by this
   package\footnote{In \pkg{biblatex} version 3.19: \cs{cite}, \cs{Cite},
@@ -9353,6 +9354,18 @@ Memoize should be loaded by writing |\RequirePackage{memoize}| (rather than
 \section{Varia}
 
 \subsectionclearpagefalse
+
+
+\subsection{Changelog}
+
+The changelogs of Memoize, Advice and CollArgs can be found in the
+documentation directory of the respective package, i.e.\ in
+\code{\meta{texmf}/doc/generic/\meta{package}/CHANGELOG.md}.  They are written
+in the MarkDown format.  Here are direct links to these changelogs on
+CTAN:
+\href{https://mirrors.ctan.org/macros/generic/memoize/CHANGELOG.md}{Memoize},
+\href{https://mirrors.ctan.org/macros/generic/advice/CHANGELOG.md}{Advice},
+\href{https://mirrors.ctan.org/macros/generic/collargs/CHANGELOG.md}{CollArgs}.
 
 \subsection{Known issues}
 \label{sec:known-issues}
