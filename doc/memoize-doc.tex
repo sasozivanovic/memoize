@@ -7452,7 +7452,7 @@ headers.
 
 \begin{doc}{
     key={name=outer handler,par=\meta{\hologo{TeX} code},
-      desc=initially and default: see below},
+      desc=initially and default: \refcmd{AdviceCollector}},
   }
 
   This key declares the \meta{\hologo{TeX} code} as the outer handler component
@@ -7510,8 +7510,7 @@ headers.
     more practical.)
   \end{itemize}
 
-  This key is initially set to an internal control sequence which merely
-  invokes the collector by executing \refcmd{AdviceCollector}; in other words,
+  This key is initially set to \refcmd{AdviceCollector}; in other words,
   the initial outer handler leaves all the work to the collector and the inner
   handler.  There is no need to specifically set up the outer handler when
   using the inner handler. Executing this key without a value restores it to
@@ -7539,7 +7538,7 @@ headers.
   While this manual occasionally states that the initial argument collector is
   \refcmd{CollectArguments} of package CollArgs, this is, if we're precise,
   incorrect on two counts.  For one, the initial collector is not a CollArgs
-  command, but a macro which acts as the ``bridge'' between Advice
+  command, but an internal macro which acts as the ``bridge'' between Advice
   and CollArgs. Second, the initial collector does not really invoke
   \refcmd{CollectArguments}, but its cousin, \refcmd{CollectArgumentsRaw},
   which allows Advice (and Memoize) to fine tune its behaviour

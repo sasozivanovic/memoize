@@ -203,7 +203,7 @@
     % commands, as assigned by |\advice@setup@init@command|.
     run conditions/.default=\AdviceRuntrue,
     bailout handler/.default=\relax,
-    outer handler/.default=\advice@default@outer@handler,
+    outer handler/.default=\AdviceCollector,
     collector/.default=\advice@CollectArgumentsRaw,
     collector options/.value required,
     raw collector options/.value required,
@@ -324,7 +324,7 @@
 \def\advice@setup@init@common{%
   \def\AdviceRunConditions{\AdviceRuntrue}%
   \def\AdviceBailoutHandler{\relax}%
-  \def\AdviceOuterHandler{\advice@default@outer@handler}%
+  \def\AdviceOuterHandler{\AdviceCollector}%
   \def\AdviceCollector{\advice@CollectArgumentsRaw}%
   \def\AdviceCollectorOptions{}%
   \def\AdviceInnerHandler{\advice@error@noinnerhandler}%
@@ -762,14 +762,6 @@
 %     This conditional is set by the run conditions macro to signal whether we
 %     should run the outer (true) or the bailout (false) handler.
 \newif\ifAdviceRun
-% \end{macro}
-% 
-% \begin{macro}{\advice@default@outer@handler}
-%   The default outer handler merely executes the argument collector.  Note
-%   that it works for both commands and environments.
-\def\advice@default@outer@handler{%
-  \AdviceCollector
-}
 % \end{macro}
 % 
 % \begin{macro}{\advice@CollectArgumentsRaw}
