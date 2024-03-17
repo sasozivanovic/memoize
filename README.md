@@ -15,7 +15,7 @@ developed and documented alongside Memoize. Package Advice implements a generic
 framework for extending the functionality of selected commands and
 environments, and package CollArgs provides a command which can determine the
 argument scope of any command whose argument structure conforms to
-[xparse](https://ctan.org/pkg/xparse)'s argument specification.
+[LaTeX3 argument specification](https://www.latex-project.org/help/documentation/usrguide.pdf).
 
 See [INSTALL.md](INSTALL.md) for instructions on how to generate runtime files
 and compile the documentation.
@@ -28,5 +28,5 @@ any later version.  The latest version of this license is in
 https://www.latex-project.org/lppl.txt and version 1.3c or later is part of all
 distributions of LaTeX version 2008 or later.
 
-This work has the LPPL maintenance status `maintained'.  The Current Maintainer
-of this work is Sašo Živanović (saso.zivanovic@guest.arnes.si).
+This work has the LPPL maintenance status `maintained`.  The Current Maintainer
+of this work is Sašo Živanović (`saso.zivanovic@guest.arnes.si`).
