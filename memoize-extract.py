@@ -72,6 +72,7 @@ def error(short, long):
     if not args.quiet:
         print(ERROR[None].format(short = short, long = long, header = header))
     if log:
+        short = short.replace('\\', '\\string\\')
         long = long.replace('\\', '\\string\\')
         print(
             ERROR[args.format].format(
@@ -82,13 +83,14 @@ def error(short, long):
     endinput()
     
 def warning(text):
+    if text and not args.quiet:
+        print(WARNING[None].format(text = text, header = header, indent = indent))
     if log:
+        text = text.replace('\\', '\\string\\')
         print(
             WARNING[args.format].format(
                 text = text, texindent = texindent, package_name = package_name),
             file = log)
-    if not args.quiet:
-        print(WARNING[None].format(text = text, header = header, indent = indent))
     global exit_code
     exit_code = 10
     
@@ -96,6 +98,7 @@ def info(text):
     if text and not args.quiet:
         print(INFO[None].format(text = text, header = header, indent = indent))
         if log:
+            text = text.replace('\\', '\\string\\')
             print(
                 INFO[args.format].format(
                     text = text, texindent = texindent, package_name = package_name),

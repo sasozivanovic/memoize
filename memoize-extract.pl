@@ -86,6 +86,7 @@ sub error {
         print(STDOUT "$_\n");
     }
     if ($log) {
+        $short =~ s/\\/\\string\\/g;
         $long =~ s/\\/\\string\\/g;
         $_ = $ERROR{$format};
         s/\$short/$short/;
@@ -98,18 +99,19 @@ sub error {
 
 sub warning {
     my $text = shift;
-    if ($log) {
-        $_ = $WARNING{$format};
-        s/\$texindent/$texindent/;
-        s/\$text/$text/;
-        print(LOG "$_\n");
-    }
     if (! $quiet) {
         $_ = $WARNING{''};
         s/\$header/$header/;
         s/\$indent/$indent/;
         s/\$text/$text/;
         print(STDOUT "$_\n");
+    }
+    if ($log) {
+        $_ = $WARNING{$format};
+        $text =~ s/\\/\\string\\/g;
+        s/\$texindent/$texindent/;
+        s/\$text/$text/;
+        print(LOG "$_\n");
     }
     $exit_code = 10;
 }
@@ -124,6 +126,7 @@ sub info {
         print(STDOUT "$_\n");
         if ($log) {
             $_ = $INFO{$format};
+	    $text =~ s/\\/\\string\\/g;
             s/\$texindent/$texindent/;
             s/\$text/$text/;
             print(LOG "$_\n");
