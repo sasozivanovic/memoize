@@ -427,7 +427,7 @@ if __name__ == '__main__':
         info(f"Extracting new externs listed in '{mmz_file}' from '{pdf_file}'")
         done_message = "Done (there was nothing to extract)"
         indent = '  '
-        texindent = '\space\space '
+        texindent = r'\space\space '
 
         # \paragraph{Process \texttt{.mmz}}
 
@@ -485,12 +485,12 @@ if __name__ == '__main__':
                         except pdfrw.errors.PdfParseError as err:
                             error(rf"File '{pdf_file}' seems corrupted. Perhaps you "
                                   rf"have to load Memoize earlier in the preamble",
-                                  f"In particular, Memoize must be loaded before "
-                                  f"TikZ library 'fadings' and any package "
-                                  f"deploying it, and in Beamer, load Memoize "
-                                  f"by writing \RequirePackage{{memoize}} before "
-                                  f"\documentclass{{beamer}}. "
-                                  f"This was the error thrown by Python: \n{err}")
+                                  rf"In particular, Memoize must be loaded before "
+                                  rf"TikZ library 'fadings' and any package "
+                                  rf"deploying it, and in Beamer, load Memoize "
+                                  rf"by writing \RequirePackage{{memoize}} before "
+                                  rf"\documentclass{{beamer}}. "
+                                  rf"This was the error thrown by Python: \n{err}")
                     # Does the page exist?
                     if page_n >= len(pdf.pages):
                         error(rf"I cannot extract page {page_n} from '{pdf_file}', "
