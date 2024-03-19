@@ -53,7 +53,7 @@ GetOptions(
     "yes|y"   => \$yes,
     "all|a"   => \$all,
     "prefix|p=s" => \@prefixes,
-    "quiet|q|?" => \$quiet,
+    "quiet|q" => \$quiet,
     "help|h|?" => \$help,
     "version|V"  => \$print_version,
     ) or die $usage;
