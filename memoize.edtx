@@ -557,7 +557,7 @@
   memo dir/.default=\jobname,
   no memo dir/.style={prefix={#1.}},
   no memo dir/.default=\jobname,
-  no memo dir,
+  memo dir,
 }
 % \end{key}
 %   
