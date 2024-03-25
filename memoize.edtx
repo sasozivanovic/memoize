@@ -514,14 +514,16 @@
 % 
 % \begin{key}{mkdir, mkdir command}
 %   Should we create the memo/extern directory if it doesn't exist?  And which
-%   command should we use to create it?  There is no initial value for the
-%   latter, because |mkdir| cannot be executed out of the box, but note that
-%   |extract=perl| and |extract=python| will set the extraction script with
-%   option |--mkdir| as the value of |mkdir command|.
+%   command should we use to create it?  Initially, we attempt to create this
+%   directory, and we attempt to do this via |memoize-extract.pl --mkdir|. The
+%   roundabout way of setting the initial value of |mkdir command| allows
+%   |extract=python| to change the initial value to |memoize-extract.py
+%   --mkdir| only in the case the user did not modify it.
+\def\mmz@initial@mkdir@command{\mmzvalueof{perl extraction command} --mkdir}
 \mmzset{
   mkdir/.is if=mmz@mkdir,
   mkdir command/.store in=\mmz@mkdir@command,
-  mkdir command={},
+  mkdir command/.expand once=\mmz@initial@mkdir@command,
 }
 % The underlying conditional \cs{ifmmz@mkdir} is only ever used in
 % |\mmz@maybe@mkmemodir| below, which is itself only executed at the end of
@@ -2376,7 +2378,6 @@
       \mmzvalueof{perl extraction options}%
     }%
     \mmz@check@extraction@log{perl}%
-    \def\mmz@mkdir@command{\mmzvalueof{perl extraction command} --mkdir}%
   },
   perl extraction command/.initial=memoize-extract.pl,
   perl extraction options/.initial={\space
@@ -2393,7 +2394,11 @@
       \mmzvalueof{python extraction options}%
     }%
     \mmz@check@extraction@log{python}%
-    \def\mmz@mkdir@command{\mmzvalueof{python extraction command} --mkdir}%
+    % Change the initial value of |mkdir command| to |memoize-extract.py
+    % --mkdir|, but only in the case the user did not modify it.
+    \ifx\mmz@mkdir@command\mmz@initial@mkdir@command
+      \def\mmz@mkdir@command{\mmzvalueof{python extraction command} --mkdir}%
+    \fi
   },
   python extraction command/.initial=memoize-extract.py,
   python extraction options/.initial={\space
