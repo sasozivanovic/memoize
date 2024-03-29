@@ -457,16 +457,10 @@
   recompile/.code={\let\mmz@mode\mmz@mode@recompile},
 }
 % \end{key}
-% 
 % \begin{key}{prefix}
-%   Key |path| executes the given keylist in path |/mmz/path|, to determine the
-%   full \emph{path prefix} to memo and extern files
-%   (\MS\ref{sec:tut:memodir},\ref{sec:memos}): |relative|, true by default,
-%   determines whether the location of these files is relative to the current
-%   directory; |dir| sets their directory; and |prefix| sets the first, fixed
-%   part of their basename; the second part containing the MD5 sum(s) is not
-%   under user control, and neither is the suffix.  These subkeys will be
-%   initialized a bit later, via |no memo dir|.
+%   Key |prefix| determines the location of memo and extern files
+%   (|\mmz@prefix@dir|) and the first, fixed part of their basename
+%   (|\mmz@prefix@name|).
 \mmzset{%
   prefix/.code={\mmz@parse@prefix{#1}},
 }
@@ -474,7 +468,7 @@
 %   This macro stores the detokenized expansion of |#1| into |\mmz@prefix|,
 %   which it then splits into |\mmz@prefix@dir| and |\mmz@prefix@name| at the
 %   final |/|.  The slash goes into |\mmz@prefix@dir|.  If there is no slash,
-%   |\mmz@prefix@dir| is empty.
+%   |\mmz@prefix@dir| is empty; in particular, it is empty under |no memo dir|.
 \begingroup
 \catcode`\/=12
 \gdef\mmz@parse@prefix#1{%
@@ -521,6 +515,8 @@
 %   --mkdir| only in the case the user did not modify it.
 \def\mmz@initial@mkdir@command{\mmzvalueof{perl extraction command} --mkdir}
 \mmzset{
+  % This conditional is perhaps a useless leftover from the early versions, but
+  % we let it be.
   mkdir/.is if=mmz@mkdir,
   mkdir command/.store in=\mmz@mkdir@command,
   mkdir command/.expand once=\mmz@initial@mkdir@command,
@@ -532,7 +528,8 @@
 \mmz@mkdirtrue
 % We only attempt to create the memo directory if |\ifmmz@mkdir| is in effect
 %   and if both |\mmz@mkdir@command| and |\mmz@prefix@dir| are specified (i.e.\
-%   non-empty).
+%   non-empty).  In particular, no attempt to create it will be made when |no
+%   memo dir| is in effect.
 \def\mmz@maybe@mkmemodir{%
   \ifmmz@mkdir
     \ifdefempty\mmz@mkdir@command{}{%
@@ -546,12 +543,11 @@
 % \end{key}
 % 
 % \begin{key}{memo dir, no memo dir}
-%   Shortcuts for two common settings of |path| keys.  The default |no memo
-%   dir| will place the memos and externs in the current directory, prefixed
-%   with |#1.|, where |#1| defaults to (unquoted) |\jobname|.  Key |memo dir|
+%   Shortcuts for two handy settings of |prefix|.  Key |no memo dir| will
+%   place the memos and externs in the current directory, prefixed with |#1.|,
+%   where |#1| defaults to (unquoted) |\jobname|.  The default |memo dir|
 %   places the memos and externs in a dedicated directory, |#1.memo.dir|; the
-%   filenames themselves have no prefix.  Furthermore, |memo dir| triggers the
-%   creation of the directory.
+%   filenames themselves have no prefix.
 \mmzset{%
   memo dir/.style={prefix={#1.memo.dir/}},
   memo dir/.default=\jobname,

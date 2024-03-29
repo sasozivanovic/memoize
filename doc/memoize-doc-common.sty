@@ -162,8 +162,8 @@
   }%
 }
 
-\RenewDocumentCommand\url{ O{} D(){} m }{%
-  {\hypercolor{url}{#1}\href{#2#3}{\texttt{#3}}}}
+\RenewDocumentCommand\url{ o D(){} m }{%
+  {\IfValueT{#1}{\hypercolor{url}{#1}}\href{#2#3}{\texttt{#3}}}}
 
 \def\pkgcolor{black}
 \NewDocumentCommand\pkg{O{\pkgcolor}m}{{%

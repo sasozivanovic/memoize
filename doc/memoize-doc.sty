@@ -42,8 +42,6 @@
 \usepackage{forest}
 \useforestlibrary{edges}
 
-% \usepackage[extract=latex]{memoize}
-% \usepackage{memoize}
 \usepackage[infoshow]{tracefnt}
 
 \tcbuselibrary{xparse,breakable}
@@ -65,7 +63,12 @@
   \AdviceOriginal#1\pgfeov
 }
 
-\newcommand\introboxtitle[1]{\strut\textcolor{emphcolor}{\textbf{#1}}}
+\NewDocumentCommand\introboxtitle{om}{%
+  \strut
+  \textcolor{emphcolor}{%
+    \IfValueT{#1}{\hypertarget{#1}}{\textbf{#2}}%
+  }%
+}
 
 \usepackage{fancyhdr}
 \usepackage[skip=0.3\baselineskip plus 2pt]{parskip}
@@ -85,6 +88,7 @@
 }
 \SetEnumitemKey{comma}{itemjoin={{, }}}
 \SetEnumitemKey{and}{itemjoin={{, }}, itemjoin*={{, and }}}
+\setlist[itemize,enumerate]{itemsep=0pt plus 1pt minus 2pt}
 
 % \usepackage{lstdoc} % this must be loaded before hyperref
 %\usepackage{lstautogobble} % todo: does not work!
@@ -351,7 +355,7 @@
   interior style={left color=emphcolor, right color=white},
 }
 \let\oldparagraph\paragraph
-\def\paragraphskip{3.25ex \@plus1ex \@minus.2ex}
+\def\paragraphskip{3.25ex \@plus1ex \@minus1ex}
 \RenewDocumentCommand\paragraph{sm}{%
   \mmznext{disable}%
   \@startsection{paragraph}{4}{\z@}{\paragraphskip}{-1em}{\paragraph@box}{#2}%
@@ -711,6 +715,20 @@
 
 \usepackage{varioref}
 
+\NewDocumentCommand\TeXLive{o}{%
+  {%
+    \IfValueT{#1}{\hypercolor{url}{#1}}%
+    \href{https://www.tug.org/texlive/}{\hologo{TeX}~Live}%
+  }%
+  \xspace
+}
+\NewDocumentCommand\MiKTeX{o}{%
+  {%
+    \IfValueT{#1}{\hypercolor{url}{#1}}%
+    \href{https://miktex.org}{MiK\hologo{TeX}}%
+  }%
+  \xspace
+}
 
 % \usepackage{caption}
 % \captionsetup{labelformat=empty}

@@ -15,9 +15,9 @@
 
 %</!lst>
 \mmzset{deactivate=\tikz}
-\newcommand{~\mmztikz~}[2][]{~\mmz~{%
-  \tikz[#1]{#2}%
-}}
+\NewDocumentCommand{~\mmztikz~}{ O{} m }{%
+  ~\mmz~{\tikz[#1]{#2}}%
+}
 %<!lst>\begin{document}
 Compare ~\tikz~{\node{this picture which \emph{won't} be externalized};} to
 ~\mmztikz~{\node{this picture which \emph{will} be externalized}}

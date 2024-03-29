@@ -1,5 +1,5 @@
 \mmzset{
-  memo dir,                     % Put the memo and extern files into a subdirectory.
-  extract=python,               % Use the Python-based extern extraction method.
-  memoize=circuitikz,           % Are you working on electrical circuits all the time?
+  extract=python,             % Use the Python-based extern extraction method.
+  auto={circuitikz}{memoize}, % Are you working on electrical circuits all the time?
+  prefix=memos/,              % Use one memo directory for all documents in a folder.
 }

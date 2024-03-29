@@ -137,10 +137,14 @@
     generic={name=TEXMF\_OUTPUT\_DIRECTORY, label=TEXMF_OUTPUT_DIRECTORY,
       index annotation={environment variable, or variable in
         \reffile[into index=false]{texmf.cnf}}},
+    generic={name=TEXLIVE\_WINDOWS\_TRY\_EXTERNAL\_PERL,
+      label=TEXLIVE_WINDOWS_TRY_EXTERNAL_PERL,
+      index annotation={variable in \reffile[into index=false]{texmf.cnf}}},
     generic={name=openout\_any, label=openout_any,
       index annotation={variable in \reffile[into index=false]{texmf.cnf}}},
     generic={name=openin\_any, label=openin_any,
       index annotation={variable in \reffile[into index=false]{texmf.cnf}}},
+    file={pkg=latexmk, name=memoize\_latexmkrc, label=memoize_latexmkrc},
   }%
   \docindex{%
     cmd={name=pdfprimitive, see={\refcmd[into index=false,short]{primitive}}},
@@ -286,7 +290,7 @@
 \end{tcolorbox}
 
 \begin{tcolorbox}[
-    title={\introboxtitle{How} does Memoize save your time?},
+    title={\introboxtitle[How]{How} does Memoize save your time?},
   ]
   There is a reason why \TikZ uses an entire compilation cycle to produce a
   single externalized picture: \TeX\ itself can only produce a single PDF per
@@ -420,131 +424,78 @@
 Good news: using Memoize can be as easy as writing
 \EmphVerbatim{\usepackage{memoize}} in the preamble.
 
-Bad news: Memoize won't work out of the box.  The culprit is the extern
-extraction --- the process which ships the externalized graphics from the main
-document into separate extern files; for details, see the title page
-illustration and the ``How'' box in the Introduction.  For the extraction to
-work, you will probably have to install some additional software, and you might
-also have to allow your \hologo{TeX} to execute the extraction script.  But
-there's a silver lining: once Memoize is set up, it is set up for good.
+Bad news: Memoize won't work out of the box.  For optimal operation, it
+requires additional software.  The culprit is extern extraction --- the process
+which ships the externalized graphics from the main document into separate
+extern files; for details, see the title page illustration and the
+\hyperlink{How}{``How''} box in the Introduction.  But there's a silver
+lining: once Memoize is set up, it is set up for good.
 
 \begin{tcolorbox}[title=What do I have to do?]
-
   In principle, all you have to do for Memoize to work \emph{under the default
-    configuration} is install Perl library
-  \hreftt{https://metacpan.org/pod/PDF::API2}{PDF::API2}; see the Perl section
-  below for the installation guideline.
-
+    configuration} is install (\href{https://www.perl.org}{Perl} and) Perl
+  library \hreftt{https://metacpan.org/pod/PDF::API2}{PDF::API2} by following
+  the installation guidelines below.
 \end{tcolorbox}
-
-Consult section~\ref{sec:extraction} if you want to use an extraction method
-other than the default \refmmz{extract=perl}-based method or adapt Memoize to
-your particular workflow (for example, if you're compiling via a Makefile).
-
-If you installed Memoize through the package manager of your \hologo{TeX}
-distribution, your system should be already set up to allow the execution of
-Memoize's extraction scripts.  If this is not the case, please contact either
-me or the maintainer of your distribution; until the issue is resolved, you
-have to either
-\begin{enumerate}[(a)]
-\item compile documents loading Memoize with command-line option
-  \docref{-shell-escape} (on \hologo{TeX}Live) or
-  \docref{--enable-write18} (on MiK\hologo{TeX}), or
-\item set up the restricted shell escape mode to allow for the execution of
-  \refscript{memoize-extract.pl}.\footnote{\label{fn:shell-escape-commands}On
-    \hologo{TeX}Live, |tlmgr conf texmf shell\_escape| will tell you which shell
-    escape mode is currently in effect (|p| = partial = restricted, |f| = disabled
-    and |t| = enabled); if necessary, use |tlmgr conf texmf shell\_escape p| to
-    set it to restricted.  Then, execute \code{tlmgr conf texmf
-      shell\_escape\_commands} to get the list of currently allowed commands
-    \meta{current}, then add the script by executing \code{tlmgr conf texmf
-      shell\_escape\_commands \meta{current},memoize-extract.pl}.
-
-    On MiK\hologo{TeX}, the shell escape mode can be reported by |initexmf
-    --show-config-value=[Core]ShellCommandMode|, and restricted mode set by
-    |initexmf --set-config-value=[Core]ShellCommandMode=Restricted|, and you
-    get the \meta{current} list by \code{initexmf
-      --show-config-value=[Core]AllowedShellCommands[]}, and add to it by
-    \code{initexmf
-      --set-config-value=[Core]AllowedShellCommands[]=\meta{current};memoize-extract.pl}.}
-\end{enumerate}
 
 Once you have set up your system, I advise you to follow the instructions in
 section~\ref{sec:tut:test} to test if the setup was successful.
 
+\paragraph{Installing Perl}
+If you're running GNU/Linux or macOS, Perl is almost certainly already
+installed on your system; if it is not, install it using your system's package
+manager.
 
-\begingroup
-\setlength\intextsep{0pt}
+On Windows, you will most likely have to install Perl, if you haven't done so
+yet.  I have tested Memoize with \href{https://strawberryperl.com}{Strawberry
+  Perl}; see \url(https://){www.perl.org} for other options.
 
-\vspace{-1ex}% manual
+Having to install Perl on Windows also applies to users of \TeXLive;
+the built-in Perl won't suffice, as Memoize requires a PDF processing library
+not shipped with \TeXLive.  Furthermore, you will also have to convince
+\TeXLive to use the so-called external Perl; from the command prompt
+(|cmd.exe|):
 
-\paragraph{Perl} If you're running GNU/Linux or macOS, Perl is most likely
-already installed on your system.  On Windows, you might have to install it. I
-tested Memoize with Strawberry Perl, available
-at \url(https://){strawberryperl.com}; see \url(https://){www.perl.org} for
-other options.  On \hologo{TeX}Live on Windows, you should also set
-\code{tlmgr conf texmf TEXLIVE\_WINDOWS\_TRY\_EXTERNAL\_PERL 1}.
+\begin{tcolorbox}[fontupper=\small]
+  |tlmgr conf texmf TEXLIVE_WINDOWS_TRY_EXTERNAL_PERL 1|
+\end{tcolorbox}%
 
-\begin{wrapfigure}[2]{r}{0.25\linewidth}
-  \raisebox{0.5mm}[\dimexpr\height-0.5mm][\depth]{%
-    \mmznext{no verbatim}
-    \begin{tcolorbox}[
-        % example title=Installing the required library in Perl,
-        % attach shifted boxed title to top right,
-        % top=2.5mm,
-        fontupper=\small,
-        left=2mm, 
-        force nobeforeafter,
-      ]
-      |cpan PDF::API2|
-    \end{tcolorbox}%
-  }%
-\end{wrapfigure}
+\paragraph{Installing the PDF processing library}
 Once Perl is installed on your system, you will also need to install the PDF
 processing library \hreftt{https://metacpan.org/pod/PDF::API2}{PDF::API2} (or
 its fork, \hreftt{https://metacpan.org/pod/PDF::Builder}{PDF::Builder}).  On
 some GNU/Linux distributions, this library is included as a package --- just
 use your package manager to install it.  Otherwise, install it from
 \hreftt{https://www.cpan.org}{CPAN} using
-\hreftt{https://metacpan.org/pod/CPAN}{cpan} tool, as shown in the box.
+\hreftt{https://metacpan.org/pod/CPAN}{cpan} tool:
 
-\vspace{-1ex}% manual
+\begin{tcolorbox}[fontupper=\small]
+  |cpan PDF::API2|
+\end{tcolorbox}%
 
-\paragraph{Python} Installing (Python and) the required Python library is only
-necessary if you decide to use the Python-based extraction script; see
-section~\ref{sec:extraction}.
+\bigskip
 
-If you're running GNU/Linux, install Python using your package manager.
-Otherwise, download the installer from \url(https://){www.python.org}.  You can
-install Python even if you don't have administrator privileges: simply uncheck
-the ``Install launcher for all users'' when running the installer.
-
-\begin{wrapfigure}[2]{r}{0.25\linewidth}
-  \raisebox{0.2mm}[\dimexpr\height-0.2mm][\depth]{%
-    \mmznext{no verbatim}
-    \begin{tcolorbox}[
-        % example title=Installing the required library in Python,
-        % attach shifted boxed title to top right,
-        % top=2.5mm,
-        fontupper=\small,
-        left=2mm,
-        nobeforeafter,
-      ]
-      |pip install pdfrw2|
-    \end{tcolorbox}%
-  }%
-\end{wrapfigure}
-
-Once Python is installed on your system, you will also need to install the PDF
-processing library |pdfrw2| library (or its predecessor, |pdfrw|, which will
-work just as well).  Some GNU/Linux distributions offer this library as a
-package; if this is not the case, and on other operating systems, install it
-from \href{https://pypi.org}{The Python Package Index}
-using \href{https://pip.pypa.io}{pip} tool (if you
-run \href{https://pip.pypa.io}{pip} as a superuser, it will install the library
-system-wide, otherwise locally), as shown in the box.
-
-\endgroup % \intextsep
+\begin{tcolorbox}[title=The default settings won't cut it for me!]
+  Here are some situations which require alternative settings (with a brief
+  hint):
+  \begin{itemize}
+  \item If you are compiling your documents using \pkg{latexmk}, install Perl
+    and the PDF processing library as detailed above, integrate the example
+    configuration file \reffile{memoize_latexmkrc} (shipped with \pkg{latexmk}
+    since version~4.84) in your |latexmkrc|, and (optionally) set
+    \code{\refmmz{extract}=\refmmz{extract=no}}.  Note that
+    \reffile{memoize_latexmkrc} can be adjusted to perform Python-based
+    extraction.
+  \item If you cannot install Perl or one of the required PDF processing
+    libraries, or extern extraction using these libraries fails, install Python
+    and library |pdfrw2| and then use
+    \code{\refmmz{extract}=\refmmz{extract=python}}.
+  \item If neither Perl or Python are an option, use
+    \code{\refmmz{extract}=\refmmz{extract=tex}}.  However, this option is slow
+    and requires some fiddling to set up.
+  \end{itemize}
+  For details, consult sections~\ref{sec:extraction} and~\ref{sec:ref:externs}.
+\end{tcolorbox}
 
 
 \subsection{The configuration commands}
@@ -557,53 +508,53 @@ or sometimes just \meta{key}.  The \meta{keylist} argument is processed by packa
 \pkg{pgfkeys} (see \PGFmanual{88}), so you can use all the bells and whistles
 of that fantastic PGF utility (like easily defining your own styles).
 
-Here's some examples of \refcmd{mmzset}.  For one, to whet your appetite to learn
-about the various keys in the \refkeypath{/mmz} path, but more importantly now, to show
-you that white-space is irrelevant in the \meta{keylist} argument, so you can
-format the keylist as you wish --- as long as it does not contain an empty
-line.\footnote{I like to add a comma after the final key as well, as shown in
-  the bottom left example, because if I don't, I often forget to insert it when
-  I add more keys.}
+Here's some examples of \refcmd{mmzset}.  For one, to whet your appetite to
+learn about the various keys in the \refkeypath{/mmz} path, but more
+importantly now, to show you that white-space is irrelevant in the
+\meta{keylist} argument, so you can format the keylist as you wish --- as long
+as it does not contain an empty line (bottom right).  I like to add a comma
+after the final key (bottom left), because if I don't, I often forget to insert
+it when I add more keys.
 
 \begin{tcbraster}[raster columns=4, raster valign=bottom]
   \begin{tcboxedraster}[raster columns=1]{blankest, raster multicolumn=3, valign=bottom}
     \begin{tcblisting}{listing only}
-~\mmzset~{memo dir,recompile,memoize=circuitikz}
+~\mmzset~{recompile,auto={circuitikz}{memoize},deactivate=\tikz}
     \end{tcblisting}
     \begin{tcblisting}{listing only}
-~\mmzset~{memo dir, recompile, memoize=circuitikz}
+~\mmzset~{ auto = \myref {ref}, meaning to context = \foo }
     \end{tcblisting}
   \end{tcboxedraster}
   \begin{tcblisting}{listing only}
 ~\mmzset~{
-  memo dir,
-  recompile,
+  no memo dir,
+  verbatim,
   padding=2in}
   \end{tcblisting}
 \end{tcbraster}\par
 \begin{tcbraster}[raster columns=4, raster valign=top]
   \begin{tcblisting}{listing only, raster multicolumn=2}
 ~\mmzset~{
-  memo dir, readonly,
-  memoize=\qrcode{om},
-  deactivate=\label,
-  disable,
+  auto    = \qrcode{memoize, args=om},
+  auto    = \mycite{cite},
+  extract = python,
+  record  = makefile,
 }
   \end{tcblisting}
   \begin{tcblisting}{listing only}
 ~\mmzset~{
-  memo dir,
-  recompile,
+  trace,
+  verb,
   % comment
-  padding=2in
+  capture=vbox
 }
   \end{tcblisting}
   \begin{tcblisting}{listing only, bad}
 ~\mmzset~{
-  memo dir,
-  recompile,
-  
-  padding=2in
+  extract=tex,
+  no verbatim,
+
+  prefix=memos/
 }
   \end{tcblisting}
 \end{tcbraster}
@@ -646,7 +597,10 @@ once, only the final invocation takes effect.
 I like to follow |\usepackage{memoize}| by \refcmd{mmzset}, but if you prefer,
 you can also provide the document-wide configuration as \Emph{package options.}
 For example, the following are equivalent --- both will force
-re-externalization of all the externs in the document.
+re-externalization of all the externs in the document.\footnote{Note that a
+  slash (\code{/}) may not appear unbraced within package options.  While this
+  is usually not an issue, it prevents using \pkg{pgfkeys} key handlers.  The
+  workaround is to use key \refmmz{options}.}
 
 \begin{tcbraster}[raster columns=2, raster equal height=rows]
   \begin{tcblisting}{listing only}
@@ -669,8 +623,7 @@ files, the location of this file determines whether it applies system-wide,
 user-wide or directory-wide.  The directory-wide location is clearly the
 directory itself.  The user-wide and system-wide location depend on the
 \hologo{TeX} distribution and which format(s) you want to use
-\reffile{memoize.cfg} with:\footnote{The |memoize| subfolder is not
-  obligatory.}
+\reffile{memoize.cfg} with:
 
 \begin{center}
   \meta{the relevant texmf tree root}|/tex/|\meta{format}|/memoize/memoize.cfg|
@@ -678,13 +631,14 @@ directory itself.  The user-wide and system-wide location depend on the
 
 You can say |generic| for \meta{format} if you want the configuration file to
 be accessible by all formats, otherwise \meta{format} should be one of the
-formats supported by Memoize: |plain|, |latex| or |context|.  The texmf root
-directory depends on the distribution, here's how to figure out what it is:
+formats supported by Memoize: |plain|, |latex| or |context|.  The |memoize|
+subfolder shown above is not obligatory.  The texmf root directory depends on
+the distribution, here's how to figure out what it is:
 
 \begin{tcboxedraster}
   [raster columns=1, raster valign=top, raster force size=false]
   {title=The roots of TEXMF trees}
-\begin{tcolorbox}[title={\hologo{TeX} Live\hfill\url[white](https://){tug.org/texlive}}]
+\begin{tcolorbox}[title={\TeXLive[white]\hfill\url[white](https://){tug.org/texlive}}]
   \begin{description}[itemsep=0pt]
   \item[user-wide]
     |tlmgr conf texmf TEXMFHOME|
@@ -699,48 +653,44 @@ directory depends on the distribution, here's how to figure out what it is:
   \smallskip
   Don't forget to run |texhash| or |mktexlsr| after creating \reffile{memoize.cfg}.
 \end{tcolorbox}
-\begin{tcolorbox}[title={MiK\hologo{TeX}\hfill\url[white](https://){miktex.org}}, before upper={\parskip0.3\baselineskip plus 2pt\relax},]
-  Open the MiK\hologo{TeX} Console, select the ``Settings'' page and then the
+\begin{tcolorbox}[title={\MiKTeX[white]\hfill\url[white](https://){miktex.org}},
+    before upper={\parskip0.3\baselineskip plus 2pt\relax},]
+  Open the \MiKTeX Console, select the ``Settings'' page and then the
   ``Directories'' tab.
 
   If there is a folder marked with the ``Generic'' purpose with attribute
   ``User'' (for a user-wide \reffile{memoize.cfg}) or ``Common'' (for a system-wide
     \reffile{memoize.cfg}), that's the folder you are looking for.  Otherwise, create a
-  folder following MiK\hologo{TeX}'s instructions and add it to the list.
+  folder following \MiKTeX's instructions and add it to the list.
   
   Don't forget to click ``Refresh file name database'' (in the ``Tools'' menu
-    of the MiK\hologo{TeX} Console) after creating \reffile{memoize.cfg}.
+    of the \MiKTeX Console) after creating \reffile{memoize.cfg}.
 \end{tcolorbox}
 \end{tcboxedraster}
 
 Note that a directory config file will override the user config, and the user
 config will in turn override the system-wide one.  This should not concern you
 too much, because you will probably only want to use the user-wide config
-anyway,\cprotect\footnote{If you want to have a directory-wide configuration
-  based on (rather than overriding) the user-wide configuration, your could
-  write down the real user-wide config in, say, |memoize.user.cfg| (located
-  user-wide), and then |\input| this file by both the user-wide and the
-  directory-wide \reffile{memoize.cfg}.  Of course, the same logic can be used to base
-  a user-wide config on the system-wide one.} which might look something like
-this:
+anyway, which might look something like this:
 
 \ExampleName{memoize}
 \makeexample{\examplename.cfg.c1}
 \tcbinputexample[.cfg]{listing only}
 
-I recommend including \refmmz{memo dir} in your \reffile{memoize.cfg},
-as shown in the first line.  It reduces the clutter in the document
-directories; see section~\ref{sec:tut:memodir} for details.
-
-The \refmmz{extract} line concludes the story on ``permanently'' selecting the
-extraction method, started in chapter~\ref{sec:setup}.  As the final note,
-observe that \refmmz{extract} and other extraction-related keys like
-\refmmz{perl extraction options} only make sense as a package option or as a
+(The \refmmz{extract} line above ``permanently'' selects the Python-based
+internal extraction method, which uses script \refscript{memoize-extract.py}.
+Note that \refmmz{extract} and other extraction-related keys like \refmmz{perl
+  extraction options} only make sense as a package option or as a
 \refcmd{mmzset} key in \reffile{memoize.cfg}.  They will have no effect as a
-\refcmd{mmzset} key in the document, because the extraction happens while the
-package is loaded.
+\refcmd{mmzset} key in the document, because extraction happens while the
+package is loaded.)
 
-
+If you want to have a directory-wide configuration based on (rather than
+overriding) the user-wide configuration, your could write down the ``real''
+user-wide config in, say, |memoize.user.cfg| (located user-wide), and then
+|\input| this file by both the user-wide and the directory-wide
+\reffile{memoize.cfg}, overriding what you want in the latter.  Of course, the
+same logic can be used to base a user-wide config on the system-wide one.
 
 \section{Your first memoized documents}
 \label{sec:tut}
@@ -838,8 +788,8 @@ ignores any spaces surrounding the given code.
 
 Both the \refenv{memoize} environment and the \refcmd{mmz} command take a
 configuration keylist as the optional argument, so their full syntax is
-\cs{begin}\marg{\refenv{memoize}}\oarg{keylist}\meta{code to be
-  externalized}\cs{end}\marg{\refenv{memoize}} and and
+\cs{begin}\braces{\refenv{memoize}}\oarg{keylist}\meta{code to be
+  externalized}\cs{end}\braces{\refenv{memoize}} and
 \refcmd{mmz}\oarg{keylist}\marg{code to be externalized}.  The keys given in
 this optional argument take precedence over the keys set by \refcmd{mmzset}.
 Note that \refcmd{mmznext} does not apply to manual memoization.
@@ -992,9 +942,9 @@ Memoize to reexternalize the picture.  The simplest way to do that is by using
 the \Emph{\refmmz{recompile}} key; below, we write
 \refcmd{mmznext}\bracestt{\refmmz{recompile}} just before the picture and
 compile the document again (remember from section~\ref{sec:mmzset} that
-whatever keys we provide through \refcmd{mmznext} only apply to the instance of
-automemoization).  After the compilation, we may (and should) remove the
-\refmmz{recompile} directive (otherwise, Memoize will produce the extern page
+whatever keys we provide through \refcmd{mmznext} only apply to the next instance of
+automemoization).  After the compilation, we should remove the
+\refmmz{recompile} directive, otherwise, Memoize will produce the extern page
 again and again).
 
 \tcbinputexample[.tex][.c3]{
@@ -1161,11 +1111,11 @@ comma-separated list of command and environment names, e.g.\
 
 Memoize offers several variants of \refmmz{meaning to context}, applicable to
 various types of commands.  For example, the easiest way of making the picture
-depend on the definition of a \pkg{pgfkeys} style is to use handler
+depend on the definition of a \pkg{pgfkeys} style is to use key handler
 \Emph{\refkey{/handlers/.meaning to context}} --- note the dot in the name, and
 observe that \code{emph/.meaning to context} below is executed within
-\cs{tikzset}, not \refcmd{mmzset}; see \PGFmanual{87} to learn about key
-handlers.
+\cs{tikzset} (where key \code{emph} was defined), not \refcmd{mmzset}; see
+\PGFmanual{87} to learn about key handlers.
 
 \ExampleName{meaning-to-context}
 \makeexample{\examplename.pdf N=2}
@@ -1200,13 +1150,89 @@ single picture, as \refkey{/handlers/.meaning to context} cannot be used within
 \label{sec:tut:memodir}
 
 Memoize produces lots of auxiliary files.  For each piece of memoized code, it
-produces two \emph{memo} files (we will learn more about these in
-section~\ref{sec:memos}), which will be joined by the extern PDF upon the next
-compilation.\footnote{If you're using the \hologo{TeX}-based extraction, each
-  extern (|.pdf|) is also accompanied by a log file (|.log|) produced during
-  the compilation that extracted the extern.} You can recognize these files
-easily: their names start with the name of your document and include one or two
-long hexadecimal numbers.
+produces two \emph{memo} files (a \emph{c-memo} and a \emph{cc-memo}; we will
+learn more about them in section~\ref{sec:memos}), which will be joined by the
+extern PDF once extern extraction takes place --- under the default settings,
+upon the next compilation.  To top it off, changing the memoized code will
+produce new memo and extern files, with the old files staying in place.
+
+To reduce the clutter (imagine the directory listing as below, but for a
+document with a hundred externalized pictures which you have been working on
+for a month) in the output directory (which is normally the directory where you
+keep your source files and where the document PDF is created), Memoize keeps
+memos and externs in the \emph{memo directory}, named \code{\meta{document
+    name}.memo.dir} by default.  The names of these files consist of one or two
+long hexadecimal numbers, followed by extension |.memo| for memos and |.pdf|
+for externs.  The first hexadecimal number in these filenames is the MD5 sum of
+the memoized code and that's how Memoize knows which memo belongs to which
+piece of code.  The second hexadecimal number is the MD5 sum of the
+\emph{context}, a concept crucial for properly externalizing code containing
+cross-references and such; we will discuss this concept in detail in
+section~\ref{sec:cross-referencing}.
+
+Besides memos and externs, Memoize produces two other auxiliary files, the
+\dmmz record file and an extraction log with suffix |.mmz.log|.  These files
+facilitate the communication between the \hologo{TeX} part of the package and
+the extern extraction scripts; see section~\ref{sec:record-files} for
+details.\cprotect\footnote{If you're using the \hologo{TeX}-based extraction
+  (\code{\refmmz{extract}=\refmmz{extract=tex}}), each extern (|.pdf|) is also
+  accompanied by a \hologo{TeX} log file (|.log|) produced during the
+  compilation that extracted the extern.}
+
+\ExampleName{clean-house}
+\makeexample{\examplename.pdf}
+{%
+  \relaxmmzcommands
+  \edef\marshal{%
+    \noexpand\def\noexpand\mynewextern\examplename
+  }\marshal.memo.dir/#1-#2.pdf\relax{%
+    \forestset{
+      append={[#1.memo\vphantom{p},pointcolor,name=cmemo]},
+      append={[#1-#2.memo\vphantom{p},pointcolor,name=ccmemo]},
+      append={[#1-#2.pdf,pointcolor,name=extern]},
+    }%
+  }
+  \tcbinputexample{
+    middle=1mm,
+    comment={%
+      \begin{tcolorbox}[reset, left=2mm, top=0mm, bottom=0mm, right=0mm,
+          my boxed title=the folder contents (after two compilations),
+          attach shifted boxed title to top right,
+        ]
+        \begin{forest}
+          before typesetting nodes={for tree={
+              font=\scriptsize\tt, grow'=0, folder, s sep=0}},
+          [\meta{the document folder}, inner xsep=0
+            [\examplename.tex]
+            [\examplename.pdf]
+            [\normalsize\dots, no edge]
+            [\examplename.mmz, pointcolor, name=mmz]
+            [\examplename.mmz.log, pointcolor, name=mmzlog]
+            [\examplename.memo.dir, pointcolor, name=memodir,
+              TeX={%
+                \def\mmzNewExtern##1##2##3##4{\mynewextern##1\relax}%
+                \input{\examplepath.mmz}%
+              },
+            ]
+          ]
+          \draw[dotted, every node/.style={anchor=west, font=\footnotesize\strut}]
+          (ccmemo.east) -- +(1.5em,0pt) node(temp){the cc-memo}
+          (mmz.east) -- (mmz -| temp.west) node{the \dmmz file}
+          (mmzlog.east) -- (mmzlog -| temp.west) node{the extraction log}
+          (memodir.east) -- (memodir -| temp.west) node{the memo directory}
+          (cmemo.east) -- (cmemo -| temp.west) node{the c-memo}
+          (extern.east) -- (extern -| temp.west) node{the extern}
+          ;
+        \end{forest}
+      \end{tcolorbox}
+    },
+  }
+}
+
+The clean house (clean in the sense that most of the auxiliary files reside in
+a dedicated directory) depicted above is courtesy of key \refmmz{memo dir},
+which is in effect by default since Memoize version 1.3.0.  Here's how a dirty
+house, which we can produce using key \refmmz{no memo dir}, would look like:
 
 \ExampleName{dirty-house}
 \makeexample{\examplename.pdf}
@@ -1222,8 +1248,9 @@ long hexadecimal numbers.
     }%
   }
   \tcbinputexample{
+    middle=1mm,
     comment={%
-      \begin{tcolorbox}[reset, left=2mm, bottom=0mm,
+      \begin{tcolorbox}[reset, left=2mm, top=0mm, bottom=0mm,
           my boxed title=the folder contents (after two compilations),
           attach shifted boxed title to top right,
         ]
@@ -1238,7 +1265,8 @@ long hexadecimal numbers.
             [\examplename.tex]
             [\examplename.pdf]
             [\normalsize\dots, no edge]
-            [\examplename.mmz, tikz={\draw[dotted](.east)--+(5em,0ex) node [anchor=south west, yshift=-1ex, align=justify, text width=14em, font=\footnotesize]{This is another auxiliary file produced by Memoize. We will mention it at the end of the section.};}]
+            [\examplename.mmz, pointcolor]
+            [\examplename.mmz.log, pointcolor]
           ]
         \end{forest}
       \end{tcolorbox}
@@ -1246,140 +1274,73 @@ long hexadecimal numbers.
   }
 }
 
-To top it off, changing the memoized code will produce new memo (and extern)
-files, with the old files staying in place.  This is all by design --- the
-first hexadecimal number in these filenames is the MD5 sum of the memoized code
-and that's how Memoize knows which memo belongs to which piece of
-code\footnote{The second hexadecimal number in the memo and extern filenames is
-  the MD5 sum of the \emph{context}.  The context is crucial for properly
-  externalizing code containing cross-references, see
-  section~\ref{sec:cross-referencing} for details.} --- but it has the downside
-that the folder containing your document can get quite cluttered (imagine the
-directory listing as above, but for a document with a hundred externalized
-pictures which you have been working on for a month).
+I assume \refmmz{no memo dir} will only be useful in very special situations,
+when Memoize is unable to create the memo directory.  Presumably, this could
+only happen if neither Perl nor Python is available on the system (the author
+is then most likely falling back to \hologo{TeX}-based extraction by issuing
+\code{\refmmz{extract}=\refmmz{extract=tex}}).  For details, see
+section~\ref{sec:extraction}.
 
-\ExampleName{clean-house}
+We have seen that Memoize keeps the document folder reasonably clean by writing
+most of its auxiliary files into the memo directory.  However, you might
+sometimes want to perform some additional clean-up by removing all or certain
+memos and externs.  Perhaps to return to the blank slate after a major
+redefinition of macros which the externalized pictures depend on, perhaps due
+to strange errors which you believe might be caused by Memoize (in that case,
+please write to me!), or perhaps just to save some disk space --- remember that
+typically, many memos and externs are \emph{stale} anyway, i.e.\ they reflect
+some previous state of your document and are not needed anymore.  Whatever the
+reason for the clean-up, rest assured that it is always safe to delete memos
+(|.memo|) and externs (|.pdf|s residing next to memos and bearing the same
+basename), or even the entire \code{\meta{document name}.memo.dir} directory,
+in the sense that you cannot lose data this way.
 
-I like to keep a clean house by instructing Memoize to put memos and friends
-into their own directory.  This can be achieved by writing
-\refcmd{mmzset}\braces{\Emph{\refmmz{memo dir}}} into the preamble (anytime
-after loading the package).\footnote{The \refmmz{memo dir} key is in fact
-  merely an abbreviation for \code{\refmmz{prefix}=\string\jobname.memo.dir};
-  use this key if you need more control over the name and location of the
-  auxiliary files. Furthermore, there is also the \refmmz{no memo dir} key,
-  which reverts the configuration back to the dirty default.}  This will put
-the memo and the extern files into folder \meta{document name}|.memo.dir| (and
-it will also omit the \meta{document name} prefix in their filenames, because
-it makes no sense to repeat it there).
+Stale memos and externs may be deleted without any repercussions whatsoever
+(unless you later revert to a previous version of the document, of course).  In
+fact, you might \emph{want} to delete them periodically, or at least once you
+finish writing the document.  As it is hard to figure out which memos and
+externs are stale, Memoize ships with a clean-up script: writing
+\EmphTT{\refscript{memoize-clean.pl}} \meta{document name} (substitute |.py|
+for |.pl| to use the Python rather than the Perl version of the script) into
+the command line will delete all memos and externs belonging to the document
+which are not used in the current version of the document (the script inspects
+the \dmmz file to see which memos and externs are currently in use).
 
-\makeexample{\examplename.pdf}
-{%
-  \relaxmmzcommands
-  \edef\marshal{%
-    \noexpand\def\noexpand\mynewextern\examplename
-  }\marshal.memo.dir/#1-#2.pdf\relax{%
-    \forestset{
-      append={[#1.memo\vphantom{p},pointcolor]},
-      append={[#1-#2.memo\vphantom{p},pointcolor]},
-      append={[#1-#2.pdf,pointcolor]},
-    }%
-  }
-  \tcbinputexample{
-    comment={%
-      \begin{tcolorbox}[reset, left=2mm, bottom=0mm,
-          my boxed title=the folder contents (after two compilations),
-          attach shifted boxed title to top right,
-        ]
-        \begin{forest}
-          before typesetting nodes={for tree={
-              font=\scriptsize\tt, grow'=0, folder, s sep=0}},
-          [\meta{the document folder}, inner xsep=0
-            [\examplename.tex]
-            [\examplename.pdf]
-            [\normalsize\dots, no edge]
-            [\examplename.mmz]
-            [\examplename.memo.dir,pointcolor,
-              % tikz={\draw[dotted](.east)--+(9em,0ex) node [anchor=south west, yshift=-1ex, font=\footnotesize, emphshade=black!5!white, text width=15em, align=justify]{You need to create this directory by hand, or allow Memoize to create it by adding |mkdir| to the list of restricted shell escape commands.};},
-              tikz={\draw[dotted](.east)--+(9em,0ex) node [anchor=west, font=\footnotesize, emphshade=black!5!white]{This directory must be created, somehow.};},
-              TeX={%
-                \def\mmzNewExtern##1##2##3##4{\mynewextern##1\relax}%
-                \input{\examplepath.mmz}%
-              },
-            ]
-          ]
-        \end{forest}
-      \end{tcolorbox}
-    },
-  }
-}
+To delete all memos and externs, even the ones currently in use, execute the
+clean-up script with option \refscript{memoize-clean.pl--all}.  Users of
+\pkg{latexmk} can this perform this full clean-up by the regular \code{latexmk
+  -c}, as long as they have integrated the example configuration file
+\reffile{memoize_latexmkrc} into their |latexmkrc|.
 
-\begin{tcolorbox}[title={Why is \refmmz[link color=white]{memo dir} not the default?}]
-  The \code{clean-house} example most likely compiled just fine, and you are
-  wondering why \refmmz{memo dir} is not in effect by default.  Well, out of
-  the box, \hologo{TeX} cannot create directories, so it is the fact that
-  Memoize \emph{can} create them (at least under the default settings) which
-  requires explanation.  By default, Memoize triggers extraction by executing
-  the Perl extraction script \refscript{memoize-extract.pl}, and it is this
-  script which actually creates the memo directory.  However, not everybody
-  will necessarily use this script \dots\ so \refmmz{memo dir} should not be
-  the default.
+If you delete a memo or an extern currently in use, you will trigger
+recompilation of their code --- so deleting a memo or an extern is actually a
+perfectly legal alternative to using the \refmmz{recompile} key!  The only
+issue with triggering recompilation of a specific extern in this way is that
+the extern might be hard to locate.  When the number of externs is small
+enough, visual inspection via file manager thumbnails works great.  When the
+number is greater, it might be best to invoke \refmmz{direct ccmemo input} and
+use the inverse search function of your \hologo{TeX} editor, but one could also
+use \refmmz{trace} or grep the c-memos.
 
-  The Python extraction script \refscript{memoize-extract.pl}, used when
-  \refmmz{extract}|=|\refmmz{extract=python}, works the same as the Perl
-  variant.  With \hologo{TeX}-based extraction
-  \refmmz{extract}|=|\refmmz{extract=tex}, things are different.  If you are
-  compiling the document with a full shell escape mode
-  (\docref{-shell-escape}), Memoize successfully creates the directory with the
-  system command |mkdir|.\footnote{|mkdir| is the default value of key
-    \refmmz{mkdir command}, but executing the extraction method
-    \refmmz{extract=perl} or \refmmz{extract=python} overrides this default.}
-  However, if you're using the restricted shell escape mode, the attempt to
-  create the directory won't succeed unless you include |mkdir| among the
-  restricted shell escape commands (see footnote~\ref{fn:shell-escape-commands}
-  on page~\pageref{fn:shell-escape-commands} for how to do this, but note that
-  it is not recommended).
+\begin{tcolorbox}[warning]
+  Deleting memos and externs is never an irreversible operation, as you can
+  always recreate them, but it is still wise to be cautious when cleaning up.
+  For one, avoid running \refscript{memoize-clean.pl} after a compilation which
+  produced errors; a failed compilation can lead to an incomplete \dmmz file,
+  which can in turn lead to over-deletion.  Another bad idea is cleaning up
+  after disabling Memoize for a part of a document, for the same reason.
 
-  If you are using external extraction, you have to create directory
-  \texttt{\examplename.memo.dir} by hand, prior to the first compilation of the
-  document (with Memoize).  This is the case even if you are performing the
-  extraction using one of the shipped extraction methods, and it is due to the
-  fact that Memoize needs the memo directory to be present even before extern
-  extraction, because it writes the |.memo| files into the same directory.
-  (When Memoize uses the extraction script to create the memo directory, it
-  does so completely independently of extraction, and prior to creating any
-  |.memo| files.)
+  All that said, Memoize takes some precautions itself.  It will cowardly
+  refuse to perform the clean-up when the \dmmz file is missing the
+  end-of-file marker (|\endinput|), assuming that this indicates a fatal error
+  in the previous compilation.  It will do the same in case the \dmmz file is
+  absent or empty.  The latter is assumed to be a result of a globally
+  \refmmz{disable}d memoization, but note that clean-up will be performed if
+  memoization was disabled using package \refpkg{nomemoize}: that package does not
+  touch the \dmmz file, so cleaning up should work as intended.
 \end{tcolorbox}
 
-I actually suggest adding \refcmd{mmzset}\braces{\refmmz{memo dir}} into your
-user-wide \reffile{memoize.cfg} (see section~\ref{sec:memoize.cfg} for details
-on this file).  This will keep all your houses clean --- without work! --- as
-Memoize will automatically use the memo directory for any document your create.
 
-It is always safe to delete memos (|.memo|) and externs (|.pdf|s residing next
-to memos), in the sense that you cannot lose data this way.\footnote{The same
-  goes for the extern |.log| files produced by the \hologo{TeX}-based
-  extraction.}
-
-\begin{itemize}
-
-\item Many memos and externs are typically stale anyway, i.e.\ they reflect
-  some previous state of your document and are not needed anymore.  These files
-  can be deleted without any repercussions whatsoever (unless you later revert
-  to a previous version of the document, of course).  In fact, you might
-  \emph{want} to delete them periodically, or at least once you finish writing
-  the document.  As it is hard to figure out which memos/externs are stale,
-  Memoize ships with a clean-up script: writing \refscript{memoize-clean.pl}
-  \meta{document name}\dmmz (replace |.pl| with |.py| if you use Python rather
-  than Perl) into the command line will delete all the \emph{stale} auxiliary
-  files belonging to the document.
-
-\item If you delete a memo or an extern currently in use, you will trigger
-  recompilation of their code --- so deleting a memo or an extern is actually a
-  perfectly legal alternative to using the \refmmz{recompile} key!\footnote{For the
-    users of the \hologo{TeX}-based extraction: deleting the |.log| file does
-    \emph{not} trigger recompilation.}
-
-\end{itemize}
 
 It is also safe to delete the \dmmz file (or any other kind of record file, see
 section~\ref{sec:record-files}) residing next to your document's |.pdf|.  The
@@ -1407,12 +1368,17 @@ process --- work sensibly in this kind of situation?  More precisely, can the
 book and the individual chapters share the memos and the externs?  Yes they
 can!  If we instruct Memoize to use the same memo directory for both the book
 job and the chapter jobs, then we can externalize graphics when compiling a
-chapter and have the externs included when compiling the book (and vice
-versa).\footnote{Package \pkg{docmute} makes \hologo{LaTeX} ignore the preamble of
-  the chapter file when including this file into the main document.} All we
-need to do is use our old friend \refmmz{memo dir} from section~\ref{sec:tut:memodir}
---- we see now that this setting is good for more than just keeping a clean
-house!
+chapter and have the externs included when compiling the book (and vice versa).
+As shown below,\footnote{Package \pkg{docmute} makes \hologo{LaTeX} ignore the
+  preamble of the chapter file when including this file into the main
+  document.} all we need to do is use key \refmmz{memo dir} mentioned in
+section~\ref{sec:tut:memodir}.  When given a value, \code{\refmmz{memo
+    dir}=\meta{name}}, it effectively makes Memoize pretend it is working on
+document \code{\meta{name}.tex}, in the sense that it stores the memos and
+externs in directory \code{\meta{name}.memo.dir}.\footnote{Use key
+  \refmmz{prefix} if you need need more control over the name and location of
+  the auxiliary files.}  (As you can see below on the left, \meta{name} may
+contain a directory part.)
 
 \ExampleName{book}
 \makeexample{\examplename.tex.c1}
@@ -1428,22 +1394,24 @@ In the above example, the individual chapters reside in files stored in the
 \code{\refmmz{memo dir}=chapters/book} (rather than \code{\refmmz{memo
     dir}=book} or just \refmmz{memo dir}).  However, Memoize has no trouble
 with a situation where the main file and the chapters reside in the same
-folder; the setup is even simpler, as we then say \code{\refmmz{memo dir}=book}
-in both the book and the chapter preamble.  The more complicated situation was
-chosen to point out the following potential problem with the setup where the
-chapters reside in a subdirectory.
+folder; the setup is even simpler, as we may then omit the \refmmz{memo dir}
+invocation in the main file.  The more complicated situation was chosen to
+point out the following potential problem with the setup where the chapters
+reside in a subdirectory.
 
 If you're anything like me, you would first go for having a memo directory
-immediately contained in the project directory (so |examples/book.memo.dir|
-above) and set up \refmmz{memo dir} as shown below.  Well, this won't work, or
-at least it won't work with the vanilla \hologo{TeX} Live, because \hologo{TeX}
-will refuse to \emph{write} into (memo) files outside the directory where it
-was executed,\cprotect\footnote{In \hologo{TeX} Live, the \reffile{texmf.cnf}
-  option controlling this behaviour is called \docref{openout_any}.  By default, it is
-  set to |p| (paranoid), which ``disallow[s] opening dot files [and]
-  \emph{going to parent directories}, and restrict[s] absolute paths to be
-  under \docref{TEXMFOUTPUT}'' (emphasis mine).}  and this is precisely what
-the chapter compilation is asked to do below.
+immediately contained in the project directory and set up \refmmz{memo dir} as
+shown below.  Well, this won't work, or at least it won't work with the vanilla
+\TeXLive, because \hologo{TeX} will refuse to \emph{write} into (memo)
+files outside the directory where it was
+executed,\cprotect\footnote{\label{fn:openout_any}In \TeXLive, the
+  \reffile{texmf.cnf} option controlling this behaviour is called
+  \docref{openout_any}.  By default, it is set to |p| (paranoid), which
+  ``disallow[s] opening dot files [and] \emph{going to parent directories}, and
+  restrict[s] absolute paths to be under \docref{TEXMFOUTPUT}'' (emphasis
+  mine).  (In \MiKTeX, the option is called
+  |[Core]AllowUnsafeOutputFiles|.)}  and this is precisely what the chapter
+compilation is asked to do below.
 
 \begin{tcboxedraster}[raster columns=2, raster valign=top]{blankest, bad}
   \begin{tcblisting}{example title, title=the main file, listing only}
@@ -1495,19 +1463,19 @@ set), you will have a reasonably up-to-date set of externs.
 
   This is the trick in a nutshell, but to make it really work we have to
   address one further issue: the original document and the region have to share
-  memos and externs.  This happens automatically if the original document sets
-  \refmmz{memo dir} explicitly (e.g.\ if a document called |doc.tex| contains
-  \code{\refmmz{memo dir}=doc} in the preamble), but I'm lazy and don't want to
-  write this in every document --- if I have to do that, what's the point of
-  \refmmz{memo dir} I put into my \reffile{memoize.cfg} in
-  section~\ref{sec:tut:memodir}?  Fortunately, the region file starts with
-  |\message{ !name(|\meta{original document name}|.tex)}| to indicate the
-  origin.  The complicated part of the code below (everything following
-  \refcmd{mmzset}\braces{\refmmz{readonly}} parses this header to extract the
-  \meta{original document name}, which is then fed to \refmmz{memo dir}.  Now,
-  the trick works automatically for any document.\footnote{The assumption here
-    is that \refmmz{memo dir} is in effect for the original document.  If not,
-    the trick can be adapted to use \refmmz{prefix}.}
+  memos and externs.  This happens automatically if the original document
+  provides an explicit value to \refmmz{memo dir}, e.g.\ if a document called
+  |doc.tex| contains \code{\refmmz{memo dir}=doc} in the preamble, but I'm lazy
+  and don't want to write this in every document.  Fortunately, the region file
+  starts with |\message{ !name(|\meta{original document name}|.tex)}| to
+  indicate the origin.  The complicated part of the code below (everything
+  following \refcmd{mmzset}\braces{\refmmz{readonly}}) parses this header to
+  extract the \meta{original document name}, which is then fed to \refmmz{memo
+    dir}.  Now, the trick works automatically for any document.\footnote{More
+    precisely, the trick works for every document where \refmmz{memo dir} is in
+    effect --- which, remember, is the default.  It is easy enough, however, to
+    adapt the trick to use \refmmz{no memo dir} or an arbitrary
+    \refmmz{prefix}.}
 
   \tcbinputexample{
     title=\tt memoize.cfg,
@@ -1558,11 +1526,11 @@ one) appearing on all overlays.  The key may be invoked either from a prior
   section~\ref{sec:tut:verbatim} to learn what that is.}  or executed in the
 memoized code itself.  The example below illustrates the latter option, and
 also shows that we may invoke it via its full path,
-\refkeypath{/mmz}|/|\refmmz{per overlay}, when listed among options processed by
-\pkg{pgfkeys}.\footnote{Read section~\ref{sec:per-overlay} to learn how the
-  Beamer support is implemented.  The implementation only uses Memoize's public
-  interface, so understanding it should help if you need to support some other
-  presentation package.}
+\refkeypath{/mmz}|/|\refmmz{per overlay}, when listed among \TikZ options, or
+any other options processed by \pkg{pgfkeys}.\footnote{Read
+  section~\ref{sec:per-overlay} to learn how the Beamer support is implemented.
+  The implementation only uses Memoize's public interface, so understanding it
+  should help if you need to support some other presentation package.}
 
 \tcbinputexample{
   listing options app={firstline=3},
@@ -1646,7 +1614,7 @@ document.  In our example, however, the default padding is not enough --- the
 pin is only partially visible.\footnote{You might wonder why I didn't make the
   default padding much bigger, like 10 inches.  \hologo{TeX} wouldn't be
   bothered (unless the resulting extern size exceeded its maximum dimension),
-  but you might be, because with such a large default padding, all the externs
+  but you might be, because with such a large default padding, all externs
   would be huge, most often bigger than the document pages, and remember that
   the externs are first dumped into the document, where they can bother you.}
 
@@ -1761,7 +1729,7 @@ of your document, at least if you intend to distribute it in electronic form,
 for two reasons:
 \begin{itemize}
 \item An externalized picture cannot contain hyperlinks.  Any hyperlinks (or
-  hyperlink anchors) contained in the original picture will silently disappear
+  hyperlink anchors) contained in the original picture silently disappear
   during the production of the extern.
 \item When the document contains many externs, the size of the resulting PDF
   can be several times the size of the PDF compiled without externalization.
@@ -1796,54 +1764,29 @@ can be sure that not a single memo or extern was loaded or produced.
 There is one issue you might need to resolve manually before package
 \refpkg{nomemoize} works as intended, though.  If you have used any
 \refkeypath{/mmz} keys outside \refcmd{mmzset}, you need to list them in
-\refcmd{nommzkeys}.  For example, if you used \refmmz{per overlay} in the manner
-illustrated in section~\ref{sec:tut:beamer}, i.e.\ as
+\refcmd{nommzkeys}.  For example, if you used \refmmz{per overlay} in the
+manner illustrated in section~\ref{sec:tut:beamer}, i.e.\ as
 \refkeypath{/mmz}|/|\refmmz{per overlay} among the \TikZ keys, you need to
 write \refcmd{nommzkeys}\braces{\refmmz{per overlay}} into the document
-preamble.
+preamble.  (This command may also appear in a document loading \pkg{memoize},
+where it does nothing.)
 
 Another thing you might want to do once you have produced the final version of
 the document (in fact, just before you disable Memoize for good) is clean up.
-As we saw in sections~\ref{sec:tut:memodir} and~\ref{sec:tut:redefinitions},
-Memoize produces a lot of auxiliary files (memos and externs) and it keeps the
-old versions around!  Once your document is prepared, you can reduce the
-clutter (and save some disk space) by deleting memos and externs belonging to
-the work-in-progress versions of your document, and keep only those used in the
-final version.
-
-You could achieve this by deleting all the memos and externs (if you're using
-the \refmmz{memo dir} directive, this amounts to the entire contents of the
-memo directory) and compiling your document for the final couple of times.
-However, there is an easier (but \hologo{TeX}-external) way: on the command
-line, change into the directory containing your (main) document and write
-\EmphTT{\refscript{memoize-clean.pl}} \meta{document name}\dmmz (substitute
-|.py| for |.pl| to use Python rather than Perl). The script will inspect the
-contents of the \dmmz record file to see which memos and externs were used in
-the final compilation, and delete all other memos and externs belonging to the
-given document.
-
-\begin{tcolorbox}[warning]
-  Deleting memos and externs is never an irreversible operation, as you can
-  always recreate them, but it is still wise to be cautious when cleaning up.
-  For one, avoid cleaning up after a compilation which produced errors; a
-  failed compilation can lead to an incomplete \dmmz file, which can in turn
-  lead to over-deletion.  Another bad idea is cleaning up after disabling
-  Memoize for a part of a document, for the same reason.
-
-  All that said, Memoize takes some precautions itself.  It will cowardly
-  refuse to perform the clean-up when the \dmmz file is missing the
-  end-of-file marker (|\endinput|), assuming that this indicates a fatal error
-  in the previous compilation.  It will do the same in case the \dmmz file is
-  absent or empty.  The latter is assumed to be a result of a globally
-  \refmmz{disable}d memoization, but note that clean-up will be performed if
-  memoization was disabled using package \refpkg{nomemoize}: that package does not
-  touch the \dmmz file, so cleaning up should work as intended.
-\end{tcolorbox}
+As we saw in section~\ref{sec:tut:memodir}, Memoize produces a lot of auxiliary
+files (memos and externs) and it keeps the old versions around!  Once your
+document is prepared, you can reduce the clutter (and save some disk space) by
+deleting memos and externs belonging to the work-in-progress versions of your
+document, and keep only those used in the final version.  Return to
+section~\ref{sec:tut:memodir} to remember how to deploy script
+\refscript{memoize-clean.pl} to achieve this.
 
 As the final note, memos and externs (cleaned-up or not) may be copied (along
 the document source) to another directory or machine, where they should be
-picked up by Memoize.  There is no need to copy the \dmmz file (assuming that
-the document PDF contains no extern pages waiting for extraction).
+picked up by Memoize.  When they are copied to another directory, one should
+clearly set \refmmz{memo dir} or \refmmz{prefix} accordingly.  There is no need
+to copy the \dmmz file (assuming that the document PDF contains no extern pages
+waiting for extraction).
 
 
 \section{Digging deeper}
@@ -2021,27 +1964,30 @@ What are your options in this kind of a situation?
 Remember that in Memoize, externalization is a two-step process.  First,
 externs are typeset on separate pages of the main document, called extern
 pages.  Then, these extern pages are extracted out of the main document PDF
-into extern files.  The process is illustrated on the title page.
+into extern files, using a program external to \hologo{TeX}.  The process is
+illustrated on the title page; in this section, we learn how and when the
+extraction process can be triggered.
 
 Memoize is flexible in terms of which piece of software is used to perform
 extern extraction.  It ships with three \emph{extraction methods}:
 
 \begin{description}
 \item[\refmmz{extract=perl}] A Perl script, \refscript{memoize-extract.pl}.
-  This method is the default because it is fast and because Perl is usually
-  already installed on a system running \hologo{TeX}.  However, you will most
+  This method is the default because it is fast and because Perl is already
+  installed on many systems running \hologo{TeX}.  However, you will most
   likely still need to install the PDF processing library
   \hreftt{https://metacpan.org/pod/PDF::API2}{PDF::API2}, or its fork
-  \hreftt{https://metacpan.org/pod/PDF::Builder}{PDF::Builder}; the
-  installation guidelines can be found in section~\ref{sec:install}.
+  \hreftt{https://metacpan.org/pod/PDF::Builder}{PDF::Builder}.  This is as
+  easy as executing \code{cpan PDF::API2} on the command line.
 \item[\refmmz{extract=python}] A Python script, \refscript{memoize-extract.py}.
   This method is even faster than the Perl script, though not by much.  Try it
   out if you have problems installing Perl or the required libraries, or if the
   Perl script chokes on your document (see section~\ref{sec:troubleshooting}
-  for the list of known issues).  Besides Python ($\geq 3.8$), you will also
-  need the Python library \hreftt{https://pypi.org/project/pdfrw/}{pdfrw} or
-  \hreftt{https://pypi.org/project/pdfrw2/}{pdfrw2}.  For the installation
-  guidelines, see section~\ref{sec:install}.
+  for the list of known issues).  Besides \href{https://www.python.org}{Python}
+  ($\geq 3.8$), you will also need the Python library
+  \hreftt{https://pypi.org/project/pdfrw2/}{pdfrw2}, or its predecessor
+  \hreftt{https://pypi.org/project/pdfrw/}{pdfrw}.  Once again, the
+  installation is a breeze: |pip install pdfrw2|.
 \item[\refmmz{extract=tex}] \hologo{TeX}-based extraction requires no
   additional software, but it is much slower than the scripts.  As \hologo{TeX}
   can only produce a single PDF per compilation, an instance of \hologo{TeX}
@@ -2059,61 +2005,123 @@ providing two \emph{extraction modes}:
   document; more precisely, any externs produced in a compilation are extracted
   during the next compilation.  To choose an extraction method other than the
   default Perl script, load Memoize with the package option
-  \EmphTT{\refmmz{extract}=\meta{extraction method}}.
+  \EmphTT{\refmmz{extract}=\meta{extraction method}}, e.g.\
+  \code{\refmmz{extract}=\refmmz{extract=python}}.
 
-\item[external] Loading Memoize with with package option
+\item[external] Loading Memoize with package option
   \EmphTT{\refmmz{extract}=\refmmz{extract=no}} instructs Memoize to \emph{not}
-  trigger the (internal) extraction.  When instructed to use extraction
-  ``method'' \refmmz{extract=no}, Memoize expects you to trigger the extraction
-  yourself, in any way that is convenient to you: manually from the command
-  line, or automatically through your editor, a Makefile, etc.  --- all Memoize
-  cares about is that the extraction takes place before the next compilation of
-  the document.
+  trigger the (internal) extraction.  Now Memoize expects you to trigger the
+  extraction yourself, in any way that is convenient to you: manually from the
+  command line, or automatically through your editor, a Makefile, etc.  One
+  particularly convenient option is \pkg{latexmk}, which supports Memoize
+  through the example configuration file \reffile{memoize_latexmkrc}.  All
+  Memoize cares about is that the extraction takes place before the next
+  compilation of the document.
 \end{description}
 
 Summing up, the extraction mode and method are selected by providing the
-appropriate value to package option key \refmmz{extract}; the possible values
-are listed in the table below.  Note that this key can only be used as a
-package option, or in \refcmd{mmzset} within \reffile{memoize.cfg}.  In
-particular, it is disabled in the document preamble, because Memoize performs
-extraction while it is loaded.
+appropriate value to key \refmmz{extract}; the possible values are listed in
+the Table~\ref{tab:extraction-methods}.  Note that unless you're using
+\hologo{plainTeX}, this key can only be used as a package option, or in
+\refcmd{mmzset} within \reffile{memoize.cfg}.  In particular, it is disabled in
+the document preamble, because Memoize performs internal extraction while it is
+loaded.
 
-\medskip
-\begin{center}
-  \begin{tabular}{lll}
+\begin{table}[b]
+  \centering
+  \begin{tabular}{llll}
     \toprule
-    extraction method&external program&Memoize invocation\\
+    extraction mode&extraction method&package option&extraction program\\
     \midrule
-    \refmmz{extract=perl}&\refscript{memoize-extract.pl}&\refcmd{usepackage}\braces{\refpkg{memoize}}\footnotemark\\
-    \refmmz{extract=python}&\refscript{memoize-extract.py}&\refcmd{usepackage}\bracketstt{\refmmz{extract}=\refmmz{extract=python}}\braces{\refpkg{memoize}}\\
-    \refmmz{extract=tex}&|pdftex|&\refcmd{usepackage}\bracketstt{\refmmz{extract}=\refmmz{extract=tex}}\braces{\refpkg{memoize}}\\
-    \refmmz{extract=no}&none (external extraction)&\refcmd{usepackage}\bracketstt{\refmmz{extract}=\refmmz{extract=no}}\braces{\refpkg{memoize}}\\
+             &\refmmz{extract=perl}&\code{\refmmz{extract}=\refmmz{extract=perl}}, or none&\refscript{memoize-extract.pl}\\
+    internal &\refmmz{extract=python}&\code{\refmmz{extract}=\refmmz{extract=python}}&\refscript{memoize-extract.py}\\
+             &\refmmz{extract=tex}&\code{\refmmz{extract}=\refmmz{extract=tex}}&|pdftex|\\
+    \midrule
+    external &any&(\code{\refmmz{extract}=\refmmz{extract=no}})&any\\
     \bottomrule
   \end{tabular}%
-  \footnotetext{Or
-    \refcmd{usepackage}\bracketstt{\refmmz{extract}=\refmmz{extract=perl}}%
-    \braces{\refpkg{memoize}}.  This is useful if you have changed the default
-    using \reffile{memoize.cfg}.}%
-\end{center}
-\smallskip
+  \caption{Extraction methods}
+  \label{tab:extraction-methods}
+\end{table}
+
+Strictly speaking, external extraction does not require
+\code{\refmmz{extract}=\refmmz{extract=no}}.  If you extract externs before the
+next compilation takes place, and you do this using
+\refscript{memoize-extract.pl} or \refscript{memoize-extract.py} (without
+option \refscript{memoize-extract.pl--keep}), the extraction script will mark
+externs as extracted (by commenting out the relevant lines in the \dmmz file).
+The internal extraction, which is triggered at the beginning of the next
+compilation, will then find it has nothing to do.  Writing
+\code{\refmmz{extract}=\refmmz{extract=no}} merely saves you the bit of time
+needed for the internal extraction to realize that the externs were already
+extracted.
+
+\paragraph{Internal extraction and shell escape mode}
 
 For internal extraction, \hologo{TeX} must be allowed to execute the external
-program implementing the chosen extraction method.  Both |memoize-extract|
-scripts should be listed among restricted shell escape mode commands in your
-\hologo{TeX} distribution; their execution should therefore be allowed under
-the default, restricted shell escape mode.  However, the |pdftex| program,
-executed by extraction method \refmmz{extract=tex}, is not listed there, nor
-should it be.  If you are forced to use this fallback method, I suggest you
-compile documents loading Memoize under the full shell escape mode, by adding
-command-line option \docref{-shell-escape} (on \hologo{TeX}Live) or
-\docref{--enable-write18} (on MiK\hologo{TeX}) to the invocation of the
-\hologo{TeX} program.  The answers linked from question
-``\href{https://tex.stackexchange.com/q/598818/16819}{How can I enable
-  shell-escape?}''  on \href{https://tex.stackexchange.com}{\hologo{TeX}
-  StackExchange} will tell you how you can ask your editor to do this for you.
+program implementing the chosen extraction method.  If you installed Memoize
+through the package manager of either \TeXLive or \MiKTeX, your system should
+be already set up to allow the execution of Memoize's extraction scripts,
+\refscript{memoize-extract.pl} and \refscript{memoize-extract.py}, so
+\code{\refmmz{extract}=\refmmz{extract=perl}} and
+\code{\refmmz{extract}=\refmmz{extract=python}} should work out of the box.
+Otherwise, you can:
+
+\begin{enumerate}[(a)]
+\item\label{item:fallback-external} perform the extraction externally
+  (\code{\refmmz{extract}=\refmmz{extract=no}}),
+\item\label{item:fallback-full} compile documents loading Memoize with
+  command-line option \docref{-shell-escape} (on \TeXLive) or
+  \docref{--enable-write18} (on \MiKTeX),\footnote{The answers linked
+    from question ``\href{https://tex.stackexchange.com/q/598818/16819}{How can
+      I enable shell-escape?}''
+    on \href{https://tex.stackexchange.com}{\hologo{TeX} StackExchange} will
+    tell you how you can ask your editor to do this for you.} or
+\item\label{item:fallback-restricted} set up the restricted shell escape mode
+  to allow for the execution of \refscript{memoize-extract.pl} and/or
+  \refscript{memoize-extract.py}.
   
-You may use any extraction method to perform external extraction.  The simplest
-option is to use the Perl or the Python script.  Supposing you are doing this
+  On \TeXLive:
+  \begin{enumerate}[1.]
+  \item Execute |tlmgr conf texmf shell_escape| to learn which shell escape
+    mode is currently in effect: |p| = partial = restricted, |f| = disabled and
+    |t| = enabled.
+  \item If necessary, use |tlmgr conf texmf shell_escape p| to select the
+    restricted shell escape mode.
+  \item Execute |tlmgr conf texmf shell_escape_commands| to get the
+    \meta{current} list of allowed commands.
+  \item To add (e.g.) \refscript{memoize-extract.pl} to the list of allowed
+    commands, execute \code{tlmgr conf texmf shell\_escape\_commands
+      \meta{current},memoize-extract.pl}.
+  \end{enumerate}
+
+  On \MiKTeX:
+  \begin{enumerate}[1.]
+  \item Execute |initexmf --show-config-value=[Core]ShellCommandMode| to learn
+    which shell escape mode is currently in effect.
+  \item If necessary, use |initexmf
+    --set-config-value=[Core]ShellCommandMode=Restricted| to select the
+    restricted shell escape mode.
+  \item Execute \code{initexmf
+      --show-config-value=[Core]AllowedShellCommands[]} to get the
+    \meta{current} list of allowed commands.
+  \item To add (e.g.) \refscript{memoize-extract.pl} to the list of allowed
+    commands, execute \code{initexmf
+      --set-config-value=[Core]AllowedShellCommands[]=\meta{current};memoize-extract.pl}
+  \end{enumerate}
+\end{enumerate}
+
+The |pdftex| program, employed by extraction method \refmmz{extract=tex}, is
+normally not listed among the restricted shell escape mode commands, nor should
+it be.  If you are forced to use this fallback extraction method, I suggest
+going for option~\ref{item:fallback-external} or~\ref{item:fallback-full}
+above.
+
+\paragraph{External extraction}
+  
+You may use any extraction method\slash program to perform external extraction.
+The simplest option is to use the Perl or the Python script,
+\refscript{memoize-extract.pl} or \refscript{memoize-extract.py}.  To do this
 manually from the command line, change into the directory containing your
 document, which should contain the auxiliary \dmmz file produced by Memoize,
 and execute:
@@ -2128,21 +2136,93 @@ and execute:
 See sections~\ref{sec:.mmz} and \ref{sec:ref:extraction-perl-python} for
 further details on the \dmmz file and the extraction scripts.
 
-Things are a bit more complicated if you want to use the \hologo{TeX}-based
-extraction method externally, because an instance of |pdftex| needs to be
-invoked for each extern (and these have unwieldy names and can be many in
-number), but Memoize can help you here by producing a shell script or a
-makefile, executing which will extract all the externs at once. To have Memoize
-produce a shell script, use package option
+Things are much more complicated if you want to manually invoke the
+\hologo{TeX}-based extraction method, because an instance of |pdftex| needs to
+be invoked for each extern, and these have unwieldy names and can be many in
+number.  In this case, I suggest asking Memoize for help, which it can do by
+producing a shell script or a makefile, executing which will extract all the
+externs at once. To have Memoize produce a shell script, use key
 \code{\refmmz{record}=\refmmz{record=sh}} (or
-\code{\refmmz{record}=\refmmz{record=bat}} on Windows); package option
+\code{\refmmz{record}=\refmmz{record=bat}} on Windows); key
 \code{\refmmz{record}=\refmmz{record=makefile}} will make a makefile.  By
 default, these files are named |memoize-extract.|\meta{document name} plus the
-|.sh|, |.bat| or |.makefile| suffix.  If neither a shell script nor a makefile
-works for you, you can also define your own kind of \emph{record file}, to be
-processed by the external tool of your choice (and implementation) in order to
-extract the externs; see section~\ref{sec:new-record-file} to learn how to do
-this.
+|.sh|, |.bat| or |.makefile| suffix.\footnote{If neither a shell script nor a
+  makefile works for you, you can also define your own kind of \emph{record
+    file}, to be processed by the external tool of your choice (and
+  implementation) in order to extract the externs; see
+  section~\ref{sec:new-record-file} to learn how to do this.}
+
+All that said, triggering the external extraction manually is probably noone's
+cup of tea.  One appealing option is to use \pkg{latexmk}, which supports
+Memoize since version~4.84.  All you have to do is integrate the example
+configuration file \reffile{memoize_latexmkrc}, shipped with \pkg{latexmk},
+into your |latexmkrc|.  With this configuration file, |latexmk| will trigger
+extraction (using \refscript{memoize-extract.pl} or
+\refscript{memoize-extract.py}) and recompile the source when new externs are
+detected, and include the auxiliary files created by Memoize in a clean-up when
+called with option |-c|.  The suggested configuration allows for the aux and
+out directory to differ, and may be safely used even with documents which do not
+load Memoize.
+
+\paragraph{The memo directory}
+
+Out of the box, Memoize stores memos and externs in a separate directory,
+\code{\meta{document name}.memo.dir}, creating this directory if it does not
+exist.  This behaviour, illustrated in section~\ref{sec:tut:memodir}, is
+trigerred by key \refmmz{memo dir}, which is in effect by default since Memoize
+version~1.3.0.
+
+It is however worth noting that something rather unusual is happening behind
+the scenes here.  Out of the box, \hologo{TeX} cannot create directories, so
+the fact that Memoize \emph{can} create them requires an explanation.  You can
+create a directory in \hologo{TeX} only by executing an external program which
+does that.  However, executing the system command |mkdir| is not allowed by
+default.  This command is considered unsafe, in the sense that it does not
+respect the restrictions imposed by a \hologo{TeX} distribution setting called
+\docref{openout_any} (in \TeXLive; in \MiKTeX, it is called
+|[Core]AllowUnsafeOutputFiles|).  Out of the box, \docref{openout_any} is set
+to |p| (paranoid), which ``disallow[s] opening dot files [and] going to parent
+directories, and restrict[s] absolute paths to be under \docref{TEXMFOUTPUT}.''
+Command |mkdir| violates the second clause of this restriction as it can create
+a directory anywhere on the system, and this is why |mkdir| is \emph{not} the
+initial value of setting \refmmz{mkdir command}, which specifies the system
+command used to create the memo directory.
+
+However, Memoize's extraction scripts \emph{are} considered safe in the sense
+that they respect restrictions imposed by \docref{openout_any}, so Memoize can
+circumvents the |mkdir| issue by assigning these scripts a secondary task:
+executing an extraction script with option
+\refscript{memoize-extract.pl--mkdir} turns it into a restricted |mkdir|, i.e.\
+a ``make directory'' command which respects the restrictions imposed by
+\docref{openout_any}.  Accordingly, option \refmmz{mkdir command} is
+initialized to \code{\refscript{memoize-extract.pl}
+  \refscript{memoize-extract.pl--mkdir}} (and
+\code{\refmmz{extract}=\refmmz{extract=python}} reinitializes it to
+\code{\refscript{memoize-extract.pl} \refscript{memoize-extract.pl--mkdir}}).
+At the end of the day, it is thus an extraction script which actually creates
+the memo directory (in an invocation independent of the internal extraction).
+Therefore, Memoize can create the memo directory on any system which allows its
+extraction scripts to be executed from \hologo{TeX} itself.  Out of the box,
+this is the case with both major distributions, \TeXLive and
+\MiKTeX.
+
+The default \refmmz{memo dir} regime can therefore fail only on a system where
+Memoize's extraction script cannot be executed.  Ignoring the case of the user
+tightening the security, this can only happen when both Perl and Python,
+powering the two variants of the extraction script, are unavailable.  This
+could presumably happen on Mik\hologo{TeX} on Windows, if the user can install
+neither Perl nor Python (note that this does not apply to \TeXLive, as
+\code{\refscript{memoize-extract.pl} \refscript{memoize-extract.pl--mkdir}}
+works with the built-in Perl).  Of course, this situation is undesirable in and
+of itself, as it forces the author to fall back to the slower
+\hologo{TeX}-based extraction by issuing
+\code{\refmmz{extract}=\refmmz{extract=tex}}, but note that it will additionaly
+prevent the execution of the default \refmmz{mkdir command}.  Possible
+workarounds include either undoing the effect of \refmmz{memo dir} by issuing
+\refmmz{no memo dir}, or changing the \refmmz{mkdir command} to a command like
+|mkdir| while allowing \emph{(do this at your own risk)} it to be executed, for
+example by compiling the document with \docref{-shell-escape}.
+
 
 
 \subsection{From cross-references to the context}
@@ -5273,7 +5353,7 @@ on how to handle this properly.
 
   This option primarily exists to allow any key--value pair accepted by
   \refcmd{mmzset} to be used as a package option.  In particular, this applies
-  key handlers (see \PGFmanual{87}), because their invocation includes a slash
+  to key handlers (see \PGFmanual{87}), because their invocation includes a slash
   (|/|).  For example, one cannot directly use
   \begin{center}
     \code{\cs{usepackage}[\refmmz{perl extraction
@@ -6135,53 +6215,60 @@ require.
 \label{sec:ref:dirs}
 
 \begin{doc}{easy,
-    key={name=memo dir,par=\meta{name}, desc={style, default \texttt{\string\jobname}}},
+    key={name=memo dir,par=\meta{name}, desc={style, default \cs{jobname}}},
   }
   A convenient way to store memos and externs in a dedicated directory (see
-  sections~\ref{sec:tut:memodir} and~\ref{sec:tut:multifile} for the tutorial).
+  sections~\ref{sec:tut:memodir} and~\ref{sec:tut:multifile} for the tutorial
+  and an illustration of the resulting directory structure).  Note that since
+  Memoize version 1.3.0, this key is initially in effect.
 
-  Without an argument, this key places these files in subdirectory
-  \meta{document name}|.memo.dir| of the current directory.  With an argument,
-  these files are stored in subdirectory \meta{name}|.memo.dir|.  In both
-  cases, memo and extern filenames contain no prefix, as \meta{name} already
-  occurs in the directory name.
+  This key places memos and externs in subdirectory \meta{name}|.memo.dir| of
+  the output directory, with \meta{name} defaulting to the document name.
+  (Without an argument, these files are thus stored in subdirectory
+  \meta{document name}|.memo.dir|.)  Note that memo and extern filenames are
+  set to contain no prefix; it is unnecessary, as \meta{name} already occurs in
+  the directory name.
 
-  The definition of this style is very simple: |memo
-  dir/.style={|\refmmz{prefix}|={#1.memo.dir/}}| (note the slash).  Feel free
-  to redefine it, or to define another style to suit your needs.
+  Under the hood, this style merely issues ||\refmmz{prefix}|={#1.memo.dir/}|
+  (note the slash).
 \end{doc}
 
-\begin{doc}{easy,key={name=no memo dir,desc=style}}
-  A convenient way to undo the effect of \refmmz{memo dir} and revert to the
-  initial \refmmz{prefix} setting which locates memos and externs in the
-  current directory, with filenames prefixed by \meta{document name}|.| (mind
-  the dot).
+\begin{doc}{easy,key={name=no memo dir,par=\meta{name},
+      desc={style, default=\cs{jobname}}}}
+  A convenient way to undo the effect of \refmmz{memo dir}, such that memos and
+  externs are placed in the output directory, with filenames prefixed by
+  \meta{name}|.| (mind the dot), where \meta{name} defaults to the document
+  name.  See section~\ref{sec:tut:memodir} for an illustration of the resulting
+  directory contents.
+
+  This style is an abbreviation for \code{\refmmz{prefix}={\meta{name}.}}.
 \end{doc}
 
 \begin{doc}{
     key={name=prefix, par=\meta{prefix},
-      desc={no default, initially \texttt{\string\jobname.}}},
+      desc={no default, initially \code{\cs{jobname}.memo.dir/}}},
   }
   This key determines the location of memo and extern files, and the initial
   part of their filenames.
 
-  If \meta{prefix} contains no |/|, memos and externs are stored in the current
+  If \meta{prefix} contains no |/|, memos and externs are stored in the output
   directory, alongside the output PDF, and their filenames begin with
   \meta{prefix} (and continue with the identifier, see below).  For example,
-  this is what happens with the initial value of this key, where memo and
-  extern filenames are prefixed by \meta{jobname} (i.e.\ the name of the
-  document) plus |.| (a dot).  Such a situation is shown in the |dirty-house|
-  example in section~\ref{sec:tut:memodir}.
+  \refmmz{no memo dir} (without an argument) sets \refmmz{prefix} to
+  \code{\cs{jobname}.}, i.e.\ the name of the document plus |.| (a dot).  The
+  resulting situation is depicted in the |dirty-house| example in
+  section~\ref{sec:tut:memodir}.
 
   If \meta{prefix} contains slashes, everything up to the final slash
   determines the directory which memos and externs will be stored into, and the
   part after the final slash determines the starting part of their filenames; a
   slash (|/|) as a directory separator should be used even on Windows, where
   the system directory separator is a backslash (|\|).  For example,
-  \refmmz{memo dir} sets \refmmz{prefix} to |\jobname.memo.dir/|.  As shown in
-  the |clean-house| example in section~\ref{sec:tut:memodir}, this results in
-  memos and externs stored in directory \meta{jobname}|.memo.dir|, with their
-  filenames consisting solely of the identifier.
+  \refmmz{memo dir} (without an argument) sets \refmmz{prefix} to
+  |\jobname.memo.dir/|.  As shown in the |clean-house| example in
+  section~\ref{sec:tut:memodir}, this results in memos and externs stored in
+  directory \meta{jobname}|.memo.dir|, with their filenames consisting solely
+  of the identifier.
   
   In detail, the paths to memos and externs are constructed as shown below,
   where \meta{code md5 sum} and \meta{context md5 sum} identify the memoized
@@ -6208,22 +6295,25 @@ require.
   \begin{tcolorbox}[warning,title=The final slash matters]
     To reiterate, the presence vs.\ absence of a slash (|/|) determines whether
     memos and externs are stored in a dedicated directory or not.  For example,
-    if you want to store memos and externs in directory |memos|, you should set
-    \code{\refmmz{prefix}=memos/}, with the final slash.  Without the final
-    slash, these files would end up in the current directory.
+    if you want to store memos and externs in subdirectory |memos| of the
+    output directory, you should set \code{\refmmz{prefix}=memos/}, with the
+    final slash.  Without the final slash, these files would end up in the
+    output directory.
   \end{tcolorbox}
 
   In principle, the directory specified by this key must already exist.
   However, Memoize does it best to create it for you, and should succeed at
-  least when extraction method is set to \refmmz{extract=perl} or
-  \refmmz{extract=python}.  See also \refmmz{mkdir} and \refmmz{mkdir command}.
+  least when extraction method \refmmz{extract=perl} or \refmmz{extract=python}
+  can be used on the system.  See also \refmmz{mkdir} and \refmmz{mkdir
+    command}.
 
   When invoked from the document body, each invocation of this key records the
-  new prefix by invoking \refmmz{record/record type/prefix} (this typically
-  results in a \refcmd{mmzPrefix} entry in the \dmmz file) and attempts to
-  create memo directory if \refmmz{mkdir} is in effect.  When \refmmz{prefix}
-  is executed in the document preamble, these actions are only carried out at
-  the beginning of the document, for the final value of the key.
+  new prefix by invoking \refmmz[show keypath]{record/record type/prefix} for
+  each active \meta{record type} (this typically results in a
+  \refcmd{mmzPrefix} entry in the \dmmz file) and attempts to create memo
+  directory if \refmmz{mkdir} is in effect.  When \refmmz{prefix} is executed
+  in the document preamble, these actions are only carried out at the beginning
+  of the document, for the final value of the key.
 
   
 \end{doc}
@@ -6240,7 +6330,7 @@ require.
 
 \begin{doc}{
     key={name=mkdir command, par=\meta{system command},
-      desc={no default, initially empty}},
+      desc={no default, initially \code{\refscript{memoize-extract.pl} \refscript{memoize-extract.pl--mkdir}}}},
   }
   This key sets the command used to create the memo directory specified
   by \refmmz{prefix} when \refmmz{mkdir} is in effect.
@@ -6254,22 +6344,27 @@ require.
   This key could be set to |mkdir| (on Linux, |mkdir -p| would be an even
   better choice), however, this is not advisable as |mkdir| does not respect
   \hologo{TeX}'s output restrictions, set by \docref{openout_any} in
-  \hologo{TeX}Live and |[Core]AllowUnsafeInputFiles| in MiK\hologo{TeX}.
+  \TeXLive and |[Core]AllowUnsafeOutputFiles| in \MiKTeX.
   Further note that as the value of this key is a system command, an
   appropriate shell escape mode must be in effect to execute it successfully;
   again, not something to be taken lightly.
 
-  The extractions scripts shipped with Memoize accept option
+  The extraction scripts shipped with Memoize accept option
   \refscript{memoize-extract.pl--mkdir}, which makes them behave as a safe
   variant of |mkdir|, i.e.\ a |mkdir| which respects \hologo{TeX}'s output
-  restrictions.  Therefore, extraction methods \refmmz{extract=perl} and
-  \refmmz{extract=python} set \refmmz{mkdir command} to
-  \refscript{memoize-extract.pl} \refscript{memoize-extract.pl--mkdir} and
-  \refscript{memoize-extract.py} \refscript{memoize-extract.pl--mkdir},
-  respectively.  In effect, as the initial extraction method is
-  \refmmz{extract=perl}, the memo directory (if set via \refmmz{prefix} or
-  \refmmz{memo dir}) should be created under the initial settings without any
-  user intervention.
+  restrictions.  As most \hologo{TeX} setups will have access to at least a
+  rudimentary Perl installation required to successfully execute
+  \code{\refscript{memoize-extract.pl} \refscript{memoize-extract.pl--mkdir}},
+  this command is the default value of \refmmz{mkdir command}.  Therefore, in
+  most cases, the memo directory (if set via \refmmz{prefix} or \refmmz{memo
+    dir}) should be created under the initial settings without any user
+  intervention.
+
+  Invoking \code{\refmmz{extract}=\refmmz{extract=python}} changes the value of
+  \refmmz{mkdir command} to \code{\refscript{memoize-extract.py}
+    \refscript{memoize-extract.pl--mkdir}}, but only if \refmmz{mkdir command}
+  is currently set to the initial value, i.e.\ it will not effect the change if
+  the user adjusted \refmmz{mkdir command} manually.
 \end{doc}
 
 
@@ -6329,11 +6424,11 @@ require.
   (with \refmmz{extract}|=|\refmmz{extract=no}), and trigger the internal
   extraction manually.
 
-  Executing extraction method \refmmz{extract=perl} or \refmmz{extract=python}
-  has an additional effect of setting the \refmmz{mkdir command} to the
-  extraction script with option \refscript{memoize-extract.pl--mkdir}.  This
-  obviates the need to include |mkdir| among the restricted shell commands if
-  one is using the restricted shell mode.
+  Executing extraction method \refmmz{extract=python} has an additional effect
+  of setting \refmmz{mkdir command} to \code{\refscript{memoize-extract.pl}
+    \refscript{memoize-extract.pl--mkdir}}, but only if \refmmz{mkdir command}
+  is currently set to the initial value, i.e.\ it will not effect the change if
+  the user adjusted \refmmz{mkdir command} manually.
 \end{doc}
 
 \subsubsection{Perl- and Python-based extraction}
@@ -6394,10 +6489,10 @@ Perl- and Python-based extraction is triggered by
   \refmmz{extract}|=|\refmmz{extract=python}.
 
   Argument \meta{name}\dmmz may be given either in full (e.g.\ |doc.mmz|), or
-  merely as the stem (|doc|).  In the latter case, |.mmz| is appended to the
+  merely as the stem (|doc|).  In the latter case, \dmmz is appended to the
   given argument even if it already contains a suffix (e.g.\ |my.doc| will
   result in |my.doc.mmz|); the exception is suffix |.tex|, which is replaced by
-  |.mmz|.
+  \dmmz.
   
   The script inspects the given record file, \meta{name}\dmmz, for lines of
   form \refcmd{mmzNewExtern}\marg{extern filename}\marg{extern page
@@ -6505,7 +6600,7 @@ Perl- and Python-based extraction is triggered by
       option={name=mkdir, short name=m}
     }
     When given this option, the extraction script transforms into a paranoid
-    |mkdir| (|-p|).  Argument \meta{name}|.mmz| is interpreted as a path to the
+    |mkdir| (|-p|).  Argument \meta{name}\dmmz is interpreted as a path to the
     directory to create; all other options are ignored.
 
     The ancestors of the directory are created as needed.  The script will
@@ -6517,9 +6612,9 @@ Perl- and Python-based extraction is triggered by
     not have to list |mkdir| among the restricted shell mode commands (and it
     is also safer than a plain |mkdir|).
 
-    Memoize automatically uses this script to create the memo directory when
-    option \refmmz{extract} is given value \refmmz{extract=perl} or
-    \refmmz{extract=python}.
+    Initially, \refmmz{mkdir command} is set to
+    \code{\refscript{memoize-extract.pl}
+      \refscript{memoize-extract.pl--mkdir}}.
   \end{doc}
   \begin{doc}{
       option={name=version, short name=V}
@@ -7974,7 +8069,7 @@ be generalized to \meta{namespace} and \meta{setup key} of
     \refenv{forest}&\refmmzauto{memoize}\\
     \refcmd{Forest}&\refmmzauto{memoize}\\
     \refcmd{index}&\refmmzauto{replicate}&The argument is expanded prior to replication.\\
-    \refcmd{label}&custom&\refmmzauto{run if memoizing}; globally appends
+    \refcmd{label}&custom&\refmmzauto{run if memoizing}; the handler globally appends
     \refcmd{mmzLabel}\marg{label key}\marg{current label}
     to register \refcmd{mmzCCMemo}.\\
     \refcmd{pageref}&\refmmzauto{ref}\\
@@ -8442,7 +8537,7 @@ be generalized to \meta{namespace} and \meta{setup key} of
 
   The \meta{options} are a comma-separated list of \meta{key}|=|\meta{value}
   pairs.  They are processed using the \pkg{pgfkeys} utility of PGF/\TikZ (see
-  \PGFmanual{87}), with the default path set to \docaux{key path}{collargs}.
+  \PGFmanual{87}), with the default path set to \refkeypath{/collargs}.
 
   This key may be used either outside an invocation of
   \refcmd{CollectArguments}\slash \refcmd{CollectArgumentsRaw}, to set defaults
@@ -8458,11 +8553,12 @@ be generalized to \meta{namespace} and \meta{setup key} of
   Define \meta{symbol} as an abbreviation of \marg{definition} within the
   \meta{argument specification} passed to \refcmd{CollectArguments}.
 
-  For example, Memoize's \pkg{biblatex} support sets
+  For example, Memoize's \pkg{biblatex} support allows the user to mark the
+  citation key argument simply by preceding it by a star (|*|) by setting
   \code{\refcollargs{alias}=%
     \braces{*}\braces{\&\&\braces{\cs{mmz@biblatex@mark@citation@key}}}}, with
   \cs{mmz@biblatex@mark@citation@key} an internal macro which stores the
-  contents of \refcmd{collargsArg} into another internal macro.
+  contents of register \refcmd{collargsArg} into another internal macro.
 \end{doc}
 
 \begin{doc}[
@@ -8695,10 +8791,10 @@ grab the environment body in the verbatim mode.)
     \nohyphen``\cs{the}\refcmd{collargsArg}''}.  Or, to trim spaces from an
   argument using |\trim@spaces@noexp| from package \pkg{trimspaces}:
   \code{\refcollargs{append expandable preprocessor}=%
-    \cs{expandafter}\cs{trim@spaces@noexp}\cs{expandafter}\braces{%
-      \cs{the}\refcmd{collargsArg}}}.  A pre-processor is the right choice in
-  both these cases because we want to modify the argument before it is dressed
-  up in the original delimiters.
+    \cs{expandafter}\nohyphen\cs{trim@spaces@noexp}\nohyphen\cs{expandafter}%
+    \nohyphen\braces{\cs{the}\refcmd{collargsArg}}}.  A pre-processor is the
+  right choice in both these cases because we want to modify the argument
+  before it is dressed up in the original delimiters.
 
   Let us consider another, more involved example.  As the example for
   \refcollargs{append preprocessor} above, it is inspired by \pkg{cprotect},
@@ -9086,9 +9182,10 @@ as follows: \docref{xparse:o}, \docref{xparse:d}, \docref{xparse:s},
 
 \subsubsection{PGF}
 
-When package \PGF is loaded, commands \refcmd{mmzPgfAtBeginMemoization}
-and \refcmd{mmzPgfAtEndMemoization} are defined and appended to hooks
-\refmmz{at begin memoization} and \refmmz{at end memoization}, respectively.
+\PGF support defines commands \refcmd{mmzPgfAtBeginMemoization} and
+\refcmd{mmzPgfAtEndMemoization}, and appends them to hooks \refmmz{at begin
+  memoization} and \refmmz{at end memoization}, respectively.  This happens
+automatically whenever \PGF is loaded.
 
 Note that environment \env{pgfpicture} is \emph{not} submitted to
 automemoization.  Doing this would probably not be a good idea, as it is used
@@ -9164,8 +9261,13 @@ specifying option \refmmzauto{args} unnecessary.
 
 \subsubsection{Beamer}
 
-Memoize should be loaded by writing |\RequirePackage{memoize}| (rather than
-|\usepackage{memoize}|) before (rather than after) |\documentclass{beamer}|.
+In the Beamer class, Memoize cannot be loaded in the standard way, by writing
+|\usepackage{memoize}| in the preamble, \emph{when performing internal
+  extraction} (the external extraction does not pose a problem).  This is the
+case because Beamer opens the document PDF while loading the class, while
+Memoize requires the PDF from the previous compilation intact in order to
+extract the externs.  The workaround is to load Memoize by writing
+|\RequirePackage{memoize}| \emph{before} |\documentclass{beamer}|.
 
 \begin{doc}{easy, key={name=per overlay,desc=style}}
   Applying this style to a piece of memoized code contained in a Beamer
@@ -9189,29 +9291,30 @@ Memoize should be loaded by writing |\RequirePackage{memoize}| (rather than
   \meta{additional configuration} is executed within \refcmd{mmzset}.
 
   When \pkg{biblatex} support is loaded, all citation commands defined by this
-  package\footnote{In \pkg{biblatex} version 3.19: \cs{cite}, \cs{Cite},
-    \cs{parencite}, \cs{Parencite}, \cs{footcite}, \cs{footcitetext},
-    \cs{textcite}, \cs{Textcite}, \cs{smartcite}, \cs{Smartcite},
-    \cs{supercite}, \cs{cites}, \cs{Cites}, \cs{parencites}, \cs{Parencites},
-    \cs{footcites}, \cs{footcitetexts}, \cs{smartcites}, \cs{Smartcites},
-    \cs{textcites}, \cs{Textcites}, \cs{supercites}, \cs{autocite},
-    \cs{Autocite}, \cs{autocites}, \cs{Autocites}, \cs{citeauthor},
-    \cs{Citeauthor}, \cs{citetitle}, \cs{citeyear}, \cs{citedate},
-    \cs{citeurl}, \cs{nocite}, \cs{fullcite}, \cs{footfullcite}, \cs{volcite},
-    \cs{Volcite}, \cs{volcites}, \cs{Volcites}, \cs{pvolcite}, \cs{Pvolcite},
-    \cs{pvolcites}, \cs{Pvolcites}, \cs{fvolcite}, \cs{Fvolcite},
-    \cs{fvolcites}, \cs{Fvolcites}, \cs{ftvolcite}, \cs{ftvolcites},
-    \cs{Ftvolcite}, \cs{Ftvolcites}, \cs{svolcite}, \cs{Svolcite},
-    \cs{svolcites}, \cs{Svolcites}, \cs{tvolcite}, \cs{Tvolcite},
-    \cs{tvolcites}, \cs{Tvolcites}, \cs{avolcite}, \cs{Avolcite},
-    \cs{avolcites}, \cs{Avolcites}, \cs{notecite}, \cs{Notecite},
-    \cs{pnotecite}, \cs{Pnotecite}, \cs{fnotecite}, \cs{citename},
-    \cs{citelist}, \cs{citefield}.} behave like \refcmd{ref} in the sense that
-  changing a bibliography entry referred to by a citation command within a
-  piece of memoized code triggers recompilation of that code.  For example, it
-  is safe to use \code{\cs{textcite}\braces{\meta{citation key}}} inside
-  memoized code, in the sense that the extern will be recompiled when the entry
-  for the \meta{citation key} is changed in the |.bib| file.
+  package\footnote{\hbadness 3000 In \pkg{biblatex} version 3.19: \cs{cite},
+    \cs{Cite}, \cs{parencite}, \cs{Parencite}, \cs{footcite},
+    \cs{footcitetext}, \cs{textcite}, \cs{Textcite}, \cs{smartcite},
+    \cs{Smartcite}, \cs{supercite}, \cs{cites}, \cs{Cites}, \cs{parencites},
+    \cs{Parencites}, \cs{footcites}, \cs{footcitetexts}, \cs{smartcites},
+    \cs{Smartcites}, \cs{textcites}, \cs{Textcites}, \cs{supercites},
+    \cs{autocite}, \cs{Autocite}, \cs{autocites}, \cs{Autocites},
+    \cs{citeauthor}, \cs{Citeauthor}, \cs{citetitle}, \cs{citeyear},
+    \cs{citedate}, \cs{citeurl}, \cs{nocite}, \cs{fullcite}, \cs{footfullcite},
+    \cs{volcite}, \cs{Volcite}, \cs{volcites}, \cs{Volcites}, \cs{pvolcite},
+    \cs{Pvolcite}, \cs{pvolcites}, \cs{Pvolcites}, \cs{fvolcite},
+    \cs{Fvolcite}, \cs{fvolcites}, \cs{Fvolcites}, \cs{ftvolcite},
+    \cs{ftvolcites}, \cs{Ftvolcite}, \cs{Ftvolcites}, \cs{svolcite},
+    \cs{Svolcite}, \cs{svolcites}, \cs{Svolcites}, \cs{tvolcite},
+    \cs{Tvolcite}, \cs{tvolcites}, \cs{Tvolcites}, \cs{avolcite},
+    \cs{Avolcite}, \cs{avolcites}, \cs{Avolcites}, \cs{notecite},
+    \cs{Notecite}, \cs{pnotecite}, \cs{Pnotecite}, \cs{fnotecite},
+    \cs{citename}, \cs{citelist}, \cs{citefield}.} behave like \refcmd{ref} in
+  the sense that changing a bibliography entry referred to by a citation
+  command within a piece of memoized code triggers recompilation of that code.
+  For example, it is safe to use \code{\cs{textcite}\braces{\meta{citation
+        key}}} inside memoized code, in the sense that the extern will be
+  recompiled when the entry for the \meta{citation key} is changed in the
+  |.bib| file.
 
   Furthermore, Memoize takes care that even once an extern which contains a
   reference to \meta{citation key} is utilized (i.e.\ included into the
@@ -9476,15 +9579,15 @@ Errors:
     {\meta{mode}})"}
 
   Your \hologo{TeX} distribution does not allow this file to be written to.
-  The relevant setting is called \docref{openin_any} in \hologo{TeX}Live and
-  |[Core]AllowUnsafeOutputFiles| in MiK\hologo{TeX}.
+  The relevant setting is called \docref{openout_any} in \TeXLive and
+  |[Core]AllowUnsafeOutputFiles| in \MiKTeX.
 
 \item \code{Error: I'm not allowed to read from '{\meta{filename}}' (openin\_any
     = {\meta{mode}})"}
 
   Your \hologo{TeX} distribution does not allow this file to be read from. The
-  relevant setting is called \docref{openout_any} in \hologo{TeX}Live and
-  |[Core]AllowUnsafeInputFiles| in MiK\hologo{TeX}.
+  relevant setting is called \docref{openin_any} in \TeXLive and
+  |[Core]AllowUnsafeInputFiles| in \MiKTeX.
   
 \item \code{Error: "Semi-absolute" paths are disallowed: '\meta{filename}'}
 
@@ -9531,15 +9634,13 @@ Errors:
   \begin{itemize}
   \item Is the shell escape configured properly?  It should be, as both
     Memoize's extraction scripts are listed among restricted shell escape
-    commands in both \hologo{TeX}Live and MiK\hologo{TeX}, but it never hurts
+    commands in both \TeXLive and \MiKTeX, but it never hurts
     to check.
 
     The easiest way to see if shell escape is the culprit is to compile the
-    document with command option \docref{-shell-escape} (on \hologo{TeX}Live)
-    or \docref{--enable-write18} (on MiK\hologo{TeX}).  If this resolves the
-    problem, check your shell escape mode; see
-    footnote~\ref{fn:shell-escape-commands} on
-    page~\pageref{fn:shell-escape-commands} for how to do this.
+    document with command option \docref{-shell-escape} (on \TeXLive) or
+    \docref{--enable-write18} (on \MiKTeX); see section~\ref{sec:extraction}
+    for details.
   \item Is environment variable PATH set correctly, so that the system can find
     the extraction script?
   \item Is Perl\slash Python installed on your system, and accessible to
@@ -9714,15 +9815,15 @@ But there were others as well.  Shunsaku Hirata of the \hologo{XeTeX} team
 promptly resolved an issue with forward references in |xdvipdfmx|, and thereby
 made Memoize work with \hologo{XeTeX}.  Joseph Wright kindly didn't object to
 me misappropriating \pkg{etoolbox} for other formats.  Petra Rübe-Pugliese
-(CTAN) and Karl Berry (\hologo{TeX}Live) offered good advice on packaging the
-package; I would never get to call Advice Advice without their advice.  Karl
-also performed a security review of the extraction scripts, providing some very
+(CTAN) and Karl Berry (\TeXLive) offered good advice on packaging the package;
+I would never get to call Advice Advice without their advice.  Karl also
+performed a security review of the extraction scripts, providing some very
 useful comments along the way, and agreed to include the scripts among the
-shell escape commands allowed in \hologo{TeX}Live.  Christian Schenk worked
-hard to support Memoize in MiK\hologo{TeX}.  After the package was first
-published, amonakov, mbert, Qrrbrbirlbel, and Ulrike Fischer provided valuable
-feedback, suggestions and\slash or bug reports; cfr did all that, and also
-advertised the package extensively.
+shell escape commands allowed in \TeXLive.  Christian Schenk worked hard to
+support Memoize in \MiKTeX, and John Collins implemented \pkg{latexmk} support.
+After the package was first published, amonakov, mbert, Qrrbrbirlbel, and
+Ulrike Fischer provided valuable feedback, suggestions and\slash or bug
+reports; cfr did all that, and also advertised the package extensively.
 
 Thank you all!
 
