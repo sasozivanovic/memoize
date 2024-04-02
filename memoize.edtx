@@ -3415,7 +3415,7 @@
   }%
 }
 % 
-% \subsection{\pkg{PGF}}
+% \subsection[PGF]{\pkg{PGF}}
 %
 \mmz@if@package@loaded{pgf}{%
   %<plain>\pgfpicture
@@ -3567,7 +3567,7 @@
     raw collector options=\collargsReturnPlain,
   },
   % \begin{mmzautokey}{cite,volcite,cites,volcites}
-  %   Define handlers for citation commands. 
+  %   \indentmacrocode Define handlers for citation commands.
   auto/cite/.style={
     run conditions=\mmz@biblatex@cite@rc,
     outer handler=\mmz@biblatex@cite@outer,
@@ -3575,9 +3575,9 @@
     raw collector options=\mmz@biblatex@def@star\collargsReturnNo,
     inner handler=\mmz@biblatex@cite@inner,
   },
-  % We need a dedicated |volcite| even though |\volcite| executes |\cite|
-  % because otherwise, we would end up with |\cite{volume}{key}| in the cc-memo
-  % when |biblatex ccmemo cite=replicate|.
+  % \noindentmacrocode We need a dedicated |volcite| even though |\volcite|
+  % executes |\cite| because otherwise, we would end up with
+  % |\cite{volume}{key}| in the cc-memo when |biblatex ccmemo cite=replicate|.
   auto/volcite/.style={
     run if memoizing,
     outer handler=\mmz@biblatex@cite@outer,
@@ -3586,17 +3586,19 @@
     inner handler=\mmz@biblatex@cite@inner,
   },
   auto/cites/.style={
-    run conditions=\mmz@biblatex@cite@rc,
+    run conditions=\mmz@biblatex@cites@rc,
     outer handler=\mmz@biblatex@cites@outer,
     args=l*m,
-    raw collector options=\mmz@biblatex@def@star\collargsClearArgsfalse\collargsReturnNo,
+    raw collector options=
+      \mmz@biblatex@def@star\collargsClearArgsfalse\collargsReturnNo,
     inner handler=\mmz@biblatex@cites@inner,
   },
   auto/volcites/.style={
     run if memoizing,
     outer handler=\mmz@biblatex@cites@outer,
     args=lml*m,
-    raw collector options=\mmz@biblatex@def@star\collargsClearArgsfalse\collargsReturnNo,
+    raw collector options=
+      \mmz@biblatex@def@star\collargsClearArgsfalse\collargsReturnNo,
     inner handler=\mmz@biblatex@cites@inner,
   },
   % \end{mmzautokey}
@@ -3619,19 +3621,26 @@
   \mmz@scantokens{\AdviceOriginal{#1}#2}%
 }
 % \end{macro}
-% \begin{macro}{\mmz@biblatex@cite@rc}
-%   Run if memoizing but not within a |\volcite| command. Applied to |\cite(s)|.
+% \begin{macro}{\mmz@biblatex@cite@rc,\mmz@biblatex@cites@rc}
+%   \indentmacrocode Run if memoizing but not within a |\volcite|
+%   command. Applied to |\cite(s)|.
 \def\mmz@biblatex@cite@rc{%
   \ifmemoizing
-    % We cannot use the official |\ifvolcite|, or even the |blx@volcite| toggle
-    %   it depends on, because these are defined\slash set within the
-    %   next-citation hook, which is yet to be executed.  So we depend on the
-    %   internal detail that |\volcite| and friends redefine |\blx@citeargs| to
-    %   |\blx@volciteargs|.
+    % \noindentmacrocode We cannot use the official |\ifvolcite|, or even the
+    %   |blx@volcite| toggle it depends on, because these are defined\slash set
+    %   within the next-citation hook, which is yet to be executed.  So we
+    %   depend on the internal detail that |\volcite| and friends redefine
+    %   |\blx@citeargs| to |\blx@volciteargs|.
     \ifx\blx@citeargs\blx@volciteargs
     \else
       \AdviceRuntrue
     \fi
+  \fi
+}
+\def\mmz@biblatex@cites@rc{%
+  \ifmemoizing
+    % The internal detail with |\volcites|: it defines a hook.
+    \ifdef\blx@hook@mcite@before{}{\AdviceRuntrue}%
   \fi
 }
 % \end{macro}
@@ -3655,9 +3664,9 @@
 }
 % \end{macro}
 % \begin{macro}{\mmz@biblatex@cite@inner}
+%   This macro puts the cites reference keys into the context, and adds
+%   |\nocite|, or the handled citation command, to the cc-memo.
 \def\mmz@biblatex@cite@inner{%
-  % This macro puts the cites reference keys into the context, and adds
-  % |\nocite|, or the handled citation command, to the cc-memo.
   \mmz@biblatex@do@context
   \mmz@biblatex@do@ccmemo
   \expandafter\AdviceOriginal\the\collargsArgs
