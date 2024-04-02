@@ -3,6 +3,18 @@
 For the development history, see [Memoize's GitHub
 repository](https://github.com/sasozivanovic/memoize).
 
+## 2024/04/02 v1.3.0
+
+* New defaults:
+  * `memo dir` is now in effect by default.
+  * `mkdir command` is now initialized to `memoize-extract.pl --mkdir` even
+    when `extract=no` or `extract=tex`.
+* Update the manual to reflect the new defaults (plus many minor improvements).
+* Bugfixes:
+  * The extraction scripts (affecting Windows users): properly escape `\` in
+	log messages.
+  * Biblatex support: `\volcites` now works as advertised.
+
 ## 2024/03/15 v1.2.0
 
 * Biblatex support:
