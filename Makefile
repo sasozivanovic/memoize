@@ -102,7 +102,7 @@ doc/memoize.pdf: $(manual-source) $(examples-src) $(PACKAGES.edtx)
 
 
 
-# Maintanence
+# Maintenance
 
 test.tex = $(wildcard test*.tex)
 

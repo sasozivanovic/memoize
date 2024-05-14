@@ -800,7 +800,7 @@ externalize \TikZ pictures in general (so you have \refmmz{deactivate}d
 automemoization of the \cs{tikz} command, as explained at the end of
 section~\ref{sec:tut:test}), but that you want to easily memoize selected
 pictures.  You could define a memoized variant of the \cs{tikz} command, as shown
-below (and similary for the environment).  (Note the |%| comment characters in
+below (and similarly for the environment).  (Note the |%| comment characters in
 the definition of |\mmztikz|.  The definition was intentionally broken into
 several lines to remind you that the spaces around the argument of \refcmd{mmz}
 matter.)
@@ -1634,7 +1634,7 @@ The solution is to set the padding manually.  Below, I used \refmmz{padding
 if you're not bothered by a large extern, you can just use
 \Emph{\refmmz{padding}}, which sets all four sides at once.  By the way, having
 too much padding (almost) never hurts, and as you see, you can use (simple)
-arithmetics in the value of these keys.
+arithmetic in the value of these keys.
 
 \tcbinputexample[.tex][.c4]{
   after title pre={\ (memoization with extra padding)},
@@ -1736,7 +1736,7 @@ for two reasons:
 \end{itemize}
 
 Below, we list several ways of fully disabling Memoize.  You're of course
-already familar with the first two ways, but what's this \refpkg{nomemoize}
+already familiar with the first two ways, but what's this \refpkg{nomemoize}
 package?  The rationale behind this package is that if you want to be
 absolutely sure that there is no trace of memoization in your document (for
 example, see the \refmmz{disable} -- \refmmz{enable} pitfall in
@@ -1887,7 +1887,7 @@ time \refcmd{begin}\meta{environment name} is executed, like when you use the
   environment normally in your document, or when some macro expands so that it
   produces both \cs{begin}\meta{environment name} and \cs{end}\meta{environment
     name} simultaneously --- so there would be no problem above if
-  |\end{minipage}| occured in the beginning code of \env{sectionbox}.  The idiom
+  |\end{minipage}| occurred in the beginning code of \env{sectionbox}.  The idiom
 presented above is problematic for memoization because at the time \hologo{TeX}
 executes |\begin{sectionbox}|, putting |\begin{minipage}| into the input
     stream, |\end{sectionbox}| is not yet executed and remains as it is.  The
@@ -2169,7 +2169,7 @@ load Memoize.
 Out of the box, Memoize stores memos and externs in a separate directory,
 \code{\meta{document name}.memo.dir}, creating this directory if it does not
 exist.  This behaviour, illustrated in section~\ref{sec:tut:memodir}, is
-trigerred by key \refmmz{memo dir}, which is in effect by default since Memoize
+triggered by key \refmmz{memo dir}, which is in effect by default since Memoize
 version~1.3.0.
 
 It is however worth noting that something rather unusual is happening behind
@@ -2216,7 +2216,7 @@ neither Perl nor Python (note that this does not apply to \TeXLive, as
 works with the built-in Perl).  Of course, this situation is undesirable in and
 of itself, as it forces the author to fall back to the slower
 \hologo{TeX}-based extraction by issuing
-\code{\refmmz{extract}=\refmmz{extract=tex}}, but note that it will additionaly
+\code{\refmmz{extract}=\refmmz{extract=tex}}, but note that it will additionally
 prevent the execution of the default \refmmz{mkdir command}.  Possible
 workarounds include either undoing the effect of \refmmz{memo dir} by issuing
 \refmmz{no memo dir}, or changing the \refmmz{mkdir command} to a command like
@@ -2348,7 +2348,7 @@ This framework is a generalization of automemoization: we use the familiar
 
 Key \refmmzauto{ref} only works for commands which operate on a single
 reference key.  However, that single key (which must be enclosed in braces) may
-be preceded by optional argumen(s) of any kind.  Extensions to \refcmd{ref},
+be preceded by optional argument(s) of any kind.  Extensions to \refcmd{ref},
 e.g.\ the \pkg{hyperref}'s variant, which accepts an optional |*|, work out of
 the box.  Furthermore, Memoize offers support for cross-referencing commands
 which work on multireferences and reference ranges, such as \pkg{cleveref}'s
@@ -2849,7 +2849,7 @@ carefully read |poormansbox|'s documentation.  Even worse, the above
 \refcmd{mmzset} command will not work unless surrounded by |\makeatletter| and
 |\makeatother|, as it refers to an internal control sequence containing |@|.
 Well, Memoize offers \refmmz{auto csname}, \refmmz{activate csname} and
-\refmmz{deactivate csname}, so that |@| catagory code manipulations can be
+\refmmz{deactivate csname}, so that |@| category code manipulations can be
 omitted by writing \refcmd{mmzset}\bracestt{\refmmz{deactivate
     csname}|=@poormansbox|}, but still.
 
@@ -4100,7 +4100,7 @@ In the first version of the example, we have appended the same code to macro
 surprise here, as we want the effect of memoization and utilization to be the
 same.  In the embellished version, we advertise another way to achieve the same
 effect, a way which might be useful for complicated drivers: we simply smuggle
-out the entire cc-memo.  The idea works even when memoization procudes externs;
+out the entire cc-memo.  The idea works even when memoization produces externs;
 in that case, however, the driver also has to say \cs{mmzkeepexternstrue} ---
 conditional \refcmd{ifmmzkeepexterns} decides whether Memoize keeps the externs
 around, in memory, even after shipping them out (but they are always gone at
@@ -4525,7 +4525,7 @@ aborted.  The bottom-line is that run conditions repeat across handlers, so
 it makes sense to separate them out as an independent component of the
 framework, with the added bonus that the system can make sure that an
 invocation of a advised command which does not satisfy the run conditions
-will incur as litte overhead as possible.
+will incur as little overhead as possible.
 
 \paragraph{Bailout handler}
 An automemoized command applies the next-options (set by \refcmd{mmznext}), but
@@ -5202,7 +5202,7 @@ Load Memoize by |\input memoize|.  As package options cannot be provided in
 using key \refmmz{extract}; I recommend doing this immediately after loading
 the package.  This key may be invoked with or without a value.  In the latter
 case, Memoize will extract using the package default method
-\refmmz{extract=perl}, unless its has been overriden from
+\refmmz{extract=perl}, unless its has been overridden from
 \reffile{memoize.cfg}.
 
 Furthermore, as \hologo{plainTeX} has no concept of a document body, the text
@@ -5920,7 +5920,7 @@ on how to handle this properly.
 \begin{doc}{
     cmd={name=mmzExternalizeBox, par=\marg{box}\marg{token register}},
   }
-  This macro is indended to be called by memoization drivers to produce an
+  This macro is intended to be called by memoization drivers to produce an
   extern page.  The given \meta{box} is dumped into the document as a separate
   extern page, while the \meta{token register} receives the cc-memo extern
   inclusion code.
@@ -5977,7 +5977,7 @@ on how to handle this properly.
   defined to include the extern file into the document.  However, it sometimes
   makes sense to execute the cc-memo contents immediately after memoization;
   for example, if memoization produces several externs, intricately integrated
-  into the surrouding environment, it might be cumbersome to replicate their
+  into the surrounding environment, it might be cumbersome to replicate their
   typesetting both in the memoizing compilation and in the cc-memo code ---
   easier to build up the cc-memo code and execute it right after memoization.
   This is why Memoize, just before executing the contents of \refmmz{after
@@ -6640,7 +6640,7 @@ Perl- and Python-based extraction is triggered by
     using \hologo{TeX}-based extraction, externalization using Memoize is
     extremely fast compared to the \TikZ's externalization library.  Adding
     the regular compilation time of one minute to the above numbers, we arrive
-    at the maximum externalization time of about two minues, whereas my
+    at the maximum externalization time of about two minutes, whereas my
     estimate for the production of all 160 externs using \TikZ's
     externalization would be an \emph{hour} or more.
   \item The Python script cannot extract externs out of PDFs created without
@@ -6901,7 +6901,7 @@ Perl- and Python-based extraction is triggered by
     }
     When given this option, the script removes \emph{all} memos and externs
     belonging to the document, not just the stale ones, i.e.\ it effectively
-    ignores the occurences of \refcmd{mmzUsedCMemo} and friends in the \dmmz
+    ignores the occurrences of \refcmd{mmzUsedCMemo} and friends in the \dmmz
     file.
   \end{doc}
   \begin{doc}{
@@ -7263,7 +7263,7 @@ headers.
   
   As the advice is normally automatically activated upon declaration with
   \refmmz{auto}, explicit activation is rarely needed, but see \refmmz{auto'}.
-  The effect of these keys under the deffered activation regime is described in
+  The effect of these keys under the deferred activation regime is described in
   \refmmz{activation}.
 
   Note that I sometimes speak of (de)activating a command, and sometimes of
@@ -8005,7 +8005,7 @@ At the moment, Advice only implements specific support for \TikZ, by defining a
   This command collects the arguments in the format expected by \refcmd{tikz}, and
   executes macro \refcmd{AdviceInnerHandler} with the collected arguments given
   as a single braced argument.  The collector supports both the group and the
-  semicolor invocation of |\tikz|, i.e.\ both |\tikz{...}| and |\tikz...;|.
+  semicolon invocation of |\tikz|, i.e.\ both |\tikz{...}| and |\tikz...;|.
 
   This command is only available upon |\input|ting file
   \docaux{file}{advice-tikz.code.tex}.
@@ -8949,7 +8949,7 @@ grab the environment body in the verbatim mode.)
 collect |[{]}]| with \refcmd{CollectArguments}|[|\refmmz{verbatim}|]{o}|, we
 will get |{| (and most likely an error, as well), because in the
   \refmmz{verbatim} mode, braces do not have their grouping function.  Using
-  the \refmmz{verb} mode solves the problem: occuring within braces, the first
+  the \refmmz{verb} mode solves the problem: occurring within braces, the first
   |]| is ``invisible'' to \refcmd{CollectArguments}|[|\refmmz{verb}|]|, so the
 optional argument is correctly recognized as ending at the second |]|.
 
@@ -9654,7 +9654,7 @@ Errors:
   combination with the paranoid \docref{openout_any} setting (which is the
   default).
 
-  If the source of the error remains a mistery, I suggest inspecting the
+  If the source of the error remains a mystery, I suggest inspecting the
   following sources of information, to help you with your investigation:
   \begin{itemize}
   \item Can you can run the extraction script by hand?  Open the terminal, go
