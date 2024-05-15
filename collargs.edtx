@@ -557,7 +557,7 @@
 % 
 % \begin{macro}{\collargs@@@}
 %   This macro is where modifier handlers reenter the central loop --- we don't
-%   want modifers to open a group, because their settings should remain in
+%   want modifiers to open a group, because their settings should remain in
 %   effect until the next argument.  Furthermore, modifiers do not trigger
 %   category code fixes.
 \def\collargs@@@#1{%
@@ -1474,7 +1474,7 @@
 % \begin{macro}{\collargs@v}
 %   Verbatim argument.  The code is executed in the group, deploying
 %   |\collargsVerbatim|.  The grouping characters are always set to braces, to
-%   mimick |xparse| perfectly.
+%   mimic |xparse| perfectly.
 \def\collargs@v#1.{%
   \begingroup
   \collargsBraces{{}}%
@@ -2328,7 +2328,7 @@
 }
 \fi
 \def\collargs@make@no@verbatim@char#1{%
-  % The original category code of a characted was stored into
+  % The original category code of a character was stored into
   % |\collargs@cc@|\meta{character code} by |\collargs@make@verbatim|. (We don't
   % use |\collargs@cc|, because we have a number.)
   \ifcsname collargs@cc@#1\endcsname

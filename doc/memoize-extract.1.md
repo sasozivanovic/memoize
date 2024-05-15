@@ -121,7 +121,7 @@ values of these variables by executing '**kpsewhich** -var-value=openin_any' and
 
 **11**
 : An error also reported back to the compilation when given option
-  **\--format**. Currently, either: (i) a currupted document PDF, or (ii)
+  **\--format**. Currently, either: (i) a corrupted document PDF, or (ii)
   a kpathsea permission error.
 
 Other exit codes are as produced by the underlying scripting language (Perl of

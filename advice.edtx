@@ -228,7 +228,7 @@
     % submission is funky, because the run conditions handler actually hacks
     % the standard handling procedure.  Note that if |\begin| is not
     % activated, environments will not be handled, and that the automatic
-    % activation might be deffered.
+    % activation might be deferred.
     %<latex>#1/#2=\begin{run conditions=\advice@begin@rc},
   }%
 }
@@ -564,7 +564,7 @@
         \advice@activate@error@activated{#1}{#2}{Command}{already}%
       }{%
         % We don't recognize the current definition as our own code (despite
-        % the fact that we have surely activated the commmand before, given the
+        % the fact that we have surely activated the command before, given the
         % result of the first safety check).  It appears that someone else was
         % playing fast and loose with the same command, and redefined it after
         % our activation.  (In fact, if that someone else was another instance

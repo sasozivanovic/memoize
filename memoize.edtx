@@ -3551,7 +3551,7 @@
 \edef\memoizeresetatcatcode{\catcode`\noexpand\@\the\catcode`\@\relax}%
 \catcode`\@=11
 \mmzset{%
-  % Advise macro |\entry| occuring in |.bbl| files to collect the entry,
+  % Advise macro |\entry| occurring in |.bbl| files to collect the entry,
   % verbatim. |args|: |m| = citation key, |&&{...}u| = the entry, verbatim,
   % braced --- so |\blx@bbl@entry| will receive two mandatory arguments.
   auto=\blx@bbl@entry{
