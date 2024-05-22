@@ -3508,14 +3508,18 @@
       \xtoksapp\mmzCMemo{%
         \noexpand\mmzSetBeamerOverlays{\mmzBeamerPauses}{\beamer@overlaynumber}}%
       \gtoksapp\mmzCCMemo{%
-        \only<\mmzBeamerOverlays>{}}%
+        \only<all:\mmzBeamerOverlays>{}}%
     },
     /mmz/at end memoization={%
       \xtoksapp\mmzCCMemo{%
         \noexpand\setcounter{beamerpauses}{\the\c@beamerpauses}}%
     },
     /mmz/per overlay/.code={},
-  }}
+  },
+  beamer mode to prefix/.style={
+    prefix=\mmz@prefix@dir\mmz@prefix@name\beamer@currentmode_mode.
+  },
+}
   \def\mmzSetBeamerOverlays#1#2{%
     \ifnum\c@beamerpauses=#1\relax
       \gdef\mmzBeamerOverlays{#2}%
