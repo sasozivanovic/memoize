@@ -3534,6 +3534,15 @@
   }%
   % \end{listingregion}
 }{}}
+\AddToHook{begindocument/before}{\@ifpackageloaded{beamerarticle}{%
+    \mmzset{
+      per overlay/.code={},
+      beamer mode to prefix/.style={
+        prefix=\mmz@prefix@dir\mmz@prefix@name\beamer@currentmode_mode.
+      },
+    }
+  }{}%
+}
 %</latex>
 %
 % \subsection{Biblatex}
