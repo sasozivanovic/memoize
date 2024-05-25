@@ -1770,6 +1770,14 @@
     \fi
     \mmz@trace@resource{#1}%
   \fi
+  % Map the extern sequential number to the path to the extern.  We need this
+  % so that |prefix| can be changed via |\mmznext|.  The problem is that when a
+  % cc-memo is utilized, |\mmzMemo| closes the Memoize group; the |prefix| is
+  % thereby forgotten.  But at the point of execution of |\mmzResource|, the
+  % |prefix| setting is still known and can be baked into
+  % |\mmz@resource@<seq>|, which will be inspected by |\mmzIncludeExtern|.
+  \csxdef{mmz@resource@\the\mmz@seq}{\mmz@prefix@dir#1}%
+  \global\advance\mmz@seq1
 }
 % \end{macro}
 % 
@@ -1830,6 +1838,8 @@
       }%
     \fi
   }%
+  % Reset |\mmz@seq| for |\mmzResorce|.
+  \global\mmz@seq=0
   % Input the cc-memo if it exists.
   \IfFileExists{\mmz@ccmemo@path}{%
     \ifmmz@direct@ccmemo@input
@@ -2237,14 +2247,18 @@
 % 
 % \begin{macro}{\mmz@include@extern}
 %   This macro, called from cc-memos as |\mmzIncludeExtern|, inserts an extern
-%   file into the document.  |#1| is the sequential number, |#2| is either
-%   |\hbox| or |\vbox|, |#3|, |#4| and |#5| are the (expected) width, height
-%   and the depth of the externalized box; |#6|--|#9| are the paddings (left,
-%   bottom, right, and top).
-\def\mmz@include@extern#1#2#3#4#5#6#7#8#9{%
-  % Set the extern sequential number, so that we open the correct extern file
-  % (|\mmz@extern@basename|).
-  \mmz@seq=#1\relax
+%   file into the document.  We first look up the path to the extern based on
+%   the extern sequential number; the dictionary was set up by |\mmzResource|
+%   statements in the cc-memo.
+\def\mmz@include@extern#1{%
+  \expandafter\expandafter\expandafter\mmz@include@extern@i
+  \expandafter\expandafter\expandafter{%
+    \csname mmz@resource@#1\endcsname}%
+}
+% |#1| is the path to the extern filename, |#2| is either |\hbox| or |\vbox|,
+% |#3|, |#4| and |#5| are the (expected) width, height and the depth of the
+% externalized box; |#6|--|#9| are the paddings (left, bottom, right, and top).
+\def\mmz@include@extern@i#1#2#3#4#5#6#7#8#9{%
   % Use the primitive PDF graphics inclusion commands to include the extern
   % file.  Set the correct depth or the resulting box, and shift it as
   % specified by the padding.
@@ -2253,7 +2267,7 @@
       \lower\dimexpr #5+#7\relax\hbox{%
         \hskip -#6\relax
         \setbox0=\hbox{%
-          \mmz@insertpdfpage{\mmz@extern@path}{1}%
+          \mmz@insertpdfpage{#1}{1}%
         }%
         \unhbox0
       }%
