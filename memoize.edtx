@@ -3391,6 +3391,22 @@
 % 
 % \section{Support for various classes and packages}
 %
+% As the support for foreign classes and packages is only loaded in
+% |begindocument/before|, any keys defined there are undefined in the preamble,
+% and can only be used in the document body.  We don't want to burden the
+% author with this detail, so we try executing any unknown keys once again at
+% |begindocument/end|.
+\def\mmz@unknown{}
+\mmzset{
+  .unknown/.code={%
+    \eappto\mmz@unknown{,\pgfkeyscurrentkey={#1}}%
+  },
+  begindocument/end/.append code={%
+    \pgfkeyslet{/mmz/.unknown/.@cmd}\undefined
+    \expandafter\pgfkeysalso\expandafter{\mmz@unknown}%
+  },
+}
+% 
 %<*latex>
 \AddToHook{shipout/before}[memoize]{\global\advance\mmzExtraPages-1\relax}
 \AddToHook{shipout/after}[memoize]{\global\advance\mmzExtraPages1\relax}
