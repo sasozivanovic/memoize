@@ -149,6 +149,11 @@
     {http://mirrors.ctan.org/graphics/pgf/base/doc/pgfmanual.pdf}
     {\S#1 of the Ti\emph{k}Z \& \textsc{PGF} manual}%
 }
+\newcommand\ManualBeamer[1][]{%
+  \href
+    {http://mirrors.ctan.org/macros/latex/contrib/beamer/doc/beameruserguide.pdf}
+    {#1\ifstrempty{#1}{}{ }the Beamer manual}%
+}
 \newcommand\Alt{\,$\vert$\,}
 \newcommand\hyp{\discretionary{}{}{}}
 \newcommand\fncomma{\ensuremath{{^,}}}

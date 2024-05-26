@@ -1,7 +1,7 @@
 \documentclass[a4paper,11pt]{article}
 \usepackage[margin=2cm,top=1cm,bottom=1cm,nohead,includefoot]{geometry}
 
-\usepackage{nomemoize}
+\usepackage{memoize}
 \usepackage{memoize-doc}
 \mmzset{
   % recompile,
@@ -1489,10 +1489,9 @@ set), you will have a reasonably up-to-date set of externs.
 \label{sec:tut:beamer}
 
 Memoize ships with built-in support for the most widespread \hologo{LaTeX}
-presentation class, Beamer, in the sense that it can externalize a picture
-which changes from overlay to overlay.  Before we learn how to use that
-functionality, however, there's a peculiarity about loading Memoize in Beamer
-to address.
+presentation class, Beamer.  It allows for externalizing a picture which
+changes from overlay to overlay, or which depends on the Beamer mode.  However,
+loading Memoize in Beamer is a bit peculiar:
 
 \ExampleName{beamer}
 \makeexample{\examplename.pdf}
@@ -1550,6 +1549,12 @@ any other options processed by \pkg{pgfkeys}.\footnote{Read
   the final value of this counter in the memoized code is the same for all
   overlays.
 \end{tcolorbox}
+
+Similarly, the externalized picture might depend on the Beamer mode (|beamer|,
+|handout|, |trans| or |article|; for details, see \ManualBeamer[part IV of]).
+In this case, use \refmmz{beamer mode to prefix}, but note that this key must
+be invoked from \refcmd{mmzset} or \refcmd{mmznext}; it won't work if it is
+executed in the memoized code.
 
 
 \subsection{When stuff sticks out}
@@ -9267,7 +9272,10 @@ In the Beamer class, Memoize cannot be loaded in the standard way, by writing
 case because Beamer opens the document PDF while loading the class, while
 Memoize requires the PDF from the previous compilation intact in order to
 extract the externs.  The workaround is to load Memoize by writing
-|\RequirePackage{memoize}| \emph{before} |\documentclass{beamer}|.
+|\RequirePackage{memoize}| \emph{before} |\documentclass{beamer}|.  (The
+workaround is unnecessary when loading package \pkg{beamerarticle}, which runs
+the beamer in the |article| mode.  In fact, this package may be loaded before
+or after Memoize.)
 
 \begin{doc}{easy, key={name=per overlay,desc=style}}
   Applying this style to a piece of memoized code contained in a Beamer
@@ -9279,6 +9287,20 @@ extract the externs.  The workaround is to load Memoize by writing
 
   The implementation, documented in section~\ref{sec:per-overlay}, is not
   trivial, but only deploys the public interface offered by Memoize.
+\end{doc}
+
+\begin{doc}{easy, key={name=beamer mode to prefix,desc=style}}
+  Executing this key appends the beamer mode (|beamer|, |handout|, |trans| or
+  |article|) to the \refmmz{prefix}.  Use it when the externalized picture
+  should come out different in different modes.
+
+  It is fine to apply the key only to selected pieces of memoized code, either
+  via \refcmd{mmzset} or \refcmd{mmznext}.
+
+  Note that Beamer mode |second| is special.  Under the hood, it is implemented
+  as the default mode |beamer|.  This key therefore does not facilitate having
+  one set of externs for the single screen mode and another set for the two
+  screen mode.
 \end{doc}
 
 \subsubsection{Biblatex}
