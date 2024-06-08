@@ -1,7 +1,8 @@
 \documentclass[a4paper,11pt]{article}
 \usepackage[margin=2cm,top=1cm,bottom=1cm,nohead,includefoot]{geometry}
 
-\usepackage{memoize}
+% The perl-based extraction chokes on some externs.
+\usepackage[extract=python]{memoize}
 \usepackage{memoize-doc}
 \mmzset{
   % recompile,
@@ -1661,23 +1662,30 @@ everything works as it should!
 
 
 
-\subsection{The verbatim mode}
+\subsection{When things (seem to) go wrong}
 \label{sec:tut:verbatim}
 
-Not all code will peacefully submit to memoization.  In particular, this is the
-case for environments which process the environment body verbatim (or perform
-some other kind of \refcmd{catcode} magic).  A simple environment of this kind is the
-standard \hologo{LaTeX} \refenv{verbatim}, but let us illustrate the issue with
-\refenv{tcblisting}, which typesets a code listing alongside its compiled effect.
-(This environment is defined by the |listings| library of package \pkg{tcolorbox}
-and was used extensively during the production of this manual.)  To manually
-memoize a \refenv{tcblisting} environment, we enclose it in a \refenv{memoize}
-environment with a \Emph{\refmmz{verbatim}} key in the optional argument ---
-without this key, the example below would produce nothing but
-errors.\footnote{Memoize also offers a \emph{partial} verbatim mode, triggered
-  by key \refmmz{verb}; in this mode, the braces retain their usual category
-  codes.  Also note that the effect of \refmmz{verbatim} can be ``undone'' by
-  key \refmmz{no verbatim}.}
+Not all code will peacefully submit to memoization, at least not out of the
+box.  For one, this is the case for code containing a command or environment
+which changes the category code of some character(s).  Most notably,
+\refcmd{catcode}s are changed by so-called verbatim environments like the
+standard \hologo{LaTeX} \refenv{verbatim}, but other commands and environments
+effect category code changes as well; one example is command \cs{matrix} (of
+\TikZ{} library |matrix|).  The solution is to use key
+\Emph{\refmmz{verbatim}}, which instructs Memoize to collect the code ``as-is''
+(in \hologo{TeX}nical terms, under a catcode regime where all characters have
+category code 12) and rescan it (with \cs{scantokens}) when starting the
+memoization.\footnote{Memoize also offers a \emph{partial} verbatim mode,
+  triggered by key \refmmz{verb}; in this mode, the braces retain their usual
+  category codes.  Also note that the effect of \refmmz{verbatim} can be
+  ``undone'' by key \refmmz{no verbatim}.}
+
+Let us illustrate the issue with environment \refenv{tcblisting} (library
+|listings| of package \pkg{tcolorbox}), which typesets a code listing alongside
+its compiled effect.  To successfully manually memoize this environment, we
+have to enclose it in a \refenv{memoize} environment containing key
+\refmmz{verbatim} in the optional argument --- without
+this key, the example below would produce nothing but errors.
 
 \ExampleName{verbatim-manual}
 \makeexample{\examplename.pdf}
@@ -1692,15 +1700,13 @@ errors.\footnote{Memoize also offers a \emph{partial} verbatim mode, triggered
 
 Using \refmmz{verbatim} from \refcmd{mmzset} or \refcmd{mmznext} works just as
 well, and the latter can be very useful with automemoization, when some
-environment (say, \env{tcolorbox}) generally does not require the verbatim mode,
-but a specific occurrence does (say, because it contains some verbatim
-construction such as \verb!|!\meta{verbatim text}\verb!|! of the \pkg{ltxdoc}
-class).
-
-However, for an environment such as |tcblisting|, it makes the most sense to
-declare it verbatim in general, so that all instances of the environment will
-be processed in the verbatim mode.  This is simple to do: add \refmmz{verbatim}
-to the \refmmz{auto} keylist.
+environment (say, \env{tcolorbox} of package \pkg{tcolorbox}) generally does
+not require the verbatim mode, but a specific occurrence does (say, because it
+contains a verbatim construct such as \verb!|!\meta{verbatim text}\verb!|!  of
+the \pkg{ltxdoc} class).  However, for an environment such as |tcblisting|, it
+makes the most sense to declare it verbatim in general, so that all instances
+of the environment will be processed in the verbatim mode.  This is simple to
+do: add \refmmz{verbatim} to the \refmmz{auto} keylist.
 
 \ExampleName{verbatim-auto}
 \makeexample{\examplename.pdf}
@@ -1725,6 +1731,49 @@ automemoization for \cs{tikz} was declared unless you've read
 section~\ref{sec:tut:automemoization-details} or looked at the Memoize's source
 code).
 
+One other situation where a piece of code cannot be memoized out of the box is
+when it is designed to operate in the vertical mode;\footnote{``Horizontal mode
+  is typically used to make lines of text; vertical mode is typically used to
+  stack the lines of a paragraph on top of each other.'' (\TeXbyTopic[\S6])}
+examples include the standard \hologo{LaTeX} \refenv{verbatim} environment
+(again) and environment \env{algorithmic} of bundle \pkg{algorithms}.  The
+problem arises because by default, Memoize collects the typeset material into a
+horizontal box (\cs{hbox}), i.e.\ in the horizontal mode (note that there is no
+way for Memoize to detect the mode required by the memoized code in advance).
+Luckily, Memoize provides an easy solution: we simply have to instruct it to
+memoize into a vertical box (\cs{vbox}), which we can achieve by writing
+\Emph{\refmmz{capture}|=|\refmmz{capture=vbox}}, exemplified below with
+environment \env{algorithmic}.
+
+\ExampleName{capture}
+\makeexample{\examplename.pdf}
+\tcbinputexample{
+  sidebyside, lefthand ratio=0.55,
+  comment={\centering
+    \includeexamplepdf[]{page=2}
+  }
+}
+
+\newcommand\ProblemsWithMemoization[1][above]{%
+  Some situations where memoization of otherwise healthy code produces errors
+  have easy solutions like the two presented #1.  In other situations, like
+  those listed in section~\ref{sec:limits}, memoization is genuinely
+  impossible.  Yet other situations lie somewhere in-between.  Memoization is
+  possible, but implementing it requires some work and knowledge (of the rest
+  of this manual).  To top it off, it is often hard to know which kind of
+  situation one is dealing with, not least because \hologo{TeX}'s error
+  messages can be quite uninformative on the subject.
+
+  \Href{https://github.com/sasozivanovic/memoize/wiki}{Memoize wiki} on GitHub
+  lists several commands and environments, marking the issues which they
+  present to memoization, and providing solutions where possible.  The list
+  will hopefully grow to encompass many commonly used commands, but if the
+  command you're struggling with is not there, feel free to drop me an email,
+  or (even better) post a question to
+  \Href{https://tex.stackexchange.com}{\hologo{TeX} StackExchange} (use tag
+  \texttt{memoize}).}
+
+\ProblemsWithMemoization
 
 \subsection{The final version of your document}
 \label{sec:tut:final}
@@ -1799,8 +1848,8 @@ waiting for extraction).
 
 
 
-\subsection{Good to know}
-\label{sec:tut:good-to-know}
+\subsection{The limits}
+\label{sec:limits}
 
 
 \paragraph{Line- and page-breaking} An extern can't be broken across lines or
@@ -1828,13 +1877,8 @@ line, as shown below.
   },
 }
 
-That said, you \emph{can} externalize a paragraph or some other vertical mode
-material using \refmmz{capture}|=|\refmmz{capture=vbox}, but beware that the
-vertical spacing between the memoized material and its surroundings might
-change.
 
-
-\paragraph{\env{remember picture}}
+\paragraph{\refkey{/tikz/remember picture}}
 \TikZ pictures using this key cannot be externalized.
 
 Memoize will silently refuse to externalize any \TikZ picture using
@@ -2797,7 +2841,7 @@ extern (the fixed-size box) at subsequent compilations.\cprotect\footnote{You
   part of the definition as an environment (|@poormansbox|) as well, and embed
   it into the user-level environment using the following idiom:
   |\newenvironment{poormansbox}[2][]{...\begin{@poormansbox}}{\end{@poormansbox}...}|.
-  However, as illustrated in section~\ref{sec:tut:good-to-know}, automemoizing
+  However, as illustrated in section~\ref{sec:limits}, automemoizing
   an environment indirectly embedded in such a way produces an error, because
   Memoize is prevented from collecting the environment body.}
 
@@ -4058,7 +4102,7 @@ You might wonder why the construction of the extern pages and the cc-memo (and
 actually, of the c-memo as well) is indirect, as described above.
 \begin{itemize}
 \item For one, the indirect construction facilitates potential abortion of
-  memoization (see section~\ref{sec:tut:good-to-know}).  With the indirect route,
+  memoization (see section~\ref{sec:limits}).  With the indirect route,
   aborting is easy --- as nothing was permanently written anywhere yet, Memoize
   simply skips the final part of the process, where extern boxes are shipped
   into extern pages and the memo registers written into memo files --- and also
@@ -9871,12 +9915,16 @@ This warning means that either:
 \item you are trying to (auto)memoize a \refenv{tikzpicture} with
   \refkey{/tikz/remember picture} set, or more generally, some code which
   contains \refcmd{savepos} --- this can't be done, see
-  section~\ref{sec:tut:good-to-know}; or
+  section~\ref{sec:limits}; or
 \item an error occurred during memoization --- in this case, Memoize cowardly
   refuses to proceed with memoization, see section~\ref{sec:known-issues} for
   details.
 \end{itemize}
 
+\paragraph*{Memoization yields errors} while the original, non-memoized code
+compiles fine.
+
+\ProblemsWithMemoization[in section~\ref{sec:tut:verbatim}]
 
 \subsection{License}
 

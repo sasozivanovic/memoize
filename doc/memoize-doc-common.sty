@@ -154,6 +154,11 @@
     {http://mirrors.ctan.org/macros/latex/contrib/beamer/doc/beameruserguide.pdf}
     {#1\ifstrempty{#1}{}{ }the Beamer manual}%
 }
+\newcommand\TeXbyTopic[1][]{%
+  \href
+    {http://mirrors.ctan.org/info/texbytopic/TeXbyTopic.pdf}
+    {TeX by Topic\ifstrempty{#1}{}{, #1}}%
+}
 \newcommand\Alt{\,$\vert$\,}
 \newcommand\hyp{\discretionary{}{}{}}
 \newcommand\fncomma{\ensuremath{{^,}}}
@@ -174,3 +179,5 @@
 \NewDocumentCommand\pkg{O{\pkgcolor}m}{{%
     \hypercolor{url}{#1}%
     \href{https://ctan.org/pkg/#2}{\texttt{#2}}}}
+
+\NewDocumentCommand\Href{O{Hyperlink}mm}{{\hypercolor{url}{#1}\href{#2}{#3}}}

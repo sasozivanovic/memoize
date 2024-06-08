@@ -1,0 +1,32 @@
+%<*!lst>
+%<!att>\documentclass[varwidth=6cm]{standalone}
+%<att>\documentclass{article}
+
+\usepackage{algorithmic}
+\usepackage{memoize}
+%</!lst>
+\mmzset{
+  auto={algorithmic}{memoize,~capture=vbox~}
+}
+%<*!lst>
+
+\begin{document}
+
+The Euclid's algorithm for computing
+the greatest common divisor (GCD)
+of $a$ and $b$:
+
+\medskip
+
+%</!lst>
+\begin{algorithmic}
+  \WHILE{$a\neq b$}
+    \IF{$a>b$}
+      \STATE $a\leftarrow a - b$
+    \ELSE
+      \STATE $b\leftarrow b - a$
+    \ENDIF
+  \ENDWHILE
+\end{algorithmic}
+
+%<!lst>\end{document}
