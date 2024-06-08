@@ -955,11 +955,14 @@
   \ifmemoizing
   \else
     \ifmemoize
-      % Compute \meta{code md5sum} off of the first argument, and globally
+      % Compute \meta{code md5sum} off of salted the source code, and globally
       % store it into |\mmz@code@mdfivesum| --- globally, because we need it in
       % utilization to include externs, but the |\Memoize| group is closed (by
-      % |\mmzMemo|) while inputting the cc-memo.  
-      \xdef\mmz@code@mdfivesum{\pdf@mdfivesum{\the\mmz@mdfive@source}}%
+      % |\mmzMemo|) while inputting the cc-memo.
+      \xdef\mmz@code@mdfivesum{\pdf@mdfivesum{%
+          \expanded{\the\mmzSalt}%
+          \the\mmz@mdfive@source
+        }}%
       \mmz@trace@code@mdfive
       % Recompile mode forces memoization.
       \ifnum\mmz@mode=\mmz@mode@recompile\relax
@@ -1480,17 +1483,50 @@
   %   /handlers/.value to context}
   %   Utilities to put the meaning of various stuff into |context|.
   %   \indentmacrocode
-  meaning to context/.code={\forcsvlist\mmz@mtoc{#1}},
-  csname meaning to context/.code={\mmz@mtoc@csname{#1}},
-  key meaning to context/.code={%
+  meaning to context/.code={\mmz@Cos\forcsvlist\mmz@mtoc{#1}},
+  csname meaning to context/.code={\mmz@Cos\mmz@mtoc@csname{#1}},
+  key meaning to context/.code={\mmz@Cos
     \forcsvlist\mmz@mtoc\mmz@mtoc@keycmd{#1}},
-  key value to context/.code={\forcsvlist\mmz@mtoc@key{#1}},
-  /handlers/.meaning to context/.code={\expanded{%
+  key value to context/.code={\mmz@Cos\forcsvlist\mmz@mtoc@key{#1}},
+  /handlers/.meaning to context/.code={\mmz@Cos\expanded{%
       \noexpand\mmz@mtoc@csname{pgfk@\pgfkeyscurrentpath/.@cmd}}},
-  /handlers/.value to context/.code={%
+  /handlers/.value to context/.code={\mmz@Cos
     \expanded{\noexpand\mmz@mtoc@csname{pgfk@\pgfkeyscurrentpath}}},
 }
+% \begin{macro}{\mmzSalt}
+%   \begin{key}{salt, clear salt, meaning to salt, cname meaning to salt, 
+%     key meaning to salt, key value to salt, 
+%     /handlers/.meaning to salt, /handlers/.value to salt}
+%     Salt functions in the same way as context outside memoization, but it
+%     contributes to the source code hash, i.e.\ |\mmzSalt| is expanded when
+%     computing |\mmz@code@mdfivesum| in |\Memoize|.  It was realized that it
+%     is needed for full Beamer support,
+%     see \href{https://github.com/sasozivanovic/memoize/issues/27}{GitHub
+%     issue #27}.
+\newtoks\mmzSalt
+\mmzset{
+  salt/.code=\expandafter\toksapp\expandafter\mmzSalt{#1,},
+  clear salt/.value forbidden,
+  clear salt/.code=\mmzSalt{},
+  meaning to salt/.code={\mmz@coS\forcsvlist\mmz@mtoc{#1}},
+  csname meaning to salt/.code={\mmz@coS\mmz@mtoc@csname{#1}},
+  key meaning to salt/.code={\mmz@coS
+    \forcsvlist\mmz@mtoc\mmz@mtoc@keycmd{#1}},
+  key value to salt/.code={\mmz@coS
+    \forcsvlist\mmz@mtoc@key{#1}},
+  /handlers/.meaning to salt/.code={\mmz@coS\expanded{%
+      \noexpand\mmz@mtoc@csname{pgfk@\pgfkeyscurrentpath/.@cmd}}},
+  /handlers/.value to salt/.code={\mmz@coS
+    \expanded{\noexpand\mmz@mtoc@csname{pgfk@\pgfkeyscurrentpath}}},
+}
+% \end{key}
+% \end{macro}
+% 
+% The following macros are shared between context and salt, so they should be
+% preceded by either |\mmz@Cos| (for context) or |\mmz@coS| (for salt).
 % \noindentmacrocode
+\def\mmz@Cos{\def\mmz@context@or@salt{context}}
+\def\mmz@coS{\def\mmz@context@or@salt{salt}}
 \def\mmz@mtoc#1{%
   \collargs@cs@cases{#1}%
     {\mmz@mtoc@cmd{#1}}%
@@ -1512,14 +1548,17 @@
   \expandafter\mmz@mtoc@csname\expandafter{\string#1}%
 }
 \def\mmz@mtoc@csname#1{%
-  \pgfkeysvalueof{/mmz/context/.@cmd}%
-  \detokenize{#1}={\expandafter\meaning\csname#1\endcsname}%
+  \pgfkeysvalueof{/mmz/\mmz@context@or@salt/.@cmd}%
+  \detokenize{#1}%
+  \ifcsname#1\endcsname
+    ={\expandafter\meaning\csname#1\endcsname}%
+  \fi
   \pgfeov
 }
 \def\mmz@mtoc@key#1{\mmz@mtoc@csname{pgfk@#1}}
 \def\mmz@mtoc@keycmd#1{\mmz@mtoc@csname{pgfk@#1/.@cmd}}
 \def\mmz@mtoc@error@notcsorenv#1{%
-  \PackageError{memoize}{'\detokenize{#1}' passed to key 'meaning to context'
+  \PackageError{memoize}{'\detokenize{#1}' passed to key 'meaning to \mmz@context@or@salt'
     is neither a command nor an environment}{}%
 }
 % \end{key}
@@ -3322,6 +3361,7 @@
 %   appends the reference key to the context.  |\mmzNoRef| only does that if
 %   the reference is defined, otherwise it aborts the memoization.
 \def\mmzForceNoRef#1{%
+  \mmz@Cos
   \mmz@mtoc@csname{r@#1}%
   \ignorespaces
 }
@@ -3740,6 +3780,7 @@
     \expandafter{\mmz@biblatex@keys}%
 }
 \def\mmz@biblatex@do@context@one#1{%
+  \mmz@Cos
   \mmz@mtoc@csname{mmz@bbl@#1}%
   \ifcsdef{mmz@bbl@#1}{}{\mmzAbort}%
 }

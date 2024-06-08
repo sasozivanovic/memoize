@@ -3642,11 +3642,12 @@ value of |beamerpauses| at utilization.  This leads to the
 Are we done?  Almost.  The final issue is that once we have introduced support
 for pauses, we have to relativize |\mmzBeamerOverlays| (the final overlay
 number) to |beamerpause|.  So instead of a simple |\gdef\mmzBeamerOverlays| in
-the first version, we define |\mmzSetBeamerOverlays|\nohyphen\marg{beamer
-  pauses}\marg{final overlay number}, which sets |\mmzBeamerOverlays| only if
-\meta{beamer pauses} argument matches the value of |beamerpauses| (at its
-invocation in the c-memo).  Well, the macro has some other housekeeping to do
-as well: it is self-replicating, so that during potential memoization, the
+the first version, we define
+\docaux{cmd}{mmzSetBeamerOverlays}\nohyphen\marg{beamer pauses}\marg{final
+  overlay number}, which sets |\mmzBeamerOverlays| only if \meta{beamer pauses}
+argument matches the value of |beamerpauses| (at its invocation in the c-memo).
+Well, the macro has some other housekeeping to do as well: it is
+self-replicating, so that during potential memoization, the
 |\mmzBeamerOverlays| values belonging to non-current |beamerpauses| values get
 rewritten into the c-memo.\footnote{As replication should only occur during
   memoization (actually, it \emph{can} only occur then, anyway), the
@@ -3664,12 +3665,13 @@ only the instance with the greatest \meta{final overlay number} is replicated.)
 
 We are now truly done, and we can look at the final result, the c-memo and the
 cc-memo belonging to the extern on the first overlay of the example from
-section~\ref{sec:tut:beamer}.  Specifically, look at the |\mmzSetBeamerOverlays
-{1}{2}|, which says that the extern chain started when |beamerpauses| equals 1
-should continue up to overlay 2, and at the (expanded) context included at the
-end of the cc-memo, courtesy of \refmmz{include context in ccmemo}, where you
-can see that the cc-memo will be used when on the first overlay (|overlay=1|)
-when preceded by no \cs{pause} command (|pauses=1|).
+section~\ref{sec:tut:beamer}.  Specifically, look at the
+\refcmd{mmzSetBeamerOverlays}{1}{2}, which says that the extern chain started
+when |beamerpauses| equals 1 should continue up to overlay 2, and at the
+(expanded) context included at the end of the cc-memo, courtesy of
+\refmmz{include context in ccmemo}, where you can see that the cc-memo will be
+used when on the first overlay (|overlay=1|) when preceded by no \cs{pause}
+command (|pauses=1|).
 
 \begingroup
 \relaxmmzcommands
@@ -3707,6 +3709,46 @@ when preceded by no \cs{pause} command (|pauses=1|).
   example title=\myccmemo,
 }
 \endgroup
+
+
+\paragraph{An application of \refmmz{salt}}
+
+Knowing the role of a c-memo in driving the creation of Beamer overlays, we are
+ready for an application of a key from the \refmmz{salt} family.  Key
+\refmmz{salt} has a similar effect as \refmmz{context}: it contributes towards
+an md5 sum of a memo.  However, unlike \refmmz{context}, \refmmz{salt} impacts
+the code hash, which is actually the md5 sum of the concatenation of the salt
+and the memoized code.  (As the code md5 sum is calculated prior to
+memoization, using \refmmz{salt} and friends during memoization has no effect.)
+
+While \refmmz{salt} and \refmmz{context} are most often interchangeable, the
+following example crucially requires the former.  The goal is to have the memos
+and externs depend on the definition of command \cs{N}.  In non-Beamer
+documents, we can achieve this by putting the meaning of \cs{N} into the
+context.  In Beamer documents, however, this does not work.  Each meaning of
+\cs{N} should form a separate chain of externs, and these chains may be of
+different length (and in the example, they are).  As we are storing the length
+of the chains in c-memos (in \refcmd{mmzSetBeamerOverlays}), it follows that
+each value of \cs{N} should receive its own c-memo.  A c-memo is identified by
+a single md5 sum, the code md5 sum, so the meaning of \cs{N} must contribute
+towards this md5 sum.  In other words, we must salt the memoized code with the
+meaning of \cs{N}.  Below, if we had put \cs{N} into the context rather than
+salt, the two frames would create the same number of overlays: two, the number
+of overlays created by the final frame.
+
+\ExampleName{salt}
+\makeexample{\examplename.pdf}
+
+\tcbinputexample{
+  sidebyside, lefthand ratio=0.65,
+  comment={\centering
+    \includeexamplepdf[extern page,left=2mm,right=2mm]{page=1,trim=1in 1in 1in 1in}\\[1ex]
+    \includeexamplepdf[extern page,left=2mm,right=2mm]{page=3,trim=1in 1in 1in 1in}\\[1ex]
+    \includeexamplepdf[extern page,left=2mm,right=2mm]{page=5,trim=1in 1in 1in 1in}\\[1ex]
+    \includeexamplepdf[extern page,left=2mm,right=2mm]{page=7,trim=1in 1in 1in 1in}\\[1ex]
+    \includeexamplepdf[extern page,left=2mm,right=2mm]{page=9,trim=1in 1in 1in 1in}
+  },
+}
 
 
 \subsection{Record files}
@@ -5660,6 +5702,37 @@ on how to handle this properly.
   causing the memoized code to be recompiled whenever the padding values are
   changed.  This key is used to initialize \refmmz{context}, so the author
   normally shouldn't have to use this key.
+\end{doc}
+
+\begin{doc}{
+    key={name=salt, par=\meta{tokens}, desc={cumulative, no default,
+        initially empty}},
+    key={name=clear salt},
+    key={name=meaning to salt,
+      par=\marg{comma-separated list of commands and environment names}},
+    key={name=csname meaning to salt, par=\marg{control sequence name}},
+    key={name=key meaning to salt,
+      par=\marg{full path to a pgfkeys command key}},
+    key={name=key value to salt,
+      par=\marg{full path to a pgfkeys value key}},
+    keypath={/handlers}, desc=handler,
+    key={name=.meaning to salt},
+    key={name=.value to salt},
+  }
+  These keys manipulate the \emph{salt} expression, internally stored in token
+  register \docaux{cmd}{mmzSalt}.  Fully expanded (at the beginning of
+  memoization), this expression is prepended to the memoized code and
+  contributes to its code md5 sum.  In other words, two pieces of the same code
+  memoized under a different expansion of the salt will behave as if they
+  contained different code; most importantly, they will have distinct c-memos.
+  
+  The keys listed above behave in the same way as their \refmmz{context}
+  counterparts used outside memoization, i.e.\ in the same way as the local
+  variant of the \refmmz{context} keys.  Using the salt keys during memoization
+  has no effect.
+
+  While salt and context are mostly interchangeable, one example where only the
+  salt can do the job is presented in the Beamer section~\ref{sec:per-overlay}.
 \end{doc}
 
 \begin{doc}{
