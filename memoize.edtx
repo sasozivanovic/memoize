@@ -955,7 +955,7 @@
   \ifmemoizing
   \else
     \ifmemoize
-      % Compute \meta{code md5sum} off of salted the source code, and globally
+      % Compute \meta{code md5sum} off of the salted source code, and globally
       % store it into |\mmz@code@mdfivesum| --- globally, because we need it in
       % utilization to include externs, but the |\Memoize| group is closed (by
       % |\mmzMemo|) while inputting the cc-memo.
@@ -1494,7 +1494,7 @@
     \expanded{\noexpand\mmz@mtoc@csname{pgfk@\pgfkeyscurrentpath}}},
 }
 % \begin{macro}{\mmzSalt}
-%   \begin{key}{salt, clear salt, meaning to salt, cname meaning to salt, 
+%   \begin{key}{salt, clear salt, meaning to salt, csname meaning to salt, 
 %     key meaning to salt, key value to salt, 
 %     /handlers/.meaning to salt, /handlers/.value to salt}
 %     Salt functions in the same way as context outside memoization, but it
