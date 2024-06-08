@@ -1502,7 +1502,7 @@
 %     computing |\mmz@code@mdfivesum| in |\Memoize|.  It was realized that it
 %     is needed for full Beamer support,
 %     see \href{https://github.com/sasozivanovic/memoize/issues/27}{GitHub
-%     issue #27}.
+%     issue \#27}.
 \newtoks\mmzSalt
 \mmzset{
   salt/.code=\expandafter\toksapp\expandafter\mmzSalt{#1,},
