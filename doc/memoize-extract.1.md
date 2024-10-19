@@ -90,8 +90,8 @@ library [pdfrw2](https://pypi.org/project/pdfrw2).
 This script respects the restrictions on file input and output imposed by the
 TeX configuration, more precisely, the variables *openin_any* and *openout_any*
 of the **kpathsea** library (https://tug.org/kpathsea). You can inspect the
-values of these variables by executing '**kpsewhich** -var-value=openin_any' and
-'**kpsewhich** -var-value=openout_any'.  The interpretation is as follows:
+values of these variables by executing `kpsewhich -var-value=openin_any` and
+`kpsewhich -var-value=openout_any`.  The interpretation is as follows:
 
 **a** (or **y** or **1**) any
 : Allows any file to be opened.
