@@ -56,7 +56,7 @@ define CTAN-BEGIN
 	$(call cp,$(INSTALL),$(CTAN-DIR)/$(install?md))
 	$(call cp,$(CHANGELOG),$(CTAN-DIR)/$(changelog?md))
 	$(call cp,$(LICENCE),$(CTAN-DIR)/$(licence?md))
-	$(call cp,$(MAKEFILE),$(CTAN-DIR)/Makefile)
+	$(call cp,$(MAKEFILE),$(CTAN-DIR))
 	$(call cp,$(DOC),$(CTAN-DOC-DIR))
 endef
 
@@ -93,7 +93,7 @@ define TDS-CP
 	$(call cp,$(GENERIC),$(TDS-DIR)/tex/generic/$(PACKAGE))
 	$(call cp,$(SCRIPTS),$(TDS-SCRIPTS-DIR))
 	$(call cp,$(SOURCE),$(TDS-SOURCE-DIR))
-	$(call cp,$(MAKEFILE),$(TDS-SOURCE-DIR)/Makefile)
+	$(call cp,$(MAKEFILE),$(TDS-SOURCE-DIR))
 	$(call cp,$(DOC),$(TDS-DOC-DIR))
 	$(call cp,$(README),$(TDS-DOC-DIR)/$(readme?md))
 	$(call cp,$(INSTALL),$(TDS-DOC-DIR)/$(install?md))

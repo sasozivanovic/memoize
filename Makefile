@@ -37,13 +37,11 @@ SCRIPTS := $(SCRIPTS:%=%.pl) $(SCRIPTS:%=%.py)
 README = doc/README.memoize.md
 INSTALL = INSTALL.md
 CHANGELOG = CHANGELOG.md
-MAKEFILE = Makefile
+MAKEFILE = Makefile Makefile.package Makefile.runtimes Makefile.advice Makefile.collargs
 LICENCE = LICENCE
 
 PACKAGES.edtx = $(PACKAGES:%=%.edtx)
 PACKAGES.ins = $(PACKAGES:%=%.ins)
-
-makefiles = Makefile.package Makefile.runtimes Makefile.advice Makefile.collargs 
 
 codedoc-source = memoize-code.tex \
                  memoize-code.sty memoize-doc-common.sty
