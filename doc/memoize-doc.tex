@@ -9418,6 +9418,12 @@ or after Memoize.)
   as the default mode |beamer|.  This key therefore does not facilitate having
   one set of externs for the single screen mode and another set for the two
   screen mode.
+
+  A simple way of executing this key for every Beamer document, and not
+  producing an error for non-Beamer documents, is to include it in
+  \reffile{memoize.cfg} like this: \code{beamer mode to prefix/.try}.  The
+  \code{.try} handler (see \PGFmanual{87.4.8}) works because \refmmz{beamer
+    mode to prefix} is only defined when Beamer is loaded.
 \end{doc}
 
 \subsubsection{Biblatex}
