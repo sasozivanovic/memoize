@@ -56,6 +56,9 @@
   % The following doesn't work perfectly, but it's good enough.
   auto key={/tcb/breakable}{run if memoizing, outer handler=\makeunmemoizableunless{false}},
   auto key={/tcb/float}{run if memoizing, outer handler=\makeunmemoizableunless{}},
+  auto=\Emph{nomemoize,args=m}, % why do I need to specify args?
+  auto=\EmphTT{nomemoize,args=m},
+  auto=\EmphVerbatim{nomemoize,args=v},
 }
 
 \def\makeunmemoizableunless#1#2\pgfeov{%
@@ -317,7 +320,7 @@
 \renewcommand\abstractname{\vskip-\baselineskip}
 
 % sections
-\newtcbox{\section@box}[3]{tile,before=\noindent,after=,
+\newtcbox{\section@box}[3]{/mmz/disable,tile,before=\noindent,after=,
   fontupper=\normalfont#1\bfseries,capture=minipage,
   colback=emphcolor,
   boxsep=0mm,top=#2,bottom=#2,left=\oddsidemargin+1in,right=\oddsidemargin+1in,
@@ -344,7 +347,7 @@
   \@startsection{subsubsection}{2}{\z@}%
   {-3.25ex\@plus -1ex \@minus -.2ex}{1.5ex \@plus .2ex}%
   {\section@box{}{2mm}{}}}
-\newtcbox{\paragraph@box}{tile,before=,after=,capture=hbox,
+\newtcbox{\paragraph@box}{/mmz/disable,tile,before=,after=,capture=hbox,
   fontupper=\normalfont\normalsize\bfseries\hypercolor{link}{black}\vphantom{dj},
   box align=base,
   boxsep=0mm,
