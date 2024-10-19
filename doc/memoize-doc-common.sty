@@ -159,6 +159,9 @@
     {http://mirrors.ctan.org/info/texbytopic/TeXbyTopic.pdf}
     {TeX by Topic\ifstrempty{#1}{}{, #1}}%
 }
+\newcommand\TeXbook[1][]{%
+  \hologo{TeX}book\ifstrempty{#1}{}{, #1}%
+}
 \newcommand\Alt{\,$\vert$\,}
 \newcommand\hyp{\discretionary{}{}{}}
 \newcommand\fncomma{\ensuremath{{^,}}}

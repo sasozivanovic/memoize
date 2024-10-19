@@ -107,6 +107,12 @@
     },
     file={name=texmf.cnf},
     env={name=tcblisting, pkg=tcolorbox},
+    scope={
+      keypath=/tcb, pkg=tcolorbox,
+      key={name=breakable},
+      key={name=float},
+    },
+    key={keypath=/tcb, name=breakable, pkg=tcolorbox},
     cmd={name=vref, pkg=varioref},
     cmd={name=cref, pkg=cleveref},
     cmd={name=crefrange, pkg=cleveref},
@@ -1743,7 +1749,9 @@ way for Memoize to detect the mode required by the memoized code in advance).
 Luckily, Memoize provides an easy solution: we simply have to instruct it to
 memoize into a vertical box (\cs{vbox}), which we can achieve by writing
 \Emph{\refmmz{capture}|=|\refmmz{capture=vbox}}, exemplified below with
-environment \env{algorithmic}.
+environment \env{algorithmic}.\footnote{Note that this solution does not work
+  for commands and environments which operate in \emph{external} vertical mode;
+  see section~\ref{sec:limits} for details.}
 
 \ExampleName{capture}
 \makeexample{\examplename.pdf}
@@ -1876,6 +1884,38 @@ line, as shown below.
                       [\examplepath.c2.pdf]{page=1}
   },
 }
+
+
+\paragraph{External vertical mode}
+
+Attempting to memoize a command or environment which operates in
+\emph{external} vertical mode (called simply ``vertical mode'' in \TeXbook)
+will fail, because Memoize can only operate in \emph{internal} vertical
+mode.\footnote{In vertical mode, \hologo{TeX} is ``building the main vertical
+  list, from which the pages of output are created'', while it is ``building a
+  vertical list for a vbox'' in internal vertical mode.  Similarly, in
+  horizontal mode, \hologo{TeX} is ``building a horizontal list for a
+  paragraph,'' while it is ``building a horizontal list for an hbox'' in
+  restricted horizontal mode.  (All quotes are from \TeXbook[85].)}
+
+At one hand, any command or environment which needs interact with the page
+breaking mechanism, like a command designed to break its output across pages,
+has to operate in external vertical mode.  An example of such an environment is
+a \env{tcolorbox} with key \refkey{/tcb/breakable} or \refkey{/tcb/float}.  On
+the other hand, Memoize can only externalize boxes, and to gather typeset
+material in a box, it needs to operate either in restricted horizontal mode (by
+default) or internal vertical mode (when asked to do so by
+\refmmz{capture}|=|\refmmz{capture=vbox}).
+
+In a nutshell, Memoize is inherently incompatible with external vertical mode.
+For example, an attempt to memoize a breakable \env{tcolorbox} will fail ---
+even if the environment ends up producing a non-broken box.  As far as I see,
+the only way to support memoization of a command which has to operate in
+external mode is from within the package defining the command; the command must
+be reimplemented in a Memoize-friendly fashion, perhaps using the ideas
+presented in sections~\ref{sec:memoizable-design}
+and~\ref{sec:memoization-complex-single-driver}.
+
 
 
 \paragraph{\refkey{/tikz/remember picture}}
