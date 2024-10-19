@@ -3759,11 +3759,11 @@ command (|pauses=1|).
 
 Knowing the role of a c-memo in driving the creation of Beamer overlays, we are
 ready for an application of a key from the \refmmz{salt} family.  Key
-\refmmz{salt} has a similar effect as \refmmz{context}: it contributes towards
+\refmmz{salt} has a similar effect to \refmmz{context}: it contributes towards
 an md5 sum of a memo.  However, unlike \refmmz{context}, \refmmz{salt} impacts
 the code hash, which is actually the md5 sum of the concatenation of the salt
-and the memoized code.  (As the code md5 sum is calculated prior to
-memoization, using \refmmz{salt} and friends during memoization has no effect.)
+and the memoized code.  (As this md5 sum is calculated prior to memoization, 
+using \refmmz{salt} and friends during memoization has no effect.)
 
 While \refmmz{salt} and \refmmz{context} are most often interchangeable, the
 following example crucially requires the former.  The goal is to have the memos
@@ -3776,9 +3776,9 @@ of the chains in c-memos (in \refcmd{mmzSetBeamerOverlays}), it follows that
 each value of \cs{N} should receive its own c-memo.  A c-memo is identified by
 a single md5 sum, the code md5 sum, so the meaning of \cs{N} must contribute
 towards this md5 sum.  In other words, we must salt the memoized code with the
-meaning of \cs{N}.  Below, if we had put \cs{N} into the context rather than
-salt, the two frames would create the same number of overlays: two, the number
-of overlays created by the final frame.
+meaning of \cs{N}.  Below, if we had put \cs{N} into the context rather than 
+the salt, the two frames would create the same number of overlays: two, the 
+number of overlays created by the final frame.
 
 \ExampleName{salt}
 \makeexample{\examplename.pdf}
