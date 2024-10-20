@@ -680,9 +680,13 @@ config will in turn override the system-wide one.  This should not concern you
 too much, because you will probably only want to use the user-wide config
 anyway, which might look something like this:
 
-\ExampleName{memoize}
-\makeexample{\examplename.cfg.c1}
-\tcbinputexample[.cfg]{listing only}
+\ExampleName{memoize.cfg.example}
+\makeexample{\examplename.tex.c1}
+\tcbinputexample{
+  title=\tt memoize.cfg,
+  attachment name=memoize-example.cfg,
+  listing only
+}
 
 (The \refmmz{extract} line above ``permanently'' selects the Python-based
 internal extraction method, which uses script \refscript{memoize-extract.py}.

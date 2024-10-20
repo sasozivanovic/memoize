@@ -3,4 +3,5 @@
 !ins.begin
 !ins.mid
 !ins.end
+!memoize.cfg
 !*.gitignore
