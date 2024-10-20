@@ -3362,7 +3362,7 @@
 %   the reference is defined, otherwise it aborts the memoization.
 \def\mmzForceNoRef#1{%
   \mmz@Cos
-  \mmz@mtoc@csname{r@#1}%
+  \expandafter\mmz@mtoc@csname\expandafter{\expanded{r@#1}}%
   \ignorespaces
 }
 \def\mmzNoRef#1{%
