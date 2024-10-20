@@ -23,8 +23,10 @@ LICENCE = LICENCE
 
 ctan/$(PACKAGE).zip:
 	$(TDS-BEGIN)
+	cd $(TDS-SOURCE-DIR) && mv Makefile.runtimes Makefile
 	$(TDS-END)
 	$(CTAN-BEGIN)
+	cd $(CTAN-DIR) && mv Makefile.runtimes Makefile
 	$(CTAN-END)
 
 version:
