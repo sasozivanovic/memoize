@@ -2148,6 +2148,7 @@
     }%
   }%
   %</context>
+  \mmz@shipout@unrotate
   % 
   % We complete the page setup by setting the content offset.
   \hoffset\dimexpr\mmz@padding@left - \pdfhorigin\relax
@@ -2246,6 +2247,20 @@
 \mmzset{begindocument/.append code={%
     \edef\mmz@inverse@mag{\expandafter\mmz@Pgf@geT\the\dimexpr 1000pt/\mag}%
   }}
+% \end{macro}
+%
+% 
+% \begin{macro}{\mmz@shipout@unrotate}
+%   Remove any rotation attribute given to the PDF page.  I don't know enough
+%   about PDF page attributes to be sure this works in general.  I have tested
+%   the code on simple documents with \hologo{LaTeX} and \hologo{plainTeX} in
+%   \hologo{TeX}live 2023 and 2024.  It seems that the ``unrotation'' is
+%   unnecessary with \hologo{LaTeX3}'s PDF management module (activated by
+%   |\DocumentMetadata{}| before the document class declaration).
+\def\mmz@shipout@unrotate{%
+  %<latex>\IfPDFManagementActiveTF{}{\pdfpageattr{/Rotate 0}}%
+  %<plain,context>\pdfpageattr{/Rotate 0}%
+}
 % \end{macro}
 % 
 % \begin{macro}{\mmzRegularPages}
