@@ -190,8 +190,6 @@
 
 \vfill
 
-\ExampleName{titlepage}
-\makeexample{\examplename.pdf N=2} % N=2, because we show the .mmz file later
 \begingroup
 \tcbset{page box/.style={
     box align=center,boxsep=2mm,top=0pt,bottom=0pt,left=0pt,right=0pt,
@@ -200,27 +198,27 @@
 \begin{tcboxedraster}
   [raster columns=1]
   {title=The two steps of externalization of graphics in Memoize}
-  \tcbinputexample{
+  \tcbinputexample{titlepage}{
     title=\tt doc.tex,
     listing only,
     remember as=tex,
   }
   \begin{tcolorbox}[example title=doc.pdf, no attachment, remember as=pdf1]
-    \includeexamplepdf[page box=extern1]{page=1,trim=1in 1in 1in 1in}\hfill
-    \includeexamplepdf[page box=extern2]{page=2,trim=1in 1in 1in 1in}\hfill
-    \includeexamplepdf[page box=extern3]{page=3,trim=1in 1in 1in 1in}\hfill
-    \includeexamplepdf[page box=docpage]{page=4}%
+    \includeexamplepdf[page box=extern1][\exampledir titlepage.c1.pdf]{page=1,trim=1in 1in 1in 1in}\hfill
+    \includeexamplepdf[page box=extern2][\exampledir titlepage.c1.pdf]{page=2,trim=1in 1in 1in 1in}\hfill
+    \includeexamplepdf[page box=extern3][\exampledir titlepage.c1.pdf]{page=3,trim=1in 1in 1in 1in}\hfill
+    \includeexamplepdf[page box=docpage][\exampledir titlepage.c1.pdf]{page=4}%
   \end{tcolorbox}
   \vspace{10mm}
   \begin{tcboxedraster}[raster columns=3, raster column skip=1cm]{blankest}
     \begin{tcolorbox}[example title=.pdf]\centering
-      \includeexamplepdf[page box=externfile1]{page=1,trim=1in 1in 1in 1in}\hfill
+      \includeexamplepdf[page box=externfile1][\exampledir titlepage.c1.pdf]{page=1,trim=1in 1in 1in 1in}\hfill
     \end{tcolorbox}
     \begin{tcolorbox}[example title=.pdf]\centering
-      \includeexamplepdf[page box=externfile2]{page=2,trim=1in 1in 1in 1in}\hfill
+      \includeexamplepdf[page box=externfile2][\exampledir titlepage.c1.pdf]{page=2,trim=1in 1in 1in 1in}\hfill
     \end{tcolorbox}
     \begin{tcolorbox}[example title=.pdf]\centering
-      \includeexamplepdf[page box=externfile3]{page=3,trim=1in 1in 1in 1in}\hfill
+      \includeexamplepdf[page box=externfile3][\exampledir titlepage.c1.pdf]{page=3,trim=1in 1in 1in 1in}\hfill
     \end{tcolorbox}
   \end{tcboxedraster}
 \end{tcboxedraster}
@@ -680,11 +678,8 @@ config will in turn override the system-wide one.  This should not concern you
 too much, because you will probably only want to use the user-wide config
 anyway, which might look something like this:
 
-\ExampleName{memoize.cfg.example}
-\makeexample{\examplename.tex.c1}
-\tcbinputexample{
+\tcbinputexample{memoize-example}[.cfg]{
   title=\tt memoize.cfg,
-  attachment name=memoize-example.cfg,
   listing only
 }
 
@@ -709,10 +704,9 @@ same logic can be used to base a user-wide config on the system-wide one.
 \subsection{Let's see if it works!}
 \label{sec:tut:test}
 
-\ExampleName{test}
 \noprint{\refcmd{tikz}\refenv{tikzpicture}\refenv{forest}}%
 
-Take example file \texttt{\examplename.tex},\footnote{Where can you find
+Take example file \texttt{test.tex},\footnote{Where can you find
   the example files?  For one, they are integrated into this manual, so if your
   PDF viewer supports attachments, you can simply click on the paperclip icon
   on the top right of the example box (even if you're offline).  Otherwise,
@@ -744,8 +738,7 @@ twice.
   are now embedded into the main document.
 \end{itemize}
 
-\makeexample{\examplename.pdf}
-\tcbinputexample{
+\tcbinputexample{test}{
   sidebyside,
   comment={\centering
     \includeexamplepdf[extern page,left=2mm,right=2mm]{page=1,trim=1in 1in 1in 1in}\quad
@@ -787,9 +780,7 @@ or by making it the argument of the \Emph{\refcmd{mmz}} command.  The only
 difference between the two is that the environment, but not the command,
 ignores any spaces surrounding the given code.
 
-\ExampleName{manual}
-\makeexample{\examplename.pdf}
-\tcbinputexample{
+\tcbinputexample{manual}{
   sidebyside, lefthand ratio=0.528,
   comment={\centering
     \includeexamplepdf[extern page]{page=1,trim=1in 1in 1in 1in}\hfill
@@ -816,9 +807,7 @@ the definition of |\mmztikz|.  The definition was intentionally broken into
 several lines to remind you that the spaces around the argument of \refcmd{mmz}
 matter.)
 
-\ExampleName{mmztikz}
-\makeexample{\examplename.pdf}
-\tcbinputexample{
+\tcbinputexample{mmztikz}{
   comment={\centering
     \includeexamplepdf[extern page]{page=1,trim=1in 1in 1in 1in}
     \quad
@@ -846,9 +835,7 @@ circuits.\footnote{In section~\ref{sec:tut:test}, we learned that
   also offers key \refmmz{activate}, but you probably won't have to use it, as
   an \refmmz{auto} declaration automatically activates the submitted command.}
 
-\ExampleName{automemoize-environment}
-\makeexample{\examplename.pdf}
-\tcbinputexample{
+\tcbinputexample{automemoize-environment}{
   sidebyside, lefthand ratio=0.6,
   comment={\centering
     \includeexamplepdf[extern page]{page=1,trim=1in 1in 1in 1in,scale=0.8}
@@ -890,9 +877,7 @@ Below, we write |args=om| because command \cs{qrcode} (of package \pkg{qrcode})
 takes two arguments: a bracketed optional argument, followed by a mandatory
 argument (in braces).
 
-\ExampleName{automemoize-command}
-\makeexample{\examplename.pdf}
-\tcbinputexample{
+\tcbinputexample{automemoize-command}{
   sidebyside, lefthand ratio=0.603, top=0mm,
   comment={\centering
     \includeexamplepdf[extern page]{page=1,trim=1in 1in 1in 1in}\quad
@@ -928,16 +913,14 @@ node with a red background.  Let's say we compile the document (with
 memoization) and then change this style to set the yellow background.
 Curiously, the node will remain red.
 
-\ExampleName{recompile}
-\makeexample{\examplename.pdf N=3}
 \begin{tcbraster}[raster columns=2, raster valign=top, raster column skip=4mm]
-  \tcbinputexample{
+  \tcbinputexample{recompile}(.c1){
     after title pre={\ (version~1)},
     comment={\centering
       \includeexamplepdf[document page]{page=2}
     },
   }
-  \tcbinputexample[.tex][.c2]{
+  \tcbinputexample{recompile}(.c2){
     no attachment,
     after title pre={\ (version~2)},
     comment={\centering
@@ -958,7 +941,7 @@ automemoization).  After the compilation, we should remove the
 \refmmz{recompile} directive, otherwise, Memoize will produce the extern page
 again and again).
 
-\tcbinputexample[.tex][.c3]{
+\tcbinputexample{recompile}(.c3){
   no attachment,
   after title pre={\ (version~3)},
   sidebyside, lefthand ratio=0.6,
@@ -982,9 +965,7 @@ The simplest way to achieve the former is by using key \Emph{\refmmz{disable}};
 by putting it into a \hologo{TeX} group, we can localize its effect to the
 selected pictures.
 
-\ExampleName{disable}
-\makeexample{\examplename.pdf}
-\tcbinputexample{
+\tcbinputexample{disable}{
   sidebyside, 
   lefthand ratio=0.6,
   top=0mm, % manual top, bottoms and \\[...] to fit the page
@@ -1013,20 +994,13 @@ selected pictures.
   mark the parts of the document where memoization is \emph{disabled}.)
 \end{tcolorbox}
 
-\makeexample{disable-bad.tex.c1}
-\makeexample{disable-good.tex.c1}
-\makeexample{disable-nomemoize.tex.c1}
-\makeexample{disable-nommz.tex.c1}
-\makeexample{disable-auto-cmd.tex.c1}
-\makeexample{disable-auto-env.tex.c1}
-
 \begin{tcbraster}[raster columns=2, raster equal height=rows]
-  \tcbinputexample(disable-bad){
+  \tcbinputexample{disable-bad}{
     listing and comment, bad, mark region={4}{7},
     comment={\raggedright The upper \refcmd{mmzset}\braces{\refmmz{disable}}
       does not have the intended effect,
       i.e.\ it doesn't apply to the whole document!}}
-  \tcbinputexample(disable-good){
+  \tcbinputexample{disable-good}{
     listing and comment, mark region={4}{10},
     comment={\raggedright The upper \refcmd{mmzset}\braces{\refmmz{disable}} applies
       to the entire document, as expected.}}
@@ -1039,9 +1013,9 @@ memoization (triggered using environment \refenv{memoize} or macro
 \refcmd{mmz}) off and on.
 
 \begin{tcbraster}[raster columns=2, raster equal height=rows]
-  \tcbinputexample(disable-nomemoize){listing and comment, mark region={2}{2},
+  \tcbinputexample{disable-nomemoize}{listing and comment, mark region={2}{2},
     comment=\raggedright Disable using the dedicated environment.}
-  \tcbinputexample(disable-nommz){listing and comment, mark region={2}{2},
+  \tcbinputexample{disable-nommz}{listing and comment, mark region={2}{2},
     comment=\raggedright Disable using the dedicated command.}
 \end{tcbraster}
 
@@ -1059,12 +1033,12 @@ autodisabling |\foo| prevents memoization of the inner \cs{tikz}, even though
 that command is normally automemoized.
 
 \begin{tcbraster}[raster columns=2, raster equal height=rows]
-  \tcbinputexample(disable-auto-cmd){
+  \tcbinputexample{disable-auto-cmd}{
     listing and comment,
     mark region={3}{3}, mark region={5}{5},
     comment=\raggedright Autodisable within a command.,
   }
-  \tcbinputexample(disable-auto-env){
+  \tcbinputexample{disable-auto-env}{
     listing and comment,
     mark region={3}{5},
     comment=\raggedright Autodisable within an environment.,
@@ -1084,18 +1058,16 @@ What I like to do is load the package using |\usepackage[readonly]{memoize}|,
 work on stuff, and once I'm happy with the most recent pictures, remove
 \refmmz{readonly} from the package options for one compilation.
 
-\ExampleName{readonly}
-\makeexample{\examplename.pdf N=2}
 
 \begin{tcbraster}[raster columns=5, raster valign=top, raster column skip=4mm]
-  \tcbinputexample{
+  \tcbinputexample{readonly}(.c1){
     raster multicolumn=2,
     after title pre={\ (work in progress)},
     comment={\centering
       \includeexamplepdf[document page]{page=1}
     },
   }
-  \tcbinputexample[.tex][.c2]{
+  \tcbinputexample{readonly}(.c2){
     raster multicolumn=3,
     no attachment,
     title={\tt readonly.tex} (the final version),
@@ -1128,9 +1100,7 @@ observe that \code{emph/.meaning to context} below is executed within
 \cs{tikzset} (where key \code{emph} was defined), not \refcmd{mmzset}; see
 \PGFmanual{87} to learn about key handlers.
 
-\ExampleName{meaning-to-context}
-\makeexample{\examplename.pdf N=2}
-\tcbinputexample{
+\tcbinputexample{meaning-to-context}(.c1){
   after title pre={\ (version~1)},
   sidebyside,
   comment={\centering
@@ -1138,7 +1108,7 @@ observe that \code{emph/.meaning to context} below is executed within
   },
 }
 
-\tcbinputexample[.tex][.c2]{
+\tcbinputexample{meaning-to-context}(.c2){
   after title pre={\ (version~2)},
   sidebyside,
   comment={\centering
@@ -1190,20 +1160,16 @@ details.\cprotect\footnote{If you're using the \hologo{TeX}-based extraction
   accompanied by a \hologo{TeX} log file (|.log|) produced during the
   compilation that extracted the extern.}
 
-\ExampleName{clean-house}
-\makeexample{\examplename.pdf}
 {%
-  \relaxmmzcommands
-  \edef\marshal{%
-    \noexpand\def\noexpand\mynewextern\examplename
-  }\marshal.memo.dir/#1-#2.pdf\relax{%
+    \relaxmmzcommands
+  \def\mynewextern clean-house.memo.dir/#1-#2.pdf\relax{%
     \forestset{
       append={[#1.memo\vphantom{p},pointcolor,name=cmemo]},
       append={[#1-#2.memo\vphantom{p},pointcolor,name=ccmemo]},
       append={[#1-#2.pdf,pointcolor,name=extern]},
     }%
   }
-  \tcbinputexample{
+  \tcbinputexample{clean-house}{
     middle=1mm,
     comment={%
       \begin{tcolorbox}[reset, left=2mm, top=0mm, bottom=0mm, right=0mm,
@@ -1245,20 +1211,16 @@ a dedicated directory) depicted above is courtesy of key \refmmz{memo dir},
 which is in effect by default since Memoize version 1.3.0.  Here's how a dirty
 house, which we can produce using key \refmmz{no memo dir}, would look like:
 
-\ExampleName{dirty-house}
-\makeexample{\examplename.pdf}
 {
   \relaxmmzcommands
-  \edef\marshal{%
-    \noexpand\def\noexpand\mynewextern\examplename
-  }\marshal.#1-#2.pdf\relax{%
+  \def\mynewextern dirty-house.#1-#2.pdf\relax{%
     \forestset{
       append={[\examplename.#1.memo\vphantom{p},pointcolor]},
       append={[\examplename.#1-#2.memo\vphantom{p},pointcolor]},
       append={[\examplename.#1-#2.pdf,pointcolor]},
     }%
   }
-  \tcbinputexample{
+  \tcbinputexample{dirty-house}{
     middle=1mm,
     comment={%
       \begin{tcolorbox}[reset, left=2mm, top=0mm, bottom=0mm,
@@ -1391,13 +1353,9 @@ externs in directory \code{\meta{name}.memo.dir}.\footnote{Use key
   the auxiliary files.}  (As you can see below on the left, \meta{name} may
 contain a directory part.)
 
-\ExampleName{book}
-\makeexample{\examplename.tex.c1}
-\makeexample{chapters/chapter1.tex.c1}
-
 \begin{tcbraster}[raster columns=2, raster valign=top]
-  \tcbinputexample{listing only}
-  \tcbinputexample(chapters/chapter1){listing only}
+  \tcbinputexample{book}{listing only}
+  \tcbinputexample{chapters/chapter1}{listing only}
 \end{tcbraster}
 
 In the above example, the individual chapters reside in files stored in the
@@ -1456,8 +1414,6 @@ set), you will have a reasonably up-to-date set of externs.
   \end{tcblisting}
 \end{tcboxedraster}
 
-\ExampleName{memoize.cfg._region_}
-\makeexample{\examplename.tex.c1}
 \begin{tcolorbox}[title=For \Emacs users]
   I often use this \refmmz{readonly} trick myself, but with a twist.  As an Emacs user,
   I don't use a \hologo{TeX}-based mechanism (such as the \pkg{docmute} package) to
@@ -1488,9 +1444,8 @@ set), you will have a reasonably up-to-date set of externs.
     adapt the trick to use \refmmz{no memo dir} or an arbitrary
     \refmmz{prefix}.}
 
-  \tcbinputexample{
+  \tcbinputexample{memoize-region}[.cfg]{
     title=\tt memoize.cfg,
-    attachment name=memoize-region.cfg,
     listing only,
   }
 \end{tcolorbox}
@@ -1504,12 +1459,9 @@ presentation class, Beamer.  It allows for externalizing a picture which
 changes from overlay to overlay, or which depends on the Beamer mode.  However,
 loading Memoize in Beamer is a bit peculiar:
 
-\ExampleName{beamer}
-\makeexample{\examplename.pdf}
-
-\tcbinputexample{
+\tcbinputexample{beamer}{
   comment and listing,
-  listing options app={lastline=2},
+  listing options app={lastline=2}, % todo: firstline/lastline --> Makefile
   warning, no attachment, title=,
   % 
   comment={Beamer opens the document PDF while loading the class, while
@@ -1542,7 +1494,7 @@ any other options processed by \pkg{pgfkeys}.\footnote{Read
   The implementation only uses Memoize's public interface, so understanding it
   should help if you need to support some other presentation package.}
 
-\tcbinputexample{
+\tcbinputexample{beamer}{
   listing options app={firstline=3},
   middle=1mm,
   comment={\def\dpwidth{0.27\linewidth}\def\epwidth{0.15\linewidth}%
@@ -1589,12 +1541,9 @@ temporarily disabled.  In effect, the \refkey{/tikz/overlay} key on the pin
 below will fool \hologo{TeX} into thinking that the node is all there is to the
 picture, so centering will work as desired.
 
-\ExampleName{overlay}
-\makeexample{\examplename.pdf N=4}
-\tcbinputexample{
+\tcbinputexample{overlay}(.c1){
   after title pre={\ (no memoization)},
   comment={\centering
-    % \includeexamplepdf[document page]{page=1,trim=1.8in 7.4in 1.8in 1.7in}
     \includeexamplepdf[document page]{page=1}
   },
 }
@@ -1611,7 +1560,7 @@ pin!\footnote{On the first compilation, the document page containing the figure
   than the extern file.  But on the second compilation, when Memoize actually
   uses the extern, the pin disappears.}
 
-\tcbinputexample[.tex][.c2]{
+\tcbinputexample{overlay}(.c2){
   after title pre={\ (memoization without padding)},
   attachment name=\examplename-no-padding.tex,
   sidebyside, lefthand ratio=0.3,
@@ -1634,7 +1583,7 @@ pin is only partially visible.\footnote{You might wonder why I didn't make the
   would be huge, most often bigger than the document pages, and remember that
   the externs are first dumped into the document, where they can bother you.}
 
-\tcbinputexample[.tex][.c3]{
+\tcbinputexample{overlay}(.c3){
   after title pre={\ (memoization with default padding)},
   attachment name=\examplename-default-padding.tex,
   listing and comment,
@@ -1652,7 +1601,7 @@ if you're not bothered by a large extern, you can just use
 too much padding (almost) never hurts, and as you see, you can use (simple)
 arithmetic in the value of these keys.
 
-\tcbinputexample[.tex][.c4]{
+\tcbinputexample{overlay}(.c4){
   after title pre={\ (memoization with extra padding)},
   attachment name=\examplename-extra-padding.tex,
   listing and comment,
@@ -1697,9 +1646,7 @@ have to enclose it in a \refenv{memoize} environment containing key
 \refmmz{verbatim} in the optional argument --- without
 this key, the example below would produce nothing but errors.
 
-\ExampleName{verbatim-manual}
-\makeexample{\examplename.pdf}
-\tcbinputexample{
+\tcbinputexample{verbatim-manual}{
   sidebyside,
   comment={\centering
     \includeexamplepdf[extern page]{page=1,trim=1in 1in 1in 1in}\\[1ex]
@@ -1718,9 +1665,7 @@ makes the most sense to declare it verbatim in general, so that all instances
 of the environment will be processed in the verbatim mode.  This is simple to
 do: add \refmmz{verbatim} to the \refmmz{auto} keylist.
 
-\ExampleName{verbatim-auto}
-\makeexample{\examplename.pdf}
-\tcbinputexample{
+\tcbinputexample{verbatim-auto}{
   sidebyside, % lefthand ratio=0.62,
   comment={\centering
     \footnotesize
@@ -1757,9 +1702,7 @@ environment \env{algorithmic}.\footnote{Note that this solution does not work
   for commands and environments which operate in \emph{external} vertical mode;
   see section~\ref{sec:limits} for details.}
 
-\ExampleName{capture}
-\makeexample{\examplename.pdf}
-\tcbinputexample{
+\tcbinputexample{capture}{
   sidebyside, lefthand ratio=0.55,
   comment={\centering
     \includeexamplepdf[]{page=2}
@@ -1876,9 +1819,7 @@ or pages on subsequent compilations.  If you try, the compilation will succeed
 --- without an error!  --- but your externalized text will end up in a single
 line, as shown below.
 
-\ExampleName{no-linebreaking}
-\makeexample{\examplename.pdf N=2}
-\tcbinputexample{
+\tcbinputexample{no-linebreaking}(.c1){
   bad,
   comment={\centering
     \includeexamplepdf[extern page,to be continued on right]
@@ -1995,8 +1936,6 @@ there is only |\end{sectionbox}|, and this results in the |Environment
 "minipage" ended as "sectionbox"| error.}
 
 \begingroup
-\ExampleName{sectionbox}
-\makeexample{\examplename.tex.c1}
 \mmzset{disable}
 \begin{tcbraster}[raster equal height]
 \begin{tcblisting}{listing only, bad, valign=center}
@@ -2012,7 +1951,7 @@ there is only |\end{sectionbox}|, and this results in the |Environment
   % ...
 }  
 \end{tcblisting}
-\tcbinputexample{
+\tcbinputexample{sectionbox}{
     bad,
     comment={\small\tt
       ! Package collargs Error: Environment\\"minipage" ended as "sectionbox".
@@ -2364,8 +2303,6 @@ learn about key \refmmz{context}, the backbone of the cross-referencing support
 in Memoize.  (The inner workings of the context are further explained in
 section~\ref{sec:c-memos}.)
 
-\ExampleName{ref}
-\makeexample{\examplename.pdf N=7}
 
 When the memoized code contains a \cs{ref} referring to a label given in another
 part of the document, the code is recompiled when (and only when) the reference
@@ -2377,7 +2314,7 @@ of \href{https://ctan.org/pkg/tikzlings}{Ti\emph{k}Zlings}, so that their
 externs don't disturb us, and we can focus on the \cs{tikz} command, which does
 get externalized and contains a \cs{ref}.)
 
-\tcbinputexample[.tex][.c3]{
+\tcbinputexample{ref}(.c3){
   after title pre={\ (with stable output after three compilations)},
   middle=1mm,
   comment={\centering
@@ -2390,7 +2327,7 @@ the ``normal'' nor the memoized reference is yet updated, as expected --- in
 this compilation, the new value of the penguin label only makes it into the
 |.aux| file.
 
-\tcbinputexample[.tex][.c4]{
+\tcbinputexample{ref}(.c4){
   after title pre={\ (after the first compilation with the added owl)},
   no attachment,
   comment={\centering
@@ -2403,7 +2340,7 @@ penguin label, and the \cs{ref} inside the automemoized \cs{tikz} command
 forces recompilation of the extern (\emph{how} this is done will be explained
 later).
 
-\tcbinputexample[.tex][.c5]{
+\tcbinputexample{ref}(.c5){
   after title pre={\ (after the second compilation with the added owl)},
   comment only, no attachment,
   comment={\centering
@@ -2415,7 +2352,7 @@ later).
 In the next compilation, the resulting PDF is finally stabilized, as the
 updated extern is (extracted and) included into the document.  
 
-\tcbinputexample[.tex][.c6]{
+\tcbinputexample{ref}(.c6){
   after title pre={\ (after the third compilation with the added owl)},
   comment only, no attachment,
   comment={\centering
@@ -2435,9 +2372,7 @@ This framework is a generalization of automemoization: we use the familiar
 \refmmz{auto}, but with advice offered by \Emph{\refmmzauto{ref}} rather than
 \refmmzauto{memoize}.
 
-{\ExampleName{vref}
-\makeexample{\examplename.tex.c1}
-\tcbinputexample{listing only}}
+\tcbinputexample{vref}{listing only}
 
 Key \refmmzauto{ref} only works for commands which operate on a single
 reference key.  However, that single key (which must be enclosed in braces) may
@@ -2459,7 +2394,7 @@ thing is that we don't get the extern page containing
 This is so because by default, Memoize aborts a memoization containing an
 undefined reference.
 
-\tcbinputexample[.tex][.c1]{
+\tcbinputexample{ref}(.c1){
   after title pre={\ (after the fresh compilation of the original example)},
   comment only, no attachment,
   comment={\centering
@@ -2473,7 +2408,7 @@ containing the \cs{label} much later but enjoy the speed-up offered by Memoize
 until then.  In that case, apply the \refmmz{auto} key \Emph{\refmmzauto{force
     ref}} to \cs{ref}.
 
-\tcbinputexample[.tex][.c7]{
+\tcbinputexample{ref}(.c7){
   after title pre={\ (after the fresh compilation with \refmmzauto{force ref})},
   attachment name=\examplename-force.tex,
   comment={\centering
@@ -2500,16 +2435,14 @@ recompiled whenever the font size changes.  Below, we change the font size
 using command |\small|; changing the default size with a class option such as
 |12pt| works as well.
 
-\ExampleName{fontsize}
-\makeexample{\examplename.pdf N=2}
-\tcbinputexample{
+\tcbinputexample{fontsize}(.c1){
   sidebyside, lefthand ratio=0.7, after title pre={\ (the first version)},
   comment={
     \includeexamplepdf[extern page]{page=1,trim=1in 1in 1in 1in}
   }
 }
 
-\tcbinputexample[.tex][.c2]{
+\tcbinputexample{fontsize}(.c2){
   sidebyside, lefthand ratio=0.7, after title pre={\ (the second version)},
   no attachment,
   comment={
@@ -2570,9 +2503,7 @@ will be one and the same board!  The solution is to provide the correct
 context: we dig into the \pkg{skak} sources and realize that the current
 board is stored in macro |\csname chessgame.skak.mainline\endcsname|.
 
-\ExampleName{skak}
-\makeexample{\examplename.pdf}
-\tcbinputexample{
+\tcbinputexample{skak}{
   sidebyside, lefthand ratio=0.48,
   comment={
     \includeexamplepdf[extern page]{page=1,trim=1in 1in 1in 1in,scale=0.45}\quad
@@ -2599,37 +2530,35 @@ depends on some macro or style which gets redefined?  The answer was
 the example from that section a bit further.  We will propose no new solution
 or workaround, but deepen our understanding of the issue.
 
-\ExampleName{redefinitions}
-\makeexample{\examplename.pdf N=6}
 \tcbset{
   recompile step/.style={
     sidebyside, lefthand ratio=0.74, title=,
-    comment={\includeexamplepdf[blankest][\examplepath.c\theenumi.pdf]{#1}},
+    comment={\includeexamplepdf[blankest][\exampledir redefinitions.c\theenumi.pdf]{#1}},
     /utils/exec={\addtocounter{enumi}{1}},
     enhanced, overlay app={\node[at=(frame.north west), font=\scriptsize, circle, fill=black!80!white, text=white, inner sep=1pt]{\theenumi};},
   },
 }
 \begin{tcboxedraster}[raster columns=1]{%
-    title=Working on \texttt{\examplename.tex}, enhanced, breakable}
+    title=Working on \texttt{redefinitions.tex}, enhanced, breakable}
   \setcounter{enumi}{0}%
   \tcbox[blankest]{I like red. My emphasized nodes will have red background.}
-  \tcbinputexample[.tex][.c1]{recompile step={page=2}}
+  \tcbinputexample{redefinitions}(.c1){recompile step={page=2}}
   \tcbox[blankest]{Hmm, this particular node is really important,
     let me put the text in italics as well!}
-  \tcbinputexample[.tex][.c2]{recompile step={page=2}, no attachment}
+  \tcbinputexample{redefinitions}(.c2){recompile step={page=2}, no attachment}
   \tcbox[blankest]{You know what? Perhaps yellow background would work better
     --- in general.}
-  \tcbinputexample[.tex][.c3]{recompile step={page=1}, bad, no attachment}
+  \tcbinputexample{redefinitions}(.c3){recompile step={page=1}, bad, no attachment}
   \tcbox[blankest]{How come my node is still red?!  Oh yes, I changed the
     style, so I have to recompile the extern!}
-  \tcbinputexample[.tex][.c4]{recompile step={page=2}, no attachment}
+  \tcbinputexample{redefinitions}(.c4){recompile step={page=2}, no attachment}
   \tcbox[blankest]{Ahh, yellow background, that's much better.  But you know
     what, this double emphasis won't do after all, let me go back to the
     upright shape.}
-  \tcbinputexample[.tex][.c5]{recompile step={page=1}, bad, no attachment}
+  \tcbinputexample{redefinitions}(.c5){recompile step={page=1}, bad, no attachment}
   \tcbox[blankest]{Red???!???!? Ok, I know that recompiling will help, but what
     happened here?}
-  \tcbinputexample[.tex][.c6]{recompile step={page=2}, no attachment}
+  \tcbinputexample{redefinitions}(.c6){recompile step={page=2}, no attachment}
 \end{tcboxedraster}
 
 What happened is that the externs from steps~1 and~5 share the very same code.
@@ -2686,9 +2615,7 @@ overwriting the first one.  The second compilation pulls in the externs --- or
 rather, the single extern --- resulting in the document containing the second
 progressbar in the place of the first one as well.
 
-\ExampleName{progressbar}
-\makeexample{\examplename.pdf N=2}
-\tcbinputexample{
+\tcbinputexample{progressbar}(.c1){
   bad, float,
   comment={
     \begin{tcbitemize}[raster columns=3,raster equal height,halign=center,valign=center]
@@ -2829,10 +2756,7 @@ stretch and shrink for |1ex|); furthermore, the default value of |before|
 contains |\centering| to center the box horizontally (centering is of course
 only observable when we change the width of the box).
 
-\ExampleName{poormansbox}
-\makeexample{\examplename.sty}
-\makeexample{\examplename.pdf}
-\tcbinputexample{
+\tcbinputexample{poormansbox}{
   sidebyside, lefthand ratio=0.482,
   comment={\centering
     \includeexamplepdf[document page,left=0pt,right=0pt]
@@ -2855,7 +2779,7 @@ section~\ref{sec:memoization-complex-single-driver}, the implementation will
 have to pay special attention to nesting (which presents no problem to the
 implementation in this section).
 
-As you can see in the package listing below (\texttt{\examplename.sty}), the
+As you can see in the package listing below (\texttt{poormansbox.sty}), the
 implementation of our environment is straightforward.  We first define the
 configuration command |\pmbset| and the option keys (we're using
 \pkg{pgfkeys}), and set the option defaults.  Then, we move on to the
@@ -2863,10 +2787,9 @@ environment itself: we apply the given options, execute the pre-code, typeset
 the box (which is a |minipage| of the given width, potentially wrapped in a
 |\fbox|), and execute the post-code.
 
-\tcbinputexample[.sty]{listing only, float}
+\tcbinputexample{poormansbox}[.sty]{listing only, float}
 
-\ExampleName{poormansbox-memoizable}
-Now let's make our |poormansbox| externalizable (\texttt{\examplename.sty}).  As
+Now let's make our |poormansbox| externalizable (\texttt{poormansbox-memoizable.sty}).  As
 announced above, the idea is to split the definition of the environment into
 the outer part (below, the user-level environment |poormansbox|), which
 (applies the options and) executes the pre- and the post-code, and the inner
@@ -2889,9 +2812,7 @@ extern (the fixed-size box) at subsequent compilations.\cprotect\footnote{You
   an environment indirectly embedded in such a way produces an error, because
   Memoize is prevented from collecting the environment body.}
 
-\makeexample{\examplename.sty}
-\makeexample{\examplename.pdf}% just to know if it compiles fine
-\tcbinputexample[.sty]{listing only, float}
+\tcbinputexample{poormansbox-memoizable}[.sty]{listing only, float}
 
 Looking at the definition of the internal |\@poormansbox| command, it might
 strike you as weird that we have equipped this command with an optional
@@ -2963,24 +2884,12 @@ even if this might actually count as an advantage, as the discrepancy will at
 least inform the author who refuses to read the fine material accompanying our
 |poormansbox| that something funky is going on.
 
-\begingroup
-\relaxmmzcommands
-\def\mmzNewCMemo#1{% fetch the last c-memo filename
-  \def\mycmemo{#1}%
-}
-\input{\examplepath.mmz.c1}
-\sed{%
-  s/[]]\lbrace/]\n\space\space\space\space\space\space\space
-           \space\space\space\space\space\space\space\lbrace/;
-}{\exampledir\mycmemo}
-\tcbinputlisting{
+\tcbinputexample{poormansbox-memoizable}[.cmemo]{
   listing only,
-  listing file=\exampledir\mycmemo,
-  example title,
   title=the c-memo of the last \texttt{poormansbox} environment,
-  left=0.5em, right=0em,
+  no attachment,
 }
-\endgroup
+
 
 In a nutshell, automemoizing an internal command might be counter-intuitive for
 the author.  But the core idea --- to support memoization of a resistant
@@ -3090,9 +2999,7 @@ identify the extern: the extern produced by \refcmd{mmz} was overwritten by the
 extern produced by \refcmd{Memoize}, in the fashion of the |progressbar|
 example from section~\ref{sec:tut:redefinitions}.
 
-\ExampleName{memoize-internal}
-\makeexample{\examplename.pdf N=2}
-\tcbinputexample{
+\tcbinputexample{memoize-internal}(.c1){
   comment={%
     \includeexamplepdf[document page,
       after title pre={\ (after the first compilation)}
@@ -3224,20 +3131,11 @@ Let us take a look at the contents of a cc-memo in detail.  Here's a typical
 cc-memo (it belongs to the titlepage penguin):
 
 \begingroup
-\relaxmmzcommands
-\def\mmzNewCCMemo#1{% fetch the first cc-memo filename
-  \def\myccmemo{#1}%
-  \endinput
-}
-\input{\exampledir titlepage.mmz.c1}
-\sed{%
-  s/\cmd{quitvmode} \cmd{mmzIncludeExtern}/\cmd{quitvmode}\n\cmd{mmzIncludeExtern}/;
-  s/\(\marg\)\cmd{global}/\1\n\cmd{global}/;
-}{\exampledir\myccmemo}
-\tcbinputlisting{
+\input{\exampledir titlepage.ccmemo}% --> \mymemo
+\tcbinputexample{titlepage}[.ccmemo]{
   listing only,
-  listing file=\exampledir\myccmemo,
-  example title=\myccmemo,
+  no attachment,
+  example title=\mymemo,
 }
 \endgroup
 
@@ -3273,9 +3171,7 @@ described in section~\ref{sec:tut:automemoization-details}, Memoize hacks
 \refcmd{label} to support \cs{label}s inside memoized code --- the following
 code ``just works.''
 
-\ExampleName{label}
-\makeexample{\examplename.pdf N=3}
-\tcbinputexample{
+\tcbinputexample{label}(.c1){
   comment={\centering
     \includeexamplepdf[document page, after title pre={\ (compilation 1)},
       left=1.5mm, right=1mm]{page=2}\quad
@@ -3316,23 +3212,11 @@ into \cs{@currentlabel} and to execute \cs{label}\marg{label name}.  In effect, 
 compilation, even if the memoized code itself is not compiled.
 
 \begingroup
-\relaxmmzcommands
-\def\mmzNewCCMemo#1{% fetch the first cc-memo filename
-  \def\myccmemo{#1}%
-  \endinput
-}
-\input{\examplepath.mmz.c1}
-\sed{%
-  s/~//g;
-  s/\cmd{quitvmode} \cmd{mmzLabel}/\cmd{quitvmode}\n\cmd{mmzLabel}/;
-  s/\(\marg\)\cmd{mmzIncludeExtern}/\1\n\cmd{mmzIncludeExtern}/;
-  s/\(\cmd{mmzLabel}\) *\(\marg\marg\) */~\1\2~\space/g;
-  s/\(\marg\marg\marg\)\(\marg\marg\marg\marg\marg\)/\1\space\2/;
-}{\exampledir\myccmemo}
-\tcbinputlisting{float,
+\input{\exampledir label.ccmemo}
+\tcbinputexample{label}[.ccmemo]{float,
   listing only, right=1.5mm,
-  listing file=\exampledir\myccmemo,
-  example title=\myccmemo,
+  example title=\mymemo,
+  no attachment,
 }
 \endgroup
 
@@ -3413,16 +3297,11 @@ are lost in the c-memo replica (unless \refmmz{verbatim} is in effect), but we
 will only see this once we arrive at the \pkg{beamer} example below.
 
 \begingroup
-\relaxmmzcommands
-\def\mmzNewCMemo#1{% fetch the first c-memo filename
-  \def\mycmemo{#1}%
-  \endinput
-}
-\input{\exampledir titlepage.mmz.c1}
-\tcbinputlisting{
+\input{\exampledir titlepage.cmemo}
+\tcbinputexample{titlepage}{% todo
   listing only,
-  listing file=\exampledir\mycmemo,
-  example title=\mycmemo,
+  listing file=\exampledir\mymemo,
+  example title=\mymemo,
 }
 \endgroup
 
@@ -3436,20 +3315,11 @@ cross-reference macro to token register \refcmd{mmzContextExtra}, holding
 the context expression additions.
 
 \begingroup
-\relaxmmzcommands
-\def\mmzNewCMemo#1{% fetch the first c-memo filename
-  \def\mycmemo{#1}%
-  \endinput
-}
-\input{\exampledir ref.mmz.c1}
-\sed{%
-  s/~//g;
-  s/\cmd{global}.*\marg/~\0~/;
-}{\exampledir\mycmemo}
-\tcbinputlisting{
+\input{\exampledir ref.cmemo}
+\tcbinputexample{ref}[.cmemo]{
   listing only,
-  listing file=\exampledir\mycmemo,
-  example title=\mycmemo,
+  no attachment,
+  example title=\mymemo,
 }
 \endgroup
 
@@ -3472,10 +3342,7 @@ environment, |listii|.  While it prefixes each item by an indented
 referencing works as usual.  However, problems arise when we automemoize the
 inner environment.
 
-\ExampleName{label+}
-\makeexample{\examplename.tex.c1 N=6}
-\makeexample{\examplename.pdf N=2}
-\tcbinputexample{
+\tcbinputexample{label+}{
   sidebyside, lefthand ratio=0.53,
   comment={\centering\includeexamplepdf[document page][\examplepath.c2.pdf]{page=1}},
 }
@@ -3486,22 +3353,11 @@ problem: the reference at the bottom will remain unchanged.  This is so because
 the reference text is baked into the cc-memo, as shown below.
 
 \begingroup
-\relaxmmzcommands
-\def\mmzNewCCMemo#1{% fetch the first cc-memo filename
-  \def\myccmemo{#1}%
-  \endinput
-}
-\input{\examplepath.mmz.c1}
-\sed{%
-  s/~//g;
-  s/\cmd{mmzLabel} \marg\marg/~\0~/;
-  s/\(\marg\)\(\cmd{mmzIncludeExtern}\)/\1 \2/;
-  s/\(\marg\marg\marg\)\(\marg\marg\marg\marg\marg\)/\1\space\2/;
-}{\exampledir\myccmemo}
-\tcbinputlisting{
+\input{\exampledir label+.ccmemo}
+\tcbinputexample{label+}[.ccmemo]{
   listing only,
-  listing file=\exampledir\myccmemo,
-  example title=\myccmemo,
+  no attachment,
+  example title=\mymemo,
 }
 \endgroup
 
@@ -3509,14 +3365,14 @@ How can we remedy this?  The manual option is to force the recompilation of the
 extern by putting an (invisible) reference to the outer item into the inner
 item: add |\label{item:pets}| to item ``pets'' and refer to it at ``dog'' by
 \refcmd{mmzNoRef}|{item:pets}|.%
-\attachexample[\examplename mmzNoRef.tex][\examplepath.tex.c3.attachment]
+\attachexample[label+mmzNoRef.tex][\exampledir label+.tex.c3.attachment]
 
 An automatic variant of the recompilation solution is to add \cs{@currentlabel}
 to the context upon memoizing |listii|.  This can be achieved by adding
 \refmmz{context}|={@currentlabel={\csuse{@currentlabel}}}| to the \refmmz{auto}
 declaration for |listii|. The downside of this approach is that every |listii|
 will get reexternalized upon movement, whether it actually contains a label or
-not.\attachexample[\examplename context.tex][\examplepath.tex.c4.attachment]
+not.\attachexample[label+context.tex][\exampledir label+.tex.c4.attachment]
 
 In fact, given that the externs produced by the inner environment do not
 contain the value of the outer counter, it seems wasteful to recompile any
@@ -3533,7 +3389,7 @@ the extern.  Note again, however, that this solution can only work when the
 value of the outer counter does not appear in the extern, i.e.\ it would not
 work the ``dog'' item was prefixed by |1a)| rather than simply |a)|.  In those
 cases, one should deploy one of the other solutions.%
-\attachexample[\examplename listii.tex][\examplepath.tex.c5.attachment]
+\attachexample[label+listii.tex][\exampledir label+.tex.c5.attachment]
 
 The final solution, presented below, is an elaboration on the second one.
 Rather than append \cs{@currentlabel} to the context immediately upon beginning
@@ -3566,8 +3422,8 @@ code which directly manipulates settings macros like
 \refcmd{AdviceOuterHandler} (for the full list, see
 section~\ref{sec:tut:automemoization-details} or~\ref{sec:ref:advice}).
 
-\tcbinputexample[.tex][.c6]{listing only, float,
-  attachment name=\examplename auto.tex,
+\tcbinputexample{label+}(.c6){listing only, float,
+  attachment name=label+auto.tex,
 }
 
 Within \refcmd{AdviceSetup}, we prefix (using macro \cs{preto} of package
@@ -3649,9 +3505,7 @@ macro definition, and then use the defined macro, |\mmzBeamerOverlays|, in the
 overlay specification of the dummy |\only|.  Below, you can see all this in
 code, as the argument to \refmmz{at begin memoization}.
 
-\ExampleName{per-overlay-v1}
-\makeexample{\examplename.sty}
-\tcbinputexample[.sty]{
+\tcbinputexample{per-overlay-v1}[.sty]{
   listing only,
   title={The implementation of \refmmz{per overlay} (first attempt)},
 }
@@ -3719,11 +3573,8 @@ value of |beamerpauses| at utilization.  This leads to the
 
 \medskip % manual, to avoid an orphan
 
-\ExampleName{per-overlay}
-\makeexcerpt{per-overlay}
-\tcbinputexample[.tex][.excerpt]{%
+\tcbinputexample{per-overlay}[.excerpt]{%
   listing only, one file,
-  left=0pt, % manual indentation gobble
   title={The implementation of \refmmz{per overlay}},
 }
 
@@ -3762,39 +3613,17 @@ used when on the first overlay (|overlay=1|) when preceded by no \cs{pause}
 command (|pauses=1|).
 
 \begingroup
-\relaxmmzcommands
-\def\mmzNewCMemo#1{% fetch the first c-memo filename
-  \def\mycmemo{#1}%
-}
-\def\mmzNewCCMemo#1{% fetch the first cc-memo filename
-  \def\myccmemo{#1}%
-  \endinput
-}
-\input{\exampledir beamer.mmz.c1}
-\sed{%
-  s/~//g;
-  s/\cmd{mmzSetBeamerOverlays} \marg\marg/~\0~/;
-}{\exampledir\mycmemo}
-\sed{%
-  s/~//g;
-  s/overlay=[0-9]*/~\0~/;
-  s/pauses=[0-9]*/~\0~/;
-  s/\(\cmd{quitvmode}\) \(\cmd{only}\)/\1\n\2/;
-  s/\rbrace\(\cmd{mmzIncludeExtern}\)/\rbrace\percentchar\n\1/;
-  s/\rbrace\(\cmd{setcounter}\)/\rbrace\percentchar\n\1/;
-  s/\(\marg\)\cmd{global}/\1\n\cmd{global}/;
-}{\exampledir\myccmemo}
-
-\tcbinputlisting{
+\input{\exampledir beamer.cmemo}
+\tcbinputexample{beamer}[.cmemo]{
   listing only,
-  listing file=\exampledir\mycmemo,
-  example title=\mycmemo,
+  no attachment,
+  example title=\mymemo,
 }
-
-\tcbinputlisting{
-  listing only, 
-  listing file=\exampledir\myccmemo,
-  example title=\myccmemo,
+\input{\exampledir beamer.ccmemo}
+\tcbinputexample{beamer}[.ccmemo]{
+  listing only,
+  no attachment,
+  example title=\mymemo,
 }
 \endgroup
 
@@ -3824,10 +3653,8 @@ meaning of \cs{N}.  Below, if we had put \cs{N} into the context rather than
 the salt, the two frames would create the same number of overlays: two, the 
 number of overlays created by the final frame.
 
-\ExampleName{salt}
-\makeexample{\examplename.pdf}
 
-\tcbinputexample{
+\tcbinputexample{salt}{
   sidebyside, lefthand ratio=0.65,
   comment={\centering
     \includeexamplepdf[extern page,left=2mm,right=2mm]{page=1,trim=1in 1in 1in 1in}\\[1ex]
@@ -3869,18 +3696,12 @@ to safely remove stale memos and externs.  Let us take a look at the \dmmz file
 produced by the titlepage illustration.  In fact, we have two versions of this
 file, as it changes upon the second compilation.
 
-\ExampleName{titlepage}
-\makeexample{\examplename.pdf N=2}
-\sed{%
-  s/~//g;
-  s/\cmd{mmzNewExtern}/~\0~/;
-}{\examplepath.mmz.c1}
-\tcbinputexample[.mmz][.c1]{
+\tcbinputexample{titlepage}[.mmz](.c1){
   listing only, one file, no attachment, float,
   after title pre={\ (after the first compilation)},
   listing options app={breakatwhitespace=false,prebreak=\coloredpercentchar},
 }
-\tcbinputexample[.mmz][.c2]{
+\tcbinputexample{titlepage}[.mmz](.c2){
   listing only, one file, no attachment, float,
   after title pre={\ (after subsequent compilations)},
   listing options app={breakatwhitespace=false,prebreak=\coloredpercentchar},
@@ -4009,13 +3830,9 @@ Memoize.  The second type lists the new externs, each preceded by its page
 number in the |.pdf|; this file could be fed to a custom extern extraction
 tool.
 
-\ExampleName{record-files}
-\makeexample{\examplename.tex.c1}
-\tcbinputexample{listing only}
+\tcbinputexample{record-files}{listing only}
 
-\ExampleName{record-extern-pages}
-\makeexample{\examplename.tex.c1}
-\tcbinputexample{listing only}
+\tcbinputexample{record-extern-pages}{listing only}
 
 Finally, note that (unlike memos and externs) record files are auxiliary files
 and may be deleted at any time after the extraction of the externs produced in
@@ -4093,8 +3910,7 @@ memoization.  The driver compiles the code into a horizontal or vertical box
 depending on the value of key \refmmz{capture}.  Let us look at the definition
 of the driver line by line:
 
-\makeexcerpt{single-extern-driver}
-\tcbinputexample[.tex][.excerpt]{%
+\tcbinputexample{single-extern-driver}[.excerpt]{%
   listing only, one file,
   listing options app={numbers=left, numberstyle=\tiny, numbersep=0.5em},
   title=The default memoization driver,
@@ -4173,21 +3989,14 @@ externalize any typeset output --- simply because it does not call
 of a (pgfmath) computation (let's pretend that the computation is
 time-consuming).
 
-\ExampleName{pgfmathparse}
-\makeexample{\examplename.pdf}
 \begingroup
-\relaxmmzcommands
-\def\mmzNewCCMemo#1{% fetch the first cc-memo filename
-  \def\myccmemo{#1}%
-  \endinput
-}
-\input{\examplepath.mmz.c1}
-\tcbinputexample{%
+\input{\exampledir pgfmathparse.ccmemo}
+\tcbinputexample{pgfmathparse}{%
   comment={%
-    \tcbinputlisting{
+    \tcbinputexample{pgfmathparse}{
       listing only, width=.4\linewidth, nobeforeafter,
-      listing file=\exampledir\myccmemo,
-      example title, title=the cc-memo,
+      listing file=\exampledir\mymemo,
+      title=the cc-memo,
     }\quad
     \includeexamplepdf[document page]{page=1}
   },
@@ -4216,9 +4025,7 @@ executed \emph{after} closing the memoization group.
 Let us consider an alternative implementation of the same goal of memoizing the
 result of a pgfmath computation, showcasing a couple of useful tricks.
 
-\ExampleName{pgfmathparse-embellished}
-\makeexample{\examplename.pdf}
-\tcbinputexample{listing only}
+\tcbinputexample{pgfmathparse-embellished}{listing only}
 
 For one, this ``embellished'' example reminds us that we can list the
 \refmmz{driver} key among the auto-options (even if I don't really recommend
@@ -4261,10 +4068,7 @@ entire countdown would be seen as a single, unbreakable box.  To externalize it
 properly, the chunks of the countdown that should appear on separate pages must
 be externalized into separate externs, as shown below.
 
-\ExampleName{countdown}
-\makeexample{\examplename.sty N=2}
-\makeexample{\examplename.pdf}
-\tcbinputexample{%
+\tcbinputexample{countdown}{%
   listing options app={
     basicstyle=\ttfamily\footnotesize,
   },
@@ -4335,7 +4139,7 @@ example.\cprotect\footnote{The \refmmz{auto} declaration of |\countdown| adds
   (rather than at the end of memoization), so we expand it when applying the
   auto-options.}
 
-\tcbinputexample[.sty]{listing only, after title pre={\ (version 1)}}
+\tcbinputexample{countdown}[.sty](.c1){listing only, after title pre={\ (version 1)}}
 
 Of course, the chunks of the countdown should only be externalized when the
 code is actually being memoized, and not, say, when Memoize is disabled or
@@ -4379,8 +4183,8 @@ below.\footnote{You shouldn't directly use the plain \hologo{TeX}
   integrated drivers of potentially recursive commands; we will talk about this
   in section~\ref{sec:memoization-complex-single-driver}.}
 
-\tcbinputexample[.sty][.c2]{listing only, after title pre={\ (version 2)},
-  attachment name=\examplename-integrated-driver.sty,
+\tcbinputexample{countdown}[.sty](.c2){listing only, after title pre={\ (version 2)},
+  attachment name=countdown-integrated-driver.sty,
 }
 
 
@@ -4397,9 +4201,6 @@ submit the inner command to automemoization.  However, the vanilla flavour of
 this approach had a negative impact on the user interface to automemoization.
 In this section, we will deploy the memoization driver to overcome the issue.
 
-\ExampleName{poormansbox-driver}
-\makeexample{\examplename.sty}
-\makeexample{\examplename.pdf N=2}
 
 Let us revisit the |poormansbox| example from
 section~\ref{sec:memoizable-design}.  Remember that that environment produced
@@ -4408,18 +4209,20 @@ post-code, and that the issue was that the pre- and the post-code should not be
 memoized, but rather executed at every invocation of the command, as it was
 primarily intended to put some stretchable vertical space around the box.
 
-The document source\attachexample\ and the resulting PDF of the example are the
-same as in section~\ref{sec:memoizable-design}, so we will not repeat them
-here, but jump directly into a revised definition of the environment.  We will
-retain the core idea from the original implementation: the outer command will
-execute the pre- and the post-code, and the inner command will typeset the box.
-But unlike in the original implementation, we will not automemoize the inner,
-internal command (this was the source of the author's discomfort) but the outer,
+The document
+source\attachexample[poormansbox-driver.tex][\exampledir poormansbox-driver.tex.c1.attachment]
+and the resulting PDF of the example are the same as in
+section~\ref{sec:memoizable-design}, so we will not repeat them here, but jump
+directly into a revised definition of the environment.  We will retain the core
+idea from the original implementation: the outer command will execute the pre-
+and the post-code, and the inner command will typeset the box.  But unlike in
+the original implementation, we will not automemoize the inner, internal
+command (this was the source of the author's discomfort) but the outer,
 user-level command --- and we will equip it with a custom memoization driver.
 The major idea here is to have the driver compose a cc-memo which not only
 includes the extern, but also executes the outer command.
 
-\tcbinputexample[.sty]{listing only, float}
+\tcbinputexample{poormansbox-driver}[.sty]{listing only, float}
 
 In detail, the implementation (partially shown in the |.sty| listing) is as
 follows.  The outer command (|\poormansbox@outer|) first applies the options
@@ -4440,24 +4243,12 @@ cc-memo,\cprotect\footnote{As you can see, in the cc-memo the outer command is i
 argument to |\poormansbox@outer| there is a call to \refcmd{mmzIncludeExtern}.
 
 \begingroup
-\relaxmmzcommands
-\def\mmzNewCCMemo#1{%
-  \def\mmzNewCCMemo##1{% fetch the second cc-memo filename
-    \def\myccmemo{##1}%
-    \endinput
-  }%
-}
-\input{\examplepath.mmz.c1}
-\sed{%
-  s/~//g;
-  s/\(\cmd{csuse} *{poormansbox@outer}\) *\({\nobrace*\marg\nobrace*}\)\({.*}\rbrace\)/~\1~\2~\3~/;
-  s/\(\marg\marg\marg\)\(\marg\marg\marg\marg\marg\)/\1\space\2/;
-}{\exampledir\myccmemo}
-\tcbinputlisting{
+\input{\exampledir poormansbox-driver.ccmemo}
+\tcbinputexample{poormansbox-driver}[.ccmemo]{
   listing only, left=1.5mm, right=1mm,
   listing options app={basicstyle=\tt\small},
-  listing file=\exampledir\myccmemo,
-  example title, title=the second poor man's box's cc-memo,
+  title=the second poor man's box's cc-memo,
+  no attachment,
 }%
 \endgroup
 
@@ -4837,8 +4628,7 @@ command.  For a \hologo{LaTeX} environment, the advised command is actually
 \refcmd{begin}, and this is why the call of \refcmd{AdviceGetOriginal} is of
 course followed by the environment name.
 
-\makeexcerpt{_auto-memoize-inner}
-\tcbinputexample[.tex][.excerpt]{%
+\tcbinputexample{_auto-memoize-inner}[.excerpt]{%
   listing and comment, one file, no attachment,
   title={The implementation of the \refmmzauto{inner handler}
     for automemoization},
@@ -4859,8 +4649,7 @@ invokes the argument collector, which then calls the inner handler; remember
 that the invocation of \refcmd{AdviceCollector} is the sole function of the
 default outer handler.
 
-\makeexcerpt{_auto-memoize-outer}
-\tcbinputexample[.tex][.excerpt]{%
+\tcbinputexample{_auto-memoize-outer}[.excerpt]{%
   listing only, one file, no attachment,
   title={The implementation of the \refmmzauto{outer handler}
     for automemoization},
@@ -4877,8 +4666,7 @@ memoizing or regularly compiling some code submitted to memoization (see the
 diagram in section~\ref{sec:Memoize}).  Note that it is not necessary to invoke
 \refcmd{AdviceRunfalse} in branches where the run conditions are not satisfied.
 
-\makeexcerpt{_auto-run-if-memoization-is-possible}
-\tcbinputexample[.tex][.excerpt]{%
+\tcbinputexample{_auto-run-if-memoization-is-possible}[.excerpt]{%
   listing only, one file, no attachment,
   title={The implementation of 
     \refmmzauto{run if memoization is possible}},
@@ -4895,8 +4683,7 @@ something important nevertheless: by consuming the next-options, the
 \refmmzauto{bailout handler} makes sure they will not erroneously apply to the
 next instance of (auto)memoization.
 
-\makeexcerpt{_auto-memoize-bailout}
-\tcbinputexample[.tex][.excerpt]{%
+\tcbinputexample{_auto-memoize-bailout}[.excerpt]{%
   listing only, one file, no attachment,
   title={The implementation of the \refmmzauto{bailout handler}
     for automemoization},
@@ -4928,9 +4715,7 @@ handler receives the arguments of the handled command ``as they are,'' i.e.\
 uncollected.  It then asks \refcmd{mmzNoRef} to do the real job of getting the
 reference key into the context, and finally executes the original \cs{ref}.
 
-\ExampleName{_auto-ref}
-\makeexample{\examplename.tex.c1}
-\tcbinputexample{%
+\tcbinputexample{_auto-ref}{%
   listing only, no attachment,
   title={\hypercolor{link}{white}A simplified\footnotemark{} definition
     of \refmmzauto{ref}},
@@ -4953,8 +4738,7 @@ i.e.\ outer handler, never even gets executed; note the absence of
 \refcmd{AdviceRuntrue}, which implies \refcmd{AdviceRunfalse}, which triggers
 the execution of the original command after the run conditions are ``checked.''
 
-\makeexcerpt{_auto-abort}
-\tcbinputexample[.tex][.excerpt]{%
+\tcbinputexample{_auto-abort}[.excerpt]{%
   listing only, one file, no attachment,
   title={The definition of \refmmzauto{abort}},
 }
@@ -4979,9 +4763,7 @@ will be boxed (|\fboxWrap|); under |/two|, in will be parenthesized
 effect, the box will appear within parenthesis; if we reverse the activation
 order, the parenthesis will appear inside the box.
 
-\ExampleName{chained-advice}
-\makeexample{\examplename.tex.c1 N=2}
-\tcbinputexample{comment=\input{\examplepath.tex.c2}}
+\tcbinputexample{chained-advice}{comment=\input{\examplepath.tex.c2}}
 
 First of all, looking at the code above, you have probably noticed the absence
 of key \refmmz{auto}.  This is because by default, \refkey{/handlers/.install
@@ -5015,9 +4797,7 @@ inner handler, which we invoke by \refcmd{AdviceInnerHandler}; in the false
 branch, we omit the optional argument, passing it an (additionally) braced
 |{#2}|.
 
-\ExampleName{om-collector-NewDocumentCommand}
-\makeexample{\examplename.tex.c1}
-\tcbinputexample{listing only}
+\tcbinputexample{om-collector-NewDocumentCommand}{listing only}
 
 Defining a functionally equivalent collector using \cs{newcommand} would be a
 bit more involved, as \hologo{LaTeX2e} does not offer a standardized way to
@@ -5025,9 +4805,7 @@ test for the \emph{presence} of the optional argument.  Consider the following
 collector, whose optional argument has the same default value as the advised
 command.  Is it functionally equivalent to the one above?
 
-\ExampleName{om-collector-newcommand}
-\makeexample{\examplename.tex.c1}
-\tcbinputexample{listing only}
+\tcbinputexample{om-collector-newcommand}{listing only}
 
 While there will be no visual difference, there is a difference under the hood.
 If you compile both documents, you will see that the first one creates three
@@ -5103,9 +4881,7 @@ immediately following |#1| is not braced, so
   braced, behind its \meta{next-code} argument, |\PrintAndDo\makebox|, yielding
   |\PrintAndDo|\hyp|\makebox{[5em][r]{text}}|.\par}
 
-\ExampleName{collargs-makebox}
-\makeexample{\examplename.tex.c1}
-\tcbinputexample{listing and compile}
+\tcbinputexample{collargs-makebox}{listing and compile}
 
 Seeing the arguments of |\makebox| without the immediately preceding |\makebox|
 might seem strange, but remember that \refcmd{CollectArguments} is about the
@@ -5138,9 +4914,7 @@ containing paragraph tokens).\footnote{CollArgs automatically adapts to the
   \cs{end}\meta{name} in \hologo{plainTeX} and by \cs{start}\meta{name} and
   \cs{stop}\meta{name} in \hologo{ConTeXt}.}
 
-\ExampleName{collargs-minipage}
-\makeexample{\examplename.tex.c1}
-\tcbinputexample{comment=\input{\examplepath.tex.c1}}
+\tcbinputexample{collargs-minipage}{comment=\input{\examplepath.tex}}
 
 You might wonder why didn't we provide \refcmd{CollectArguments} in the
 previous example with argument specification |omb| --- after all, the
@@ -5169,9 +4943,7 @@ its limitations.
 % A harmless warning: 
 % Missing character: There is no ^M (U+000D) in font [lmmono10-regular]:!
 % because \texttt in the example is fed a (verbatim) carriage return
-\ExampleName{collargs-verbatim}
-\makeexample{\examplename.tex.c1}
-\tcbinputexample{listing and compile}
+\tcbinputexample{collargs-verbatim}{listing and compile}
 
 Finally, CollArgs extends the \hologo{LaTeX3}\slash\pkg{xparse} specification
 by modifier \docref{xparse:amp}, which allows the user to specify options which
@@ -5235,8 +5007,7 @@ command was defined using \cs{NewDocumentCommand} or similar, and use
 \refcmd{AdviceArgs} (line~4), which also receives the argument specification
 when given by the user via key \refmmzauto{args}.
 
-\makeexcerpt{_advice-CollectArgumentsRaw}(../../advice.edtx)
-\tcbinputexample[.tex][.excerpt]{%
+\tcbinputexample{_advice-CollectArgumentsRaw}[.excerpt]{%
   listing only, one file, no attachment,
   listing options app={numbers=left, numberstyle=\tiny, numbersep=0.5em},
   title={The definition of the initial collector},
@@ -5352,13 +5123,9 @@ time the meaning of this control sequence is still primitive.  In particular,
 this means that Memoize must be loaded before \pkg{atbegshi}.
 
 \begin{tcboxedraster}[raster column skip=1cm]{blankest}
-  \ExampleName{plainTeX}%
-  \makeexample{\examplename.tex.c1}%
-  \tcbinputexample{listing only, title=A minimal \hologo{plainTeX} example}
+  \tcbinputexample{plainTeX}{listing only, title=A minimal \hologo{plainTeX} example}
   %
-  \ExampleName{ConTeXt}%
-  \makeexample{\examplename.tex.c1}%
-  \tcbinputexample{listing only, title=A minimal \hologo{ConTeXt} example}
+  \tcbinputexample{ConTeXt}{listing only, title=A minimal \hologo{ConTeXt} example}
 \end{tcboxedraster}
 
 \paragraph{\hologo{ConTeXt}}{}
@@ -6864,8 +6631,7 @@ Perl- and Python-based extraction is triggered by
   \refmmz[show keypath]{record/record type/new extern} key for and \meta{record
     type}.
 
-  \makeexcerpt{tex-extraction-options}
-  \tcbinputexample[.tex][.excerpt]{%
+  \tcbinputexample{tex-extraction-options}[.excerpt]{%
     listing only, one file, no attachment, title={The initial value of
       \refmmz{tex extraction options}},
   }
@@ -6886,8 +6652,7 @@ Perl- and Python-based extraction is triggered by
     \code{-output-driver 'xdvipdfmx -V $N$'}.} note that Memoize defines
   \docref{reg:pdfmajorversion} and \docref{reg:pdfminorversion} in \hologo{LuaTeX}.
 
-  \makeexcerpt{tex-extraction-script}
-  \tcbinputexample[.tex][.excerpt]{%
+  \tcbinputexample{tex-extraction-script}[.excerpt]{%
     listing only, one file, title=The initial value of \refmmz{tex extraction
       script}, no attachment}
 
@@ -8820,10 +8585,10 @@ grab the environment body in the verbatim mode.)
   ...
 \end{foo}
     \end{tcblisting}
-    \ExampleName{_collargs-verbatim}
-    \makeexample{\examplename.tex.c1}
-    \tcbinputexample{listing only, no attachment, mark region={1}{3}, 
-        example title=\texttt{ignore nesting=true}}
+    \tcbinputexample{_collargs-verbatim}{
+      listing only, no attachment, mark region={1}{3}, 
+      example title=\texttt{ignore nesting=true}
+    }
   \end{tcbraster}
 
   This key applies not only to argument type \docref{xparse:b} (in either
@@ -8856,11 +8621,11 @@ grab the environment body in the verbatim mode.)
   environment |foo|.
 
   \begin{tcbraster}
-    \ExampleName{_collargs-ignore-other-tags}
-    \makeexample{\examplename.tex.c1 N=2}
-    \tcbinputexample{listing only, no attachment, mark region={3}{3},
+    \tcbinputexample{_collargs-ignore-other-tags}(.c1){
+      listing only, no attachment, mark region={3}{3},
       example title=\texttt{ignore other tags=false}}
-    \tcbinputexample[.tex][.c2]{listing only, no attachment, mark region={3}{5},
+    \tcbinputexample{_collargs-ignore-other-tags}(.c2){
+      listing only, no attachment, mark region={3}{5},
       example title=\texttt{ignore other tags=true}}
   \end{tcbraster}
 
@@ -8914,9 +8679,7 @@ grab the environment body in the verbatim mode.)
   \refcollargs{verbatim}.  And we use \refcollargs{no delimiters} to get rid of
   the braces around the footnote text.)
   
-  \ExampleName{collargs-processor}
-  \makeexample{\examplename.tex.c1}
-  \tcbinputexample{comment=\input{\examplepath.tex.c1}}
+  \tcbinputexample{collargs-processor}{comment=\input{\examplepath.tex}}
 \end{doc}
 
 \begin{doc}[
@@ -8979,11 +8742,7 @@ grab the environment body in the verbatim mode.)
     braces.
   \end{enumerate*}
   
-  \ExampleName{collargs-expandable-processor}
-  \makeexample{\examplename.tex.c1}
-  \tcbinputexample{comment=\input{\examplepath.tex.c1},
-    %listing options app={numbers=left, numberstyle=\tiny, numbersep=0.5em},
-  }
+    \tcbinputexample{collargs-expandable-processor}{comment=\input{\examplepath.tex}}
 \end{doc}
 
 \begin{doc}[
@@ -8999,9 +8758,7 @@ grab the environment body in the verbatim mode.)
   Any user-specified pre- or post-processing will still be applied (and usually
   is, when this key is used).
   
-  \ExampleName{collargs-nodelimiters}
-  \makeexample{\examplename.tex.c1}
-  \tcbinputexample{comment=\small\input{\examplepath.tex.c1}}
+    \tcbinputexample{collargs-nodelimiters}{comment=\small\input{\examplepath.tex}}
 \end{doc}
 
 \begin{doc}[%
@@ -9039,9 +8796,7 @@ grab the environment body in the verbatim mode.)
       definition of \cs{mmz@remove@quotes} and advising of \cs{blx@bbl@entry}
       in the Memoize source.}
 
-    \ExampleName{collargs-return-plain}
-    \makeexample{\examplename.tex.c1}
-    \tcbinputexample{comment=\small\input{\examplepath.tex.c1}}
+    \tcbinputexample{collargs-return-plain}{comment=\small\input{\examplepath.tex}}
   \item When set to \refcollargs{return=no}, the collected arguments are not
     inserted into the input stream; \meta{next-code} can access them through
     \refcmd{collargsArgs}, a token register dedicated to holding the
@@ -9062,9 +8817,7 @@ grab the environment body in the verbatim mode.)
     conditional to true if any argument was found, and test for that
     conditional in the \meta{next-code}.)
     
-    \ExampleName{collargs-return-no}
-    \makeexample{\examplename.tex.c1}
-    \tcbinputexample{comment=\small\input{\examplepath.tex.c1}}
+    \tcbinputexample{collargs-return-no}{comment=\small\input{\examplepath.tex}}
   \end{itemize}
 \end{doc}
 
@@ -9252,10 +9005,8 @@ but having been assigned category code 12, it cannot perform this function,
 resulting in error |! Missing $ inserted| %$
 once \hologo{TeX} encounters the superscript character |^|.
 
-\ExampleName{collargs-transition-ok}
-\makeexample{\examplename.tex.c1}
-\tcbinputexample{sidebyside, lefthand ratio=0.6,
-  comment=\input{\examplepath.tex.c1}}
+\tcbinputexample{collargs-transition-ok}{sidebyside, lefthand ratio=0.6,
+  comment=\input{\examplepath.tex}}
 
 Well --- this is what \emph{would} happen if CollArgs didn't address the
 transition issue described above.  In fact, the above example compiles just
@@ -9272,10 +9023,8 @@ category code of |@| to 11 (``letter''), so |@| may help form the control word
 \emph{before} control sequence |\@author| is constructed, even if it precedes
 it immediately.
 
-\ExampleName{collargs-transition-cs}
-\makeexample{\examplename.tex.c1}
 \long\def\ShowArgs#1{Collected: ``{\color{red}\tt\detokenize{#1}}''}
-\tcbinputexample{comment=\input{\examplepath.tex.c1}}
+\tcbinputexample{collargs-transition-cs}{comment=\input{\examplepath.tex}}
 
 In the second line of the example, our clever invocation of |\@author| is
 immediately preceded by a call to \refcmd{CollectArguments}, which tries to
@@ -9324,10 +9073,8 @@ disappearing along with the rest of the line.  Once CollArgs sets to find the
 (verbatim) mandatory argument, the rest of the line is already gone, so it
 searches for, and finds, this argument in the next line.
 
-\ExampleName{collargs-transition-comment}
-\makeexample{\examplename.tex.c1}
 \long\def\ShowArgs#1{Collected: ``{\color{red}\tt\detokenize{#1}}''}
-\tcbinputexample{listing and text}
+\tcbinputexample{collargs-transition-comment}{listing and text}
 
 Nothing can be done here --- commenting deletes information, irrevocably ---
 and in a similar fashion, nothing can be done to catch a verbatim end-of-line
@@ -9357,8 +9104,7 @@ Note that environment \env{pgfpicture} is \emph{not} submitted to
 automemoization.  Doing this would probably not be a good idea, as it is used
 by many other commands and environments.
 
-\makeexcerpt{_support-pgf}
-\tcbinputexample[.tex][.excerpt]{%
+\tcbinputexample{_support-pgf}[.excerpt]{%
   listing only, one file, no attachment,
   title=\hypercolor{url}{white}\PGF support,
 }
@@ -9402,8 +9148,7 @@ prevented by \code{\refmmz{deactivate}=\refenv{tikzpicture}} and\slash or
 command \refcmd{tikz} requires a dedicated argument collector,
 \refcmd{AdviceCollectTikZArguments}.
 
-\makeexcerpt{_support-tikz}
-\tcbinputexample[.tex][.excerpt]{%
+\tcbinputexample{_support-tikz}[.excerpt]{%
   listing only, one file, no attachment,
   title=\hypercolor{url}{white}\TikZ support,
 }
@@ -9418,8 +9163,7 @@ prevented by \code{\refmmz{deactivate}=\refenv{forest}} and\slash or
 command \refcmd{Forest} is defined by \refcmd{NewDocumentCommand}, which makes
 specifying option \refmmzauto{args} unnecessary.
 
-\makeexcerpt{_support-forest}
-\tcbinputexample[.tex][.excerpt]{%
+\tcbinputexample{_support-forest}[.excerpt]{%
   listing only, one file, no attachment,
   title=\pkg[white]{Forest} support,
 }

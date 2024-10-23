@@ -1,4 +1,4 @@
-% memoize.edtx (this is not a .dtx file; to produce a .dtx, process it with edtx2dtx)
+% Memoize.edtx (this is not a .dtx file; to produce a .dtx, process it with edtx2dtx)
 % 
 %% This file is a part of Memoize, a TeX package for externalization of
 %% graphics and memoization of compilation results in general, available at
@@ -1254,7 +1254,7 @@
 %   extern-inclusion code to the cc-memo, and (v) puts the box into the
 %   document (again prefixing it with |\quitvmode| if necessary).  (The listing
 %   region markers help us present this code in the manual.)
-%   \begin{listingregion}{single-extern-driver.tex}
+%   \begin{listingregion}{single-extern-driver}
 \long\def\mmzSingleExternDriver#1{%
   \xtoksapp\mmzCCMemo{\mmz@maybe@quitvmode}%
   \setbox\mmz@box\mmz@capture{#1}%
@@ -2860,14 +2860,14 @@
 \mmzset{
   tex extraction command/.initial=pdftex,
   tex extraction options/.initial={%
-%   \begin{listingregion}{tex-extraction-options.tex}
+%   \begin{listingregion}{tex-extraction-options}
     -halt-on-error
     -interaction=batchmode
     -jobname "\externbasepath"
 % \end{listingregion}
   },
   tex extraction script/.initial={%
-%   \begin{listingregion}{tex-extraction-script.tex} ^^A todo: context
+%   \begin{listingregion}{tex-extraction-script} ^^A todo: context
     \def\noexpand\fromdocument{\jobname.pdf}%
     \def\noexpand\pagenumber{\pagenumber}%
     \def\noexpand\expectedwidth{\expectedwidth}%
@@ -3092,7 +3092,7 @@
 % We cheat and let the |run conditions| do the work --- it is cheaper to just
 % always abort than to invoke the outer handler.  (As we don't set
 % |\AdviceRuntrue|, the run conditions will never be satisfied.)
-% \begin{listingregion}{_auto-abort.tex}
+% \begin{listingregion}{_auto-abort}
 \mmzset{
   auto/abort/.style={run conditions=\mmzAbort},
 }
@@ -3120,7 +3120,7 @@
 %     These run conditions are used by |memoize| and |noop|: Memoize should be
 %     enabled, but we should not be already within Memoize, i.e.\ memoizing or
 %     normally compiling some code submitted to memoization.
-%     \begin{listingregion}{_auto-run-if-memoization-is-possible.tex}
+%     \begin{listingregion}{_auto-run-if-memoization-is-possible}
 \def\mmz@auto@rc@if@memoization@possible{%
   \ifmemoize
     \ifinmemoize
@@ -3163,14 +3163,14 @@
 %     option application local, the outer handler opens a group, which is
 %     expected to be closed by the inner handler.  This key is used by
 %     |memoize| and |noop command|.
-%     \begin{listingregion}{_auto-memoize-outer.tex}
+%     \begin{listingregion}{_auto-memoize-outer}
 \def\mmz@auto@outer{%
   \begingroup
   \mmzAutoInit
   \AdviceCollector
 }
 % \end{listingregion}
-% \begin{listingregion}{_auto-memoize-bailout.tex}
+% \begin{listingregion}{_auto-memoize-bailout}
 \def\mmz@auto@bailout{%
   \mmznext{}%
 }
@@ -3221,7 +3221,7 @@
 %     executing |\Memoize| closes the memoization group and we lose the current
 %     value of |\ifmmz@ignorespaces|.  (We also can't use |\aftergroup|,
 %       because closing the group is not the final thing |\Memoize| does.)
-%       \begin{listingregion}{_auto-memoize-inner.tex}
+%       \begin{listingregion}{_auto-memoize-inner}
 \long\def\mmz@auto@memoize#1{%
   \expanded{%
     \noexpand\Memoize
@@ -3327,13 +3327,11 @@
 % indexing.  Note that the latter is a straightforward instance of replication.
 % 
 %<*latex>
-% \begin{listingregion}{_auto-memoize-ref.tex}
 \mmzset{
   auto/.cd,
   ref/.style={outer handler=\mmz@auto@ref\mmzNoRef, run if memoizing},
   force ref/.style={outer handler=\mmz@auto@ref\mmzForceNoRef, run if memoizing},
 }
-% \end{listingregion}
 \mmzset{
   auto=\ref{ref},
   auto=\pageref{ref},
@@ -3360,7 +3358,7 @@
 %   |#1| should be either |\mmzNoRef| or |\mmzForceNoRef|. |#2| will receive
 %   any optional arguments of |\ref| (or |\pageref|, or whatever), and |#3| in
 %   |\mmz@auto@ref@i| is the cross-reference key.
-%   \begin{listingregion}{_auto-memoize-ref.tex}
+%   \begin{listingregion}{_auto-memoize-ref}
 \def\mmz@auto@ref#1#2#{\mmz@auto@ref@i#1{#2}}
 \def\mmz@auto@ref@i#1#2#3{%
   #1{#3}%
@@ -3534,7 +3532,7 @@
       }%
     \fi
   }%
-  % \begin{listingregion}{_support-pgf.tex}
+  % \begin{listingregion}{_support-pgf}
   \mmzset{%
     at begin memoization=\mmzPgfAtBeginMemoization,
     at end memoization=\mmzPgfAtEndMemoization,
@@ -3554,7 +3552,7 @@
   \input advice-tikz.code.tex
   % We define and activate the automemoization handlers for the \TikZ; command
   % and environment.
-  % \begin{listingregion}{_support-tikz.tex}
+  % \begin{listingregion}{_support-tikz}
   \mmzset{%
     auto={tikzpicture}{memoize},
     auto=\tikz{memoize, collector=\AdviceCollectTikZArguments},
@@ -3571,7 +3569,7 @@
 % defined using |xparse|, so |args| is unnecessary.
 %<*latex>
 \mmz@if@package@loaded{forest}{\Forest}{%
-  % \begin{listingregion}{_support-forest.tex}
+  % \begin{listingregion}{_support-forest}
   \mmzset{
     auto={forest}{memoize},
     auto=\Forest{memoize},
@@ -3608,7 +3606,7 @@
   },
 }%
 \@ifclassloaded{beamer}{%
-  % \begin{listingregion}{per-overlay.tex}
+  % \begin{listingregion}{per-overlay}
   \mmzset{
     per overlay/.style={
       /mmz/context={%

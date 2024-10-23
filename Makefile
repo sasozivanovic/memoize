@@ -145,7 +145,7 @@ include Makefile.runtimes
 
 VERSION-MAN = of Memoize v$(VERSION)
 
-.PHONY: all-runtimes link-all-runtimes unlink-all-runtimes test
+.PHONY: all-runtimes link-all-runtimes unlink-all-runtimes test examples
 
 all-runtimes: runtimes
 	$(MAKE) -f Makefile.advice runtimes
@@ -161,3 +161,6 @@ unlink-all-runtimes: unlink-runtimes
 
 test:
 	cd testing && ./MakeTests.py
+
+examples:
+	$(MAKE) -C doc/examples

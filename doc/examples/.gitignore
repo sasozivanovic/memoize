@@ -5,3 +5,5 @@
 !ins.end
 !memoize.cfg
 !*.gitignore
+!extract-excerpts.pl
+!get-filename-from-mmz.tex

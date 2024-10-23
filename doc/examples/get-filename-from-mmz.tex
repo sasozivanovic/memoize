@@ -1,0 +1,42 @@
+% execute with etex
+
+\def\mmzPrefix#1{}
+\def\mmzNewCMemo#1{}
+\def\mmzNewCCMemo#1{}
+\def\mmzNewExtern#1#2#3#4{}%
+\def\mmzUsedCMemo#1{}
+\def\mmzUsedCCMemo#1{}
+\def\mmzUsedExtern#1{}
+
+\def\GetFirst#1{%
+  \def\filename{#1}%
+  \endinput
+}
+\def\GetSecond#1{%
+  \def\GetSecond##1{%
+    \def\filename{##1}%
+    \endinput
+  }%
+}
+\def\GetLast#1{%
+  \def\filename{#1}%
+}
+
+% #1 = GetFirst | GetSecond | GetLast
+% #2 = mmzNewCMemo | mmzNewCCMemo | ... (mmzNewExtern is not supported)
+% #3 = from <filename.mmz>
+% #4 = store into this cs (in TeX output)
+% #5 = into thi filename  (plus .tex for TeX output)
+\def\get#1#2#3#4#5{%
+  \expandafter\edef\csname#2\endcsname{%
+    \unexpanded\expandafter{\csname#1\endcsname}%
+  }%
+  \input{#3}%
+  \immediate\openout0{#5}%
+  \immediate\immediate\write0{%
+    \noexpand\def\unexpanded\expandafter{\csname#4\endcsname}{\filename}}%
+  \immediate\immediate\write0{\noexpand\endinput}%
+  \immediate\immediate\write0{\filename}%
+  \immediate\closeout0
+  \csname bye\endcsname
+}

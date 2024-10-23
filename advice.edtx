@@ -785,7 +785,7 @@
 %   did not set it, or has reset it by writing |args| without a value), it is
 %   assumed that the handled command was defined by |xparse| and |\AdviceArgs|
 %   will be retrieved by |\GetDocumentCommandArgSpec|.
-%   \begin{listingregion}{_advice-CollectArgumentsRaw.tex}
+%   \begin{listingregion}{_advice-CollectArgumentsRaw}
 \def\advice@CollectArgumentsRaw{%
   \AdviceIfArgs{}{%
     \expandafter\GetDocumentCommandArgSpec\expandafter{\AdviceName}%

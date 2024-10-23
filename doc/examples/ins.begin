@@ -4,3 +4,6 @@
 \nopostamble
 \askforoverwritefalse
 \generate{%
+  \file{example}{\from{example.dtx}{t}}%
+  \file{example.listing}{\from{example.dtx}{lst,t}}%
+  \file{example.attachment}{\from{example.dtx}{att,t}}%

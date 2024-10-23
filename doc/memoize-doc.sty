@@ -200,9 +200,6 @@
     \tcbincludegraphics[reset,capture=hbox,graphics options={clip,#4},#1]{#2}#3%
   }%
 }%
-\def\ExampleName#1{\edef\examplename{#1}\ignorespaces}
-\def\makeexample#1{\pdfsystem{make -C \exampledir\space#1}\ignorespaces}
-% \def\makeexample#1{\pdfsystem{make -B -C \exampledir\space#1}}
 \def\examplepath{\exampledir\examplename}
 \RequirePackage{intopdf}
 \RequirePackage{fontawesome}
@@ -235,13 +232,9 @@
         fill=white, draw=gray, thick,
         ellipse, inner xsep=-0.5mm, inner ysep=0, shift={(-2mm,-2mm)}, rotate=45,
       ]{%
-        \pdfsystem{make -f examples/Makefile \attachmentpath}%
         \expandafter\myattachandlink\expandafter[\attachmentname]{\attachmentpath}[application/x-tex]{Click here to open the code.}{\rotatebox{-45}{\faPaperclip}}
       };
     }
-  },
-  excerpt/.code 2 args={%
-    \makeexample{#2.excerpt SOURCE=#1}%
   },
 }
 \NewDocumentCommand\attachexample{O{\examplename.tex} O{\examplepath.tex.c1.attachment}}{%
@@ -265,8 +258,12 @@
 \AtEndDocument{\immediate\closeout\attachments}
 
 \NewTCBInputListing{\tcbinputexample}{
-  >{\edef\ProcessedArgument} D(){\examplename}  O{.tex} O{.c1} +m }
+  >{\edef\ProcessedArgument} m O{.tex} D(){} +m }
 {%
+  /utils/exec={%
+    \edef\examplename{#1}%
+    \edef\examplepdfpath{\exampledir#1#3.pdf}%
+  },%
   /mmz/context={dtxmd5sum=\csuse{pdf@filemdfivesum}{\exampledir#1#2.dtx}},
   example title={#1#2},
   % enlarge left by=\leftmargin,% this takes care of using this box in lists
@@ -276,7 +273,6 @@
     attachment={\exampledir#1#2#3},
   },
   listing file=\exampledir#1#2#3.listing,
-  /utils/exec={\edef\examplepdfpath{\exampledir#1#3.pdf}},%
   attachment=\exampledir#1#2#3.attachment,
   attachment name=#1#2,%
   #4,
@@ -289,10 +285,10 @@
   listing and compile/.style={
     listing and comment,
     comment={%
-      \input\examplepath.tex.c#1
+      \input\examplepath.tex#1%
     }
   },
-  listing and compile/.default=1,
+  listing and compile/.default=,
 }
 
 \pgfkeys{
@@ -423,51 +419,9 @@
 \usepackage{xstring}
 \usepackage{placeins}
 
-\NewDocumentCommand\makeexcerpt{ m O{.tex} D(){../../memoize.edtx} }{%
-  \ExampleName{#1}%
-  \makeexample{#1#2.excerpt SOURCE=#3}%
-  \ignorespaces
-}
-
-\newcommand\sed[2]{%
-  \begingroup
-  \def\cmd##1{\noexpand\\##1}%
-  \def\0{\bslash0}%
-  \def\1{\bslash1}%
-  \def\2{\bslash2}%
-  \def\3{\bslash3}%
-  \def\4{\bslash4}%
-  \def\5{\bslash5}%
-  \def\6{\bslash6}%
-  \def\7{\bslash7}%
-  \def\8{\bslash8}%
-  \def\9{\bslash9}%
-  \def~{\noexpand~}%
-  \def\n{\string\n}%
-  \def\({\bslash(}%
-  \def\){\bslash)}%
-  \let\lbrace\sedlbrace
-  \let\rbrace\sedrbrace
-  \edef\nobrace{[^\sedlbrace\sedrbrace]}
-  \edef\marg{{[^\sedrbrace]*}}%
-  \def\repeat##1{\bslash\sedlbrace##1\bslash\sedrbrace}%
-  \pdfsystem{sed -i "#1" #2}%
-  \endgroup
-}
-\begingroup
-\catcode`\(=1
-\catcode`\)=2
-\catcode`\{=12
-\catcode`\}=12
-\gdef\sedlbrace({)%
-\gdef\sedrbrace(})%
-\endgroup
-
 \usepackage{pifont}
 \newcommand\yes{{\small\ding{51}}} % pifont
 \newcommand\no{{\small\ding{55}}} % pifont
-
-%\newcommand\oarg[1]{{\ttfamily[}\meta{#1}{\ttfamily]}}
 
 \definecolor{Option}{rgb}{0.118,0.546,0.222}
 \definecolor{Definition}{rgb}{0.784,0.06,0.176}
