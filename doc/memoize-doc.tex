@@ -3491,11 +3491,13 @@ these files.  An easy way to achieve this is to furnish them with a dummy
   should be understood as relative to our memoized picture, i.e.\ as the final
   overlay containing the memoized picture.}\footnote{Actually, putting this
   \cs{only} command only into the first cc-memo would suffice, but would be
-  harder to implement.}  but there is a problem: the final overlay number is
-unknown when we're memoizing our picture --- it is unknown even when we're
-memoizing the picture on final overlay itself (we simply don't know yet that
-this overlay will end up being the final one), let alone during the memoization
-on the first overlay.
+  harder to implement.}\footnote{In the actual implementation, the \meta{final
+    overlay number} is also prefixed by \code{all:}, to have this work in all
+  Beamer modes.}  but there is a problem: the final overlay number is unknown
+when we're memoizing our picture --- it is unknown even when we're memoizing
+the picture on final overlay itself (we simply don't know yet that this overlay
+will end up being the final one), let alone during the memoization on the first
+overlay.
 
 The solution exploits the fact that \emph{the c-memo is rewritten at each
   memoization}: at each memoization of our picture, we store the the
@@ -3606,11 +3608,11 @@ only the instance with the greatest \meta{final overlay number} is replicated.)
 We are now truly done, and we can look at the final result, the c-memo and the
 cc-memo belonging to the extern on the first overlay of the example from
 section~\ref{sec:tut:beamer}.  Specifically, look at the
-\refcmd{mmzSetBeamerOverlays}{1}{2}, which says that the extern chain started
-when |beamerpauses| equals 1 should continue up to overlay 2, and at the
-(expanded) context included at the end of the cc-memo, courtesy of
-\refmmz{include context in ccmemo}, where you can see that the cc-memo will be
-used when on the first overlay (|overlay=1|) when preceded by no \cs{pause}
+\code{\refcmd{mmzSetBeamerOverlays}\braces{1}\braces{2}}, which says that the
+extern chain started when |beamerpauses| equals 1 should continue up to overlay
+2, and at the (expanded) context included at the end of the cc-memo, courtesy
+of \refmmz{include context in ccmemo}, where you can see that the cc-memo will
+be used when on the first overlay (|overlay=1|) when preceded by no \cs{pause}
 command (|pauses=1|).
 
 \begingroup
