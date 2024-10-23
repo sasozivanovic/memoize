@@ -111,8 +111,8 @@ tbdeleted = []
 def populate_tbdeleted(folder, basename_prefix):
     re_aux = re.compile(
         re.escape(basename_prefix) + 
-        '[0-9A-F]{32}(?:-[0-9A-F]{32})?'
-        '(?:-[0-9]+)?(?:\.memo|(?:-[0-9]+)?\.pdf|\.log)$')
+        r'[0-9A-F]{32}(?:-[0-9A-F]{32})?'
+        r'(?:-[0-9]+)?(?:\.memo|(?:-[0-9]+)?\.pdf|\.log)$')
     try:
         for f in folder.iterdir():
             if re_aux.match(f.name) and (args.all or f not in keep):
