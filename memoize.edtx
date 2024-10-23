@@ -3524,13 +3524,11 @@
     }%
     \ifx\mmz@temp=0
     \else
-      \xtoksapp\mmzCCMemo{%
-        \unexpanded{%
-          \global\expandafter\advance\csname pgf@picture@serial@count\endcsname
-        }%
-        \mmz@temp
-      }%
+      \xtoksapp\mmzCCMemo{\noexpand\mmzStepPgfPictureId{\mmz@temp}}%
     \fi
+  }%
+  \def\mmzStepPgfPictureId#1{%
+    \global\expandafter\advance\csname pgf@picture@serial@count\endcsname=#1\relax
   }%
   % \begin{listingregion}{_support-pgf}
   \mmzset{%

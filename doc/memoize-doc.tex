@@ -3152,9 +3152,10 @@ two commands.  The first one is \refcmd{quitvmode} and it is included if the
 extern was \refmmz{capture}d into a horizontal box (which is the usual
 situation).  The second one is \refcmd{mmzIncludeExtern}, and it is this
 command which actually includes the extern into the document upon inputting the
-cc-memo. The core code is executed without introducing any groups, i.e.\ the
-effect of any local assignments in the cc-memo will persist into the code
-following the memoized code.
+cc-memo.  (The third command above, \refcmd{mmzStepPgfPictureId}, is written
+by PGF support, see section~\ref{sec:support:pgf}.) The core code is executed
+without introducing any groups, i.e.\ the effect of any local assignments in
+the cc-memo will persist into the code following the memoized code.
 
 Command \refcmd{mmzIncludeExtern} takes nine parameters.  The first is the
 sequential number of the extern associated with the cc-memo, starting with 0;
@@ -9094,6 +9095,7 @@ as follows: \docref{xparse:o}, \docref{xparse:d}, \docref{xparse:s},
 \subsection{Support for specific classes and packages}
 
 \subsubsection{PGF}
+\label{sec:support:pgf}
 
 \PGF support defines commands \refcmd{mmzPgfAtBeginMemoization} and
 \refcmd{mmzPgfAtEndMemoization}, and appends them to hooks \refmmz{at begin
@@ -9129,7 +9131,8 @@ by many other commands and environments.
     memoization}, remembers the PGF picture ID at the beginning of memoization.
   Command \refcmd{mmzPgfAtEndMemoization}, executed in hook \refmmz{at end
     memoization}, checks whether the ID was advanced during memoization, and if
-  so, appends to the cc-memo the code advancing the ID counter accordingly.
+  so, appends to the cc-memo an invocation of macro
+  \docaux{cmd}{mmzStepPgfPictureId} advancing the ID counter accordingly.
 
   Note that out of the box, \refcmd{mmzPgfAtBeginMemoization} and
   \refcmd{mmzPgfAtEndMemoization} reside in their respective hooks at all
