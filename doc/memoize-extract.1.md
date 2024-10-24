@@ -2,8 +2,8 @@
 title: memoize-extract
 section: 1
 header: User Manual
-footer: memoize-extract of Memoize v1.4.0-wip
-date: June 08, 2024
+footer: memoize-extract of Memoize v1.4.0
+date: October 25, 2024
 hyphenate: false
 ---
 
