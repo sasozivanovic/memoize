@@ -19,6 +19,7 @@ N = 0
 	if [[ $(N) > 0 ]] ; then                                               \
 		for ((n=1;$$n<=$(N);n++)) ; do                                 \
 			cp $*.tex.c$$n $*.tex ;                                \
+			$(BEFORE_EACH_COMPILATION) ;                           \
 			pdflatex -interaction batchmode $* ;                   \
 			cp $*.pdf $*.c$$n.pdf ;                                \
 			if [[ -a $*.mmz ]] ; then cp $*.mmz $*.mmz.c$$n ; fi ; \
@@ -77,6 +78,8 @@ ref.pdf : N = 7
 poormansbox.pdf: poormansbox.sty
 poormansbox-memoizable.pdf: poormansbox-memoizable.sty
 countdown.pdf: countdown.sty
+countdown.pdf: N = 2 
+countdown.pdf: BEFORE_EACH_COMPILATION = cp $*.sty.c1 $*.sty
 poormansbox-driver.pdf: poormansbox-driver.sty
 
 titlepage.mmz.c1: titlepage.pdf
@@ -122,3 +125,4 @@ poormansbox-driver.ccmemo: poormansbox-driver.pdf
 
 pgfmathparse.ccmemo: pgfmathparse.pdf
 	$(call GET_FILENAME_FROM_MMZ,GetFirst,mmzNewCCMemo,$(basename $<).mmz,mymemo,$@)
+

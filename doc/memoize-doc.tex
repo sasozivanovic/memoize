@@ -204,21 +204,21 @@
     remember as=tex,
   }
   \begin{tcolorbox}[example title=doc.pdf, no attachment, remember as=pdf1]
-    \includeexamplepdf[page box=extern1][\exampledir titlepage.c1.pdf]{page=1,trim=1in 1in 1in 1in}\hfill
-    \includeexamplepdf[page box=extern2][\exampledir titlepage.c1.pdf]{page=2,trim=1in 1in 1in 1in}\hfill
-    \includeexamplepdf[page box=extern3][\exampledir titlepage.c1.pdf]{page=3,trim=1in 1in 1in 1in}\hfill
-    \includeexamplepdf[page box=docpage][\exampledir titlepage.c1.pdf]{page=4}%
+    \includeexamplepdf[page box=extern1][titlepage](.c1){page=1,trim=1in 1in 1in 1in}\hfill
+    \includeexamplepdf[page box=extern2][titlepage](.c1){page=2,trim=1in 1in 1in 1in}\hfill
+    \includeexamplepdf[page box=extern3][titlepage](.c1){page=3,trim=1in 1in 1in 1in}\hfill
+    \includeexamplepdf[page box=docpage][titlepage](.c1){page=4}%
   \end{tcolorbox}
   \vspace{10mm}
   \begin{tcboxedraster}[raster columns=3, raster column skip=1cm]{blankest}
     \begin{tcolorbox}[example title=.pdf]\centering
-      \includeexamplepdf[page box=externfile1][\exampledir titlepage.c1.pdf]{page=1,trim=1in 1in 1in 1in}\hfill
+      \includeexamplepdf[page box=externfile1][titlepage](.c1){page=1,trim=1in 1in 1in 1in}\hfill
     \end{tcolorbox}
     \begin{tcolorbox}[example title=.pdf]\centering
-      \includeexamplepdf[page box=externfile2][\exampledir titlepage.c1.pdf]{page=2,trim=1in 1in 1in 1in}\hfill
+      \includeexamplepdf[page box=externfile2][titlepage](.c1){page=2,trim=1in 1in 1in 1in}\hfill
     \end{tcolorbox}
     \begin{tcolorbox}[example title=.pdf]\centering
-      \includeexamplepdf[page box=externfile3][\exampledir titlepage.c1.pdf]{page=3,trim=1in 1in 1in 1in}\hfill
+      \includeexamplepdf[page box=externfile3][titlepage](.c1){page=3,trim=1in 1in 1in 1in}\hfill
     \end{tcolorbox}
   \end{tcboxedraster}
 \end{tcboxedraster}
@@ -1825,8 +1825,7 @@ line, as shown below.
     \includeexamplepdf[extern page,to be continued on right]
       {page=1,trim=1in 1in 14in 1in}\\[1ex]    
     \includeexamplepdf[document page]{page=2}\\[1ex]
-    \includeexamplepdf[document page,title=the expected document page]
-                      [\examplepath.c2.pdf]{page=1}
+    \includeexamplepdf[document page,title=the expected document page](.c2){page=1}
   },
 }
 
@@ -2412,8 +2411,8 @@ until then.  In that case, apply the \refmmz{auto} key \Emph{\refmmzauto{force
   after title pre={\ (after the fresh compilation with \refmmzauto{force ref})},
   attachment name=\examplename-force.tex,
   comment={\centering
-    \includeexamplepdf[extern page][\examplepath.c1.pdf]{page=1,trim=1in 1in 1in 1in}\quad
-    \includeexamplepdf[document page][\examplepath.c1.pdf]{page=2}
+    \includeexamplepdf[extern page](.c1){page=1,trim=1in 1in 1in 1in}\quad
+    \includeexamplepdf[document page](.c1){page=2}
   }
 }
 
@@ -2533,7 +2532,7 @@ or workaround, but deepen our understanding of the issue.
 \tcbset{
   recompile step/.style={
     sidebyside, lefthand ratio=0.74, title=,
-    comment={\includeexamplepdf[blankest][\exampledir redefinitions.c\theenumi.pdf]{#1}},
+    comment={\includeexamplepdf[blankest][redefinitions](.c\theenumi){#1}},
     /utils/exec={\addtocounter{enumi}{1}},
     enhanced, overlay app={\node[at=(frame.north west), font=\scriptsize, circle, fill=black!80!white, text=white, inner sep=1pt]{\theenumi};},
   },
@@ -2626,7 +2625,7 @@ progressbar in the place of the first one as well.
       \tcbitem[title=After extern extraction\vphantom{p\textsuperscript{nd}}]
       \includeexamplepdf[my boxed title=the extern file,attach shifted boxed title to top right,remember as=externfile]{page=2,trim=1in 1in 1in 1in}
       \tcbitem[title=After 2\textsuperscript{nd} compilation]
-      \includeexamplepdf[document page,remember as=doc][\examplepath.c2.pdf]{page=1}
+      \includeexamplepdf[document page,remember as=doc](.c2){page=1}
     \end{tcbitemize}
     \begin{tikzpicture}[remember picture,overlay]
       \draw[->, thick, red] (extern1.east) to[out=east, in=west] ([yshift=0.5ex]externfile.west);
@@ -3006,7 +3005,7 @@ example from section~\ref{sec:tut:redefinitions}.
     ]{page=3}\hfill
     \includeexamplepdf[document page,
       after title pre={\ (after the second compilation)}
-    ][\examplepath.c2.pdf]{page=1}
+    ](.c2){page=1}
   },
 }
 
@@ -3177,9 +3176,9 @@ code ``just works.''
     \includeexamplepdf[document page, after title pre={\ (compilation 1)},
       left=1.5mm, right=1mm]{page=2}\quad
     \includeexamplepdf[document page, after title pre={\ (compilation 2)},
-      left=1.5mm, right=1mm][\examplepath.c2.pdf]{page=1}\quad
+      left=1.5mm, right=1mm](.c2){page=1}\quad
     \includeexamplepdf[document page, after title pre={\ (compilation 3)},
-      left=1.5mm, right=1mm][\examplepath.c3.pdf]{page=1}
+      left=1.5mm, right=1mm](.c3){page=1}
   },
 }
 
@@ -3345,7 +3344,7 @@ inner environment.
 
 \tcbinputexample{label+}{
   sidebyside, lefthand ratio=0.53,
-  comment={\centering\includeexamplepdf[document page][\examplepath.c2.pdf]{page=1}},
+  comment={\centering\includeexamplepdf[document page](.c2){page=1}},
 }
 
 While the result looks fine at first, changing the order of |listii|
@@ -4071,7 +4070,7 @@ entire countdown would be seen as a single, unbreakable box.  To externalize it
 properly, the chunks of the countdown that should appear on separate pages must
 be externalized into separate externs, as shown below.
 
-\tcbinputexample{countdown}{%
+\tcbinputexample{countdown}(.c1){%
   listing options app={
     basicstyle=\ttfamily\footnotesize,
   },

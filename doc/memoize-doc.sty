@@ -194,10 +194,9 @@
     },
   },
 }
-\def\examplepdfpath{\examplepath.c1.pdf}
-\NewDocumentCommand{\includeexamplepdf}{ O{} O{\examplepdfpath} D(){} m}{%
+\NewDocumentCommand{\includeexamplepdf}{ O{} O{\examplename} D(){\exampledotc} m}{%
   \mbox{%
-    \tcbincludegraphics[reset,capture=hbox,graphics options={clip,#4},#1]{#2}#3%
+    \tcbincludegraphics[reset,capture=hbox,graphics options={clip,#4},#1]{\exampledir#2#3.pdf}%
   }%
 }%
 \def\examplepath{\exampledir\examplename}
@@ -221,11 +220,6 @@
   no attachment/.style={attach/.style={}},
   attachment=\jobname.listing.attachment,
   attachment name,
-  % attach example/.style={
-  %   attachment/.expanded=\examplepath.tex.work,
-  %   attachment name/.expanded=\examplename.tex,
-  %   attach,
-  % },
   attach/.style={
     overlay app={%
       \node at (frame.north east) [
@@ -262,7 +256,7 @@
 {%
   /utils/exec={%
     \edef\examplename{#1}%
-    \edef\examplepdfpath{\exampledir#1#3.pdf}%
+    \edef\exampledotc{#3}%
   },%
   /mmz/context={dtxmd5sum=\csuse{pdf@filemdfivesum}{\exampledir#1#2.dtx}},
   example title={#1#2},
