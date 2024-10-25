@@ -25,14 +25,26 @@
   \emailsymbol~\url(mailto:){saso.zivanovic@guest.arnes.si}\\
   \homepagesymbol~\url(http://){spj.ff.uni-lj.si/zivanovic}\\
   \faGithub~\url(https://){github.com/sasozivanovic}}
-
-\datefrompackageversion{collargs}
-\edef\allpackagever{CollArgs v\packagever}
-\datefrompackageversion{advice}
-\epreto\allpackagever{Advice v\packagever, }
-\datefrompackageversion{memoize}
-\epreto\allpackagever{Memoize v\packagever, }
-\let\packagever\allpackagever
+\packageversion{%
+  \ParseProvidesPackage
+  \ProvidesPackage{memoize}[2024/10/25 v1.4.0 Fast and flexible externalization]
+  \begin{tabular}{c}
+    Memoize v\packagever\\
+    \csuse{@date}
+  \end{tabular}
+  \ParseProvidesPackage
+  \ProvidesPackage{advice}[2024/03/15 v1.1.1 Extend commands and environments]
+  \begin{tabular}{c}
+    Advice v\packagever\\
+    \csuse{@date}
+  \end{tabular}
+  \ParseProvidesPackage
+  \ProvidesPackage{collargs}[2024/03/15 v1.2.0 Collect arguments of any command]
+  \begin{tabular}{c}
+    Collargs v\packagever\\
+    \csuse{@date}
+  \end{tabular}
+}
 
 \hypersetup{
   % pdftitle={Memoize},

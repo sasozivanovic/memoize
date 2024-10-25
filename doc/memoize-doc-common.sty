@@ -48,22 +48,14 @@
 \usepackage{pdftexcmds}
 \let\pdfsystem\pdf@system
 
-% version and date
-\def\datefrompackageversion#1{%
-  \setbox0=\hbox{%
-    \def\ProvidesPackage##1[##2]{%
-      \gdef\@packagever{##2}%
-      \endinput
-    }%
-    \input{#1.sty}%
-  }%
-  \expandafter\parsepackagever@\@packagever\parsepackagever@
-}
-\def\parsepackagever@#1/#2/#3 v#4 #5\parsepackagever@{%
-  \year=#1\relax\month=#2\relax\day=#3\relax
-  \def\packagever{#4}\def\packagedesc{#5}%
+\def\ParseProvidesPackage\ProvidesPackage#1[#2/#3/#4 v#5 #6]{%
+  \def\packagename{#1}%
+  \year=#2\relax\month=#3\relax\day=#4\relax
+  \def\packagever{#5}\def\packagedesc{#6}%
+  \ignorespaces
 }
 
+\newcommand\packageversion{\def\@packageversion}
 \renewcommand\maketitle{%
   \begingroup
   \mmzset{disable, auto={tcolorbox}{clear options}}% \mmznext does not work here -- todo: maybe it does now
@@ -76,8 +68,7 @@
       tikznode lower,
       adjusted title=\@title,
     ]
-    \packagever\\
-    \@date
+    \@packageversion
     \tcblower
     \Large\@author
   \end{tcolorbox}

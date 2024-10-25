@@ -96,7 +96,7 @@ doc/memoize-code.pdf: $(codedoc-source) \
 doc/memoize.pdf: $(manual-source) $(examples-src) $(PACKAGES.edtx)
 
 %.pdf: %.tex
-	latexmk -cd -lualatex -shell-escape -bibtex- $(LATEXMK) $<  && touch $@
+	latexmk -cd -lualatex -shell-escape -bibtex- $(LATEXMK) $<
 
 
 
@@ -129,12 +129,14 @@ version:
 	$(call EDIT-VERSION-MAN,doc/memoize-extract.1.md)
 	$(call EDIT-VERSION-MAN,doc/memoize-clean.1.md)
 	$(call EDIT-DATE-CHANGELOG,CHANGELOG.md)
+	$(call EDIT-VERSION-LATEX,doc/memoize-doc.tex,memoize)
+	$(call EDIT-VERSION-LATEX,doc/memoize-code.tex,memoize)
 define COLOR_VERSION
 grep -E --color '[0-9]{4}[/-][0-9]{1,2}[/-][0-9]{1,2}|v?[0-9]\.[0-9]\.[0-9]([-a-z]*)|(January|February|March|April|May|June|July|August|September|October|November|December) [0-9]+, [0-9]{4}'
 endef
 
 versions-show:
-	@grep -E '%<latex>\\ProvidesPackage|^%<context>%D\s*(version|date)=' $(PACKAGES.edtx) | ${COLOR_VERSION}
+	@grep -E '\\ProvidesPackage|^%<context>%D\s*(version|date)=' $(PACKAGES.edtx) $(pdf:%.pdf=%.tex) | ${COLOR_VERSION}
 	@grep __version__ *.py | ${COLOR_VERSION}
 	@grep VERSION *.pl | ${COLOR_VERSION}
 	@grep -E '^(footer|date):' doc/memoize-*.md | ${COLOR_VERSION}

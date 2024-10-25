@@ -16,12 +16,13 @@
 \def\exampledir{examples/}
 
 \title{\pkg[white]{Memoize}}
+\ParseProvidesPackage
+\ProvidesPackage{memoize}[2024/10/25 v1.4.0 Fast and flexible externalization]
+\packageversion{v\packagever\\\csuse{@date}}
 \author{Sašo Živanović\\[2mm]
   \emailsymbol~\url(mailto:){saso.zivanovic@guest.arnes.si}\\
   \homepagesymbol~\url(http://){spj.ff.uni-lj.si/zivanovic}\\
   \faGithub~\url(https://){github.com/sasozivanovic}}
-\datefrompackageversion{memoize}
-\preto\packagever{v}
 
 \hypersetup{
   pdftitle={Memoize},
@@ -242,8 +243,12 @@
 
 \begin{tcolorbox}[colback=emphcolor, fontupper=\footnotesize]
   This manual also documents packages Advice
-  ({\datefrompackageversion{advice}v\packagever}) and CollArgs
-  ({\datefrompackageversion{collargs}v\packagever}).  These are auxiliary
+  ({\ParseProvidesPackage
+    \ProvidesPackage{advice}[2024/03/15 v1.1.1 Extend commands and environments]
+    v\packagever}) and CollArgs
+  ({\ParseProvidesPackage
+    \ProvidesPackage{collargs}[2024/03/15 v1.2.0 Collect arguments of any command]
+    v\packagever}).  These are auxiliary
   packages which were developed alongside Memoize, but are distributed as
   independent packages as they might be useful outside the context of Memoize,
   as well.  See sections~\ref{sec:advice} and \ref{sec:ref:advice} for Advice, and

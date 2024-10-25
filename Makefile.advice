@@ -33,6 +33,8 @@ version:
 	$(call EDIT-VERSION-LATEX,advice.edtx,advice,$(YEAR)/$(MONTH)/$(DAY) v$(VERSION))
 	$(call EDIT-VERSION-CONTEXT,advice.edtx,$(YEAR)-$(MONTH)-$(DAY),$(VERSION))
 	$(call EDIT-DATE-CHANGELOG,doc/CHANGELOG.advice.md)
+	$(call EDIT-VERSION-LATEX,doc/memoize-doc.tex,advice)
+	$(call EDIT-VERSION-LATEX,doc/memoize-code.tex,advice)
 
 include Makefile.package
 include Makefile.runtimes
