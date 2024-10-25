@@ -5,9 +5,9 @@ SHELL := /bin/bash
 
 clean:
 	find . \( \( -type f -not \( \
-		-name '*.dtx' -or -name 'ins.*' -or -name .gitignore -or \
+		-name '*.dtx' -or -name 'ins.*' -or -name .gitignore -or               \
 		-name Makefile -or -name memoize.cfg -or -name extract-excerpts.pl -or \
-		-name get-filename-from-mmz.tex
+		-name get-filename-from-mmz.tex                                        \
 	\) \) -or \( -type d -name '*.memo.dir' \) \) -print -delete
 
 N = 0
@@ -18,8 +18,7 @@ N = 0
 	latexmk -C $*
 	if [[ $(N) > 0 ]] ; then                                               \
 		for ((n=1;$$n<=$(N);n++)) ; do                                 \
-			cp $*.tex.c$$n $*.tex ;                                \
-			$(BEFORE_EACH_COMPILATION) ;                           \
+			cp $*.tex.c$$n $*.tex ; $(BEFORE_EACH_COMPILATION)     \
 			pdflatex -interaction batchmode $* ;                   \
 			cp $*.pdf $*.c$$n.pdf ;                                \
 			if [[ -a $*.mmz ]] ; then cp $*.mmz $*.mmz.c$$n ; fi ; \
@@ -46,17 +45,6 @@ SED_CMD :::= \\\\\([a-zA-Z]\\+\)
 SED_CMD_ :::= \\\\[a-zA-Z]\\+
 SED_MARG :::= {\([^}]*\)}
 SED_MARG_ :::= {[^}]*}
-
-# returns the one and only mandatory argument of the first occurrence of \\$(1) in file $(2)
-FIRST_ARG = `grep $(1) $(2) | head -1 | sed 's/$(SED_CMD_) *$(SED_MARG)/\1/'`
-
-# returns the one and only mandatory argument of the second occurrence of \\$(1) in file $(2)
-SECOND_ARG = `grep $(1) $(2) | head -2 | tail -1 | sed 's/$(SED_CMD_) *$(SED_MARG)/\1/'`
-
-# returns the one and only mandatory argument of the last occurrence of \\$(1) in file $(2)
-LAST_ARG = `grep $(1) $(2) | tail -1 | sed 's/$(SED_CMD_) *$(SED_MARG)/\1/'`
-
-# GET_FILENAME_FROM_MMZ = etex -interaction batchmode '\input{get-filename-from-mmz}\get{$(1)}{$(2)}{$(3)}{$(4)}{$(5)}'
 GET_FILENAME_FROM_MMZ = etex '\input{get-filename-from-mmz}\get{$(1)}{$(2)}{$(3)}{$(4)}{$(5)}'
 
 excerpts: memoize.excerpts advice.excerpts collargs.excerpts
@@ -79,7 +67,7 @@ poormansbox.pdf: poormansbox.sty
 poormansbox-memoizable.pdf: poormansbox-memoizable.sty
 countdown.pdf: countdown.sty
 countdown.pdf: N = 2 
-countdown.pdf: BEFORE_EACH_COMPILATION = cp $*.sty.c1 $*.sty
+countdown.pdf: BEFORE_EACH_COMPILATION = cp $*.sty.c1 $*.sty ;
 poormansbox-driver.pdf: poormansbox-driver.sty
 
 titlepage.mmz.c1: titlepage.pdf
