@@ -547,7 +547,7 @@ it when I add more keys.
 ~\mmzset~{
   auto    = \qrcode{memoize, args=om},
   auto    = \mycite{cite},
-  extract = python,
+  padding = 2in,
   record  = makefile,
 }
   \end{tcblisting}
@@ -561,7 +561,7 @@ it when I add more keys.
   \end{tcblisting}
   \begin{tcblisting}{listing only, bad}
 ~\mmzset~{
-  extract=tex,
+  recompile,
   no verbatim,
 
   prefix=memos/
