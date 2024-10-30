@@ -56,21 +56,26 @@ PDF = memoize-doc.pdf memoize-code.pdf
 codedoc-source := $(codedoc-source:%=doc/%)
 manual-source := $(manual-source:%=doc/%)
 pdf := $(PDF:%=doc/%)
-DOC = $(sort $(codedoc-source) $(manual-source)) $(pdf) $(man-src)
+DOC = $(sort $(codedoc-source) $(manual-source)) $(pdf) $(man-src) \
+	doc/examples-src.zip doc/examples.zip
 
 examples-src := Makefile ins.begin ins.mid ins.end
 examples-src := $(examples-src:%=doc/examples/%)
 #examples-src += $(shell git ls-files | grep ^doc/examples/.*dtx$)
 examples-src += $(shell find doc/examples -name '*.dtx')
 
+doc/examples-src.zip: $(examples-src)
+	cd doc && zip examples-src.zip $(examples-src:doc/%=%)
+
+doc/examples.zip: $(examples-src)
+	mkdir -p doc/examples/attachments
+	$(MAKE) -C doc/examples
+	cd doc/examples/attachments && zip -r ../../examples.zip *
+
 ctan/$(PACKAGE).zip:
 	$(TDS-BEGIN)
-	cd doc && zip ../$(TDS-DOC-DIR)/examples-src.zip $(examples-src:doc/%=%)
-	cd doc && zip -r ../$(TDS-DOC-DIR)/examples.zip doc/examples/attachments/*
 	$(TDS-END)
 	$(CTAN-BEGIN)
-	ln -sr $(TDS-DOC-DIR)/examples-src.zip $(CTAN-DIR)/doc
-	ln -sr $(TDS-DOC-DIR)/examples.zip $(CTAN-DIR)/doc
 	$(CTAN-END)
 
 %.py.dtx: %.py
@@ -84,7 +89,7 @@ ctan/$(PACKAGE).zip:
 doc/memoize-code.pdf: $(codedoc-source) \
                       $(PACKAGES.dtx) $(PACKAGES.ins) $(SCRIPTS:%=%.dtx)
 
-doc/memoize.pdf: $(manual-source) $(examples-src) $(PACKAGES.edtx) examples
+doc/memoize-doc.pdf: $(manual-source) $(examples-src) $(PACKAGES.edtx) doc/examples.zip
 
 %.pdf: %.tex
 	latexmk -r $*.latexmkrc $(LATEXMK) $<
@@ -154,6 +159,3 @@ unlink-all-runtimes: unlink-runtimes
 
 test:
 	cd testing && ./MakeTests.py
-
-examples:
-	$(MAKE) -C doc/examples

@@ -3,7 +3,7 @@ $pdflatex = "lualatex %O %S";
 $bibtex = 0;
 $do_cd = 1;
 $silent = 1;
-$max_repeat = 10;
+$max_repeat = 6; # we need six cycles for a fresh compilation
 
 push @generated_exts, "cpt";
 push @generated_exts, "mmz";
@@ -12,8 +12,11 @@ push @generated_exts, "listing";
 
 ######################################################################
 ### from <texmf>/doc/support/latexmk/example_rcfiles/memoize_latexmkrc
+### with partially silenced output and
+### memoize-extract.pl --> memoize-extract.py, because the perl-based
+### extraction chokes on some externs.
 
-print "============= I am memoize's latexmkrc.  John Collins 2024-03-29\n";
+#print "============= I am memoize's latexmkrc.  John Collins 2024-03-29\n";
 
 # This rc file shows how to use latexmk with the memoize package.
 #
@@ -74,8 +77,8 @@ print "============= I am memoize's latexmkrc.  John Collins 2024-03-29\n";
 
 # Which program and extra options to use for memoize-extract and memoize-clean.
 # Note that these are arrays, not simple strings.
-our @memoize_extract = ( 'memoize-extract.pl' );
-our @memoize_clean = ( 'memoize-clean.pl' );
+our @memoize_extract = ( 'memoize-extract.py' );
+our @memoize_clean = ( 'memoize-clean.py' );
 
 # Specification of the basic memoize files to delete in a clean-up
 # operation. The generated .memo and .pdf files have more specifications,
@@ -110,8 +113,8 @@ my $mmz_has_new = '';
 
 sub mmz_analyze {
     use strict;
-    print "============= I am mmz_analyze \n";
-    print "  Still to deal with provoking of rerun if directory made\n";
+    #print "============= I am mmz_analyze \n";
+    #print "  Still to deal with provoking of rerun if directory made\n";
 
     # Analyzes mmz file if generated on this run.
     # Then 1. Arranges to trigger making of missing extern pdfs, if needed.
@@ -134,7 +137,7 @@ sub mmz_analyze {
     $mmz_has_new = '';
     
     if (! -e $mmz_file) {
-        print "mmz_analyze: No mmz file '$mmz_file', so memoize is not being used.\n";
+        #print "mmz_analyze: No mmz file '$mmz_file', so memoize is not being used.\n";
         return 0;
     }
 
@@ -163,7 +166,7 @@ sub mmz_analyze {
              # We have a new memo item without a corresponding pdf file.
              # It will be put in the aux directory. 
              my $file = "$aux_dir1$1";
-             print "mmz_analyze: new extern for memoize: '$file'\n";
+             #print "mmz_analyze: new extern for memoize: '$file'\n";
              push @externs, $file;
          }
          elsif ( /^\\mmzPrefix\s+{([^}]+)}/ ) {
@@ -204,7 +207,7 @@ sub mmz_analyze {
 
 sub mmz_extract_new {
     use strict;
-    print "============= I am mmz_extract_new \n";
+    #print "============= I am mmz_extract_new \n";
 
     # If there are new extern pdf files to be made, run memoize-extract to
     #    make them.
