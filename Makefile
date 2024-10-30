@@ -87,7 +87,7 @@ doc/memoize-code.pdf: $(codedoc-source) \
 doc/memoize.pdf: $(manual-source) $(examples-src) $(PACKAGES.edtx) examples
 
 %.pdf: %.tex
-	latexmk -cd -lualatex -shell-escape -bibtex- $(LATEXMK) $<
+	latexmk -r $*.latexmkrc $(LATEXMK) $<
 
 
 
