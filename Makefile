@@ -41,6 +41,7 @@ MAKEFILE = Makefile Makefile.package Makefile.runtimes Makefile.advice Makefile.
 LICENCE = LICENCE
 
 PACKAGES.edtx = $(PACKAGES:%=%.edtx)
+PACKAGES.dtx = $(PACKAGES:%=%.dtx)
 PACKAGES.ins = $(PACKAGES:%=%.ins)
 
 codedoc-source = memoize-code.tex \
@@ -62,20 +63,10 @@ examples-src := $(examples-src:%=doc/examples/%)
 #examples-src += $(shell git ls-files | grep ^doc/examples/.*dtx$)
 examples-src += $(shell find doc/examples -name '*.dtx')
 
-# doc/attachments.lst is produced by compiling memoize.tex (without memoization).
-# doc-examples will hold soft links to the relevant generated example files.
-doc-examples := $(shell sed 's/^.* \(.*\) ##.*$$/\1/' doc/attachments.lst)
-doc-examples := $(doc-examples:%=doc/examples/%)
-
 ctan/$(PACKAGE).zip:
 	$(TDS-BEGIN)
-#	Check for duplicate filenames:
-	echo $(doc-examples) | tr ' ' '\n' | uniq -d | ifne false
 	cd doc && zip ../$(TDS-DOC-DIR)/examples-src.zip $(examples-src:doc/%=%)
-#	For each line ($1 $2) in attachments.lst, link $1 to $2 ...
-	cd doc/examples && sed 's!^examples/!ln -sfr !' ../attachments.lst | sh
-#	... and zip those links.
-	cd doc && zip -r ../$(TDS-DOC-DIR)/examples.zip $(doc-examples:doc/%=%)
+	cd doc && zip -r ../$(TDS-DOC-DIR)/examples.zip doc/examples/attachments/*
 	$(TDS-END)
 	$(CTAN-BEGIN)
 	ln -sr $(TDS-DOC-DIR)/examples-src.zip $(CTAN-DIR)/doc
@@ -91,9 +82,9 @@ ctan/$(PACKAGE).zip:
 		| sed -e '/^% Local Variables:/Q' > $@
 
 doc/memoize-code.pdf: $(codedoc-source) \
-                      $(PACKAGES.edtx) $(PACKAGES.ins) $(SCRIPTS:%=%.dtx)
+                      $(PACKAGES.dtx) $(PACKAGES.ins) $(SCRIPTS:%=%.dtx)
 
-doc/memoize.pdf: $(manual-source) $(examples-src) $(PACKAGES.edtx)
+doc/memoize.pdf: $(manual-source) $(examples-src) $(PACKAGES.edtx) examples
 
 %.pdf: %.tex
 	latexmk -cd -lualatex -shell-escape -bibtex- $(LATEXMK) $<

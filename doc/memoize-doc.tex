@@ -2,7 +2,7 @@
 \usepackage[margin=2cm,top=1cm,bottom=1cm,nohead,includefoot]{geometry}
 
 % The perl-based extraction chokes on some externs.
-\usepackage[extract=python]{nomemoize}
+\usepackage[extract=python]{memoize}
 \usepackage{memoize-doc}
 \mmzset{
   % recompile,
@@ -32,7 +32,7 @@
 }
 
 \usepackage{makeidx}
-\pdfsystem{makeindex -s memoize-doc.mst \jobname.idx}
+% \pdfsystem{makeindex -s memoize-doc.mst \jobname.idx}
 \makeindex
 \usepackage[hangindent=1em,justific=raggedright,font=small,totoc]{idxlayout}
 \appto\indexfont{\def\pkgcolor{gray}}
