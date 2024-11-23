@@ -1,109 +1,164 @@
 # Installation from the TDS archive
 
-If Memoize is not (yet) offered by your TeX distribution, the easiest way to
-install it is by downloading the TDS archive `memoize.tds.zip` from [Memoize's
-CTAN page](https://ctan.org/pkg/memoize), and unpacking it into your `texmf`
-directory.  You will most likely also have to do the same for two auxiliary
-packages Memoize depends on: [Advice](https://ctan.org/pkg/advice) and
+Memoize is most probably already included in your TeX distribution, but if it
+is not, the easiest way to install it is by downloading the TDS archive
+`memoize.tds.zip` from [Memoize's CTAN page](https://ctan.org/pkg/memoize), and
+unpacking it into your `texmf` directory.  You will most likely also have to do
+the same for two auxiliary packages Memoize depends on
+[Advice](https://ctan.org/pkg/advice) and
 [CollArgs](https://ctan.org/pkg/collargs).
 
-Read on only if you have an unstoppable urge to install from source and/or
-compile the manual or the documented source code.
+The TDS archives are also available through [Memoize's GitHub
+releases](https://github.com/sasozivanovic/memoize/releases).  This is where
+you can find both the older versions of the package, and the work-in-progress
+(wip) version (if any).  Note that even though Memoize, Advice and CollArgs
+share the GitHub repository, you have to download the TDS archive for each
+package separately. Each release offers both the source code and the TDS
+archive; download the latter, it follows the naming scheme
+`memoize/advice/collargs-<date>-<version>-zip`,
+e.g. `memoize-2024-04-02-v1.3.0.zip`.
 
-# Installation from the source
 
-# Getting the sources
+# Installation from the sources
 
-There are several options:
+Read this if you want to install from source (for example, to test a
+development version of the package) and/or compile the manual or the documented
+source code.
 
-* Download and unpack the zip archive of the package from [Memoize's CTAN
-  page](https://ctan.org/pkg/memoize).
-   
-* Download and unpack the TDS archive, or copy the files from your local
-  distribution. The sources reside in `<texmf>/source/generic/memoize`.
+Note that installation from the sources and compilation of the documentation
+require a UNIX-like operating system (Windows Subsystem for Linux suffices)
+with `make` and several other programs installed.  In detail, Memoize's build
+system utilizes standard utilities `make`, `bash`, `sed`, `grep`, `perl`,
+`pandoc` and `zip`, plus the TeX-specific `latexmk` and `edtx2dtx`, which
+should be included in your TeX distribution.
 
-* Clone the [GitHub repository](https://github.com/sasozivanovic/memoize).
+## For the impatient
 
-## Generating runtime files
+To download and install the files needed to use the most recent, possibly
+development version of Memoize:
 
-The easiest way to generate the runtime files is by running `make`. The
-following command will generate (i) runtime TeX files for all supported formats
-(currently: LaTeX, plain TeX and ConTeXt), and (ii) the man pages for the
-accompanying scripts:
+1. Clone the [Memoize's GitHub repository](https://github.com/sasozivanovic/memoize)
 
-```
-make runtime
-```
+		git clone git@github.com:sasozivanovic/memoize.git
 
-To only generate the runtime TeX files, execute
+2. Switch to the newly created `memoize` directory:
 
-```
-make memoize.sty
-```
+		cd memoize
 
-Alternatively, you can generate the runtime files manually.  The source of this
-package was written using [EasyDTX](https://ctan.org/pkg/easydtx).  Therefore,
-you first have to convert the `.edtx` file into a regular `.dtx`:
+3. Generate and install the runtime files:
 
-```
-edtx2dtx memoize.edtx > memoize.dtx
-```
+		make install-all-runtimes
 
-The next step is standard.  Produce the runtime files by compiling the
-installation file:
 
-```
-tex memoize.ins
-```
+## Getting the sources
+	
+You can get the sources in several ways:
 
-If you require the ConTeXt runtime, replace all instances of `\expanded` and
-`\unexpanded` in `t-memoize.tex` by `\normalexpanded` and `\normalunexpanded`,
-respectively.  One way to do this is:
+* Clone the [Memoize's GitHub repository](https://github.com/sasozivanovic/memoize).
+  
+		git clone git@github.com:sasozivanovic/memoize.git
 
-```
-sed -i -s -e 's/\\\(un\)\?expanded/\\normal\1expanded/g;' t-memoize.tex
-```
+  Branch `main`, which is checked out by default, might contain work in
+  progress.  To check out an older version, execute `git checkout <tag>`, for
+  example:
 
-The man pages are produced by converting their MarkDown sources by `pandoc`
-(execute this in the `doc` subdirectory):
+		git checkout memoize-1.4.0
+	
+  For the list of tags, execute `git tag`, or visit [the list on
+  GitHub](https://github.com/sasozivanovic/memoize/tags).  Note that the
+  installation instructions below only work for Memoize versions >= 1.4.0.
 
-```
-pandoc memoize-extract.1.md -s -t man -o memoize-extract.1
-pandoc memoize-clean.1.md -s -t man -o memoize-clean.1
-```
+* Download a *source code* archive of a
+  [release](https://github.com/sasozivanovic/memoize/releases) on GitHub.
 
-Additionally, links from `memoize-x.pl.1` and `memoize-x.py.1` to `memoize-x.1`
-can be created by:
+* Download the zip archive of the package from [Memoize's CTAN
+  page](https://ctan.org/pkg/memoize).  Depending on what you want to produce,
+  you might also have to download the zip archives of packages
+  [Advice](https://ctan.org/pkg/advice) and
+  [CollArgs](https://ctan.org/pkg/collargs).  Note that the contents of
+  directories `memoize`, `advice` and `collargs` within the respective zip
+  archives have to be merged into one and the same directory.
 
-```
-echo .so man1/memoize-extract.1 > memoize-extract.pl.1
-echo .so man1/memoize-extract.1 > memoize-extract.py.1
-echo .so man1/memoize-clean.1 > memoize-clean.pl.1
-echo .so man1/memoize-clean.1 > memoize-clean.py.1
-```
+In principle, you could also get the sources from TDS archive(s), but this is
+not recommended, as you would need to move the files around after unpacking, to
+arrive at the directory structure from GitHub / CTAN zip archive.
 
-## Installation
+## Generating and installing the runtime files
 
-It is recommended to install the files into a TDS-compliant `texmf` directory,
-as usual.  Inspect file `FILES` or the TDS archive `memoize.tds.zip` to see
-what goes where.
+The runtimes can be generated and installed using `make`. To generate and
+install runtimes for Memoize, Advice and CollArgs in one go, execute
 
-Next, the scripts residing in `<texmf>/scripts/memoize` should be linked into
-some directory listed in the executable search `PATH`.  The scripts are the
-following:
+	make install-all-runtimes
 
-* `memoize-extract.pl`
-* `memoize-extract.py`
-* `memoize-clean.pl`
-* `memoize-clean.py`
+In more detail, the following targets are available. 
 
-If you have downloaded the sources from GitHub, you can build the TDS
-directories/archives of both Memoize and its auxiliary packages Advice and
-CollArgs by issuing
+* `runtimes` and `all-runtimes`: generate the runtime files
 
-```
-make
-```
+* `install-runtimes` and `install-all-runtimes`: (generate and) install the
+  runtime files
+
+* `uninstall-runtimes` and `uninstall-all-runtimes`: uninstall the runtime files
+
+* `link-runtimes` and `link-all-runtimes`: (generate and) install the runtime
+  files by soft-linking rather than copying
+
+The `all` variants perform the action for all three packages (Memoize, Advice
+and CollArgs), while the plain variants (without `all`) are limited to Memoize.
+To perform an action only for Advice or Collargs, use the plain target but
+specify the relevant Makefile (`Makefile.advice` or `Makefile.collargs`), e.g.
+
+	make -f Makefile.advice install-runtimes
+
+By default, the runtime files are installed to (or uninstalled from) the user
+`texmf` directory, as returned by `kpsewhich -var-value TEXMFHOME`.  To
+(un)install into another directory, append `TEXMFHOME=<dir>` to the invocation
+of `make`, e.g.
+
+	make install-runtimes TEXMFHOME=/home/user/my-texmf-directory
+
+
+## Compiling the documentation
+
+The documentation of Advice and CollArgs, both their manuals and documented
+code listings, is included within Memoize's documentation.  The documentation
+is compiled with LuaLaTeX.
+
+To compile the documented code listing:
+
+	make doc/memoize-code.pdf
+	
+To compile the manual:
+
+	make doc/memoize-doc.pdf
+
+Note that the compilation of the manual takes a while, and is preceded by the
+compilation of the examples, which can be triggered separately by 
+
+	make -C doc/examples
+
+By default, the manual is compiled with memoization disabled.  To enable it,
+change `\usepackage{nomemoize}` in `doc/memoize-doc.tex` to
+`\usepackage{memoize}`.
+
+
+## Building the releases
+
+How do I build the CTAN release files?  First, I change the values of variables
+`VERSION`, `YEAR`, `MONTH` and `DAY` in `Makefile` (for Memoize),
+`Makefile.advice` and `Makefile.collargs`.  Then, I execute
+
+	make version
+
+which updates the version information in the source code, the scripts, the
+documentation, the changelog and the manual pages.  I next perform a sanity
+check:
+
+	make versions-show
+
+Finally, I build the CTAN release archives for all three packages, complete
+with the TDS archives, by executing:
+
+	make
 
 This command creates: 
 
@@ -116,101 +171,8 @@ This command creates:
   
 * CTAN archives `memoize.zip`, `advice.zip` and `collargs.zip` inside directory
   `ctan`.
-  
-The plain `make` shown above will also attempt to compile the documentation.
-If you're not ready for that (yet), you can avoid that by executing this
-instead:
 
-```
-make PDF=
-```
+Invoking the plain `make` also compiles the documentation. This can
+be avoided by executing 
 
-# Compiling the documentation
-
-Compiling both the documented code listing and the manual requires a Unix-like
-operating system.  I have developed Memoize on Linux, but the documentation
-should also be compilable under Cygwin on Windows (not tested).
-
-The documentation of Advice and CollArgs, both their manuals and documented
-code listings, is included within Memoize's documentation.
-
-## Getting the source
-
-In principle, the options are the same as for the installation from the source,
-but the GitHub option is strongly preferred here, as the other two options
-require manually copying the sources of Advice and CollArgs into the Memoize
-directory.  That said:
-
-* Clone the [GitHub repository](https://github.com/sasozivanovic/memoize).
-  You're done.
-
-* Download and unpack the zip archives of all three packages from their CTAN
-  pages: https://ctan.org/pkg/memoize, https://ctan.org/pkg/advice and
-  https://ctan.org/pkg/collargs.
-   
-  Copy `advice.edtx` and `collargs.edtx` into the Memoize directory, alongside
-  `memoize.edtx`.
-   
-* From TDS archives (of all three packages), or your local distribution's
-  `<texmf>` folder.  This is not straightforward:
-  
-  1. Make a local copy of directory `<texmf>/source/generic/memoize`; we'll
-     call it "the Memoize directory".
-	 
-  2. Copy directory `<texmf>/doc/generic/memoize` into the the Memoize
-     directory as `doc`.
-	 
-  3. Copy `memoize-extract.pl`, `memoize-extract.py`, `memoize-clean.pl` and
-     `memoize-clean.py` from directory `<texmf>/scripts` into the Memoize
-     directory.
-  
-  4. Copy `advice.edtx` from `<texmf>/source/generic/advice` and
-     `collargs.edtx` from `<texmf>/source/generic/collargs` into the the
-     Memoize directory.
-
-## Compiling the documented code listing
-
-I have compiled the code docs with LuaLaTeX on a Linux system with
-TeXLive 2023.  If you have `make`, the easiest way to compile them is by
-issuing
-
-```
-make doc/memoize-code.pdf
-```
-
-Alternatively, you can use `latexmk`, but you first have to convert the `.edtx`
-sources of all three packages into `.dtx`, if you haven't done so yet:
-
-```
-edtx2dtx memoize.edtx > memoize.dtx
-edtx2dtx advice.edtx > advice.dtx
-edtx2dtx collargs.edtx > collargs.dtx
-```
-
-Then, you can execute `latexmk` from the `doc` subdirectory:
-
-```
-latexmk -lualatex -bibtex memoize-code
-```
-
-To compile the code docs manually, three iterations of `lualatex memoize-code`
-with `makeindex -s gind.ist memoize-code.idx` between them should suffice.
-
-## Compiling the manual
-
-I have compiled the manual with LuaLaTeX on a Linux system with TeXLive 2023,
-`make`, `latexmk`, `perl` and `sed` installed.  Furthermore, you absolutely
-have to run the compilation with some form of `--shell-escape`, as it executes
-`make` and `sed` to build the examples.  (There is no way to compile these from
-the command line, as the instructions are baked into the manual source.)
-
-Given all this, either of the following should do the trick:
-
-* `make doc/memoize.pdf` from the Memoize directory;
-
-* `latexmk -lualatex -bibtex memoize` for the `doc` subdirectory; or
-
-* quite a few runs of `lualatex memoize` interspersed by `makeindex memoize.idx`.
-	
-If all worked well, you can change `\usepackage{nomemoize}` in
-`doc/memoize.tex` to `\usepackage{memoize}` and observe Memoize at work.
+	make PDF=

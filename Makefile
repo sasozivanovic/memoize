@@ -45,19 +45,20 @@ PACKAGES.dtx = $(PACKAGES:%=%.dtx)
 PACKAGES.ins = $(PACKAGES:%=%.ins)
 
 codedoc-source = memoize-code.tex \
-                 memoize-code.sty memoize-doc-common.sty
+                 memoize-code.sty memoize-doc-common.sty \
+		 memoize-code.latexmkrc
 
 manual-source = memoize-doc.tex \
                 memoize-doc.sty memoize-doc-common.sty yadoc.sty \
-		memoize-doc.mst
+		memoize-doc.mst memoize-doc.latexmkrc
 
 PDF = memoize-doc.pdf memoize-code.pdf
 
 codedoc-source := $(codedoc-source:%=doc/%)
 manual-source := $(manual-source:%=doc/%)
 pdf := $(PDF:%=doc/%)
-DOC = $(sort $(codedoc-source) $(manual-source)) $(pdf) $(man-src) \
-	doc/examples-src.zip doc/examples.zip
+DOC = $(codedoc-source) $(manual-source) $(pdf) $(man-src) \
+      doc/examples-src.zip doc/examples.zip
 
 examples-src := Makefile ins.begin ins.mid ins.end
 examples-src := $(examples-src:%=doc/examples/%)
@@ -89,7 +90,7 @@ ctan/$(PACKAGE).zip:
 doc/memoize-code.pdf: $(codedoc-source) \
                       $(PACKAGES.dtx) $(PACKAGES.ins) $(SCRIPTS:%=%.dtx)
 
-doc/memoize-doc.pdf: $(manual-source) $(examples-src) $(PACKAGES.edtx) doc/examples.zip
+doc/memoize-doc.pdf: $(manual-source) $(PACKAGES.edtx) doc/examples.zip
 
 %.pdf: %.tex
 	latexmk -r $*.latexmkrc $(LATEXMK) $<
@@ -100,7 +101,7 @@ doc/memoize-doc.pdf: $(manual-source) $(examples-src) $(PACKAGES.edtx) doc/examp
 
 test.tex = $(wildcard test*.tex)
 
-.PHONY: all runtime force clean versions-show
+.PHONY: all force clean versions-show
 
 .PRECIOUS: %.1
 
@@ -143,7 +144,7 @@ include Makefile.runtimes
 
 VERSION-MAN = of Memoize v$(VERSION)
 
-.PHONY: all-runtimes link-all-runtimes unlink-all-runtimes test examples
+.PHONY: all-runtimes link-all-runtimes install-all-runtimes unlink-all-runtimes test examples
 
 all-runtimes: runtimes
 	$(MAKE) -f Makefile.advice runtimes
@@ -153,9 +154,13 @@ link-all-runtimes: link-runtimes
 	$(MAKE) -f Makefile.advice link-runtimes
 	$(MAKE) -f Makefile.collargs link-runtimes
 
-unlink-all-runtimes: unlink-runtimes
-	$(MAKE) -f Makefile.advice unlink-runtimes
-	$(MAKE) -f Makefile.collargs unlink-runtimes
+install-all-runtimes: install-runtimes
+	$(MAKE) -f Makefile.advice install-runtimes
+	$(MAKE) -f Makefile.collargs install-runtimes
+
+uninstall-all-runtimes: uninstall-runtimes
+	$(MAKE) -f Makefile.advice uninstall-runtimes
+	$(MAKE) -f Makefile.collargs uninstall-runtimes
 
 test:
 	cd testing && ./MakeTests.py

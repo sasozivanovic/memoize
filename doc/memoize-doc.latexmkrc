@@ -3,7 +3,7 @@ $pdflatex = "lualatex %O %S";
 $bibtex = 0;
 $do_cd = 1;
 $silent = 1;
-$max_repeat = 6; # we need six cycles for a fresh compilation
+$max_repeat = 6; # we need six cycles for a fresh compilation with memoization
 
 push @generated_exts, "cpt";
 push @generated_exts, "mmz";

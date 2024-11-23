@@ -141,23 +141,32 @@ endef
 %.9: %.9.md
 	pandoc $< -s -t man -o $@
 
-.PHONY: runtimes link-runtimes unlink-runtimes version
-.IGNORE: unlink-runtimes
+.PHONY: runtimes link-runtimes install-runtimes uninstall-runtimes version
+.IGNORE: uninstall-runtimes
 
 cp=$(intcmp $(words $(1)),0,,,cp $(1) $(2))
 
 runtimes: $(RUNTIME)
 
+TEXMFHOME=$(shell kpsewhich -var-value TEXMFHOME)
+
 link-runtimes:
-	$(eval TDS-DIR=~/texmf)
+	$(eval TDS-DIR=$(TEXMFHOME))
 	$(eval cp=$$(intcmp $$(words $$(1)),0,,,ln -srf $$(1) $$(2)))
 	$(TDS-MKDIR)
 	$(TDS-CP)
 	$(TDS-PRUNE)
 	texconfig rehash
 
-unlink-runtimes:
-	$(eval TDS-DIR=~/texmf)
+install-runtimes:
+	$(eval TDS-DIR=$(TEXMFHOME))
+	$(TDS-MKDIR)
+	$(TDS-CP)
+	$(TDS-PRUNE)
+	texconfig rehash
+
+uninstall-runtimes:
+	$(eval TDS-DIR=$(TEXMFHOME))
 	$(eval cp=$$(intcmp $$(words $$(1)),0,,,\
 		if [[ -d $$(2) ]] ; then rm -f $$(foreach f,$$(1),$$(2)/$$(notdir $$(f))) ; \
 		else rm -f $$(2) ; fi \
