@@ -22,6 +22,7 @@ while (<>) {
 	# upon encountering "  % \begin{listingregion}{<filename>}",
 	# open the excerpt file, initialize the excerpt list
 	open LISTING, ">$1.excerpt";
+	print("$1.excerpt\n");
 	$in_listing = 1;
 	@lines = ();
     }

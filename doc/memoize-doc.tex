@@ -14,6 +14,7 @@
   % trace,
 }
 \def\exampledir{examples/}
+\def\attachmentsdir{examples/attachments/}
 
 \title{\pkg[white]{Memoize}}
 \ParseProvidesPackage
@@ -1567,7 +1568,7 @@ pin!\footnote{On the first compilation, the document page containing the figure
 
 \tcbinputexample{overlay}(.c2){
   after title pre={\ (memoization without padding)},
-  attachment name=\examplename-no-padding.tex,
+  attachment=overlay-no-padding.tex,
   sidebyside, lefthand ratio=0.3,
   comment={\centering
     \includeexamplepdf[size=minimal,boxrule=0.5mm,extern page,
@@ -1590,7 +1591,7 @@ pin is only partially visible.\footnote{You might wonder why I didn't make the
 
 \tcbinputexample{overlay}(.c3){
   after title pre={\ (memoization with default padding)},
-  attachment name=\examplename-default-padding.tex,
+  attachment=overlay-default-padding.tex,
   listing and comment,
   middle=0.9mm,
   comment={\centering
@@ -1608,7 +1609,7 @@ arithmetic in the value of these keys.
 
 \tcbinputexample{overlay}(.c4){
   after title pre={\ (memoization with extra padding)},
-  attachment name=\examplename-extra-padding.tex,
+  attachment=overlay-extra-padding.tex,
   listing and comment,
   middle=0.9mm,
   comment={\centering
@@ -2414,7 +2415,7 @@ until then.  In that case, apply the \refmmz{auto} key \Emph{\refmmzauto{force
 
 \tcbinputexample{ref}(.c7){
   after title pre={\ (after the fresh compilation with \refmmzauto{force ref})},
-  attachment name=\examplename-force.tex,
+  attachment=ref-force.tex,
   comment={\centering
     \includeexamplepdf[extern page](.c1){page=1,trim=1in 1in 1in 1in}\quad
     \includeexamplepdf[document page](.c1){page=2}
@@ -3347,7 +3348,7 @@ environment, |listii|.  While it prefixes each item by an indented
 referencing works as usual.  However, problems arise when we automemoize the
 inner environment.
 
-\tcbinputexample{label+}{
+\tcbinputexample{label+}(.c1){
   sidebyside, lefthand ratio=0.53,
   comment={\centering\includeexamplepdf[document page](.c2){page=1}},
 }
@@ -3428,7 +3429,7 @@ code which directly manipulates settings macros like
 section~\ref{sec:tut:automemoization-details} or~\ref{sec:ref:advice}).
 
 \tcbinputexample{label+}(.c6){listing only, float,
-  attachment name=label+auto.tex,
+  attachment=label+auto.tex,
 }
 
 Within \refcmd{AdviceSetup}, we prefix (using macro \cs{preto} of package
@@ -3581,7 +3582,7 @@ value of |beamerpauses| at utilization.  This leads to the
 \medskip % manual, to avoid an orphan
 
 \tcbinputexample{per-overlay}[.excerpt]{%
-  listing only, one file,
+  listing only, no .listing,
   title={The implementation of \refmmz{per overlay}},
 }
 
@@ -3703,13 +3704,13 @@ to safely remove stale memos and externs.  Let us take a look at the \dmmz file
 produced by the titlepage illustration.  In fact, we have two versions of this
 file, as it changes upon the second compilation.
 
-\tcbinputexample{titlepage}[.mmz](.c1){
-  listing only, one file, no attachment, float,
+\tcbinputexample{titlepage}[.mmz-pre]{
+  listing only, no .listing, no attachment, float,
   after title pre={\ (after the first compilation)},
   listing options app={breakatwhitespace=false,prebreak=\coloredpercentchar},
 }
-\tcbinputexample{titlepage}[.mmz](.c2){
-  listing only, one file, no attachment, float,
+\tcbinputexample{titlepage}[.mmz-post]{
+  listing only, no .listing, no attachment, float,
   after title pre={\ (after subsequent compilations)},
   listing options app={breakatwhitespace=false,prebreak=\coloredpercentchar},
 }
@@ -3918,7 +3919,7 @@ depending on the value of key \refmmz{capture}.  Let us look at the definition
 of the driver line by line:
 
 \tcbinputexample{single-extern-driver}[.excerpt]{%
-  listing only, one file,
+  listing only, no .listing,
   listing options app={numbers=left, numberstyle=\tiny, numbersep=0.5em},
   title=The default memoization driver,
   float, no attachment,
@@ -4092,7 +4093,7 @@ be externalized into separate externs, as shown below.
     }%
     \def\mmzNewExtern##1##2##3##4{\mmzUsedExtern{##1}}
     \def\myexternname##1{extern \dots\texttt{\mytemp##1.pdf}}%
-    \input{\examplepath.mmz}%
+    \input{\examplepath.mmz.c1}%
     \begin{tabular}{ccc}
       \includeexamplepdf[extern page,title/.expand once=\myexternname{}]
                         {page=2,trim=1in 1in 1in 1in,scale=0.333}&
@@ -4191,8 +4192,10 @@ below.\footnote{You shouldn't directly use the plain \hologo{TeX}
   integrated drivers of potentially recursive commands; we will talk about this
   in section~\ref{sec:memoization-complex-single-driver}.}
 
-\tcbinputexample{countdown}[.sty](.c2){listing only, after title pre={\ (version 2)},
-  attachment name=countdown-integrated-driver.sty,
+\tcbinputexample{countdown}[.sty](.c2){
+  listing only,
+  after title pre={\ (version 2)},
+  attachment=countdown-integrated-driver.sty,
 }
 
 
@@ -4218,7 +4221,7 @@ memoized, but rather executed at every invocation of the command, as it was
 primarily intended to put some stretchable vertical space around the box.
 
 The document
-source\attachexample[poormansbox-driver.tex][\exampledir poormansbox-driver.tex.c1.attachment]
+source\attachexample[poormansbox-driver.tex][\exampledir poormansbox.tex.attachment]
 and the resulting PDF of the example are the same as in
 section~\ref{sec:memoizable-design}, so we will not repeat them here, but jump
 directly into a revised definition of the environment.  We will retain the core
@@ -4637,7 +4640,7 @@ command.  For a \hologo{LaTeX} environment, the advised command is actually
 course followed by the environment name.
 
 \tcbinputexample{_auto-memoize-inner}[.excerpt]{%
-  listing and comment, one file, no attachment,
+  listing and comment, no .listing, no attachment,
   title={The implementation of the \refmmzauto{inner handler}
     for automemoization},
   comment={%
@@ -4658,7 +4661,7 @@ that the invocation of \refcmd{AdviceCollector} is the sole function of the
 default outer handler.
 
 \tcbinputexample{_auto-memoize-outer}[.excerpt]{%
-  listing only, one file, no attachment,
+  listing only, no .listing, no attachment,
   title={The implementation of the \refmmzauto{outer handler}
     for automemoization},
 }
@@ -4675,7 +4678,7 @@ diagram in section~\ref{sec:Memoize}).  Note that it is not necessary to invoke
 \refcmd{AdviceRunfalse} in branches where the run conditions are not satisfied.
 
 \tcbinputexample{_auto-run-if-memoization-is-possible}[.excerpt]{%
-  listing only, one file, no attachment,
+  listing only, no .listing, no attachment,
   title={The implementation of 
     \refmmzauto{run if memoization is possible}},
 }
@@ -4692,7 +4695,7 @@ something important nevertheless: by consuming the next-options, the
 next instance of (auto)memoization.
 
 \tcbinputexample{_auto-memoize-bailout}[.excerpt]{%
-  listing only, one file, no attachment,
+  listing only, no .listing, no attachment,
   title={The implementation of the \refmmzauto{bailout handler}
     for automemoization},
 }
@@ -4723,7 +4726,7 @@ handler receives the arguments of the handled command ``as they are,'' i.e.\
 uncollected.  It then asks \refcmd{mmzNoRef} to do the real job of getting the
 reference key into the context, and finally executes the original \cs{ref}.
 
-\tcbinputexample{_auto-ref}{%
+\tcbinputexample{auto-ref}{%
   listing only, no attachment,
   title={\hypercolor{link}{white}A simplified\footnotemark{} definition
     of \refmmzauto{ref}},
@@ -4747,7 +4750,7 @@ i.e.\ outer handler, never even gets executed; note the absence of
 the execution of the original command after the run conditions are ``checked.''
 
 \tcbinputexample{_auto-abort}[.excerpt]{%
-  listing only, one file, no attachment,
+  listing only, no .listing, no attachment,
   title={The definition of \refmmzauto{abort}},
 }
 
@@ -4771,7 +4774,7 @@ will be boxed (|\fboxWrap|); under |/two|, in will be parenthesized
 effect, the box will appear within parenthesis; if we reverse the activation
 order, the parenthesis will appear inside the box.
 
-\tcbinputexample{chained-advice}{comment=\input{\examplepath.tex.c2}}
+\tcbinputexample{chained-advice}{comment=\input{\examplepath}}
 
 First of all, looking at the code above, you have probably noticed the absence
 of key \refmmz{auto}.  This is because by default, \refkey{/handlers/.install
@@ -5016,7 +5019,7 @@ command was defined using \cs{NewDocumentCommand} or similar, and use
 when given by the user via key \refmmzauto{args}.
 
 \tcbinputexample{_advice-CollectArgumentsRaw}[.excerpt]{%
-  listing only, one file, no attachment,
+  listing only, no .listing, no attachment,
   listing options app={numbers=left, numberstyle=\tiny, numbersep=0.5em},
   title={The definition of the initial collector},
 }
@@ -6640,7 +6643,7 @@ Perl- and Python-based extraction is triggered by
     type}.
 
   \tcbinputexample{tex-extraction-options}[.excerpt]{%
-    listing only, one file, no attachment, title={The initial value of
+    listing only, no .listing, no attachment, title={The initial value of
       \refmmz{tex extraction options}},
   }
 
@@ -6661,7 +6664,7 @@ Perl- and Python-based extraction is triggered by
   \docref{reg:pdfmajorversion} and \docref{reg:pdfminorversion} in \hologo{LuaTeX}.
 
   \tcbinputexample{tex-extraction-script}[.excerpt]{%
-    listing only, one file, title=The initial value of \refmmz{tex extraction
+    listing only, no .listing, title=The initial value of \refmmz{tex extraction
       script}, no attachment}
 
   As the value of \refmmz{tex extraction script} is fully expanded when used,
@@ -8593,7 +8596,7 @@ grab the environment body in the verbatim mode.)
   ...
 \end{foo}
     \end{tcblisting}
-    \tcbinputexample{_collargs-verbatim}{
+    \tcbinputexample{collargs-ignore-nesting-true}{
       listing only, no attachment, mark region={1}{3}, 
       example title=\texttt{ignore nesting=true}
     }
@@ -8629,10 +8632,10 @@ grab the environment body in the verbatim mode.)
   environment |foo|.
 
   \begin{tcbraster}
-    \tcbinputexample{_collargs-ignore-other-tags}(.c1){
+    \tcbinputexample{collargs-ignore-other-tags}(.c1){
       listing only, no attachment, mark region={3}{3},
       example title=\texttt{ignore other tags=false}}
-    \tcbinputexample{_collargs-ignore-other-tags}(.c2){
+    \tcbinputexample{collargs-ignore-other-tags}(.c2){
       listing only, no attachment, mark region={3}{5},
       example title=\texttt{ignore other tags=true}}
   \end{tcbraster}
@@ -8750,7 +8753,7 @@ grab the environment body in the verbatim mode.)
     braces.
   \end{enumerate*}
   
-    \tcbinputexample{collargs-expandable-processor}{comment=\input{\examplepath.tex}}
+  \tcbinputexample{collargs-expandable-processor}{comment=\input{\examplepath.tex}}
 \end{doc}
 
 \begin{doc}[
@@ -9114,7 +9117,7 @@ automemoization.  Doing this would probably not be a good idea, as it is used
 by many other commands and environments.
 
 \tcbinputexample{_support-pgf}[.excerpt]{%
-  listing only, one file, no attachment,
+  listing only, no .listing, no attachment,
   title=\hypercolor{url}{white}\PGF support,
 }
 
@@ -9159,7 +9162,7 @@ command \refcmd{tikz} requires a dedicated argument collector,
 \refcmd{AdviceCollectTikZArguments}.
 
 \tcbinputexample{_support-tikz}[.excerpt]{%
-  listing only, one file, no attachment,
+  listing only, no .listing, no attachment,
   title=\hypercolor{url}{white}\TikZ support,
 }
 
@@ -9174,7 +9177,7 @@ command \refcmd{Forest} is defined by \refcmd{NewDocumentCommand}, which makes
 specifying option \refmmzauto{args} unnecessary.
 
 \tcbinputexample{_support-forest}[.excerpt]{%
-  listing only, one file, no attachment,
+  listing only, no .listing, no attachment,
   title=\pkg[white]{Forest} support,
 }
 

@@ -214,41 +214,21 @@
     fonttitle={\small\hypercolor{link}{white}},
   },
   example title/.default=\examplename.tex,
-  attachment/.estore in=\attachmentpath,
-  attachment name/.estore in=\attachmentname,
-  attachment name/.default=noname.tex,
+  attachment/.estore in=\attachmentname,
   no attachment/.style={attach/.style={}},
-  attachment name,
   attach/.style={
     overlay app={%
       \node at (frame.north east) [
         fill=white, draw=gray, thick,
         ellipse, inner xsep=-0.5mm, inner ysep=0, shift={(-2mm,-2mm)}, rotate=45,
       ]{%
-        \expandafter\myattachandlink\expandafter[\attachmentname]{\attachmentpath}[application/x-tex]{Click here to open the code.}{\rotatebox{-45}{\faPaperclip}}
+        \expandafter\attachandlink\expandafter[\attachmentname]{\attachmentsdir\attachmentname}[application/x-tex]{Click here to open the code.}{\rotatebox{-45}{\faPaperclip}}
       };
     }
   },
 }
 \NewDocumentCommand\attachexample{O{\examplename.tex} O{\examplepath.tex.c1.attachment}}{%
-  {\textsuperscript{\kern-0.25em \expandafter\myattachandlink\expandafter[#1]{#2}[application/x-tex]{Click here to open the code.}{\rotatebox{-45}{\faPaperclip}}\kern-0.25em \relax}}}
-\newcommand\myattachandlink[2][\filename]{%
-  \begingroup
-  \def\filename{#2}%
-  \immediate\write\attachments{#2 #1 ## line \the\inputlineno}%
-  \ifmemoizing
-    \xtoksapp\mmzCCMemo{%
-      \immediate\write\attachments{#2 #1 ## line \the\inputlineno}%
-    }%
-  \fi
-  \expanded{%
-    \endgroup
-    \noexpand\attachandlink[#1]{#2}%
-  }%
-}
-\newwrite\attachments
-\immediate\openout\attachments attachments.lst
-\AtEndDocument{\immediate\closeout\attachments}
+  {\textsuperscript{\kern-0.25em \expandafter\attachandlink\expandafter[#1]{#2}[application/x-tex]{Click here to open the code.}{\rotatebox{-45}{\faPaperclip}}\kern-0.25em \relax}}}
 
 \NewTCBInputListing{\tcbinputexample}{
   >{\edef\ProcessedArgument} m O{.tex} D(){} +m }
@@ -261,13 +241,17 @@
   example title={#1#2},
   % enlarge left by=\leftmargin,% this takes care of using this box in lists
   listing and comment,
-  one file/.style={
+  no .listing/.style={
     listing file={\exampledir#1#2#3},
-    attachment={\exampledir#1#2#3},
+    %attachment path={\exampledir#1#2#3},
+    %attachment path={\exampledir attachments/#1#2},
+    %attachment={#1#2},
   },
   listing file=\exampledir#1#2#3.listing,
-  attachment=\exampledir#1#2#3.attachment,
-  attachment name=#1#2,%
+  %attachment path=\exampledir#1#2#3.attachment,
+  %attachment path=\exampledir attachments/#1#2,
+  %attachment name=#1#2,%
+  attachment=#1#2,%
   #4,
   attach,
 }

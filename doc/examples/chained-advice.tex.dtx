@@ -1,6 +1,5 @@
-%<!att&!lst&!c2>\documentclass[varwidth]{standalone}
 %<att>\documentclass{article}
-%<!c2>\usepackage{advice}
+%<att,lst>\usepackage{advice}
 
 \def\foo#1{``#1''}
 \def\fboxWrap#1{\fbox{\AdviceOriginal{#1}}}
@@ -9,7 +8,7 @@
 \pgfqkeys{~/one~}{.install advice, advice'=\foo{args=m, outer handler=~\fboxWrap~}}
 \pgfqkeys{~/two~}{.install advice, advice'=\foo{args=m, outer handler=~\parenWrap~}}
 
-%<!c2>\begin{document}
+%<att,lst>\begin{document}
 {\pgfkeys{~/one~/activate=\foo, ~/two~/activate=\foo}\foo{bar}}
 {\pgfkeys{~/two~/activate=\foo, ~/one~/activate=\foo}\foo{bar}}
-%<!c2>\end{document}
+%<att,lst>\end{document}

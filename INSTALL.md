@@ -29,7 +29,7 @@ Note that installation from the sources and compilation of the documentation
 require a UNIX-like operating system (Windows Subsystem for Linux suffices)
 with `make` and several other programs installed.  In detail, Memoize's build
 system utilizes standard utilities `make`, `bash`, `sed`, `grep`, `perl`,
-`pandoc` and `zip`, plus the TeX-specific `latexmk` and `edtx2dtx`, which
+`pandoc`, `xargs`, `zip`, plus the TeX-specific `latexmk` and `edtx2dtx`, which
 should be included in your TeX distribution.
 
 ## For the impatient

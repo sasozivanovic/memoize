@@ -60,18 +60,11 @@ pdf := $(PDF:%=doc/%)
 DOC = $(codedoc-source) $(manual-source) $(pdf) $(man-src) \
       doc/examples-src.zip doc/examples.zip
 
-examples-src := Makefile ins.begin ins.mid ins.end
-examples-src := $(examples-src:%=doc/examples/%)
-#examples-src += $(shell git ls-files | grep ^doc/examples/.*dtx$)
-examples-src += $(shell find doc/examples -name '*.dtx')
-
 doc/examples-src.zip: $(examples-src)
-	cd doc && zip examples-src.zip $(examples-src:doc/%=%)
+	$(MAKE) -C doc/examples examples-src.zip
 
 doc/examples.zip: $(examples-src)
-	mkdir -p doc/examples/attachments
-	$(MAKE) -C doc/examples
-	cd doc/examples/attachments && zip -r ../../examples.zip *
+	$(MAKE) -C doc/examples examples.zip
 
 ctan/$(PACKAGE).zip:
 	$(TDS-BEGIN)
