@@ -5,7 +5,8 @@
   Executing \texttt{#1} yields this: ~\scantokens~{#1}
 }
 %<att>\begin{document}
-\CollectArguments[environment=verbatim, ~verbatim~, ~tags~]{+b}{\PrintAndDoEnv}
-  Here is some \LaTeX{} code.
-\end{verbatim}
+%<lst,att>\CollectArguments[environment=verbatim, ~verbatim~, ~tags~]{+b}{\PrintAndDoEnv}
+%<lst,att>  Here is some \LaTeX{} code.
+%<lst,att>\end{verbatim}
+%<!(lst,att)>\CollectArguments[environment=verbatim, ~verbatim~, ~tags~]{+b}{\PrintAndDoEnv} Here is some \LaTeX{} code. \end{verbatim}
 %<att>\end{document}

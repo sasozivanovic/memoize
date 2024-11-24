@@ -114,7 +114,6 @@
       key={name=breakable},
       key={name=float},
     },
-    key={keypath=/tcb, name=breakable, pkg=tcolorbox},
     cmd={name=vref, pkg=varioref},
     cmd={name=cref, pkg=cleveref},
     cmd={name=crefrange, pkg=cleveref},
@@ -232,7 +231,7 @@
       We all love Ti\emph{k}Zlings!
       \def\mytikzling#1#2{%
         \tcbox[blankest, baseline=1mm, remember as=used extern #1]
-        {\tikz[x=0.3cm,y=0.3cm]{#2;}}}%
+        {\tikz[x=0.3cm,y=0.3cm]{#2}}}%
       \mytikzling1{\penguin} is a penguin,
       \mytikzling2{\koala} is a koala, and
       \mytikzling3{\owl} is an owl.
@@ -1709,9 +1708,9 @@ environment \env{algorithmic}.\footnote{Note that this solution does not work
   see section~\ref{sec:limits} for details.}
 
 \tcbinputexample{capture}{
-  sidebyside, lefthand ratio=0.55,
+  sidebyside, lefthand ratio=0.53, middle=0pt,
   comment={\centering
-    \includeexamplepdf[]{page=2}
+    \includeexamplepdf[left=0.9em, right=0.9em]{page=2}
   }
 }
 
@@ -4951,7 +4950,8 @@ grabbed environment body with the begin tag \refcmd{begin}\marg{environment
 section~\ref{sec:ref:collargs} for the full reference on the verbatim mode and
 its limitations.
 
-% A harmless warning: 
+% .dtx has separate versions for listing and compilation, because compilation
+% of the multi-line version yields:
 % Missing character: There is no ^M (U+000D) in font [lmmono10-regular]:!
 % because \texttt in the example is fed a (verbatim) carriage return
 \tcbinputexample{collargs-verbatim}{listing and compile}
