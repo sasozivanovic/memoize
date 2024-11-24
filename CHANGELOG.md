@@ -3,6 +3,41 @@
 For the development history, see [Memoize's GitHub
 repository](https://github.com/sasozivanovic/memoize).
 
+## 2024/11/24 v1.4.0
+
+* New features:
+  * Support Beamer modes.
+  * Support externs typeset on landscape pages.
+  * Implement `salt` and related keys (used by Beamer mode support).
+
+* Minor changes:
+  * Allow changing `prefix` in `\mmznext`.
+  * To better support user interaction with foreign package support, any
+    unknown `/mmz` keys issued in the preamble are retried at `begindocument/end`.
+
+* Bugfixes:
+  * Allow for (expandable) macros in reference keys advised by `auto/ref`.
+  * Fix a regular expression in `memoize-clean.py`.
+
+* Documentation:
+  * Improve the troubleshooting sections (2.9, 3.1).
+  * Update and rewrite installation instructions.
+  * Fix some typos and formatting issues.
+
+* Under the hood:
+  * The Beamer support code now resides in a separate file, `memoize-beamer.code.tex`.
+  * Make PGF support produce nicer cc-memos.
+	
+* Build system:
+  * A new, makefile-controlled system for compiling examples, which are now
+    compiled prior to compiling the manual.
+  * Implement a different way of automatically changing the version number in
+    the documentation.
+  * Compile the documentation through dedicated `latexmkrc` config files, using
+    an adapted `memoize_latexmkrc` example config for the manual.
+  * Partially change installation-related parts of the Makefile.
+  * Include the missing makefiles in CTAN & TDS zip files.
+
 ## 2024/04/02 v1.3.0
 
 * New defaults:

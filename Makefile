@@ -12,8 +12,8 @@ all: ctan/memoize.zip
 PACKAGE = memoize
 VERSION = 1.4.0
 YEAR = 2024
-MONTH = 10
-DAY = 25
+MONTH = 11
+DAY = 24
 
 FORMAT = generic
 
