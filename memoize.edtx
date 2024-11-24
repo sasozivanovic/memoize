@@ -2257,9 +2257,13 @@
 %   \hologo{TeX}live 2023 and 2024.  It seems that the ``unrotation'' is
 %   unnecessary with \hologo{LaTeX3}'s PDF management module (activated by
 %   |\DocumentMetadata{}| before the document class declaration).
-\def\mmz@shipout@unrotate{%
-  %<latex>\IfPDFManagementActiveTF{}{\pdfpageattr{/Rotate 0}}%
-  %<plain,context>\pdfpageattr{/Rotate 0}%
+\ifdef\XeTeXversion{%
+  \def\mmz@shipout@unrotate{}%
+}{%
+  \def\mmz@shipout@unrotate{%
+    %<latex>\IfPDFManagementActiveTF{}{\pdfpageattr{/Rotate 0}}%
+    %<plain,context>\pdfpageattr{/Rotate 0}%
+  }%
 }
 % \end{macro}
 % 
