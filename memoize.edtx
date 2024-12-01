@@ -2260,9 +2260,13 @@
 \ifdef\XeTeXversion{%
   \def\mmz@shipout@unrotate{}%
 }{%
-  \def\mmz@shipout@unrotate{%
-    %<latex>\IfPDFManagementActiveTF{}{\pdfpageattr{/Rotate 0}}%
-    %<plain,context>\pdfpageattr{/Rotate 0}%
+  \ifdef\luatexversion{% may mean landscape bug remains, but avoids breaking memoize completely
+    \def\mmz@shipout@unrotate{}%
+  }{%
+    \def\mmz@shipout@unrotate{%
+      %<latex>\IfPDFManagementActiveTF{}{\pdfpageattr{/Rotate 0}}%
+      %<plain,context>\pdfpageattr{/Rotate 0}%
+    }%
   }%
 }
 % \end{macro}
