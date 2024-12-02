@@ -3,6 +3,10 @@
 For the development history, see [Memoize's GitHub
 repository](https://github.com/sasozivanovic/memoize).
 
+## 2024/12/02 v1.4.1
+
+* Bugfix: the landscape support introduced in 1.4.0 broke Memoize under LuaTeX.
+
 ## 2024/11/24 v1.4.0
 
 * New features:

@@ -10,10 +10,10 @@ all: ctan/memoize.zip
 # Prepare the CTAN submission.
 
 PACKAGE = memoize
-VERSION = 1.4.0
+VERSION = 1.4.1
 YEAR = 2024
-MONTH = 11
-DAY = 24
+MONTH = 12
+DAY = 02
 
 FORMAT = generic
 
