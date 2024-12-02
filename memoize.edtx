@@ -2260,9 +2260,16 @@
 \ifdef\XeTeXversion{%
   \def\mmz@shipout@unrotate{}%
 }{%
-  \def\mmz@shipout@unrotate{%
-    %<latex>\IfPDFManagementActiveTF{}{\pdfpageattr{/Rotate 0}}%
-    %<plain,context>\pdfpageattr{/Rotate 0}%
+  \ifdef\luatexversion{%
+    \def\mmz@shipout@unrotate{%
+      %<latex>\IfPDFManagementActiveTF{}{\pdfvariable pageattr {/Rotate 0}}%
+      %<plain,context>\pdfvariable pageattr {/Rotate 0}%
+    }%
+  }{%
+    \def\mmz@shipout@unrotate{%
+      %<latex>\IfPDFManagementActiveTF{}{\pdfpageattr{/Rotate 0}}%
+      %<plain,context>\pdfpageattr{/Rotate 0}%
+    }%
   }%
 }
 % \end{macro}
