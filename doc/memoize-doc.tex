@@ -7592,9 +7592,9 @@ headers.
   The above-mentioned collector settings were clearly tailored to suit
   \refcmd{CollectArgumentsRaw}.  In general, a collector might or might not use
   them, and if it does, it may interpret them in any way.  For example, Advice
-  ships with a \refcmd{tikz} collector, \docaux{cmd}{mmzCollectTikZArguments}, which
+  ships with a \refcmd{tikz} collector, \docaux{cmd}{AdviceCollectTikZArguments}, which
   ignores them completely, as it knows everything about the idiosyncrasies of
-  that command anyway.  Incidentally, \refcmd{mmzCollectTikZArguments} becomes
+  that command anyway.  Incidentally, \refcmd{AdviceCollectTikZArguments} becomes
   available upon loading \reffile{advice-tikz.code.tex} (which Memoize does
   automatically in the presence of \TikZ).
 
@@ -7644,7 +7644,7 @@ headers.
   In general, however, an argument collector may this interpret this setting 
   in any way it sees fit --- or not at all.  For example, in Memoize the value
   of \refmmzauto{args} is ignored for command \refcmd{tikz}, which requires a special
-  collector (\refcmd{mmzCollectTikZArguments}).
+  collector (\refcmd{AdviceCollectTikZArguments}).
   
   When setting up advice for a \emph{command}, this key is initially ``unset,''
   i.e.\ it holds a special value indicating that the argument specification is
