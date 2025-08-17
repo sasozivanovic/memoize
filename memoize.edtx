@@ -1802,10 +1802,10 @@
       \let\mmzMemo\endinput
     \else
       % With indirect cc-memo input, we simulate end-of-input by grabbing
-      % everything up to the end-of-memo marker.  In the indirect cc-memo
-      % input, a |\par| token shows up after |\mmzEndMemo|, I'm not sure why
-      % (|\everyeof={}| does not help).
-      \long\def\mmzMemo##1\mmzEndMemo\par{}%
+      % everything up to the end-of-memo marker.  We call |\mmz@avoid@eof@par|
+      % to prevent the empty line at the end of the file being tokenized into a
+      % |\par| token.
+      \long\def\mmzMemo##1\mmzEndMemo{\mmz@avoid@eof@par}%
     \fi
     \mmz@trace@resource{#1}%
   \fi
@@ -1853,26 +1853,24 @@
     \ifmmz@direct@ccmemo@input
       \noexpand\endinput
     \else
-      % In the indirect cc-memo input, a |\par| token shows up after
-      % |\mmzEndMemo|, I'm not sure why (|\everyeof={}| does not help).
-      \unexpanded{%
-        \def\mmz@temp\par{}%
-        \mmz@temp
-      }%
+      % We call |\mmz@avoid@eof@par| to prevent the empty line at the end of
+      % the file being tokenized into a |\par| token.
+      \noexpand\mmz@avoid@eof@par
     \fi
   }%
   % The cc-memo context marker, again wrt |\ifmmz@direct@ccmemo@input| and
   %   globally.  With direct cc-memo input, this macro is synonymous with
   %   |\endinput|, so the (expanded) context following it is ignored when
   %   inputting the cc-memo.  With indirect input, we simulate end-of-input by
-  %   grabbing everything up to the end-of-memo marker (plus gobble the |\par|
-  %   mentioned above).
+  %   grabbing everything up to the end-of-memo marker, plus call
+  %   |\mmz@avoid@eof@par| to prevent the empty line at the end of the file
+  %   being tokenized into a |\par| token.
   \xdef\mmzThisContext{%
     \ifmmz@direct@ccmemo@input
       \noexpand\endinput
     \else
       \unexpanded{%
-        \long\def\mmz@temp##1\mmzEndMemo\par{}%
+        \long\def\mmz@temp##1\mmzEndMemo{\mmz@avoid@eof@par}%
         \mmz@temp
       }%
     \fi
@@ -1911,6 +1909,25 @@
 }
 % \end{macro}
 % 
+% \begin{macro}{\mmz@avoid@eof@par}
+%   It seems that files written out by \hologo{TeX} always end in an empty
+%   line, which results in a |\par| token when the file is read back.  This
+%   macro is meant to prevent this |\par| from arising, and it does so by
+%   changing the catcode of the space character to `ignore' and requesting a
+%   token.  The macro will only work if it is executed in a position in a file
+%   where only spaces and newlines follow.  Note that under the |expl3| catcode
+%   regime, the space is already ignored, so this macro is a no-op.  This macro
+%   is only used for indirect ccmemo input; with direct ccmemo input,
+%   |\mmzEndMemo| and |\mmzThisContext| are translated into |\endinput|, so
+%   that empty line is never read.
+\def\mmz@avoid@eof@par{%
+  \begingroup
+  \mmz@makespaceignore
+  \futurelet\mmz@temp\mmz@avoid@eof@par@i
+}
+\def\mmz@avoid@eof@par@i{\endgroup}
+\def\mmz@makespaceignore{\catcode`\ =9\relax}
+% \end{macro}
 % \subsection{The externs}
 % \label{sec:code:extern}
 % 
