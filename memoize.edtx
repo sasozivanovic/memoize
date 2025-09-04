@@ -1599,10 +1599,10 @@
   % We store the content of |\mmzContextExtra| by writing out a command that
   % will (globally) assign its content back into this register.
   \immediate\write\mmz@out{%
-    \global\mmzContextExtra{\the\mmzContextExtra}\collargs@percentchar
+    \global\mmzContextExtra{\the\mmzContextExtra}\relax
   }%
   % Write out the free-form part of the c-memo.
-  \immediate\write\mmz@out{\the\mmzCMemo\collargs@percentchar}%
+  \immediate\write\mmz@out{\the\mmzCMemo\relax}%
   % When |include source in cmemo| is in effect, add the memoized code, hiding
   % it behind the |\mmzSource| marker.
   \ifmmz@include@source
@@ -1757,7 +1757,7 @@
   % Write down the content of |\mmzMemo|, but first introduce it by the
   % |\mmzMemo| marker.
   \immediate\write\mmz@out{\noexpand\mmzMemo}%
-  \immediate\write\mmz@out{\the\mmzCCMemo\collargs@percentchar}%
+  \immediate\write\mmz@out{\the\mmzCCMemo\relax}%
   % Write down the context tracing info when |include context in ccmemo| is in
   % effect.
   \ifmmz@include@context
@@ -1782,7 +1782,7 @@
 \def\mmz@ccmemo@append@resource#1{%
   \mmz@seq=#1\relax
   \immediate\write\mmz@out{%
-    \string\mmzResource{\mmz@extern@name}\collargs@percentchar}%
+    \string\mmzResource{\mmz@extern@name}\relax}%
 }
 % \end{macro}
 % 
