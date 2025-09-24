@@ -788,8 +788,19 @@
 %   \begin{listingregion}{_advice-CollectArgumentsRaw}
 \def\advice@CollectArgumentsRaw{%
   \AdviceIfArgs{}{%
+    % A complication: it seems that |\GetDocumentCommandArgSpec| only works
+    % when given the original control sequence, i.e. this does not work:
+    % |\NewDocumentCommand\cmd{...}{...}| |\let\newname\cmd|
+    % |\GetDocumentCommandArgSpec\newname|.  So we temporarily redefine the
+    % advised control sequence (which we get by expanding |\AdviceName|) back
+    % to its original meaning (the full expansion of |\AdviceOriginal| yields
+    % the control sequence referring to the original meaning).
+    \begingroup
+    \edef\advice@temp{\AdviceOriginal}%
+    \expandafter\expandafter\expandafter\let\expandafter\AdviceName\advice@temp
     \expandafter\GetDocumentCommandArgSpec\expandafter{\AdviceName}%
-    \let\AdviceArgs\ArgumentSpecification
+    \expandafter\endgroup
+    \expandafter\edef\expandafter\AdviceArgs\expandafter{\ArgumentSpecification}%
   }%
   \expanded{%
     \noexpand\CollectArgumentsRaw{%
