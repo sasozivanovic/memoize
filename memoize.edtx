@@ -3451,28 +3451,45 @@
 % \end{mmzautokey}
 % 
 % \begin{macro}{\mmz@auto@label}
-%   The outer handler for \cs{label} must be defined specifically for this
-%   command.  The generic replicating handler is not enough here, as we need to
-%   replicate both the invocation of |\label| and the definition of
-%   |\@currentlabel|.
+%   The outer handler for \cs{label} defined here is general enough that it
+%   will work not only with the base \hologo{LaTeX} \cs{label} but also for the
+%   redefinitions offered by various packages (|hyperref|, |(sub)caption|
+%   etc.), as long as they ultimately deploy the original \hologo{LaTeX}
+%   \cs{label}.  We don't try to guess what the label value depends on (in base
+%   \hologo{LaTeX}, on |\@currentlabel|).  We rather temporarily hack |\write|
+%   called from the original \cs{label}, intercepting the writing of the
+%   |\newlabel| into the |.aux| file to also appends this |\newlabel| into the
+%   cc-memo --- or, more precisely, the cc-memo will contain a command
+%   appending the |\newlabel| to |.aux| (upon utilization of the cc-memo).
 \def\mmz@auto@label#1{%
-  \xtoksapp\mmzCCMemo{%
-    \noexpand\mmzLabel{#1}{\expandonce\@currentlabel}%
-  }%
+  \@bsphack
+  \begingroup
+  \let\mmz@orig@write\write
+  \let\write\mmz@write@to@file@and@ccmemo
   \AdviceOriginal{#1}%
+  \endgroup
+  \@esphack
+}
+\protected\long\def\mmz@write@to@file@and@ccmemo#1#2{%
+  \xtoksapp\mmzCCMemo{\noexpand\mmzWriteToAux{#2}}%
+  \mmz@orig@write#1{#2}%
 }
 % \end{macro}
 % 
-% \begin{macro}{\mmzLabel}
-%   This is the macro that |\label|'s handler writes into the cc-memo.  The
-%   first argument is the reference key; the second argument is the value of
-%   |\@currentlabel| at the time of invocation |\label| during memoization,
-%   which this macro temporarily restores.
+% \begin{macro}{\mmzWriteToAux}
+%   This macro writes its argument into the |.aux| file.  It is used within the
+%   |\label|'s handler to transfer the |\newlabel| invocation into the cc-memo.
+%   It works under the assumption that |#1| contains no funky stuff.
+\def\mmzWriteToAux#1{%
+  \write\@auxout{\detokenize{#1}}%
+}
+% I'm leaving this macro in for now, so that utilizing old cc-memos won't yield
+% an error.
 \def\mmzLabel#1#2{%
   \begingroup
   \def\@currentlabel{#2}%
   \label{#1}%
-  \endgroup  
+  \endgroup
 }
 %</latex>
 %   
