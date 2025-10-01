@@ -2493,6 +2493,26 @@
     %<context>-F context
     \jobname\space
   },
+  extract/lua/.code={%
+    \mmz@clear@extraction@log
+    \pdf@system{%
+      \mmzvalueof{lua extraction command}\space
+      \mmzvalueof{lua extraction options}%
+    }%
+    \mmz@check@extraction@log{lua}%
+    % Change the initial value of |mkdir command| to |memoize-extract.py
+    % --mkdir|, but only in the case the user did not modify it.
+    \ifx\mmz@mkdir@command\mmz@initial@mkdir@command
+      \def\mmz@mkdir@command{\mmzvalueof{lua extraction command} --mkdir}%
+    \fi
+  },
+  lua extraction command/.initial=memoize-extract.lua,
+  lua extraction options/.initial={\space
+    %<latex>-F latex
+    %<plain>-F plain
+    %<context>-F context
+    \jobname\space
+  },
 }
 \def\mmz@preamble@only@error{%
   \PackageError{memoize}{%
