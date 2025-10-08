@@ -1353,8 +1353,11 @@
 % \paragraph.{Tracing} We populate the hooks which send the tracing info to the
 % terminal.
 \def\mmz@trace#1{\advice@typeout{[tracing memoize] #1}}
-\def\mmz@trace@context{\mmz@trace{\space\space
-    Context: "\expandonce{\mmz@context@key}" --> \mmz@context@mdfivesum}}
+\def\mmz@trace@context{%
+  \mmz@trace{\space\space Context:
+    "\the\mmzContext" + "\the\mmzContextExtra" -->
+    \mmz@context@key --> \mmz@context@mdfivesum}%
+}
 \def\mmz@trace@Memoize@on{%
   \mmz@trace{%
     Entering \noexpand\Memoize (%
@@ -1383,7 +1386,7 @@
 \def\mmz@trace@process@no@cmemo@on{\mmz@trace{\space\space
     C-memo does not exist}}
 \def\mmz@trace@process@cmemo@ok@on{\mmz@trace{\space\space
-    C-memo was processed successfully}\mmz@trace@context}
+    C-memo was processed successfully}}
 \def\mmz@trace@process@cmemo@fail@on{\mmz@trace{\space\space
     C-memo input failed}}
 \def\mmz@trace@cmemo@unmemoizable@on{\mmz@trace{\space\space
@@ -1692,6 +1695,7 @@
   % input the cc-memo, which happens outside the |\Memoize| group.
   % |\mmz@context@mdfivesum|.
   \xdef\mmz@context@mdfivesum{\pdf@mdfivesum{\expandonce\mmz@context@key}}%
+  \mmz@trace@context
 }
 %
 %
