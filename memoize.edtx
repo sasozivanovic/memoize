@@ -3621,17 +3621,19 @@
 % The Beamer code is explained in \MS\ref{sec:per-overlay}.
 % 
 %<*latex>
-\AddToHook{begindocument/before}{%
-  \@ifclassloaded{beamer}{%
-    \mmz@makeatletter
-    \input{memoize-beamer.code.tex}%
-    \mmz@restoreatcatcode
-  }{}%
-  \@ifpackageloaded{beamerarticle}{%
-    \mmz@makeatletter
-    \input{memoize-beamer.code.tex}%
-    \mmz@restoreatcatcode
-  }{}%
+\mmzset{%
+  begindocument/before/.append code={%
+    \@ifclassloaded{beamer}{%
+      \mmz@makeatletter
+      \input{memoize-beamer.code.tex}%
+      \mmz@restoreatcatcode
+    }{}%
+    \@ifpackageloaded{beamerarticle}{%
+      \mmz@makeatletter
+      \input{memoize-beamer.code.tex}%
+      \mmz@restoreatcatcode
+    }{}%
+  },
 }
 %</latex>
 %</mmz>
