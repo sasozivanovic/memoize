@@ -1353,7 +1353,7 @@
 % \paragraph.{Tracing} We populate the hooks which send the tracing info to the
 % terminal.
 \def\mmz@trace#1{\advice@typeout{[tracing memoize] #1}}
-\def\mmz@trace@context{%
+\def\mmz@trace@context@on{%
   \mmz@trace{\space\space Context:
     "\the\mmzContext" + "\the\mmzContextExtra" -->
     \mmz@context@key --> \mmz@context@mdfivesum}%
@@ -1434,6 +1434,7 @@
   \let\mmz@trace@process@ccmemo@ok\mmz@trace@process@ccmemo@ok@on
   \let\mmz@trace@process@no@ccmemo\mmz@trace@process@no@ccmemo@on
   \let\mmz@trace@process@ccmemo@fail\mmz@trace@process@ccmemo@fail@on
+  \let\mmz@trace@context\mmz@trace@context@on
 }
 \def\mmzTracingOff{%
   \let\mmz@trace@Memoize\relax
@@ -1454,6 +1455,7 @@
   \let\mmz@trace@process@ccmemo@ok\relax
   \let\mmz@trace@process@no@ccmemo\relax
   \let\mmz@trace@process@ccmemo@fail\relax
+  \let\mmz@trace@context\relax
 }
 \mmzTracingOff
 % \end{macro}
