@@ -906,10 +906,20 @@
 % argument, but only up to the first newline character, effectively losing most
 % of the tokens.  (We need to manually save and restore |\newlinechar| because
 % we don't want to execute the memoized code in yet another group.)
+% 
+% |\mmz@scantokens@maybe@unskip| is there to remove the space token resulting
+% from the final newline, which eventually turned into typeset space.  The
+% previous approach was to add `\endinput` after `#1`, but environment
+% `Verbatim` of package Fancyvrb choked on this `\endinput`.  Note that we
+% cannot set `\endlinechar=-1` because we need the rest of the newlines.  Now,
+% the idea is to remove the resulting typeset space with `\unskip`, limited to
+% horizontal mode capture.  This should work because the memoized stuff is
+% boxed, and therefore cannot produce any visible horizontal space.
 \long\def\mmz@scantokens#1{%
   \expanded{%
     \newlinechar=13
-    \unexpanded{\scantokens{#1\endinput}}%
+    \unexpanded{\scantokens{#1}}%
+    \mmz@scantokens@maybe@unskip
     \newlinechar=\the\newlinechar
   }%
 }
@@ -1294,10 +1304,12 @@
   capture/hbox/.code={%
     \let\mmz@capture\hbox
     \def\mmz@maybe@quitvmode{\noexpand\quitvmode}%
+    \def\mmz@scantokens@maybe@unskip{\unskip}%
   },
   capture/vbox/.code={%
     \let\mmz@capture\vbox
     \def\mmz@maybe@quitvmode{}%
+    \def\mmz@scantokens@maybe@unskip{}%
   },
   capture=hbox,
 }
