@@ -506,6 +506,17 @@
 %   \end{macro}
 % \end{collargskey}
 %
+% \begin{collargskey}{no spaces}
+%   \begin{macro}{\ifcollargsNoSpaces}
+%       When this conditional is in effect, any spaces encountered between the
+%       arguments are discarded.
+\newif\ifcollargsNoSpaces
+\collargsSet{%
+  no spaces/.is if=collargsNoSpaces,
+}
+% \end{macro}
+% \end{collargskey}
+% 
 % \begin{collargskey}{clear args}
 %   \begin{macro}{\ifcollargsClearArgs}
 %       When this conditional is set to |false|, the global token register
@@ -746,8 +757,10 @@
   \fi
   \collargs@postprocess@arg
   % Append the processed argument, preceded by any grabbed spaces (in the
-  % correct mode), to the storage.
-  \xtoksapp\collargsArgs{\collargs@grabbed@spaces\the\collargsArg}%
+  % correct mode and unless |no spaces| is in effect), to the storage.
+  \xtoksapp\collargsArgs{%
+    \ifcollargsNoSpaces\else\collargs@grabbed@spaces\fi
+    \the\collargsArg}%
   % Initialize the space-grabber.
   \collargs@init@grabspaces
   % Once the argument was appended to the list, we can close its group, opened
