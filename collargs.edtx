@@ -147,6 +147,8 @@
   \ifcollargsClearArgs
     \global\collargsArgs{}%
   \fi
+  % Clear the smuggling macro.
+  \gdef\collargsSmuggle{}%
   % Execute the central loop macro, which expects the argument specification
   % |#2| to be delimited from the following argument tokens by a dot.
   \collargs@#2.%
@@ -475,7 +477,22 @@
 % \end{collargskey}
 % \end{macro}
 % \end{collargskey}
+%
+
+% \begin{collargskey}{smuggle}
+%   \begin{macro}{\collargsSmuggle}
+%     Macro |\collargsSmuggle| is executed at the end of argument collection,
+%     just before the next-command, outside of \hologo{TeX} groups introduced
+%     by CollArgs.  The idea is that argument processors can globally modify
+%     this macro to achieve some local effect in the group which argument
+%     collection was called from.
 % 
+%     Key |smuggle| globally appends the given value to |\collargsSmuggle|.
+\collargsSet{%
+  smuggle/.code={\xappto\collargsSmuggle{#1}},
+}
+%   \end{macro}
+% \end{collargskey}
 % 
 % \begin{collargskey}{no delimiters}
 %   \begin{macro}{\ifcollargsNoDelimiters}
@@ -689,6 +706,7 @@
   \expanded{%
     \endgroup
     \noexpand\collargs@fix{%
+      \expandonce\collargsSmuggle
       \expandonce\collargs@next
         \ifcase\collargsReturn\space
           {\the\collargsArgs}%
