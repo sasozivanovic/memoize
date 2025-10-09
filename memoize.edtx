@@ -669,7 +669,7 @@
     % was wrong, so we will use option |\collargsFixFromNoVerbatim| to ask
     % CollArgs to fix the situation.  (|\mmz@verbatim@fix| will only be used in
     % the verbatim mode.)
-    \def\mmz@verbatim@fix{\noexpand\collargsFixFromNoVerbatim}%
+    \def\mmz@verbatim@fix{\collargsFixFromNoVerbatim}%
     % No optional argument, so we can skip |\mmz@ii|.
     \expandafter\mmz@iii
   \fi
@@ -698,14 +698,19 @@
 % verbatim mode triggering raw option was put in |\mmzRawCollectorOptions| by
 % key |verb(atim)|.  The macro also |\mmz@verbatim@fix| contains the potential
 % request for a category code fix (\S\ref{sec:code:collargs:fix}).
-\def\mmz@do@verbatim#1{%
+\def\mmz@do@verbatim{%
   \expanded{%
     \noexpand\CollectArgumentsRaw{%
-      \noexpand\collargsCaller{\noexpand\mmz}%
       \expandonce\mmzRawCollectorOptions
-      \mmz@verbatim@fix
+      \expandonce\mmz@verbatim@fix
+      \unexpanded{%
+        \collargsCaller{\mmz}%
+        \collargsNoDelimiterstrue
+        \collargsNoSpacestrue
+        \collargsAppendPreprocessor{\global\collargsArgs{}}%
+      }%
     }%
-  }{+m}\mmz@do
+  }{v}\mmz@do
 }
 % \end{macro}
 % 
