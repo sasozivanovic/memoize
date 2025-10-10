@@ -909,10 +909,10 @@
 % 
 % |\mmz@scantokens@maybe@unskip| is there to remove the space token resulting
 % from the final newline, which eventually turned into typeset space.  The
-% previous approach was to add `\endinput` after `#1`, but environment
-% `Verbatim` of package Fancyvrb choked on this `\endinput`.  Note that we
-% cannot set `\endlinechar=-1` because we need the rest of the newlines.  Now,
-% the idea is to remove the resulting typeset space with `\unskip`, limited to
+% previous approach was to add |\endinput| after |#1|, but environment
+% |Verbatim| of package Fancyvrb choked on this |\endinput|.  Note that we
+% cannot set |\endlinechar=-1| because we need the rest of the newlines.  Now,
+% the idea is to remove the resulting typeset space with |\unskip|, limited to
 % horizontal mode capture.  This should work because the memoized stuff is
 % boxed, and therefore cannot produce any visible horizontal space.
 \long\def\mmz@scantokens#1{%
@@ -1273,47 +1273,68 @@
 %   produces exactly one extern, and including the extern will be the only
 %   effect of inputting the cc-memo (unless the memoized code contained some
 %   commands, like |\label|, which added extra instructions to the cc-memo.)
-%   The macro (i) adds |\quitvmode| to the cc-memo, if we're capturing into a
-%   horizontal box, and it puts it to the very front, so that it comes before
-%   any |\label| and |\index| replications, guaranteeing (hopefully) that they
-%   refer to the correct page; (ii) takes the code and typesets it in a box
-%   (|\mmz@box|); (iii) submits the box for externalization; (iv) adds the
-%   extern-inclusion code to the cc-memo, and (v) puts the box into the
-%   document (again prefixing it with |\quitvmode| if necessary).  (The listing
-%   region markers help us present this code in the manual.)
+%
+%   The macro (i) takes the code and typesets it in a box (|\mmz@box|) of
+%   appropriate type (|\hbox| or |\vbox|), depending on key |capture|; (ii)
+%   submits the box to externalization; (iii) adds the extern-inclusion code to
+%   the cc-memo, and (iv) puts the box into the document.  The latter is done
+%   by |\mmz@typeset@box|, which (again, respecing |capture|) outsources the
+%   job to user-configurable macros |\mmzTypesetHBox| and |\mmzTypesetVBox|.
+%   (The listing region markers help us present this code in the manual.)
+% 
 %   \begin{listingregion}{single-extern-driver}
 \long\def\mmzSingleExternDriver#1{%
-  \xtoksapp\mmzCCMemo{\mmz@maybe@quitvmode}%
   \setbox\mmz@box\mmz@capture{#1}%
   \mmzExternalizeBox\mmz@box\mmz@temptoks
   \xtoksapp\mmzCCMemo{\the\mmz@temptoks}%
-  \mmz@maybe@quitvmode\box\mmz@box
+  \mmz@typeset@box\mmz@box
 }
 %   \end{listingregion}
 % \end{macro}
 % 
 % \begin{key}{capture}
-%   The default memoization driver uses |\mmz@capture| and
-%   |\mmz@maybe@quitvmode|, which are set by this key.  |\mmz@maybe@quitvmode|
-%   will be expanded, but for \hologo{XeTeX}, we have defined |\quitvmode| as a
-%   synonym for |\leavevmode|, which is a macro rather than a primitive, so we
-%   have to prevent its expansion in that case.  It is easiest to just add
-%   |\noexpand|, regardless of the engine used.
+%   The choice of |capture| determines the meaning of |\mmz@capture| (either
+%   |\hbox| or |\vbox|) and |\mmz@scantokens@maybe@unskip| (|\unskip| or
+%   empty), used by the default memoization driver.
 \mmzset{
   capture/.is choice,
   capture/hbox/.code={%
     \let\mmz@capture\hbox
-    \def\mmz@maybe@quitvmode{\noexpand\quitvmode}%
     \def\mmz@scantokens@maybe@unskip{\unskip}%
   },
   capture/vbox/.code={%
     \let\mmz@capture\vbox
-    \def\mmz@maybe@quitvmode{}%
     \def\mmz@scantokens@maybe@unskip{}%
   },
   capture=hbox,
-}
 % \end{key}
+% \begin{key}{typeset hbox,typeset vbox}
+%   \begin{macro}{\mmzTypesetHBox,\mmzTypesetVBox}
+%     The default memoization driver wraps the box resulting from memoization
+%     or utilization into either |\mmzTypesetHBox| or |\mmzTypesetVBox|,
+%     depending on |capture|.  (The decision macro |\mmz@typeset@box| tests for
+%     the actual type of the box, but that type ultimately depends on
+%     |capture|.)  The content of these macros is can be set either directly or
+%     through |typeset hbox| and |typeset vbox|.  Furthermore, the default
+%     value of |typeset vbox|, which first of all makes sure that the extern is
+%     typeset in vertical mode, allows for customization of the top and bottom
+%     separation through |top sep| and |bottom sep|.
+  typeset hbox/.code={\def\mmzTypesetHBox##1{#1}},
+  typeset vbox/.code={\def\mmzTypesetVBox##1{#1}},
+  typeset hbox=\quitvmode#1,
+  typeset vbox=\vskip\mmz@topsep\relax#1\vskip\mmz@bottomsep\relax\noindent,
+  top sep/.store in=\mmz@topsep,
+  bottom sep/.store in=\mmz@bottomsep,
+  top sep=0pt,
+  bottom sep=0pt,
+}
+\def\mmz@typeset@box#1{%
+  \ifhbox#1\expandafter\mmzTypesetHBox\else\expandafter\mmzTypesetVBox\fi
+  {\box#1}%
+}
+%   \end{macro}
+% \end{key}
+% 
 % The memoized code may be memoization-aware; in such a case, we say that the
 % driver is \emph{integrated} into the code.  Code containing an integrated
 % driver must take care to execute it only when memoizing, and not during a
@@ -2391,7 +2412,7 @@
   % Use the extern box, with the precise size as remembered at memoization.
   \wd\mmz@box=#3\relax
   \ht\mmz@box=#4\relax
-  \box\mmz@box
+  \mmz@typeset@box\mmz@box
   % Record that we have used this extern.
   \pgfkeysalso{/mmz/record/used extern={\mmz@extern@path}}%
 }
@@ -2450,7 +2471,7 @@
     }%
     \box\mmz@box
   }%
-  \box1
+  \mmz@typeset@box1%
 }
 % \end{macro}
 %
