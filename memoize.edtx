@@ -398,7 +398,7 @@
 %   The user primarily interacts with Memoize through the |pgfkeys|-based
 %   configuration macro |\mmzset|, which executes keys in path |/mmz|.  In
 %   |nomemoize| and |memoizable|, is exists as a no-op.
-\def\mmzset#1{\pgfqkeys{/mmz}{#1}\ignorespaces}
+\long\def\mmzset#1{\pgfqkeys{/mmz}{#1}\ignorespaces}
 %</mmz>
 %<*nommz,mmzable&generic>
 \def\mmzset#1{\ignorespaces}
