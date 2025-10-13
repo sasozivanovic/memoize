@@ -48,10 +48,16 @@
 %<latex>\RequirePackage{collargs}
 %<plain>\input collargs
 %<context>\input t-collargs
-% In \hologo{LaTeX}, we also require |xparse|.  Even though
-% |\NewDocumentCommand| and friends are integrated into the \hologo{LaTeX}
-% kernel, |\GetDocumentCommandArgSpec| is only available through |xparse|.
-%<latex>\RequirePackage{xparse}
+% In \hologo{LaTeX}, we used to require |xparse|.  Even though
+% |\NewDocumentCommand| and friends were integrated into the \hologo{LaTeX}
+% kernel, |\GetDocumentCommandArgSpec| was only available through |xparse|.
+% The next release of the \hologo{LaTeX} kernel will include the functionality
+% of |\GetDocumentCommandArgSpec| in a code-level command |\cmd_arg_spec:N|.
+% We prepare for the transition by checking if |\cmd_arg_spec:N| is defined and
+% only load |xparse| if it is not.  (I'll leave this check in for a while even
+% after the next \hologo{LaTeX} release, on the off chance someone updates
+% Memoize/Advice but not LaTeX.)
+%<latex>\ifcsdef{cmd_arg_spec:N}{}{\RequirePackage{xparse}}
 % 
 % \subsubsection{Installation into a keypath}
 % 
@@ -781,40 +787,76 @@
 %     arguments; the inner handler receives the collected arguments as a single
 %     braced argument.
 %   \end{itemize}
-%   \hangindent=0pt If the argument specification is not defined (either the user
-%   did not set it, or has reset it by writing |args| without a value), it is
-%   assumed that the handled command was defined by |xparse| and |\AdviceArgs|
-%   will be retrieved by |\GetDocumentCommandArgSpec|.
+%   \hangindent=0pt If the argument specification is not defined (either the
+%   user did not set it, or has reset it by writing |args| without a value), it
+%   is assumed that the handled command was defined by |xparse| and
+%   |\AdviceArgs| will be retrieved by |\cmd_arg_spec:N|.  (In the transition
+%   period, the definition of |\advice@CollectArgumentsRaw| depends on the
+%   availability of |\cmd_arg_spec:N|.  Better to check for this macro when
+%   defining than at execution of |\advice@CollectArgumentsRaw|.)
+% 
+%   A complication: |\cmd_arg_spec:N| must be given the original control
+%   sequence, i.e. this does not work: |\NewDocumentCommand\cmd{...}{...}|
+%   |\let\newname\cmd| |\cmd_arg_spec:N\newname|.  So we temporarily redefine
+%   the advised control sequence (which we get by expanding |\AdviceName|) back
+%   to its original meaning (the full expansion of |\AdviceOriginal| yields the
+%   control sequence referring to the original meaning).
+\ifcsdef{cmd_arg_spec:N}{%
+  \letcs\mmz@cmd@arg@spec{cmd_arg_spec:N}
 %   \begin{listingregion}{_advice-CollectArgumentsRaw}
-\def\advice@CollectArgumentsRaw{%
-  \AdviceIfArgs{}{%
-    % A complication: it seems that |\GetDocumentCommandArgSpec| only works
-    % when given the original control sequence, i.e. this does not work:
-    % |\NewDocumentCommand\cmd{...}{...}| |\let\newname\cmd|
-    % |\GetDocumentCommandArgSpec\newname|.  So we temporarily redefine the
-    % advised control sequence (which we get by expanding |\AdviceName|) back
-    % to its original meaning (the full expansion of |\AdviceOriginal| yields
-    % the control sequence referring to the original meaning).
-    \begingroup
-    \edef\advice@temp{\AdviceOriginal}%
-    \expandafter\expandafter\expandafter\let\expandafter\AdviceName\advice@temp
-    \expandafter\GetDocumentCommandArgSpec\expandafter{\AdviceName}%
-    \expandafter\endgroup
-    \expandafter\edef\expandafter\AdviceArgs\expandafter{\ArgumentSpecification}%
-  }%
-  \expanded{%
-    \noexpand\CollectArgumentsRaw{%
-      \noexpand\collargsCaller{\expandonce\AdviceName}%
-      \expandonce\AdviceRawCollectorOptions
-      \ifdefempty\AdviceCollectorOptions{}{%
-        \noexpand\collargsSet{\expandonce\AdviceCollectorOptions}%
+  \def\advice@CollectArgumentsRaw{%
+    \AdviceIfArgs{}{%
+      % ...
+      \begingroup
+      \expandafter\expandafter\expandafter\let
+        \expandafter\AdviceName
+        \expanded{\AdviceOriginal}%
+      \expanded{%
+        \unexpanded{%
+          \endgroup
+          \def\AdviceArgs
+        }%
+        {\expandafter\mmz@cmd@arg@spec\AdviceName}%
       }%
     }%
-    {\expandonce\AdviceArgs}%
-    {\expandonce\AdviceInnerHandler}%
+    \expanded{%
+      \noexpand\CollectArgumentsRaw{%
+        \noexpand\collargsCaller{\expandonce\AdviceName}%
+        \expandonce\AdviceRawCollectorOptions
+        \ifdefempty\AdviceCollectorOptions{}{%
+          \noexpand\collargsSet{\expandonce\AdviceCollectorOptions}%
+        }%
+      }%
+      {\expandonce\AdviceArgs}%
+      {\expandonce\AdviceInnerHandler}%
+    }%
+  }%
+% \end{listingregion}
+}{%
+  \def\advice@CollectArgumentsRaw{%
+    \AdviceIfArgs{}{%
+      % Same complication as above.
+      \begingroup
+      \expandafter\expandafter\expandafter\let
+        \expandafter\AdviceName
+        \expanded{\AdviceOriginal}%
+      \expandafter\GetDocumentCommandArgSpec\expandafter{\AdviceName}%
+      \expandafter\endgroup
+      \expandafter\edef\expandafter\AdviceArgs\expandafter{\ArgumentSpecification}%
+    }%
+    \expanded{%
+      \noexpand\CollectArgumentsRaw{%
+        \noexpand\collargsCaller{\expandonce\AdviceName}%
+        \expandonce\AdviceRawCollectorOptions
+        \ifdefempty\AdviceCollectorOptions{}{%
+          \noexpand\collargsSet{\expandonce\AdviceCollectorOptions}%
+        }%
+      }%
+      {\expandonce\AdviceArgs}%
+      {\expandonce\AdviceInnerHandler}%
+    }%
   }%
 }
-% \end{listingregion}
 % \end{macro}
 %
 % \begin{macro}{\AdviceIfArgs}

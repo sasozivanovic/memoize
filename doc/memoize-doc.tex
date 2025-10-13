@@ -46,7 +46,7 @@
       cmd={name=label}, cmd={name=@currentlabel},
       cmd={name=ref}, cmd={name=pageref},
       cmd={name=index},
-      cmd={name=NewDocumentCommand}, cmd={name=GetDocumentCommandArgSpec},
+      cmd={name=NewDocumentCommand},
       env={name=verbatim},
       cmd={name=ReadonlyShipoutCounter},
       hook={name=begindocument},
@@ -4404,7 +4404,7 @@ to write to enable automemoization for a command is thus
 when it comes to commands defined by \hologo{LaTeX3}'s \refcmd{NewDocumentCommand}
 or friends, writing \refmmz{auto}|=|\meta{command}\braces{\refmmzauto{memoize}}
 will suffice, as the argument specification of these commands can be retrieved
-by \refcmd{GetDocumentCommandArgSpec}.
+automatically.
 
 \paragraph{Weird commands}
 Not every argument structure can be described using \pkg{xparse}'s argument
@@ -5008,42 +5008,42 @@ simplify matters, but a macro which acts as the ``bridge'' between Advice and
 CollArgs, by compiling an invocation of \refcmd{CollectArgumentsRaw} from the
 given advice setup, and executing it.
 
-The bridge macro is shown below in its full glory, but it is really less
-complicated than it might appear at first sight.  In line~2, we use
-\refcmd{AdviceIfArgs} to see whether the argument structure of the handled
-command was given by the user.  If it wasn't, we assume that the handled
-command was defined using \cs{NewDocumentCommand} or similar, and use
-\refcmd{GetDocumentCommandArgSpec} to retrieve it (line~3; note that
-\refcmd{AdviceName} holds the handled control sequence) and store it into
-\refcmd{AdviceArgs} (line~4), which also receives the argument specification
-when given by the user via key \refmmzauto{args}.
+The bridge macro is shown below, and it is less complicated than it might
+appear at first sight.  In line~2, we use \refcmd{AdviceIfArgs} to see whether
+the argument structure of the handled command was given by the user (if it was,
+it is available in macro \refcmd{AdviceArgs}).  If it wasn't, we assume that
+the handled command was defined using \cs{NewDocumentCommand} or similar, and
+use a code-level \hologo{LaTeX3} command |\cmd_arg_spec:N| to retrieve it and
+store it into \refcmd{AdviceArgs} (this part of the code is omitted, as
+signaled by the ellipsis in line~3).
 
 \tcbinputexample{_advice-CollectArgumentsRaw}[.excerpt]{%
+  listing options app={linerange={-3,15-}},
   listing only, no .listing, no attachment,
   listing options app={numbers=left, numberstyle=\tiny, numbersep=0.5em},
   title={The definition of the initial collector},
 }
 
-Lines~6--17 are somewhat of an expansion mess, because we have to construct the
+Lines~5--15 are somewhat of an expansion mess, because we have to construct the
 invocation of the CollArgs' collector from the advice setup stored in various
 macros.  But once we think away all the (non-)expansion commands, we're left
 with \refcmd{CollectArgumentsRaw} plus the following three arguments:
 \begin{enumerate}
-\item The raw options (lines 8--11):
+\item The raw options (lines 7--11):
   \begin{enumerate}
-  \item In line 8, the advised command's control sequence is designated as the
+  \item In line 7, the advised command's control sequence is designated as the
     \refcollargs{caller}.  The effect is that if the given arguments don't
     conform to the specification, the error thrown seems to come from the
     advised command rather than some internal CollArgs macro.  The author will
     be grateful for this little detail.
-  \item In line 9, we add any \refmmzauto{raw collector options} set by Advice
+  \item In line 8, we add any \refmmzauto{raw collector options} set by Advice
     (plus the package deploying Advice, like Memoize); user-given options are of
     course possible, but not really expected here, because:
-  \item In lines 10--11, we add the user-given \refmmzauto{collector options},
+  \item In lines 9--11, we add the user-given \refmmzauto{collector options},
     if there are any, embedded under \refcmd{collargsSet}.
   \end{enumerate}
-\item The argument specification (line 14).
-\item The \refmmzauto{inner handler} (line 15).
+\item The argument specification (line 13).
+\item The \refmmzauto{inner handler} (line 14).
 \end{enumerate}
 
 
@@ -7637,9 +7637,7 @@ headers.
   If \meta{argument specification} is not provided, the initial collector
   assumes that the advised command was defined using \hologo{LaTeX3}'s
   \refcmd{NewDocumentCommand} (or similar), and will attempt to retrieve the
-  argument specification automatically.\footnote{The automatic retrieval
-    deploys command \refcmd{GetDocumentCommandArgSpec} of package \pkg{xparse},
-    which is the sole reason that Advice loads this package in \hologo{LaTeX}.}
+  argument specification automatically.
   
   In general, however, an argument collector may this interpret this setting 
   in any way it sees fit --- or not at all.  For example, in Memoize the value
