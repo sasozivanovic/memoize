@@ -161,9 +161,15 @@
   \addtolength\MacroIndent{\dimexpr\hangindent+\@tempdima+\ExtraMacroIndent}%
 }
 \newdimen\ExtraMacroIndent
-\newcommand\noindentmacrocode{%
+\NewDocumentCommand\noindentmacrocode{s}{%
   \setlength\MacroIndent{0em}%
-  \AddToHookNext{env/macrocode/begin}{\MacrocodeTopsep 0pt\relax}%
+  \IfBooleanT{#1}{%
+    % same as "\MacrocodeTopsep = 7pt plus 2pt minus 2pt" but omit plus
+    \AddToHookNext{para/before}{\vskip -7pt minus 2pt\relax}%
+  }%
+  \AddToHookNext{env/macrocode/begin}{%
+    \MacrocodeTopsep 0pt\relax
+  }%
 }
 \def\theCodelineNo{%
   \reset@font\scriptsize\textcolor{gray}{\arabic{CodelineNo}}%

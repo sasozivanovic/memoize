@@ -907,19 +907,20 @@
 % of the tokens.  (We need to manually save and restore |\newlinechar| because
 % we don't want to execute the memoized code in yet another group.)
 % 
-% |\mmz@scantokens@maybe@unskip| is there to remove the space token resulting
-% from the final newline, which eventually turned into typeset space.  The
-% previous approach was to add |\endinput| after |#1|, but environment
-% |Verbatim| of package Fancyvrb choked on this |\endinput|.  Note that we
-% cannot set |\endlinechar=-1| because we need the rest of the newlines.  Now,
-% the idea is to remove the resulting typeset space with |\unskip|, limited to
-% horizontal mode capture.  This should work because the memoized stuff is
-% boxed, and therefore cannot produce any visible horizontal space.
+% |\unskip| is there (for hbox capture in verbatim mode) to remove the space
+% token resulting from the final newline, which eventually turned into typeset
+% space.  The previous approach was to add |\endinput| after |#1|, but
+% environment |Verbatim| of package Fancyvrb choked on this |\endinput|.  Note
+% that we cannot set |\endlinechar=-1| because we need the rest of the
+% newlines.  Now, the idea is to remove the resulting typeset space with
+% |\unskip|, limited to horizontal mode capture.  This should work because the
+% memoized stuff is boxed, and therefore cannot produce any visible horizontal
+% space.
 \long\def\mmz@scantokens#1{%
   \expanded{%
     \newlinechar=13
     \unexpanded{\scantokens{#1}}%
-    \mmz@scantokens@maybe@unskip
+    \ifhmode\unskip\fi
     \newlinechar=\the\newlinechar
   }%
 }
@@ -1121,11 +1122,16 @@
   \global\mmzContextExtra{}%
   \gdef\mmzAtEndMemoizationExtra{}%
   \gdef\mmzAfterMemoizationExtra{}%
+  \gdef\mmzPostMemoizedCodeExtra{}%
   \mmz@lua@atbeginmemoization
   % Execute the pre-memoization hook, the memoized code (wrapped in the
   % driver), and the post-memoization hook.
   \mmzAtBeginMemoization
-  \mmzDriver{\the\mmz@exec@source}%
+  \mmzDriver{%
+    \mmzPreMemoizedCode
+    \the\mmz@exec@source
+    \mmzPostMemoizedCode\mmzPostMemoizedCodeExtra
+  }%
   \mmzAtEndMemoization
   \mmzAtEndMemoizationExtra
   \mmz@lua@atendmemoization
@@ -1230,6 +1236,8 @@
 \def\mmzAtBeginMemoization{}
 \def\mmzAtEndMemoization{}
 \def\mmzAfterMemoization{}
+\def\mmzPreMemoizedCode{}
+\def\mmzPostMemoizedCode{}
 \mmzset{
   at begin memoization/.code={%
     \ifmemoizing
@@ -1252,6 +1260,22 @@
       \expandafter\gappto\expandafter\mmzAfterMemoizationExtra
     \else
       \expandafter\appto\expandafter\mmzAfterMemoization
+    \fi
+    {#1}%
+  },
+  prepend to memoized code/.code={%
+    \ifmemoizing
+      \expandafter\@firstofone
+    \else
+      \expandafter\appto\expandafter\mmzPreMemoizedCode
+    \fi
+    {#1}%
+  },
+  append to memoized code/.code={%
+    \ifmemoizing
+      \expandafter\gappto\expandafter\mmzPostMemoizedCodeExtra
+    \else
+      \expandafter\appto\expandafter\mmzPostMemoizedCode
     \fi
     {#1}%
   },
@@ -1290,32 +1314,33 @@
 % 
 %   \begin{listingregion}{single-extern-driver}
 \long\def\mmzSingleExternDriver#1{%
-  \setbox\mmz@box\mmz@capture{#1}%
+  \setbox\mmz@box\mmzCapture{#1}%
   \mmzExternalizeBox\mmz@box\mmz@temptoks
   \xtoksapp\mmzCCMemo{\the\mmz@temptoks}%
-  \mmz@typeset@box\mmz@box
+  \ifhbox\mmz@box\relax
+    \mmzBeforeHBox\relax\box\mmz@box\mmzAfterHBox\relax
+  \else
+    \mmzBeforeVBox\relax\box\mmz@box\mmzAfterVBox\relax
+  \fi
 }
 %   \end{listingregion}
 % \end{macro}
 % 
 % \begin{key}{capture}
-%   The choice of |capture| determines the meaning of |\mmz@capture| (either
-%   |\hbox| or |\vbox|) and |\mmz@scantokens@maybe@unskip| (|\unskip| or
-%   empty), used by the default memoization driver.
+%   The choice of |capture| determines the meaning of |\mmzCapture| (either
+%   |\hbox| or |\vbox|), used by the default memoization driver.
 \mmzset{
   capture/.is choice,
   capture/hbox/.code={%
-    \let\mmz@capture\hbox
-    \def\mmz@scantokens@maybe@unskip{\unskip}%
+    \let\mmzCapture\hbox
   },
   capture/vbox/.code={%
-    \let\mmz@capture\vbox
-    \def\mmz@scantokens@maybe@unskip{}%
+    \let\mmzCapture\vbox
   },
   capture=hbox,
 % \end{key}
-% \begin{key}{typeset hbox,typeset vbox}
-%   \begin{macro}{\mmzTypesetHBox,\mmzTypesetVBox}
+% \begin{key}{before hbox, after hbox, before vbox, after vbox, top sep, bottom sep}
+%   \begin{macro}{\mmzBeforeHBox,\mmzAfterHBox,\mmzBeforeVBox,\mmzAfterVBox,\mmzTopSep,\mmzBottomSep}
 %     The default memoization driver wraps the box resulting from memoization
 %     or utilization into either |\mmzTypesetHBox| or |\mmzTypesetVBox|,
 %     depending on |capture|.  (The decision macro |\mmz@typeset@box| tests for
@@ -1324,19 +1349,20 @@
 %     through |typeset hbox| and |typeset vbox|.  Furthermore, the default
 %     value of |typeset vbox|, which first of all makes sure that the extern is
 %     typeset in vertical mode, allows for customization of the top and bottom
-%     separation through |top sep| and |bottom sep|.
-  typeset hbox/.code={\def\mmzTypesetHBox##1{#1}},
-  typeset vbox/.code={\def\mmzTypesetVBox##1{#1}},
-  typeset hbox=\quitvmode#1,
-  typeset vbox=\vskip\mmz@topsep\relax#1\vskip\mmz@bottomsep\relax\noindent,
-  top sep/.store in=\mmz@topsep,
-  bottom sep/.store in=\mmz@bottomsep,
+%     separation through |top sep| and |bottom sep|.  \indentmacrocode
+  before hbox/.store in=\mmzBeforeHBox,
+  after hbox/.store in=\mmzAfterHBox,
+  before vbox/.store in=\mmzBeforeVBox,
+  after vbox/.store in=\mmzAfterVBox,
+  top sep/.store in=\mmzTopSep,
+  bottom sep/.store in=\mmzBottomSep,
+  % \noindentmacrocode*
+  before hbox=\quitvmode,
+  after hbox=,
+  before vbox=\vskip\glueexpr\mmzTopSep\relax,
+  after vbox=\vskip\glueexpr\mmzBottomSep\relax\noindent,
   top sep=0pt,
   bottom sep=0pt,
-}
-\def\mmz@typeset@box#1{%
-  \ifhbox#1\expandafter\mmzTypesetHBox\else\expandafter\mmzTypesetVBox\fi
-  {\box#1}%
 }
 %   \end{macro}
 % \end{key}
@@ -1936,6 +1962,11 @@
   }%
   % Reset |\mmz@seq| for |\mmzResorce|.
   \global\mmz@seq=0
+  % Remember |[before/after] [h/v]box| because we will close the group.
+  \xdef\mmz@before@this@hbox{\mmzBeforeHBox}%
+  \xdef\mmz@after@this@hbox{\mmzAfterHBox}%
+  \xdef\mmz@before@this@vbox{\mmzBeforeVBox}%
+  \xdef\mmz@after@this@vbox{\mmzAfterVBox}%
   % Input the cc-memo if it exists.
   \IfFileExists{\mmz@ccmemo@path}{%
     \ifmmz@direct@ccmemo@input
@@ -2422,6 +2453,19 @@
   % Record that we have used this extern.
   \pgfkeysalso{/mmz/record/used extern={\mmz@extern@path}}%
 }
+\def\mmz@typeset@box#1{%
+  %\begingroup\typeout{DEBUG}\tracingall
+  \ifhbox#1\relax
+    \mmz@before@this@hbox
+    \box#1\relax
+    \mmz@after@this@hbox
+  \else
+    \mmz@before@this@vbox
+    \box#1\relax
+    \mmz@after@this@vbox
+  \fi
+  %\endgroup
+}
 % \end{macro}
 \def\mmz@use@memo@warning#1#2#3#4{%
   \PackageWarning{memoize}{Unexpected size of extern "#1";
@@ -2492,6 +2536,7 @@
 %   package options list, less commonly in the preamble, and never in the
 %   document body.
 \def\mmzvalueof#1{\pgfkeysvalueof{/mmz/#1}}
+\def\mmzcmd#1#2{\pgfkeysvalueof{/mmz/#1/.@cmd}#2\pgfeov}
 \mmzset{
   extract/.estore in=\mmz@extraction@method,
   extract/.value required,
@@ -3468,7 +3513,7 @@
   force refrange/.style={outer handler=\mmz@auto@refrange\mmzForceNoRef,
     bailout handler=\relax, run if memoizing},
 }
-% \noindentmacrocode
+% \noindentmacrocode*
 \def\mmz@auto@refrange#1#2#{\mmz@auto@refrange@i#1{#2}}
 \def\mmz@auto@refrange@i#1#2#3#4{%
   #1{#3}%
