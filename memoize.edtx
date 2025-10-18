@@ -1145,6 +1145,7 @@
       % successfully memoized.
       \mmz@trace@endmemoize@aborted
       \PackageInfo{memoize}{Memoization was aborted}%
+      \global\let\mmz@abort@warning\mmz@abort@warning@do
       \mmz@compute@context@mdfivesum
       \mmz@write@cmemo
     \else
@@ -1182,6 +1183,11 @@
 % \begin{macro}{\mmzAbort}
 % Memoized code may execute this macro to abort memoization.
 \def\mmzAbort{\global\mmz@aborttrue}
+\let\mmz@abort@warning\relax
+\def\mmz@abort@warning@do{%
+  \PackageWarning{memoize}{Some memoizations were aborted, you might have to recompile the document}%
+}
+\mmzset{enddocument/afterlastpage/.append code={\mmz@abort@warning}}
 % \end{macro}
 % 
 % \begin{macro}{\ifmmz@abort}
