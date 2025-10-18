@@ -47,25 +47,74 @@
 \tcbuselibrary{xparse,breakable}
 
 \mmzset{
-  auto={tcolorbox}{memoize, options=verbatim},
-  auto={tcboxedraster}{memoize, options=verbatim},
-  auto={tcbraster}{memoize, options={verbatim,ignore spaces}},
-  auto={tcblisting}{memoize, options={verbatim,ignore spaces}},
-  auto csname={tcbinputexample code}{memoize, args=mmm+m, ignore spaces},
-  auto=\tcbinputlisting{memoize, args=m, options=ignore spaces},
-  % The following doesn't work perfectly, but it's good enough.
+  % Automemoization for tcolorboxes. It doesn't work perfectly, but it's good
+  % enough: there are some minor issues with vertical spacing; support for
+  % "breakable" and "float" is somewhat fragile; we don't use "tcbraster", as I
+  % couldn't get the vertical spacing right ("tcboxedraster" works ok, though).
+  tcb options/.style={
+    capture=vbox,
+    verbatim,
+    append to memoized code=\vskip-\lastskip,
+    before vbox=\unexpanded{%
+      \begingroup
+      \let\iftcb@minipage\if@minipage
+      \if@nobreak
+        \iftcb@ignorenobreak
+          \kvtcb@beforebox
+        \else%
+          \kvtcb@beforebox@nobreak
+        \fi
+      \else
+        \kvtcb@beforebox
+      \fi
+    },
+    after vbox=\unexpanded{%
+      \let\iftcb@minipage\if@minipage
+      \kvtcb@afterbox
+      \endgroup
+    },
+    % Step the tcb counters as if the code was compiled.  This prevents "equal
+    % height group" from triggering lots of additional compilation cycles.
+    at begin memoization={%
+      \xdef\tcolorbox@number@atbegin{\the\c@tcolorbox@number}%
+      \xdef\tcbraster@atbegin{\the\c@tcbraster}%
+    },
+    at end memoization={%
+      \ifnum\c@tcolorbox@number>\tcolorbox@number@atbegin
+        \xtoksapp\mmzCCMemo{\noexpand\addtocounter{tcolorbox@number}%
+          {\the\numexpr\c@tcolorbox@number-\tcolorbox@number@atbegin}}%
+      \fi
+      \ifnum\c@tcbraster>\tcbraster@atbegin
+        \xtoksapp\mmzCCMemo{\noexpand\addtocounter{tcbraster}%
+          {\the\numexpr\c@tcbraster-\tcbraster@atbegin}}%
+      \fi
+    },
+  },
+  auto={tcolorbox}{memoize, options=tcb options},
+  auto={tcboxedraster}{memoize, options=tcb options},
+  auto={tcblisting}{memoize, options=tcb options},
+  auto csname={tcbinputexample code}{
+    memoize, args=mmm+m, options={tcb options, no verbatim}},
+  auto=\tcbinputlisting{memoize, args=m, options={tcb options, no verbatim}},
   auto key={/tcb/breakable}{run if memoizing, outer handler=\makeunmemoizableunless{false}},
   auto key={/tcb/float}{run if memoizing, outer handler=\makeunmemoizableunless{}},
-  auto=\Emph{nomemoize,args=m}, % why do I need to specify args?
-  auto=\EmphTT{nomemoize,args=m},
-  auto=\EmphVerbatim{nomemoize,args=v},
+  % The following works good only if the boxes with adjusted height are
+  % memoized together, e.g. if it is the raster than contains them is memoized
+  auto key={/tcb/equal height group}{run if memoizing, outer handler=\mymmzequalheightgroup},
 }
-
 \def\makeunmemoizableunless#1#2\pgfeov{%
   \ifstrequal{#1}{#2}{}{\mmzUnmemoizable}%
   \AdviceOriginal#1\pgfeov
 }
-
+\def\mymmzequalheightgroup#1\pgfeov{%
+  \ifcsdef{tcb@ehg@height@#1}{%
+    \ExpandArgs{xx}\ifstrequal{\csname mytcbgroupid\endcsname}{#1}{}{\mmzAbort}%
+  }{%
+    \mmzAbort
+  }%
+  \xtoksapp\mmzCMemo{\unexpanded{\def\mytcbgroupid}{#1}}%
+  \AdviceOriginal#1\pgfeov
+}
 \NewDocumentCommand\introboxtitle{om}{%
   \strut
   \textcolor{emphcolor}{%
@@ -343,6 +392,11 @@
 \NewTotalTCBox{\Emph}{m}{my code box, fontupper=\rm}{#1}
 \NewTotalTCBox{\EmphTT}{m}{my code box}{#1}
 \NewTotalTCBox{\EmphVerbatim}{v}{my code box}{#1}
+\mmzset{
+  auto=\Emph{nomemoize,args=m},
+  auto=\EmphTT{nomemoize,args=m},
+  auto=\EmphVerbatim{nomemoize,verbatim,args=v},
+}
 \tikzset{
   emphshade/.style={
     opacity=0.6,
@@ -663,9 +717,6 @@
   }%
   \xspace
 }
-
-% \usepackage{caption}
-% \captionsetup{labelformat=empty}
 
 % Local Variables:
 % TeX-master: "memoize-doc.tex"

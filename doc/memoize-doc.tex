@@ -204,6 +204,7 @@
     listing only,
     remember as=tex,
   }
+  \mmzUnmemoizable
   \begin{tcolorbox}[example title=doc.pdf, no attachment, remember as=pdf1]
     \includeexamplepdf[page box=extern1][titlepage](.c1){page=1,trim=1in 1in 1in 1in}\hfill
     \includeexamplepdf[page box=extern2][titlepage](.c1){page=2,trim=1in 1in 1in 1in}\hfill
@@ -225,6 +226,7 @@
 \end{tcboxedraster}
 
 \begin{tcolorbox}[title=Using the externalized graphics]
+  \mmzUnmemoizable
   \begin{tcolorbox}[example title=doc.pdf,
     halign=center, remember as=pdf2]
     \tcbox[remember, enhanced]{\footnotesize
@@ -242,6 +244,7 @@
 \vfill
 
 \begin{tcolorbox}[colback=emphcolor, fontupper=\footnotesize]
+  \mmzUnmemoizable
   This manual also documents packages Advice
   ({\ParseProvidesPackage
     \ProvidesPackage{advice}[2024/03/15 v1.1.1 Extend commands and environments]
@@ -526,7 +529,7 @@ as it does not contain an empty line (bottom right).  I like to add a comma
 after the final key (bottom left), because if I don't, I often forget to insert
 it when I add more keys.
 
-\begin{tcbraster}[raster columns=4, raster valign=bottom]
+\begin{tcboxedraster}[raster columns=4, raster valign=bottom]{blankest}
   \begin{tcboxedraster}[raster columns=1]{blankest, raster multicolumn=3, valign=bottom}
     \begin{tcblisting}{listing only}
 ~\mmzset~{recompile,auto={circuitikz}{memoize},deactivate=\tikz}
@@ -541,8 +544,8 @@ it when I add more keys.
   verbatim,
   padding=2in}
   \end{tcblisting}
-\end{tcbraster}\par
-\begin{tcbraster}[raster columns=4, raster valign=top]
+\end{tcboxedraster}\par
+\begin{tcboxedraster}[raster columns=4, raster valign=top]{blankest}
   \begin{tcblisting}{listing only, raster multicolumn=2}
 ~\mmzset~{
   auto    = \qrcode{memoize, args=om},
@@ -567,7 +570,7 @@ it when I add more keys.
   prefix=memos/
 }
   \end{tcblisting}
-\end{tcbraster}
+\end{tcboxedraster}
 
 Command \refcmd{mmzset} can be used any time after loading the package.  It is
 very common in the preamble, but also useful in the document body, where its
@@ -583,7 +586,7 @@ applied only at the next instance of automemoization, overriding any keys set
 by \refcmd{mmzset} in case of a conflict.  If the command is given more than
 once, only the final invocation takes effect.
 
-\begin{tcbraster}[raster columns=2, raster equal height=rows, raster force size=false]
+\begin{tcboxedraster}[raster columns=2, raster equal height=rows, raster force size=false]{blankest}
 \begin{tcblisting}{listing only, mark region={3}{6}}
 ~{~
   ~\mmzset~{recompile}
@@ -602,7 +605,7 @@ once, only the final invocation takes effect.
 % ...
 
 \end{tcblisting} 
-\end{tcbraster}
+\end{tcboxedraster}
 
 I like to follow |\usepackage{memoize}| by \refcmd{mmzset}, but if you prefer,
 you can also provide the document-wide configuration as \Emph{package options.}
@@ -612,7 +615,7 @@ re-externalization of all the externs in the document.\footnote{Note that a
   is usually not an issue, it prevents using \pkg{pgfkeys} key handlers.  The
   workaround is to use key \refmmz{options}.}
 
-\begin{tcbraster}[raster columns=2, raster equal height=rows]
+\begin{tcboxedraster}[raster columns=2, raster equal height=rows]{blankest}
   \begin{tcblisting}{listing only}
 \usepackage{memoize}
 \mmzset{recompile}
@@ -620,7 +623,7 @@ re-externalization of all the externs in the document.\footnote{Note that a
   \begin{tcblisting}{listing only}
 \usepackage[recompile]{memoize}
   \end{tcblisting}
-\end{tcbraster}
+\end{tcboxedraster}
 
 
 \subsection{The configuration file}
@@ -918,7 +921,7 @@ node with a red background.  Let's say we compile the document (with
 memoization) and then change this style to set the yellow background.
 Curiously, the node will remain red.
 
-\begin{tcbraster}[raster columns=2, raster valign=top, raster column skip=4mm]
+\begin{tcboxedraster}[raster columns=2, raster valign=top, raster column skip=4mm]{blankest}
   \tcbinputexample{recompile}(.c1){
     after title pre={\ (version~1)},
     comment={\centering
@@ -932,7 +935,7 @@ Curiously, the node will remain red.
       \includeexamplepdf[document page]{page=1}
     },
   }
-\end{tcbraster}
+\end{tcboxedraster}
 
 The curious thing happens (or rather, doesn't happen) because Memoize doesn't
 keep track of how commands and styles are defined; it just uses the extern file
@@ -999,7 +1002,7 @@ selected pictures.
   mark the parts of the document where memoization is \emph{disabled}.)
 \end{tcolorbox}
 
-\begin{tcbraster}[raster columns=2, raster equal height=rows]
+\begin{tcboxedraster}[raster columns=2, raster equal height=rows]{blankest}
   \tcbinputexample{disable-bad}{
     listing and comment, bad, mark region={4}{7},
     comment={\raggedright The upper \refcmd{mmzset}\braces{\refmmz{disable}}
@@ -1009,7 +1012,7 @@ selected pictures.
     listing and comment, mark region={4}{10},
     comment={\raggedright The upper \refcmd{mmzset}\braces{\refmmz{disable}} applies
       to the entire document, as expected.}}
-\end{tcbraster}
+\end{tcboxedraster}
 
 In fact, it might be better to disable memoization using environment
 \Emph{\refenv{nomemoize}} or macro \Emph{\refcmd{nommz}}.  I also like these
@@ -1017,12 +1020,12 @@ commands because it is easy to add and remove prefix |no| to switch manual
 memoization (triggered using environment \refenv{memoize} or macro
 \refcmd{mmz}) off and on.
 
-\begin{tcbraster}[raster columns=2, raster equal height=rows]
+\begin{tcboxedraster}[raster columns=2, raster equal height=rows]{blankest}
   \tcbinputexample{disable-nomemoize}{listing and comment, mark region={2}{2},
     comment=\raggedright Disable using the dedicated environment.}
   \tcbinputexample{disable-nommz}{listing and comment, mark region={2}{2},
     comment=\raggedright Disable using the dedicated command.}
-\end{tcbraster}
+\end{tcboxedraster}
 
 It is also possible to disable memoization for all occurrences of a selected
 command or environment.  In fact, we're already familiar with the procedure
@@ -1037,7 +1040,7 @@ execution; for example, if |\foo| executes \cs{tikz} under the hood,
 autodisabling |\foo| prevents memoization of the inner \cs{tikz}, even though
 that command is normally automemoized.
 
-\begin{tcbraster}[raster columns=2, raster equal height=rows]
+\begin{tcboxedraster}[raster columns=2, raster equal height=rows]{blankest}
   \tcbinputexample{disable-auto-cmd}{
     listing and comment,
     mark region={3}{3}, mark region={5}{5},
@@ -1048,7 +1051,7 @@ that command is normally automemoized.
     mark region={3}{5},
     comment=\raggedright Autodisable within an environment.,
   }
-\end{tcbraster}
+\end{tcboxedraster}
 
 All that said, Memoize actually offers a neater way to switch off the
 externalization for the picture I'm currently working on.  The
@@ -1064,7 +1067,7 @@ work on stuff, and once I'm happy with the most recent pictures, remove
 \refmmz{readonly} from the package options for one compilation.
 
 
-\begin{tcbraster}[raster columns=5, raster valign=top, raster column skip=4mm]
+\begin{tcboxedraster}[raster columns=5, raster valign=top, raster column skip=4mm]{blankest}
   \tcbinputexample{readonly}(.c1){
     raster multicolumn=2,
     after title pre={\ (work in progress)},
@@ -1081,7 +1084,7 @@ work on stuff, and once I'm happy with the most recent pictures, remove
       \includeexamplepdf[document page]{page=2}
     },
   }
-\end{tcbraster}
+\end{tcboxedraster}
 
 We're now ready to tackle a completely different way of avoiding the issue, by
 informing Memoize which definitions the externalized picture depends on.  We do
@@ -1358,10 +1361,10 @@ externs in directory \code{\meta{name}.memo.dir}.\footnote{Use key
   the auxiliary files.}  (As you can see below on the left, \meta{name} may
 contain a directory part.)
 
-\begin{tcbraster}[raster columns=2, raster valign=top]
+\begin{tcboxedraster}[raster columns=2, raster valign=top]{blankest}
   \tcbinputexample{book}{listing only}
   \tcbinputexample{chapters/chapter1}{listing only}
-\end{tcbraster}
+\end{tcboxedraster}
 
 In the above example, the individual chapters reside in files stored in the
 |chapters| subdirectory, and that's why the |book.tex| preamble uses
@@ -1419,7 +1422,7 @@ set), you will have a reasonably up-to-date set of externs.
   \end{tcblisting}
 \end{tcboxedraster}
 
-\begin{tcolorbox}[title=For \Emacs users]
+\begin{tcolorbox}[title=For {\hypercolor{url}{white}\Emacs} users]
   I often use this \refmmz{readonly} trick myself, but with a twist.  As an Emacs user,
   I don't use a \hologo{TeX}-based mechanism (such as the \pkg{docmute} package) to
   compile a chapter, but rely on the region compilation feature of Emacs'
@@ -1762,7 +1765,7 @@ your source, so the document won't compile without
 Memoize does, but does nothing.  In effect, your document will compile, but you
 can be sure that not a single memo or extern was loaded or produced.
 
-\begin{tcbraster}[raster columns=3, raster force size=false, raster valign=top]
+\begin{tcboxedraster}[raster columns=3, raster force size=false, raster valign=top]{blankest}
   \begin{tcblisting}{listing only, add to width=2.4em, enhanced}
 \usepackage[~disable~]{memoize}
   \end{tcblisting}
@@ -1773,7 +1776,7 @@ can be sure that not a single memo or extern was loaded or produced.
   \begin{tcblisting}{listing only, add to width=-0.8em, enhanced}
 \usepackage{~no~memoize}
   \end{tcblisting}
-\end{tcbraster}
+\end{tcboxedraster}
 
 There is one issue you might need to resolve manually before package
 \refpkg{nomemoize} works as intended, though.  If you have used any
@@ -1941,7 +1944,7 @@ there is only |\end{sectionbox}|, and this results in the |Environment
 
 \begingroup
 \mmzset{disable}
-\begin{tcbraster}[raster equal height]
+\begin{tcboxedraster}[raster equal height]{blankest}
 \begin{tcblisting}{listing only, bad, valign=center}
 \newenvironment{foo}% ... args
 {% the begin-code of foo
@@ -1961,7 +1964,7 @@ there is only |\end{sectionbox}|, and this results in the |Environment
       ! Package collargs Error: Environment\\"minipage" ended as "sectionbox".
     },
   }
-\end{tcbraster}
+\end{tcboxedraster}
 \endgroup
 
 What are your options in this kind of a situation?
@@ -8584,7 +8587,7 @@ their behaviour by setting \refcollargs{ignore nesting}, as shown below on the
 right.  (Of course we also need to set \refcollargs{verbatim} if we want to
 grab the environment body in the verbatim mode.)
 
-  \begin{tcbraster}[raster columns=2]
+  \begin{tcboxedraster}[raster columns=2]{blankest}
     \begin{tcblisting}{listing only, mark region={1}{5},
       example title=\texttt{ignore nesting=false}}
   ...
@@ -8598,7 +8601,7 @@ grab the environment body in the verbatim mode.)
       listing only, no attachment, mark region={1}{3}, 
       example title=\texttt{ignore nesting=true}
     }
-  \end{tcbraster}
+  \end{tcboxedraster}
 
   This key applies not only to argument type \docref{xparse:b} (in either
   normal or verbatim mode), but also to the verbatim argument type
@@ -8629,14 +8632,14 @@ grab the environment body in the verbatim mode.)
   is shown below, where the shaded area marks the code collected into
   environment |foo|.
 
-  \begin{tcbraster}
+  \begin{tcboxedraster}{blankest}
     \tcbinputexample{collargs-ignore-other-tags}(.c1){
       listing only, no attachment, mark region={3}{3},
       example title=\texttt{ignore other tags=false}}
     \tcbinputexample{collargs-ignore-other-tags}(.c2){
       listing only, no attachment, mark region={3}{5},
       example title=\texttt{ignore other tags=true}}
-  \end{tcbraster}
+  \end{tcboxedraster}
 
   This key does not have any effect the full verbatim mode, which always
   behaves as if this key was set to true, because braces are of category
