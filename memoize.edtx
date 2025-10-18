@@ -401,7 +401,7 @@
 \long\def\mmzset#1{\pgfqkeys{/mmz}{#1}\ignorespaces}
 %</mmz>
 %<*nommz,mmzable&generic>
-\def\mmzset#1{\ignorespaces}
+\long\def\mmzset#1{\ignorespaces}
 %</nommz,mmzable&generic>
 % \end{macro}
 %

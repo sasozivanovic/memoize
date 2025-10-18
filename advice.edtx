@@ -309,7 +309,7 @@
 %   name would conflict with the storage name for the (environment-internal)
 %   command |\foo| --- yes, we can submit either |foo| or |\foo|, or both, to
 %   advising.)
-\def\advice@setup@i#1#2#3#4{%
+\long\def\advice@setup@i#1#2#3#4{%
   % Load the current configuration of the handled command or environment --- if
   % it exists.
   \advice@setup@init@i{#2}{#1}%
