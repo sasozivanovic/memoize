@@ -210,17 +210,23 @@
 %</context>
 % Take care of some further differences between the engines.
 \ifdef\pdftexversion{%
+  \def\mmz@pageref#1{\pdfpageref#1 \space 0 R}%
 }{%
   \def\pdfhorigin{1true in}%
   \def\pdfvorigin{1true in}%
   \ifdef\XeTeXversion{%
     \let\quitvmode\leavevmode
+    \def\pdfcatalog#1{\special{pdf:put @catalog <<#1>>}}%
+    \def\pdfpageref{@page}%
+    \def\mmz@pageref#1{@page#1}%
   }{%
     \ifdef\luatexversion{%
       \let\pdfpagewidth\pagewidth
       \let\pdfpageheight\pageheight
       \def\pdfmajorversion{\pdfvariable majorversion}%
       \def\pdfminorversion{\pdfvariable minorversion}%
+      \def\pdfcatalog{\pdfextension catalog}%
+      \def\mmz@pageref#1{\pdffeedback pageref #1 \space 0 R}%
     }{%
       \PackageError{memoize}{Support for this TeX engine is not implemented}{}%
     }%
@@ -2191,6 +2197,7 @@
 %<context>    -1%
     +\mmzExternPages+\mmzExtraPages
   }%
+  \edef\pageobjref{\mmz@pageref{\pagenumber}}%
   % Record the creation of the new extern.  We do this after shipping out the
   % extern page, so that the recording mechanism can serve as an after-shipout
   % hook, for the unlikely situation that some package really needs to do
@@ -2613,9 +2620,63 @@
   no record,
   record=mmz,
   begindocument/.append style={record/begin},
-  enddocument/afterlastpage/.append style={record/end},
+  enddocument/.append style={record/end},
 }
 % 
+% \subsubsection{A \texttt{MMIZ\_Info} entry in the PDF catalog}
+% \label{sec:code:record:mmz}
+% 
+\mmzset{
+  record/pdf/begin/.code={%
+    \gdef\mmz@record@pdf{}%
+  },
+  record/mmz/prefix/.code={%
+    \xappto\mmz@record@pdf{%
+      << /Type /MMIZ_Prefix /MMIZ_Filename (#1) >>
+    }%
+  },
+  record/pdf/new extern/.code={%
+    \xappto\mmz@record@pdf{<<
+      /Type /MMIZ_NewExtern
+      /MMIZ_Filename (#1)
+      /MMIZ_PageNumber \pagenumber\space
+      /MMIZ_Page \pageobjref
+      >>
+    }%
+  },
+  record/pdf/new cmemo/.code={%
+    \xappto\mmz@record@pdf{%
+      << /Type /MMIZ_NewCMemo /MMIZ_Filename (#1) >>
+    }%
+  },
+  record/pdf/new ccmemo/.code={%
+    \xappto\mmz@record@pdf{%
+      << /Type /MMIZ_NewCCMemo /MMIZ_Filename (#1) >>
+    }%
+  },
+  record/pdf/used extern/.code={%
+    \xappto\mmz@record@pdf{%
+      << /Type /MMIZ_UsedExtern /MMIZ_Filename (#1) >>
+    }%
+  },
+  record/pdf/used cmemo/.code={%
+    \xappto\mmz@record@pdf{%
+      << /Type /MMIZ_UsedCMemo /MMIZ_Filename (#1) >>
+    }%
+  },
+  record/pdf/used ccmemo/.code={%
+    \xappto\mmz@record@pdf{%
+      << /Type /MMIZ_UsedCCMemo /MMIZ_Filename (#1) >>
+    }%
+  },
+  record/pdf/end/.code={%
+    \pdfcatalog{%
+      /Extensions <</MMIZ <</BaseVersion /1.4 /ExtensionLevel 1>> >>
+      /MMIZ_Record [ \mmz@record@pdf]
+    }%
+  },
+}
+%
 % \subsubsection{The \texttt{.mmz} file}
 % \label{sec:code:record:mmz}
 % 
@@ -3977,6 +4038,7 @@
 \AddToHook{begindocument/before}{\mmzset{begindocument/before}}
 \AddToHook{begindocument}{\mmzset{begindocument}}
 \AddToHook{begindocument/end}{\mmzset{begindocument/end}}
+\AddToHook{enddocument}{\mmzset{enddocument}}
 \AddToHook{enddocument/afterlastpage}{\mmzset{enddocument/afterlastpage}}
 %</latex>
 % In \hologo{plainTeX}, the user must execute these hooks manually; but at
