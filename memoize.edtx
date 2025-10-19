@@ -210,14 +210,15 @@
 %</context>
 % Take care of some further differences between the engines.
 \ifdef\pdftexversion{%
+  % This macro expands to the reference to the PDF page object for page number
+  % |#1|.  It is used in |\mmz@shipout@extern|.
   \def\mmz@pageref#1{\pdfpageref#1 \space 0 R}%
 }{%
   \def\pdfhorigin{1true in}%
   \def\pdfvorigin{1true in}%
   \ifdef\XeTeXversion{%
     \let\quitvmode\leavevmode
-    \def\pdfcatalog#1{\special{pdf:put @catalog <<#1>>}}%
-    \def\pdfpageref{@page}%
+    \protected\def\pdfcatalog#1{\special{pdf:put @catalog <<#1>>}}%
     \def\mmz@pageref#1{@page#1}%
   }{%
     \ifdef\luatexversion{%
@@ -225,7 +226,9 @@
       \let\pdfpageheight\pageheight
       \def\pdfmajorversion{\pdfvariable majorversion}%
       \def\pdfminorversion{\pdfvariable minorversion}%
-      \def\pdfcatalog{\pdfextension catalog}%
+      \protected\def\pdfobj{\pdfextension obj }%
+      \def\pdflastobj{\numexpr\pdffeedback lastobj\relax}%
+      \protected\def\pdfcatalog{\pdfextension catalog }%
       \def\mmz@pageref#1{\pdffeedback pageref #1 \space 0 R}%
     }{%
       \PackageError{memoize}{Support for this TeX engine is not implemented}{}%
@@ -2639,8 +2642,10 @@
     \xappto\mmz@record@pdf{<<
       /Type /MMIZ_NewExtern
       /MMIZ_Filename (#1)
-      /MMIZ_PageNumber \pagenumber\space
       /MMIZ_Page \pageobjref
+      % The page number is merely informative, or perhaps it could be used for
+      % a sanity check.
+      /MMIZ_PageNumber \pagenumber\space
       >>
     }%
   },
@@ -2670,9 +2675,16 @@
     }%
   },
   record/pdf/end/.code={%
+    \ifdef\XeTeXversion{%
+      \special{pdf:obj @mmzrecord [\mmz@record@pdf]}%
+      \def\mmz@record@pdfobjref{@mmzrecord}%
+    }{%
+      \immediate\pdfobj{[ \mmz@record@pdf]}%
+      \edef\mmz@record@pdfobjref{\number\pdflastobj\space 0 R}%
+    }%
     \pdfcatalog{%
-      /Extensions <</MMIZ <</BaseVersion /1.4 /ExtensionLevel 1>> >>
-      /MMIZ_Record [ \mmz@record@pdf]
+      /Extensions <</MMIZ <</BaseVersion /1.7 /ExtensionLevel 1>> >>
+      /MMIZ_Record \mmz@record@pdfobjref
     }%
   },
 }
