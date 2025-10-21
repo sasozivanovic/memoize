@@ -18,12 +18,7 @@ pages = indoc:get_pages()
 
 for i, page_n in ipairs(arg) do
    outdoc = pdf.new()
-   outdoc:insert_page(
-      --We need to insert the copy for the pruning to work. Inserting a page
-      --into another document changes its parent, so it is (in a way) not a
-      --part of the source document any more.
-      pdf.copy(pages[tonumber(page_n)])
-   )
+   outdoc:insert_page(pages[tonumber(page_n)])
    outdoc:save(outfile_prefix .. page_n .. '.pdf')
 end
 
