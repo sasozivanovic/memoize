@@ -54,14 +54,14 @@
   tcb options/.style={
     capture=vbox,
     verbatim,
-    append to memoized code=\vskip-\lastskip,
+    memoized code suffix=\vskip-\lastskip,
     before vbox=\unexpanded{%
       \begingroup
       \let\iftcb@minipage\if@minipage
       \if@nobreak
         \iftcb@ignorenobreak
           \kvtcb@beforebox
-        \else%
+        \else
           \kvtcb@beforebox@nobreak
         \fi
       \else
