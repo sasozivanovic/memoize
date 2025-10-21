@@ -12,4 +12,5 @@ indoc2 = pdf.open(infile2)
 outdoc = pdf.new()
 outdoc:insert_page(indoc1:get_page(pagen1))
 outdoc:insert_page(indoc1:get_page(pagen2))
+outdoc.major, outdoc.minor = indoc.major, indoc.minor
 outdoc:save(outfile)
