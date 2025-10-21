@@ -95,7 +95,7 @@
   auto={tcblisting}{memoize, options=tcb options},
   auto csname={tcbinputexample code}{
     memoize, args=mmm+m, options={tcb options, no verbatim}},
-  auto=\tcbinputlisting{memoize, args=m, options={tcb options, no verbatim}},
+  %auto=\tcbinputlisting{memoize, args=m, options={tcb options, no verbatim}},
   auto key={/tcb/breakable}{run if memoizing, outer handler=\makeunmemoizableunless{false}},
   auto key={/tcb/float}{run if memoizing, outer handler=\makeunmemoizableunless{}},
   % The following works good only if the boxes with adjusted height are
@@ -228,6 +228,7 @@
     },
   },
   warning/.style={colback=red!15},
+  emph/.style={colback=emphcolor},
   to be continued on right/.style={
     frame code={% line thickness is uniform and depends on tcolorbox's leftrule
       \draw[color=tcbcolframe,
