@@ -236,7 +236,7 @@ do --reference
 	 return referenced_object
       end
 
-      function pdfw.from_pdfe_reference(pdfe_doc, indirect_root,
+      function pdfw.from_pdfe_reference(pdfe_doc, _indirect_root,
 					pdfe_reference, referenced_pdfe_obj_id)
 	 return setmetatable({}, {
 	       pdfw_type = "reference",
@@ -289,8 +289,8 @@ do --pdfw.from_pdfe_triplet
       val, --boolean
       val, --integer
       val, --float
-      function(_pdfe_doc, indirect_root, value) return '/' .. value:gsub('/', '#2F') end,
-      function(_pdfe_doc, indirect_root, value, hex)
+      function(_pdfe_doc, _indirect_root, value) return '/' .. value:gsub('/', '#2F') end,
+      function(_pdfe_doc, _indirect_root, value, hex)
 	 if hex then return pdfw.hex_string(value)
 	 elseif value:sub(1,1) == '/' then return '\\057' .. value:sub(2)
 	 else return value end
@@ -616,7 +616,7 @@ function pdfw_doc.update(doc, prune)
    end
 
    local startxref = doc.fh:seek()
-   
+
    --Don't write anything if there were no new objects.
    if startxref ~= update_begin then
       doc.fh:write('xref\n',
@@ -655,7 +655,7 @@ function pdfw_doc.update(doc, prune)
    local update_end = doc.fh:seek()
    doc.fh:close()
    doc.updating = nil
-   
+
    return update_end - update_begin
 end
 
@@ -703,6 +703,7 @@ do
    end
 
    function pdfw_doc.get_page(doc, page_n)
+      page_n = tonumber(page_n)
       local root_Pages = doc.trailer.Root().Pages()
       assert(math.type(page_n) == 'integer'
 	     and page_n > 0 and page_n <= root_Pages.Count,
