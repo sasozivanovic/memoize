@@ -2633,7 +2633,7 @@
   record/pdf/begin/.code={%
     \gdef\mmz@record@pdf{}%
   },
-  record/mmz/prefix/.code={%
+  record/pdf/prefix/.code={%
     \xappto\mmz@record@pdf{%
       << /Type /MMIZ_Prefix /MMIZ_Filename (#1) >>
     }%
