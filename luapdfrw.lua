@@ -103,8 +103,10 @@ do --array & dictionary
 
    local mt_newindex = function(tbl, key, value, pdfe_doc, indirect_root, legal_index_f)
       assert(legal_index_f(key))
-      tbl[key] = value
-      updated_objects[pdfe_doc][indirect_root] = true
+      if tbl[key] ~= value then
+	 tbl[key] = value
+	 updated_objects[pdfe_doc][indirect_root] = true
+      end
    end
 
    local mt_pairs = function(tbl, pdfe_doc, indirect_root, pairs_f)
