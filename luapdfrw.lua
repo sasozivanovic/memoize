@@ -502,6 +502,7 @@ function pdfw.new(trailer)
 	    Producer = 'pdfw',
 	 },
       }
+   assert (trailer.Root, "The given trailer does not contain key 'Root'")
    local doc = {
       trailer = trailer,
       major = 1,
@@ -685,7 +686,7 @@ end
 
 --Get a specific page by number.
 do
-   local function get_page(Pages, page_n)
+   local function get_page_from_Pages(Pages, page_n)
       for i, kid_ref in ipairs(Pages.Kids) do
 	 local kid_obj = kid_ref()
 	 local kid_is_page = kid_obj.Type == '/Page'
@@ -694,7 +695,8 @@ do
 	    if kid_is_page then
 	       return kid_obj, Pages, {i}
 	    else
-	       local kid, parent, path = get_page(kid_obj, page_n + kid_obj.Count)
+	       local kid, parent, path
+		  = get_page_from_Pages(kid_obj, page_n + kid_obj.Count)
 	       table.insert(path, 1, i)
 	       return kid, parent, path
 	    end
@@ -702,7 +704,7 @@ do
       end
    end
 
-   function pdfw_doc.get_page(doc, page_n)
+   local function get_page(doc, page_n)
       page_n = tonumber(page_n)
       local root_Pages = doc.trailer.Root().Pages()
       assert(math.type(page_n) == 'integer'
@@ -710,29 +712,34 @@ do
 	     ("Page number %d does not exist, the document has %d page(s)")
 	     :format(page_n, root_Pages.Count)
       )
-      return get_page(root_Pages, page_n)
+      return get_page_from_Pages(root_Pages, page_n) --returns a triplet (kid, parent, path)
    end
-end
 
---Function |insert_page| inserts the given |page| object into the Page tree so
---that it becomes page number |page_n|.  The argument signature of this
---function is as for |table.insert| (document, [pos,] page), and it also shifts
---the following pages in the same manner.  The maximum number of member of the
---Kids array in a Pages object is determined by |doc.max_kids|.
---
---A note on inherited Page attributes. This function is safe to use if the
---target document relies on inheritance, but it does not check whether the
---inserted page inherited some attributes in the source document, so the
---inserted page might wrongly inherit some attributes from the target
---document. The workaround is to explicitly assign all the attributes to the
---inserted page.
---
---This module was written to support extern extraction in TeX package Memoize.
---This is the only function which is not strictly used by that package, which
---only creates single-page PDFs. But having a |remove_page| supporting nested
---Pages, it seemed a shame not to support them in |insert_page| as well.
+   function pdfw_doc.get_page(doc, page_n)
+      return (get_page(doc, page_n)) --returns only the page object
+   end
 
-do
+   --We don't close this block yet because we use the private `get_page` in
+   --`insert_page`.
+
+   --Function |insert_page| inserts the given |page| object into the Page tree so
+   --that it becomes page number |page_n|.  The argument signature of this
+   --function is as for |table.insert| (document, [pos,] page), and it also shifts
+   --the following pages in the same manner.  The maximum number of member of the
+   --Kids array in a Pages object is determined by |doc.max_kids|.
+   --
+   --A note on inherited Page attributes. This function is safe to use if the
+   --target document relies on inheritance, but it does not check whether the
+   --inserted page inherited some attributes in the source document, so the
+   --inserted page might wrongly inherit some attributes from the target
+   --document. The workaround is to explicitly assign all the attributes to the
+   --inserted page.
+   --
+   --This module was written to support extern extraction in TeX package Memoize.
+   --This is the only function which is not strictly used by that package, which
+   --only creates single-page PDFs. But having a |remove_page| supporting nested
+   --Pages, it seemed a shame not to support them in |insert_page| as well.
+
    local function prune_ancestors(Pages, Catalog, path, max_kids)
       local Kids = Pages.Kids
       local n_kids = #Kids
@@ -772,10 +779,12 @@ do
    function pdfw_doc.insert_page(doc, page_n, page)
       local Catalog = doc.trailer.Root()
       local root_Pages = Catalog.Pages()
-      if type(page_n) ~= 'number' and pdfw.type(page_n) then
+      if not page then
 	 page = page_n
 	 page_n = root_Pages.Count + 1
       end
+      page_n = tonumber(page_n)
+      assert(page.Type == '/Page')
       page = pdfw.copy(page)
       assert(math.type(page_n) == 'integer'
 	     and page_n > 0 and page_n <= root_Pages.Count + 1,
@@ -790,7 +799,7 @@ do
       else
 	 --Insert to the right (offset=1) or to the left (offset=0)?
 	 local offset = (page_n == root_Pages.Count + 1) and 1 or 0
-	 local _, parent, path = doc:get_page(page_n - offset) -- _kid,parent,path
+	 local _, parent, path = get_page(doc, page_n - offset) -- _kid,parent,path
 	 local i = table.remove(path)
 	 table.insert(parent.Kids, i + offset, pdfw.reference(page))
 	 local p = parent
@@ -804,8 +813,8 @@ do
    end
 end
 
---Remove the given page object from the Page tree.
-
+--Remove the given page from the Page tree.  The page may be given as a PDF
+--object or by page number (which may even be a string).
 do
    local function remove_from_pages(obj, root)
       if obj == root then return end
@@ -833,7 +842,10 @@ do
    end
 
    function pdfw_doc.remove_page(doc, page)
-      assert(page.Type == '/Page')
+      --accept a page number as well, even as a string
+      if type(page) == 'string' then page = tonumber(page) end
+      if math.type(page) == 'integer' then page = doc:get_page(page) end
+      assert(page.Type == '/Page', ("Illicit 'page' argument to function 'remove_page': %s"):format(tostring(page)))
 
       --Check that the |page| object indeed belongs to the document.
       local root_Pages = page.Parent()

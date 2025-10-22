@@ -10,6 +10,6 @@ indoc = pdf.open(infile)
 outdoc = pdf.new()
 outdoc.major, outdoc.minor = indoc.major, indoc.minor
 
-page = indoc:get_page(tonumber(page_n))
+page = indoc:get_page(page_n)
 outdoc:insert_page(page)
 outdoc:save(outfile)

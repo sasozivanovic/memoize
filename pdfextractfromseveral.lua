@@ -8,9 +8,9 @@ infile1, pagen1, infile2, pagen2, outfile = table.unpack(arg)
 
 indoc1 = pdf.open(infile1)
 indoc2 = pdf.open(infile2)
-
 outdoc = pdf.new()
+
 outdoc:insert_page(indoc1:get_page(pagen1))
-outdoc:insert_page(indoc1:get_page(pagen2))
-outdoc.major, outdoc.minor = indoc.major, indoc.minor
+outdoc:insert_page(indoc2:get_page(pagen2))
+--outdoc.major, outdoc.minor = indoc.major, indoc.minor
 outdoc:save(outfile)
