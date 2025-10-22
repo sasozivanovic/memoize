@@ -505,8 +505,7 @@ function pdfw.new(trailer)
    assert (trailer.Root, "The given trailer does not contain key 'Root'")
    local doc = {
       trailer = trailer,
-      major = 1,
-      minor = 4,
+      major = 1, minor = 4, --This module doesn't use any construct above 1.4
       max_kids = 10,
       pdfe_doc = false,
    }
@@ -519,13 +518,23 @@ function pdfw.open(filename)
    local pdfe_doc = pdfe.open(filename)
    if not pdfe_doc then return end
    local trailer = pdfw.from_pdfe_dictionary(pdfe_doc, nil, pdfe.gettrailer(pdfe_doc))
-   local major, minor = pdfe.getversion(pdfe_doc)
+   local catalog = trailer.Root()
+   local major, minor
+   --pdfe.getversion does not respect the version given in the catalog
+   if catalog.Version then
+      major, minor = catalog.Version:match("^(%d+)%.(%d+)$", 2) --version is a name
+      major, minor = tonumber(major), tonumber(minor)
+   else
+      major, minor = pdfe.getversion(pdfe_doc)
+   end
    local doc = {
       filename = filename,
       pdfe_doc = pdfe_doc,
       trailer = trailer,
       major = major,
       minor = minor,
+      original_major = major,
+      original_minor = minor,
       max_kids = 10, --todo: autodetect
    }
    updated_objects[doc.pdfe_doc] = {}
@@ -537,6 +546,14 @@ end
 
 function pdfw_doc.close(doc)
    if doc.pdfe_doc then doc.pdfe_doc.close() end
+end
+
+--set to the max version of self and other
+function pdfw_doc.update_version(self, other)
+   if other.major > self.major
+      or (other.major == self.major and other.minor > self.minor) then
+      self.major, self.minor = other.major, other.minor
+   end
 end
 
 --Save the document from scratch.
@@ -587,10 +604,14 @@ end
 --Perform an incremental update of the PDF file.
 
 function pdfw_doc.update(doc, prune)
-
-   assert(doc.filename)
-
    --todo: prune, i.e. mark all unused objects as deleted
+   
+   assert(doc.filename)
+   
+   if not (doc.major == doc.original_major and doc.minor == doc.original_minor) then
+      doc.trailer.Root().Version = ("/%d.%d"):format(doc.major, doc.minor)
+   end
+
 
    --Get the location of the previous xref table.
    local fh = io.open(doc.filename, 'rb')
@@ -657,6 +678,8 @@ function pdfw_doc.update(doc, prune)
    doc.fh:close()
    doc.updating = nil
 
+   doc.original_major, doc.original_minor = doc.major, doc.minor
+   
    return update_end - update_begin
 end
 

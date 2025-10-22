@@ -19,6 +19,7 @@ pages = indoc:get_pages()
 for i, page_n in ipairs(arg) do
    outdoc = pdf.new()
    outdoc:insert_page(pages[tonumber(page_n)])
+   outdoc:update_version(indoc)
    outdoc:save(outfile_prefix .. page_n .. '.pdf')
 end
 

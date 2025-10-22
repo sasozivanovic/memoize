@@ -8,8 +8,8 @@ infile, page_n, outfile = table.unpack(arg)
 
 indoc = pdf.open(infile)
 outdoc = pdf.new()
-outdoc.major, outdoc.minor = indoc.major, indoc.minor
 
 page = indoc:get_page(page_n)
 outdoc:insert_page(page)
+outdoc:update_version(indoc)
 outdoc:save(outfile)

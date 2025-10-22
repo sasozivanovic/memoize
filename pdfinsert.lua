@@ -13,4 +13,5 @@ pages = doc2:get_pages()
 for i=#pages,1,-1 do
    doc1:insert_page(tonumber(page_n), pages[i])
 end
+doc1:update_version(doc2)
 doc1:update(file1)
