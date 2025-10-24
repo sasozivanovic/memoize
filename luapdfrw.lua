@@ -600,9 +600,10 @@ function pdfw_doc.save(doc, filename)
    doc.fh:write("%%EOF\n")
    doc.fh:close()
 
-   doc.object_ids, doc.max_id, doc.xref, doc.fh = nil, nil, nil, nil
+   doc.max_id, doc.xref, doc.fh = nil
    doc.original_major, doc.original_minor = doc.major, doc.minor
    doc.filename = filename
+   doc.saved = true
 end
 
 --Perform an incremental update of the PDF file.
@@ -610,7 +611,7 @@ end
 function pdfw_doc.update(doc, prune)
    --todo: prune, i.e. mark all unused objects as deleted
    
-   assert(doc.filename)
+   assert(not doc.saved, "You cannot update a document which was already saved or updated.")
    
    if not (doc.major == doc.original_major and doc.minor == doc.original_minor) then
       doc.trailer.Root().Version = ("/%d.%d"):format(doc.major, doc.minor)
@@ -678,12 +679,12 @@ function pdfw_doc.update(doc, prune)
       doc.fh:write("startxref\n", startxref, "\n")
 
       doc.fh:write("%%EOF\n")
+      doc.saved = true
    end
 
    local update_end = doc.fh:seek()
    doc.fh:close()
    doc.updating = nil
-
    doc.original_major, doc.original_minor = doc.major, doc.minor
    
    return update_end - update_begin
