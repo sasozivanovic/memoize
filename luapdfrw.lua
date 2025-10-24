@@ -500,11 +500,13 @@ function pdfw.new(trailer)
 	       Kids = {},
 	    },
 	 },
-	 Info = {
-	    Producer = 'pdfw',
+	 Info = pdfw.reference{
+	    Producer = 'LuaPDFrw',
 	 },
       }
    assert (trailer.Root, "The given trailer does not contain key 'Root'")
+   assert (pdfw.type(trailer.Root) == 'reference',
+	   "The catalog should be an indirect object")
    local doc = {
       trailer = trailer,
       major = 1, minor = 4, --This module doesn't use any construct above 1.4
@@ -533,10 +535,8 @@ function pdfw.open(filename)
       filename = filename,
       pdfe_doc = pdfe_doc,
       trailer = trailer,
-      major = major,
-      minor = minor,
-      original_major = major,
-      original_minor = minor,
+      major = major, minor = minor,
+      original_major = major, original_minor = minor,
       max_kids = 10, --todo: autodetect
    }
    updated_objects[doc.pdfe_doc] = {}
@@ -600,7 +600,9 @@ function pdfw_doc.save(doc, filename)
    doc.fh:write("%%EOF\n")
    doc.fh:close()
 
-   doc.object_ids, doc.max_id, doc.xref, doc.fh, doc.trailer.Size = nil, nil, nil, nil, nil
+   doc.object_ids, doc.max_id, doc.xref, doc.fh = nil, nil, nil, nil
+   doc.original_major, doc.original_minor = doc.major, doc.minor
+   doc.filename = filename
 end
 
 --Perform an incremental update of the PDF file.
@@ -614,6 +616,8 @@ function pdfw_doc.update(doc, prune)
       doc.trailer.Root().Version = ("/%d.%d"):format(doc.major, doc.minor)
    end
 
+   if not doc.trailer.Info then doc.trailer.Info = pdfw.reference({}) end
+   doc.trailer.Info().Producer = 'LuaPDFrw'
 
    --Get the location of the previous xref table.
    local fh = io.open(doc.filename, 'rb')
@@ -741,6 +745,7 @@ do
    end
 
    function pdfw_doc.get_page(doc, page_n)
+      assert(doc.trailer, ("'%s' does not look like a PDF document"):format(tostring(doc)))
       return (get_page(doc, page_n)) --returns only the page object
    end
 
@@ -780,10 +785,10 @@ do
       local left_Kids = Pages.Kids
       local right_Kids = right_Pages.Kids
       for i = half+1, n_kids do
+	 left_Kids[i].Parent = pdfw.reference(right_Pages)
 	 table.insert(right_Kids, left_Kids[i])
 	 left_Kids[i] = nil
       end
-
       local next_f = function() end
       if Pages.Parent then
 	 local parent = Pages.Parent()
@@ -794,7 +799,7 @@ do
 	 local new_root_Pages = {
 	    Type = '/Pages',
 	    Count = Pages.Count + right_Pages.Count,
-	    Kids = { pdfw.reference(Pages), pdfw.reference(right_Pages) }
+	    Kids = { pdfw.reference(Pages), pdfw.reference(right_Pages) },
 	 }
 	 Catalog.Pages = pdfw.reference(new_root_Pages)
       end
@@ -826,6 +831,7 @@ do
 	 local offset = (page_n == root_Pages.Count + 1) and 1 or 0
 	 local _, parent, path = get_page(doc, page_n - offset) -- _kid,parent,path
 	 local i = table.remove(path)
+	 page.Parent = pdfw.reference(parent)
 	 table.insert(parent.Kids, i + offset, pdfw.reference(page))
 	 local p = parent
 	 while p do
