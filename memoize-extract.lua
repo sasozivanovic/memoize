@@ -54,28 +54,6 @@ local pdf = require('luapdfrw')
 --luacheck: read_globals kpse (loaded by texlua)
 
 
----------------------------------------------------------------------
--- some functions also used inside the security relevant functions --
--- -> need to be defined beforehand                                --
----------------------------------------------------------------------
-
----@param bp number
----@return number
-local function bp2pt(bp)
-    return bp / 72 * 72.27
-end
-
--- not per-se a critical function, but variable strings used as patterns in
--- critical functions make this function critical
-
----make an arbitrary string safe for use in a lua pattern
----@param pat string
----@return string
-local function escape_pattern_for_format(pat)
-    local r = pat:gsub("[%%]", "%%%0")
-    return r
-end
-
 -----------------------------------------
 -- security relevant functions go here --
 --                libs                 --
@@ -378,99 +356,13 @@ do
     end
 end
 
--- restricted function defined here
-local mv
-do
-    -- safe the functions/libraries needed in this restricted area
-    local os_rename = os.rename
 
-    ---safely rename a file aka moving it
-    ---@param src string
-    ---@param dst string
-    ---@return boolean? success
-    ---@return string? error message
-    mv = function(src, dst)
-        if not kpse.in_name_ok_silent_extended(src) then
-            return nil, ("Moving (copy) from '%s' not permitted."):format(src)
-        elseif not kpse.out_name_ok_silent_extended(src) then
-            return nil, ("Moving (delete) from '%s' not permitted."):format(src)
-        elseif not kpse.out_name_ok_silent_extended(dst) then
-            return nil, ("Moving to '%s' not permitted."):format(dst)
-        else
-            return os_rename(src, dst)
-        end
-    end
-end
-
--- restricted function defined here
-local io_lines
-do
-    -- safe the functions/libraries needed in this restricted area
-    local _io_lines = io.lines
-
-    ---safely get an iterator over the lines of a file
-    ---@param name string
-    ---@return fun()? iterator
-    ---@return string? error message
-    io_lines = function(name)
-        if kpse.in_name_ok_silent_extended(name) then
-            return _io_lines(name)
-        else
-            return nil, ("Opening (read) '%s' not permitted"):format(name)
-        end
-    end
-end
-
-local pdfe_open
-do
-    local _pdfe_open = pdfe.open
-
-    ---safely open a pdf file with the pdfe library, other functions of that library are exposed directly
-    ---@param path string
-    ---@return pdfe.Document
-    ---@return string? error message
-    pdfe_open = function(path)
-        if kpse.in_name_ok_silent_extended(path) then
-            return _pdfe_open(path)
-        else
-            return nil, ("Opening (read) '%s' not permitted"):format(path)
-        end
-    end
-end
 
 -----------------------------------------
 -- security relevant functions go here --
 --       more complex functions        --
 -----------------------------------------
 
--- restricted function defined here
-local extract_pages
-do
-    ---extract all pages specified in `pages` from `src_pdf` to dedicated files specified via `out_prefix`
-    ---can raise an error
-    ---@param src_pdf string
-    ---@param out_prefix string
-    ---@param pages [integer]
-    ---@param pdf_version string
-    ---@return integer? return_code of the underlying os.execute
-    ---@return string? error returned by os.execute
-    ---@return function? cleanup clean up all files created in the process
-    ---@return string? out_pat pattern to which the pages were written to
-    extract_pages = function(src_pdf, out_prefix, pages, pdf_version)
-        if not kpse.in_name_ok_silent_extended(src_pdf) then
-            return nil, ("Opening '%s' not permitted."):format(src_pdf), nil, nil
-        end
-
-        local out_pat = ("%s%%d.pdf.tmp"):format(escape_pattern_for_format(out_prefix))
-        if not kpse.out_name_ok_silent_extended(out_pat:format(0)) then
-            return nil, ("Writing to '%s' (and following) not permitted."):format(out_pat:format(0)), nil, nil
-        end
-
-        if not pdf_version:find("^%d%.%d$") then
-            return nil, ("Invalid pdf_version provided: %s"):format(pdf_version)
-        end
-    end
-end
 
 -- restrict the complete rest of the script by undefining security relevant libraries
 -- this defines an allow-list what functions of these libraries still should be accessible
@@ -813,27 +705,6 @@ local function parse_extern_path(path)
     return dir_prefix, name_prefix, code_md5sum, context_md5sum
 end
 
----Split a mmz prefix
--- in python this is a simple regex, but lua patterns cannot do the same things,
--- so we need multiple ones
----@param prefix string
----@return string? dir_prefix
----@return string? name_prefix
-local function split_prefix(prefix)
-    -- try with dir_prefix and name_prefix
-    local dir_prefix, name_prefix = prefix:match("^(.*/)(.-)$")
-    if not name_prefix then
-        -- pattern did not match -> maybe the optional dir_prefix was not given
-        dir_prefix = ""
-        name_prefix = prefix:match("^(.-)$")
-    end
-
-    if not name_prefix then
-        return nil
-    end
-
-    return dir_prefix, name_prefix
-end
 
 local parse_args
 do
