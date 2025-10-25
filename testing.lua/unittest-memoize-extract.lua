@@ -20,15 +20,43 @@
 
 local lfs = require 'lfs'
 
-local lester = require"lester"
+local lester   = require "lester"
 local describe = lester.describe
 local before   = lester.before
 local after    = lester.after
 local it       = lester.it
 local expect   = lester.expect
 
-STAGE = "testing"
-local extract = require"memoize-extract"
+local extract --receives all locals from module memoize-extract
+do
+    function debug_get_locals(f)
+	locals = {}
+	local i = 1
+	repeat
+	    var, val = debug.getlocal(f, i)
+	    if var and var:sub(1,1) ~= '(' then
+		locals[var] = val
+	    end
+	    i = i + 1
+	until not var
+	return locals
+    end
+
+    function hook(_event)
+	if debug.getinfo(2).what == 'main' then
+	    extract = debug_get_locals(3)
+	end
+    end
+
+    debug.sethook(hook, 'r')
+    require "memoize-extract"
+    debug.sethook(nil, 'r')
+
+    extract.exit.error = function() error("exited with error") end
+    extract.exit.warn  = function() error("exited with warn") end
+    extract.exit.succ  = function() error("exited with succ") end
+end
+
 
 describe("memoize-extract.lua", function()
 	before(function() end)

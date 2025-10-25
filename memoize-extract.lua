@@ -49,10 +49,6 @@
 ------------------
 local VERSION = '2025/01/17 v1.4.1' -- TODO(release)
 
--- global variable STAGE is used as indicator whether this is loaded as library for testing or executed directly
--- variable is "testing" if exactly this string and "production" in all other cases
-STAGE = STAGE == "testing" and "testing" or "production"
-
 local pdf = require('luapdfrw')
 
 --luacheck: read_globals kpse (loaded by texlua)
@@ -508,22 +504,10 @@ local env = {
     pathlib  = pathlib,
 
     -- memoize-extract specific global
-    STAGE    = STAGE,
 }
 
 local exit
-if STAGE == "testing" then
-    -- in testing environment avoid exiting the whole test
-    -- -> instead raise an error which can be catched
-
-    -- store the error function independent of the environment
-    local error = error
-    exit = {
-        error = function() error("exited with error") end,
-        warn  = function() error("exited with warn") end,
-        succ  = function() error("exited with succ") end,
-    }
-else
+do
     local os_exit = os.exit
     exit = {
         error = function() os_exit(11) end,
@@ -1137,7 +1121,8 @@ local function main(args)
     exit.succ()
 end
 
-if STAGE == "production" then
+local script_name = pathlib.name(arg[0])
+if script_name == "memoize-extract" or script_name == "memoize-extract.lua" then
     -----------------------------------------------
     -- parsing + validating + deriving arguments --
     -----------------------------------------------
@@ -1160,17 +1145,9 @@ if STAGE == "production" then
 
     logging:set_args(args)
     main(args)
-elseif STAGE == "LIBRARY" then
-    -- theoretically allows this to be loaded as library in LuaLaTeX via require
-    return main
+
 else
-    -- expose functions for tests
-    return {
-        parse_extern_path     = parse_extern_path,
-        split_prefix          = split_prefix,
-        parse_args            = parse_args,
-        normalize_pdf         = normalize_pdf,
-        pathlib               = pathlib,
-        -- logging?
-    }
+    -- allows this module to be loaded in LuaLaTeX via require
+    return { main = main, parse_args = parse_args }
+
 end
