@@ -1170,10 +1170,6 @@ else
         split_prefix          = split_prefix,
         parse_args            = parse_args,
         normalize_pdf         = normalize_pdf,
-        write_new_mmz         = write_new_mmz,
-        postprocess_pages     = postprocess_pages,
-        handle_mmz_prefix     = handle_mmz_prefix,
-        handle_mmz_new_extern = handle_mmz_new_extern,
         pathlib               = pathlib,
         -- logging?
     }

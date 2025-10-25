@@ -184,28 +184,18 @@ describe("memoize-extract.lua", function()
 	describe("parse_args", function()
 		it("should parse valid arguments with defaults", function()
 			local defaults = {pdf = nil, format = "plain", quiet = false}
-			local args, err = extract.parse_args({"-P", "output.pdf", "-F", "latex", "mmz"}, defaults)
+			local args, err = extract.parse_args({"-F", "latex", "pdf"}, defaults)
 			expect.equal(args, {
-				pdf    = "output.pdf",
 				format = "latex",
 				quiet  = false,
-				mmz    = "mmz",
+				pdf    = "pdf",
 			})
-		end)
-
-		it("should raise an error for missing value after '-P'", function()
-			local defaults = {}
-
-			local a, err = extract.parse_args({"-P", "mmz"}, defaults)
-
-			expect.not_exist(a)
-			expect.equal(err, "wrong number of arguments passed, exactly one positional needs to be given")
 		end)
 
 		it("should raise an error for invalid format", function()
 			local defaults = {}
 
-			local a, err = extract.parse_args({"-F", "invalidformat", "mmz"}, defaults)
+			local a, err = extract.parse_args({"-F", "invalidformat", "pdf"}, defaults)
 
 			expect.not_exist(a)
 			expect.equal(err, "invalid format passed")
@@ -213,38 +203,38 @@ describe("memoize-extract.lua", function()
 
 		it("should handle multiple flags correctly", function()
 			local defaults = {}
-			local args = extract.parse_args({"-p", "-k", "-q", "mmz"}, defaults)
+			local args = extract.parse_args({"-p", "-k", "-q", "pdf"}, defaults)
 			expect.equal(args, {
 				quiet = true,
 				prune = true,
 				keep  = true,
-				mmz   = "mmz",
+				pdf   = "pdf",
 			})
 		end)
 
 		it("should handle long argument names correctly", function()
 			local defaults = {}
-			local args = extract.parse_args({"--prune", "--quiet", "mmz"}, defaults)
+			local args = extract.parse_args({"--prune", "--quiet", "pdf"}, defaults)
 			expect.equal(args, {
 				quiet = true,
 				prune = true,
-				mmz   = "mmz",
+				pdf   = "pdf",
 			})
 		end)
 
-		it("should assign the last argument to mmz", function()
+		it("should assign the last argument to pdf", function()
 			local defaults = {}
-			local args = extract.parse_args({"-P", "output.pdf", "final.mmz"}, defaults)
+			local args = extract.parse_args({"-F", "latex", "final.pdf"}, defaults)
 			expect.equal(args, {
-				pdf = "output.pdf",
-				mmz = "final.mmz",
+				format = "latex",
+				pdf = "final.pdf",
 			})
 		end)
 
-		it("should fail if no mmz is given", function()
-			local defaults = {pdf = nil, format = "plain", quiet = false}
+		it("should fail if no pdf is given", function()
+			local defaults = {format = "plain", quiet = false}
 
-			local a, err = extract.parse_args({"-P", "output.pdf", "-F", "latex", "-p"}, defaults)
+			local a, err = extract.parse_args({"-F", "latex", "-p"}, defaults)
 
 			expect.not_exist(a)
 			expect.equal(err, "wrong number of arguments passed, exactly one positional needs to be given")
@@ -268,10 +258,10 @@ describe("memoize-extract.lua", function()
 
 		it("should handle no flags and return defaults", function()
 			local defaults = {pdf = nil, prune = false}
-			local args = extract.parse_args({"mmz"}, defaults)
+			local args = extract.parse_args({"pdf"}, defaults)
 			expect.equal(args, {
 				prune = false,
-				mmz   = "mmz",
+				pdf   = "pdf",
 			})
 		end)
 
@@ -287,297 +277,101 @@ describe("memoize-extract.lua", function()
 		it("should raise an error for an unrecognized argument", function()
 			local defaults = {}
 
-			local args, err = extract.parse_args({"-z", "mmz"}, defaults)
+			local args, err = extract.parse_args({"-z", "pdf"}, defaults)
 
 			expect.not_exist(args)
 			expect.equal(err, "invalid token passed '-z'")
 		end)
 
 		it("nothing flag-like is allowed for the positional", function()
-			local defaults = {pdf = "main.pdf", prune = false}
+			local defaults = {prune = false}
 
-			local a, err = extract.parse_args({"-P", "paper.pdf", "--mmz"}, defaults)
+			local a, err = extract.parse_args({"-F", "latex", "--pdf"}, defaults)
 
 			expect.not_exist(a)
-			expect.equal(err, "invalid token passed '--mmz'")
+			expect.equal(err, "invalid token passed '--pdf'")
 		end)
 
 		it("uses -- as separator for the positionals", function()
-			local defaults = {pdf = "main.pdf", prune = false}
-			local args = extract.parse_args({"-P", "paper.pdf", "--", "--mmz"}, defaults)
+			local defaults = {prune = false}
+			local args = extract.parse_args({"-F", "latex", "--", "--pdf"}, defaults)
 			expect.equal(args, {
-				pdf   = "paper.pdf",
+				format   = "latex",
 				prune = false,
-				mmz   = "--mmz",
+				pdf   = "--pdf",
 			})
 		end)
 	end)
 
-	describe("normalize_mmz", function()
-		it("should replace .tex extension with .mmz", function()
+	describe("normalize_pdf", function()
+		it("should replace .tex extension with .pdf", function()
 			local input = "document.tex"
-			local expected = "document.mmz"
-			local result = extract.normalize_mmz(input)
+			local expected = "document.pdf"
+			local result = extract.normalize_pdf(input)
 			expect.equal(result, expected)
 		end)
 
-		it("should add .mmz to files with no extension", function()
+		it("should add .pdf to files with no extension", function()
 			local input = "document"
-			local expected = "document.mmz"
-			local result = extract.normalize_mmz(input)
+			local expected = "document.pdf"
+			local result = extract.normalize_pdf(input)
 			expect.equal(result, expected)
 		end)
 
-		it("should add .mmz to files with non-matching extensions", function()
+		it("should add .pdf to files with non-matching extensions", function()
+			local input = "document.unknown"
+			local expected = "document.unknown.pdf"
+			local result = extract.normalize_pdf(input)
+			expect.equal(result, expected)
+		end)
+
+		it("should not change files that already have a .pdf extension", function()
 			local input = "document.pdf"
-			local expected = "document.pdf.mmz"
-			local result = extract.normalize_mmz(input)
-			expect.equal(result, expected)
-		end)
-
-		it("should not change files that already have a .mmz extension", function()
-			local input = "document.mmz"
-			local expected = "document.mmz"
-			local result = extract.normalize_mmz(input)
+			local expected = "document.pdf"
+			local result = extract.normalize_pdf(input)
 			expect.equal(result, expected)
 		end)
 
 		it("should handle file paths with directories for .tex files", function()
 			local input = "/path/to/document.tex"
-			local expected = "/path/to/document.mmz"
-			local result = extract.normalize_mmz(input)
+			local expected = "/path/to/document.pdf"
+			local result = extract.normalize_pdf(input)
 			expect.equal(result, expected)
 		end)
 
 		it("should handle file paths with directories for files without extensions", function()
 			local input = "/path/to/document"
-			local expected = "/path/to/document.mmz"
-			local result = extract.normalize_mmz(input)
+			local expected = "/path/to/document.pdf"
+			local result = extract.normalize_pdf(input)
 			expect.equal(result, expected)
 		end)
 
 		it("should handle file paths with directories for non-matching extensions", function()
-			local input = "/path/to/document.pdf"
-			local expected = "/path/to/document.pdf.mmz"
-			local result = extract.normalize_mmz(input)
+			local input = "/path/to/document.unknown"
+			local expected = "/path/to/document.unknown.pdf"
+			local result = extract.normalize_pdf(input)
 			expect.equal(result, expected)
 		end)
 
-		it("should handle file paths with directories for .mmz files", function()
-			local input = "/path/to/document.mmz"
-			local expected = "/path/to/document.mmz"
-			local result = extract.normalize_mmz(input)
+		it("should handle file paths with directories for .pdf files", function()
+			local input = "/path/to/document.pdf"
+			local expected = "/path/to/document.pdf"
+			local result = extract.normalize_pdf(input)
 			expect.equal(result, expected)
 		end)
 
 		it("should handle files with multiple dots correctly", function()
 			local input = "my.file.name.tex"
-			local expected = "my.file.name.mmz"
-			local result = extract.normalize_mmz(input)
+			local expected = "my.file.name.pdf"
+			local result = extract.normalize_pdf(input)
 			expect.equal(result, expected)
 		end)
 
 		it("should handle files with multiple dots and non-matching extensions", function()
-			local input = "my.file.name.pdf"
-			local expected = "my.file.name.pdf.mmz"
-			local result = extract.normalize_mmz(input)
+			local input = "my.file.name.unknown"
+			local expected = "my.file.name.unknown.pdf"
+			local result = extract.normalize_pdf(input)
 			expect.equal(result, expected)
-		end)
-	end)
-
-	describe("write_new_mmz", function()
-		local function mock_file()
-			local file = {content = ""}
-			function file:write(...)
-				for _, arg in ipairs{...} do
-					self.content = self.content .. tostring(arg)
-				end
-			end
-			return file
-		end
-
-		it("should write lines to the file correctly", function()
-			local file = mock_file()
-			local new_mmz = { { "line1" }, { "line2" }, { "line3" } }
-			extract.write_new_mmz(file, new_mmz)
-			expect.equal(file.content, "line1\nline2\nline3\n")
-		end)
-
-		it("should handle an empty new_mmz array", function()
-			local file = mock_file()
-			local new_mmz = {}
-			extract.write_new_mmz(file, new_mmz)
-			expect.equal(file.content, "")
-		end)
-
-		it("should handle nil values in the second element of the line tuples", function()
-			local file = mock_file()
-			local new_mmz = { { "line1", nil }, { "line2", nil }, { "line3", nil } }
-			extract.write_new_mmz(file, new_mmz)
-			expect.equal(file.content, "line1\nline2\nline3\n")
-		end)
-
-		it("should handle page numbers in the second element of the line tuples", function()
-			local file = mock_file()
-			local new_mmz = { { "line1", 4 }, { "line2" , 2}, { "line3" , 5} }
-			extract.write_new_mmz(file, new_mmz)
-			expect.equal(file.content, "line1\nline2\nline3\n")
-		end)
-	end)
-
-	describe("handle_mmz_new_extern", function()
-		local check_for_memo_succ = function(a,cc) return true end
-		local check_for_memo_fail = function(a,cc) return false end
-
-		it("parses a valid \\mmzNewExtern line", function()
-			local pages = {}
-			local current_prefix = "test_prefix"
-			local line = [[\mmzNewExtern {main.memo.dir/4FECA8D15F24F18E95D6D091A6137684-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.pdf}{1}{100.0pt}{200.0pt}]]
-			local line_tab = {line}
-
-			local result = extract.handle_mmz_new_extern(line, current_prefix, pages, false, check_for_memo_succ, line_tab)
-
-			expect.truthy(result)
-			expect.equal(pages, {{
-				page = 1,
-				width = "100.0",
-				height = "200.0",
-				fn = "main.memo.dir/4FECA8D15F24F18E95D6D091A6137684-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.pdf",
-				prefix = "test_prefix",
-				line_tab = {line, 0}
-			}})
-			expect.equal(line_tab, {line, 0})
-			-- both need to reference the same table in order being able to modify the string via pages[idx].line_tab
-			expect.truthy(line_tab == pages[1].line_tab)
-		end)
-
-		it("returns false for an invalid \\mmzNewExtern line", function()
-			local pages = {}
-			local current_prefix = "test_prefix"
-			local line = [[\mmzNewExtern {"invalid_line"}]]
-			local line_tab = {line}
-
-			local result = extract.handle_mmz_new_extern(line, current_prefix, pages, false, check_for_memo_succ, line_tab)
-
-			expect.falsy(result) -- signals to keep trying to match this line
-			expect.equal(#pages, 0)
-			expect.equal(line_tab, {line}) -- unmodified
-		end)
-
-		-- TODO evaluate what should happen if check_for_memo_fail
-		-- it("skips extraction if memo files are missing and force is false", function()
-		-- 	local pages = {}
-		-- 	local current_prefix = nil
-		-- 	local line = [[\mmzNewExtern {"valid_path"}{1}{100.0pt}{200.0pt}]]
-		--
-		-- 	local result = extract.handle_mmz_new_extern(line, current_prefix, pages, false, check_for_memo_fail)
-		--
-		-- 	expect.falsy(result)
-		-- 	expect.equal(#pages, 0)
-		-- end)
-
-		it("forces extraction even if memo files are missing", function()
-			local pages = {}
-			local current_prefix = "test_prefix"
-			local line = [[\mmzNewExtern {main.memo.dir/4FECA8D15F24F18E95D6D091A6137684-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.pdf}{1}{100.0pt}{200.0pt}]]
-			local line_tab = {line}
-
-			local result = extract.handle_mmz_new_extern(line, current_prefix, pages, true, check_for_memo_fail, line_tab)
-
-			expect.truthy(result)
-			expect.equal(pages, {{
-				page = 1,
-				width = "100.0",
-				height = "200.0",
-				fn = "main.memo.dir/4FECA8D15F24F18E95D6D091A6137684-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.pdf",
-				prefix = "test_prefix",
-				line_tab = {line, 0}
-			}})
-			expect.equal(line_tab, {line, 0})
-			-- both need to reference the same table in order being able to modify the string via pages[idx].line_tab
-			expect.truthy(line_tab == pages[1].line_tab)
-		end)
-
-		it("throws an error if no prefix is parsed before the extern", function()
-			local pages = {}
-			local current_prefix = nil
-			local line = [[\mmzNewExtern {main.memo.dir/4FECA8D15F24F18E95D6D091A6137684-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.pdf}{1}{100.0pt}{200.0pt}]]
-			local line_tab = {line}
-
-			local cont, err = extract.handle_mmz_new_extern(line, current_prefix, pages, false, check_for_memo_succ, line_tab)
-
-			expect.truthy(cont == nil)
-			expect.equal(err, "no prefix was parsed before this extern")
-		end)
-	end)
-
-	describe("handle_mmz_prefix", function()
-		it("parses a valid \\mmzPrefix line", function()
-			local dirs_to_make = {}
-			local current_prefix = nil
-			local gs_prefix = nil
-			local line = [[\mmzPrefix {/valid_dir/valid_name}]]
-
-			local result, new_prefix, new_gs_prefix = extract.handle_mmz_prefix(line, dirs_to_make, current_prefix, gs_prefix)
-
-			-- Test the return values
-			expect.truthy(result)
-			expect.equal(new_prefix, "/valid_dir/")
-			expect.equal(new_gs_prefix, new_prefix)
-
-			-- Test that the directory creation function was added
-			expect.exist(dirs_to_make[new_prefix])
-		end)
-
-		it("keeps gs prefix if already set", function()
-			local dirs_to_make = {}
-			local current_prefix = nil
-			local gs_prefix = "gs_prefix"
-			local line = [[\mmzPrefix {/valid_dir/valid_name}]]
-
-			local result, new_prefix, new_gs_prefix = extract.handle_mmz_prefix(line, dirs_to_make, current_prefix, gs_prefix)
-
-			-- Test the return values
-			expect.truthy(result)
-			expect.equal(new_prefix, "/valid_dir/")
-			expect.equal(new_gs_prefix, gs_prefix)
-
-			-- Test that the directory creation function was added
-			expect.exist(dirs_to_make[new_prefix])
-		end)
-
-		it("parses an empty directory prefix", function()
-			local line = [[\mmzPrefix {}]]
-			local dirs_to_make = {}
-			local current_prefix = nil
-			local gs_prefix = nil
-
-			local result, new_prefix, new_gs_prefix = extract.handle_mmz_prefix(line, dirs_to_make, current_prefix, gs_prefix)
-
-			-- Test the return values
-			expect.truthy(result)
-			expect.equal(new_prefix, "")
-			expect.equal(new_gs_prefix, new_prefix)
-
-			-- Ensure no directory creation function was added
-			expect.exist(dirs_to_make[new_prefix])
-		end)
-
-		it("returns false for an invalid \\mmzPrefix line", function()
-			local line = [[\mmzPrefi {}]]
-			local dirs_to_make = {}
-			local current_prefix = nil
-			local gs_prefix = nil
-
-			local result, new_prefix, new_gs_prefix = extract.handle_mmz_prefix(line, dirs_to_make, current_prefix, gs_prefix)
-
-			-- Test that the line was not valid
-			expect.falsy(result)
-			expect.not_exist(new_prefix)
-			expect.not_exist(new_gs_prefix)
-
-			-- Ensure no directory creation function was added
-			expect.equal(dirs_to_make, {})
 		end)
 	end)
 
