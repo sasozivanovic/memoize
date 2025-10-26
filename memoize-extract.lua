@@ -49,57 +49,67 @@
 ------------------
 local VERSION = '2025/01/17 v1.4.1' -- TODO(release)
 
+require 'lualibs-lpeg' --required by lualibs-file
+require 'lualibs-file'
+require 'lualibs-dir'
+require 'lualibs-basic-merged' --only for debugging
+
 local pdf = require 'luapdfrw'
-local pathlib = require 'pathlib'
 
 -----------------------------------------
 -- security relevant functions go here --
 --           simple wrappers           --
 -----------------------------------------
 
--- restricted function defined here
-local mkdir
-local mkdir_rec
-do
-    -- safe the functions/libraries needed in this restricted area
-    local lfs = lfs
-    -- this is not inside the function but the startup code -> can error here
-    if not lfs then error("lfs is not available. This script needs to be executed with texlua") end
 
-    ---safely make new directory (non-recursive)
-    ---Note: this is a nop if the directory already exists
-    ---@param name string
-    ---@return boolean? success
-    ---@return string? error message
-    mkdir = function(name)
-        if lfs.isdir(name) then
-            return true
-        end
+---@param f string
+local function paranoia_in(f)
+    if not kpse.in_name_ok_silent(f) then
+	error(("I'm not allowed to read from '%s' (openin_any = {%s})")
+	    :format(f, kpse.expand_var('openin_any'), 2))
+    end
+end
 
-        -- from https://gitlab.lisn.upsaclay.fr/texlive/luatex/-/blob/master/source/texk/web2c/luatexdir/lua/luatex-core.lua#L269
-        -- why also checking for `in`? isn't mkdir only about output?
-        -- -> decided to keep both checks just in case
-        if kpse.out_name_ok_silent_extended(name) and kpse.in_name_ok_silent_extended(name) then
-            return lfs.mkdir(name)
-        else
-            return nil, ("mkdir '%s' not permitted"):format(name)
-        end
+---@param f string
+local function paranoia_out(f)
+    if not kpse.out_name_ok_silent(f) then
+	error(("I'm not allowed to write to '%s' (openout_any = {%s})")
+	    :format(f, kpse.expand_var('openout_any'), 2))
     end
-    ---safely make new directory (recursive)
-    ---Note: this is a nop if the directory already exists
-    ---@param name string
-    ---@return boolean? success
-    ---@return string? error message
-    mkdir_rec = function(name)
-        local succ, err
-        for c in pathlib.iter_path(name) do
-            succ, err = mkdir(c)
-            if not succ then
-                return nil, err
-            end
-        end
-        return true
+end
+
+---@param folder string
+local function mkdir(folder)
+    folder = find_out(folder)
+    paranoia_out(folder)
+    if os.exists(folder) then
+	attr = lfs.attributes(f)
+	if attr.mode ~= 'directory' then
+	    error("Path '%s' already exists, but it is not a directory")
+	elseif false and attr.permissions == 'bad' then
+	    error("Path '%s' already exists, but it is not writable")
+	end
+    else
+	dir.makedirs(folder)
     end
+end
+
+local path = {}
+
+---@param folder string
+---@return boolean
+function path.is_absolute(f)
+    if file.is_rootbased_path(f) then
+	return f:sub(2,1) ~= ':' or f:sub(3,1) == '/' or f:sub(3,1) == '\\'
+    else
+	return false
+    end
+end
+
+---@param folder string*
+---@return string
+function path.join(...)
+    return file.join(...):gsub('[/\\]+', '/')
 end
 
 -- restricted function defined here
@@ -146,14 +156,16 @@ local env = {
     pcall    = pcall,
     assert   = assert,
 
-    -- luatex specific libraries
+    -- texlua specific libraries (loaded automatically by texlua) 
     lfs      = { isfile = lfs.isfile },
     kpse     = kpse,
 
-    -- own library
-    pathlib  = pathlib,
-
-    -- memoize-extract specific global
+    -- luatex specific libraries (loaded automatically by luatex but not texlua)
+    file     = file,
+    dir      = dir,
+    
+    -- our additions to file
+    path = path,
 }
 
 local exit
@@ -211,12 +223,11 @@ do
     ---@return string? -- error
     find_in                      = function(fname)
         if not fname then return nil end
-        local abs, err = pathlib.path_is_absolute(fname)
-        if abs == nil then return nil, err end
+        local abs = path.is_absolute(fname)
         if abs then return fname end
 
         if texmf_output_directory then
-            local p, err = pathlib.join(texmf_output_directory, fname)
+            local p, err = path.join(texmf_output_directory, fname)
             if not p then return nil, err end
             if kpse.in_name_ok_silent_extended(p) then return p end
         end
@@ -224,7 +235,7 @@ do
             if kpse.in_name_ok_silent_extended(fname) and lfs.isfile(fname) then return fname end
         end
         if texmfoutput then
-            local p, err = pathlib.join(texmfoutput, fname)
+            local p, err = path.join(texmfoutput, fname)
             if not p then return nil, err end
             if kpse.in_name_ok_silent_extended(p) then return p end
         end
@@ -242,13 +253,12 @@ do
     ---@return string?
     ---@return string?
     find_out                     = function(fname)
-        local abs, err = pathlib.path_is_absolute(fname)
-        if abs == nil then return nil, err end
+        local abs = path.is_absolute(fname)
         if abs then return fname end
 
         local texmf_od
         if texmf_output_directory then
-            local p, err = pathlib.join(texmf_output_directory, fname)
+            local p, err = path.join(texmf_output_directory, fname)
             if not p then return nil, err end
             texmf_od = p
             if kpse.out_name_ok_silent_extended(p) then return p end
@@ -257,7 +267,7 @@ do
             if kpse.out_name_ok_silent_extended(fname) then return fname end
         end
         if texmfoutput then
-            local p, err = pathlib.join(texmfoutput, fname)
+            local p, err = path.join(texmfoutput, fname)
             if not p then return nil, err end
             if kpse.out_name_ok_silent_extended(p) then return p end
         end
@@ -549,17 +559,15 @@ end
 ---Normalizes the pdf_fn argument into a .pdf filename
 ---@param pdf_fn string
 ---@return string
----@overload fun(pdf_fn:string): nil, string?
 local function normalize_pdf(pdf_fn)
-    local suffix, err = pathlib.suffix(pdf_fn)
-    if not suffix then return nil, err end
-
-    if suffix == "tex" or suffix == "mmz" then
-        return pathlib.with_suffix(pdf_fn, "pdf")
-    elseif suffix ~= "pdf" then
-        return pathlib.with_name(pdf_fn, pathlib.name(pdf_fn) .. ".pdf")
+    local suffix = file.suffix(pdf_fn)
+    if suffix == 'pdf' then
+	return pdf_fn
+    elseif suffix == "tex" or suffix == "mmz" then
+        file.replacesuffix(pdf_fn, "pdf")
+    else
+        return file.addsuffix(pdf_fn, "pdf")
     end
-    return pdf_fn
 end
 
 local function main(args)
@@ -680,7 +688,7 @@ local function main(args)
             end
 
             --This was missing in the py/pl script.
-            if pathlib.join(dir_prefix, name_prefix) ~= current_prefix then
+            if path.join(dir_prefix, name_prefix) ~= current_prefix then
                 logging:warn(
                     ("Extern filename '%s' does not start with the expected prefix '%s'")
                     :format(extern_path, current_prefix))
@@ -689,9 +697,9 @@ local function main(args)
 
             -- Check whether c-memo and cc-memo exist (in any input directory).
             local c_memo_file = find_in(
-                pathlib.with_name(extern_path, name_prefix .. code_md5sum .. ".memo"))
+                file.replacesuffix(extern_path, name_prefix .. code_md5sum .. ".memo"))
             local cc_memo_file = find_in(
-                pathlib.with_name(
+                file.replacesuffix(
                     extern_path,
                     name_prefix .. code_md5sum .. "-" .. context_md5sum .. ".memo"))
 
@@ -752,7 +760,7 @@ local function main(args)
     exit.succ()
 end
 
-local script_name = pathlib.name(arg[0])
+local script_name = file.basename(arg[0])
 if script_name == "memoize-extract" or script_name == "memoize-extract.lua" then
     -----------------------------------------------
     -- parsing + validating + deriving arguments --
