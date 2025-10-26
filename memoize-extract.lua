@@ -51,8 +51,6 @@ local VERSION = '2025/01/17 v1.4.1' -- TODO(release)
 
 local pdf = require 'luapdfrw'
 local pathlib = require 'pathlib'
---luacheck: read_globals kpse (loaded by texlua)
-
 
 -----------------------------------------
 -- security relevant functions go here --
@@ -145,7 +143,6 @@ local env = {
     tonumber = tonumber,
     tostring = tostring,
     select   = select,
-    inspect  = inspect,
     pcall    = pcall,
     assert   = assert,
 
@@ -209,10 +206,11 @@ do
     local texmf_output_directory = kpse.var_value("TEXMF_OUTPUT_DIRECTORY")
     local texmfoutput            = kpse.var_value("TEXMFOUTPUT")
 
-    ---@param fname string
+    ---@param fname string?
     ---@return string?
     ---@return string? -- error
     find_in                      = function(fname)
+        if not fname then return nil end
         local abs, err = pathlib.path_is_absolute(fname)
         if abs == nil then return nil, err end
         if abs then return fname end
@@ -477,12 +475,12 @@ do
     ---@return string? err_msg
     parse_args = function(as, defaults)
         local args = defaults
-    
+
         local i = 1
         local len = #as
         while i <= len do
             if as[i] == "--" then break end
-        
+
             local a = as[i]:match("^%-([a-zA-Z])$")
             if not a then
                 a = as[i]:match("^%-%-([a-zA-Z]+)$")
@@ -548,20 +546,20 @@ For details, see the man page or the Memoize documentation.]])
     end
 end
 
----Normalizes the pdf argument into a .pdf filename
----@param pdf string
+---Normalizes the pdf_fn argument into a .pdf filename
+---@param pdf_fn string
 ---@return string
----@overload fun(pdf:string): nil, string?
-local function normalize_pdf(pdf)
-    local suffix, err = pathlib.suffix(pdf)
+---@overload fun(pdf_fn:string): nil, string?
+local function normalize_pdf(pdf_fn)
+    local suffix, err = pathlib.suffix(pdf_fn)
     if not suffix then return nil, err end
 
     if suffix == "tex" or suffix == "mmz" then
-        return pathlib.with_suffix(pdf, "pdf")
+        return pathlib.with_suffix(pdf_fn, "pdf")
     elseif suffix ~= "pdf" then
-        return pathlib.with_name(pdf, pathlib.name(pdf) .. ".pdf")
+        return pathlib.with_name(pdf_fn, pathlib.name(pdf_fn) .. ".pdf")
     end
-    return pdf
+    return pdf_fn
 end
 
 local function main(args)
@@ -597,7 +595,7 @@ local function main(args)
     if args.format then
         local log_file = find_out(args.pdf .. ".log")
         logging:info("Logging to " .. log_file)
-        local f, err = io_open_w(log_file)
+        local f = io_open_w(log_file)
         logging.file = f
     end
 
@@ -631,7 +629,7 @@ local function main(args)
 
     local current_prefix
 
-    for i, item in ipairs(record) do
+    for _, item in ipairs(record) do
         if item.Type == "/MMIZ_Prefix" then
             current_prefix = item.MMIZ_Filename
             if not current_prefix then
@@ -639,6 +637,28 @@ local function main(args)
                     "Malformed record: missing /MMIZ_Filename in a /MMIZ_Prefix item")
             end
         elseif item.Type == "/MMIZ_NewExtern" then
+
+            local success_page, page, page_number = pcall(
+                function()
+                    local page = item.MMIZ_Page()
+                    local page_number = item.MMIZ_PageNumber
+                    assert(page and page_number)
+                    return page, page_number
+                end
+            )
+            if not success_page then
+                logging:warn(("Missing page reference or number for extern '%s'")
+                    :format(extern_path))
+                goto dont_extract
+            end
+
+            if pages[page_number] ~= page then
+                --todo: phrase the warning better
+                logging:warn(("Page number %d is not what was expected")
+                    :format(page_number))
+                goto dont_extract
+            end
+
             if not item.MMIZ_Filename then
                 logging:warn(
                     "Malformed record: missing /MMIZ_Filename in a /MMIZ_NewExtern item")
@@ -680,32 +700,11 @@ local function main(args)
                 logging:warn(("I refuse to extract page %d into extern \z
                             '%s', because the associated c-memo \z
                             '%s' and/or cc-memo '%s' does not exist")
-                    :format(page_n + 1, extern_path, c_memo_file, cc_memo_file))
+                    :format(page_number + 1, extern_path, c_memo_file, cc_memo_file))
                 goto dont_extract
             end
 
             local extern_file_out = find_out(extern_path)
-
-            local success_page, page, page_number = pcall(
-                function()
-                    local page = item.MMIZ_Page()
-                    local page_number = item.MMIZ_PageNumber
-                    assert(page and page_number)
-                    return page, page_number
-                end
-            )
-            if not success_page then
-                logging:warn(("Missing page reference or number for extern '%s'")
-                    :format(extern_path))
-                goto dont_extract
-            end
-
-            if pages[page_number] ~= page then
-                --todo: phrase the warning better
-                logging:warn(("Page number %d is not what was expected")
-                    :format(page_number))
-                goto dont_extract
-            end
 
             if not item.MMIZ_Extracted then
                 local success_extract = pcall(
@@ -783,3 +782,4 @@ else
     return { main = main, parse_args = parse_args }
 
 end
+
