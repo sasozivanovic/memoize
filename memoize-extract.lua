@@ -474,6 +474,26 @@ local function parse_extern_path(path)
     return dir_prefix, name_prefix, code_md5sum, context_md5sum
 end
 
+local help = [[
+usage: memoize-extract.lua [-h] [-k] [-F {latex,plain,context}] [-f] [-q] [-m] [-V] pdf
+
+Extract extern pages produced by package Memoize out of the document PDF.
+
+positional arguments:
+  pdf                   the PDF file: doc.pdf when compiling doc.pdf (doc, doc.tex and doc.mmz are accepted as well)
+
+options:
+  -h, --help            show this help message and exit
+  -k, --keep            do not mark externs as extracted
+  -F, --format {latex,plain,context}
+                        the format of the TeX document invoking extraction
+  -f, --force           extract even if the size-check fails
+  -q, --quiet           describe what's happening
+  -m, --mkdir           create a directory (and exit); mmz argument is interpreted as directory name
+  -V, --version         show program's version number and exit
+
+For details, see the man page or the Memoize documentation.]]
+end
 
 local parse_args
 do
@@ -504,24 +524,7 @@ do
             end
 
             if a == "h" then
-                print([[usage: memoize-extract.lua [-h] [-k] [-F {latex,plain,context}] [-f] [-q] [-m] [-V] pdf
-
-Extract extern pages produced by package Memoize out of the document PDF.
-
-positional arguments:
-  pdf                   the PDF file: doc.pdf when compiling doc.pdf (doc, doc.tex and doc.mmz are accepted as well)
-
-options:
-  -h, --help            show this help message and exit
-  -k, --keep            do not mark externs as extracted
-  -F, --format {latex,plain,context}
-                        the format of the TeX document invoking extraction
-  -f, --force           extract even if the size-check fails
-  -q, --quiet           describe what's happening
-  -m, --mkdir           create a directory (and exit); mmz argument is interpreted as directory name
-  -V, --version         show program's version number and exit
-
-For details, see the man page or the Memoize documentation.]])
+		print(help)
                 exit.succ()
             elseif a == "V" or a == "version" then
                 print(("memoize-extract.py of Memoize %s"):format(VERSION))
