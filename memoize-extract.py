@@ -299,7 +299,7 @@ else:
 
 # An output directory should exist, and may not point to the root on Linux. On
 # Windows, it may point to the root, because we only allow absolute filenames
-# containing the drive, e.g.\ |F:\|; see |is_absolute|.
+# containing the drive, e.g.\ |F:\|; see |sanitize_filename|.
 def sanitize_output_dir(d_str):
     d = Path(d_str) if d_str else None
     sanitize_filename(d)
