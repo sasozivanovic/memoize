@@ -31,6 +31,12 @@ require 'lualibs-lpeg' --required by lualibs-file
 require 'lualibs-file'
 require 'lualibs-dir'
 
+--luacheck: read_globals dir
+--luacheck: read_globals file
+--luacheck: read_globals kpse
+--luacheck: read_globals lfs
+--luacheck: read_globals inspect
+
 -- Load "our own" PDF writer, LuaPDFrw.
 
 local pdf = require 'luapdfrw'
@@ -76,7 +82,7 @@ local os = {
 }
 
 ---@diagnostic disable-next-line
-local inspect = inspect --for debugging, from lualibs-basic-merged 
+local inspect = inspect --for debugging, from lualibs-basic-merged
 
 -- We write our own assert, because the official function lacks the level
 -- parameter.  We also have different defaults: an empty message and level=0.
@@ -332,9 +338,9 @@ do
         ---|"'x'" # executable?
         ---@return boolean
         function os_access(fn, mode)
-    	local permissions = lfs.attributes(fn, "permissions")
-    	local offset = rwx_offsets[mode]
-    	return permissions:sub(offset, 1) == mode
+        local permissions = lfs.attributes(fn, "permissions")
+        local offset = rwx_offsets[mode]
+        return permissions:sub(offset, 1) == mode
         end
 
     else
@@ -407,7 +413,7 @@ end
 local find_in, find_out
 do
 
-    --First, get the values of |TEXMFOUTPUT| and |TEXMF_OUTPUT_DIRECTORY|.    
+    --First, get the values of |TEXMFOUTPUT| and |TEXMF_OUTPUT_DIRECTORY|.
     --An output directory should exist, and may not point to the root on Linux
     --(Karl Berry, p.c.). On Windows, it may point to the root (of a drive),
     --because we only allow absolute filenames containing the drive, e.g.\
@@ -491,7 +497,7 @@ local function mkdir(folder)
     folder = find_out(folder)
     paranoia_out(folder)
     if io.exists(folder) then
-	local attr = lfs.attributes(f)
+	local attr = lfs.attributes(folder)
 	if attr.mode ~= 'directory' then
 	    error("Path '%s' already exists, but it is not a directory")
 	elseif false and attr.permissions == 'bad' then
@@ -616,6 +622,16 @@ local function split_extern_path(path)
     return dir_prefix, name_prefix, code_md5sum, context_md5sum, seq
 end
 
+local MMIZ_Record_Types = {
+    ['/MMIZ_NewExtern'] = true,
+    ['/MMIZ_Prefix'] = true,
+    ['/MMIZ_NewCMemo'] = true,
+    ['/MMIZ_NewCCMemo'] = true,
+    ['/MMIZ_UsedExtern'] = true,
+    ['/MMIZ_UsedCMemo'] = true,
+    ['/MMIZ_UsedCCMemo'] = true,
+}
+
 local function main(args)
 
     -- \paragraph{Initialization}
@@ -630,7 +646,7 @@ local function main(args)
     -- will be removed in the release of the package which will drop the
     -- non-lua externalization scripts.
     do
-	local suffix = file.suffix(pdf_fn)
+	local suffix = file.suffix(args.pdf)
 	if suffix == "tex" or suffix == "mmz" then
 	    args.pdf = file.replacesuffix(args.pdf, "pdf")
 	elseif suffix ~= 'pdf' then
@@ -693,91 +709,99 @@ local function main(args)
     local current_prefix
     logging:info(("Extracting new externs from '%s'"):format(pdf_fn))
 
-    for item_n, item in ipairs(record) do try_warn("%s", function()
+    for item_n, item in ipairs(record) do
 
-        if item.Type == "/MMIZ_Prefix" then
+	assert(MMIZ_Record_Types[item.Type],
+	       ("/MMIZ_Record item %d: Unknown record type '%s'")
+	       :format(item_n, item.Type))
 
-            current_prefix = item.MMIZ_Filename
-            if not current_prefix then
-                error(("Malformed record item %d: missing /MMIZ_Filename \z
-                        in a /MMIZ_Prefix item"):format(item_n))
-            end
+	local item_str = item.MMIZ_PageNumber
+	    and 'Page ' .. item.MMIZ_PageNumber
+	    or  ('/MMIZ_Record item #%d (of type %s)'):format(item_n, item.Type)
 
-        elseif item.Type == "/MMIZ_NewExtern" then
+	try_warn(item_str .. ": " .. "%s", function()
 
-	    local page = item.MMIZ_Page()
-	    local page_number = item.MMIZ_PageNumber
-	    assert(page and page_number,
-		   ("Missing page reference or number for extern '%s'"):format(extern_path))
+            if item.Type == "/MMIZ_Prefix" then
 
-            assert(pages[page_number] == page,
-		   ("Page number %d does not refer to the recorded page object (id=??)")
-		   :format(page_number)) --todo in LuaPDFrw: a way to retrieve the object id
+                current_prefix = item.MMIZ_Filename
+                assert (current_prefix, "Missing /MMIZ_Filename key")
 
-	    assert(item.MMIZ_Filename,
-		   ("Missing /MMIZ_Filename in /MMIZ_NewExtern record item %d\z
-                     for page number %d"):format(item_n, page_number))
+            elseif item.Type == "/MMIZ_NewExtern" then
 
-            local extern_path = unquote(item.MMIZ_Filename)
-	    local dir_prefix, name_prefix, code_md5sum, context_md5sum = reraise(
-		("Illicit extern filename '%s'"):format(extern_path),
-		split_extern_path, extern_path)
+		local page = item.MMIZ_Page()
+		local page_number = item.MMIZ_PageNumber
 
-	    assert(current_prefix,
-		   ("No prefix was encountered before extern '%s'"):format(extern_path))
+		assert(page, "Missing /MMIZ_Page key or invalid page reference")
+		assert(args.force or page_number, "Missing /MMIZ_PageNumber key")
 
-            --This was missing in the py/pl script.
-	    assert(pathlib.join(dir_prefix, name_prefix) == current_prefix,
-		   ("Extern filename '%s' does not start with the expected prefix '%s'")
-		   :format(extern_path, current_prefix))
+                assert(not page_number or args.force or pages[page_number] == page,
+		       "The page number recorded in /MMIZ_PageNumber does not \z
+                        refer to the page object recorded in /MMIZ_Page")
+		--todo in LuaPDFrw: a way to retrieve the object id
 
-            -- Check whether c-memo and cc-memo exist (in any input directory).
-            local c_memo_file = find_in(
-                file.join(file.dirname(extern_path),
-			  name_prefix .. code_md5sum .. ".memo"))
-            local cc_memo_file = find_in(
-                file.join(file.dirname(extern_path),
-			  name_prefix .. code_md5sum .. "-" .. context_md5sum .. ".memo"))
+		assert(item.MMIZ_Filename, "Missing /MMIZ_Filename")
 
-	    if not args.force then
-		local access_c, access_cc = access_in(c_memo_file), access_in(cc_memo_file)
-		assert(access_c and access_cc,
-		       ("I refuse to extract page %d into extern '%s', \z
-                         because the associated %s%s%s do%s not exist")
-		       :format(page_number, extern_path,
-			       not access_c and "c-memo" or '',
-			       not access_c and not access_cc and ' and ' or '',
-			       not access_cc and "cc-memo" or '',
-			       not access_c and not access_cc and '' or 'es'))
-            end
+                local extern_path = unquote(item.MMIZ_Filename)
+		local dir_prefix, name_prefix, code_md5sum, context_md5sum = reraise(
+		    ("%s: Illicit extern filename '%s'"):format(item_str, extern_path),
+		    split_extern_path, extern_path)
 
-            local extern_file_out = find_out(extern_path)
+		assert(current_prefix,
+		       ("No /MMIZ_Prefix item was encountered before the record item \z
+                         for extern '%s', or the last such item was malformed")
+		       :format(extern_path))
 
-            if not item.MMIZ_Extracted then
-		reraise(
-		    ("Failed to extract page %d into '%s': %%s")
-		    :format(page_number, extern_path),
-                    function()
-                        local extern = pdf.new()
-                        extern:insert_page(page)
-                        extern:save(extern_file_out)
-                        logging:info(("Page %d --> '%s'"):format(page_number, extern_path))
-                        item.MMIZ_Extracted = true
-                    end
-                )
-                if args.prune then
-		    reraise(
-			('I failed to remove page %d: %%s'):format(page_number),
-			doc.remove_page, doc, page
-		    )
+		assert(pathlib.join(dir_prefix, name_prefix) == current_prefix,
+		       ("Extern filename '%s' does not start with the expected prefix '%s'")
+		       :format(extern_path, current_prefix))
+
+                -- Check whether c-memo and cc-memo exist (in any input directory).
+                local c_memo_file = find_in(
+                    file.join(file.dirname(extern_path),
+			      name_prefix .. code_md5sum .. ".memo"))
+                local cc_memo_file = find_in(
+                    file.join(file.dirname(extern_path),
+			      name_prefix .. code_md5sum
+			      .. "-" .. context_md5sum .. ".memo"))
+		if not args.force then
+		    local access_c = access_in(c_memo_file)
+		    local access_cc = access_in(cc_memo_file)
+		    assert(access_c and access_cc,
+			   ("I refuse to extract this page into extern '%s', \z
+                             because the associated %s%s%s do%s not exist")
+			   :format(extern_path,
+				   not access_c and "c-memo" or '',
+				   not access_c and not access_cc and ' and ' or '',
+				   not access_cc and "cc-memo" or '',
+				   not access_c and not access_cc and '' or 'es'))
                 end
-	    else
-		logging:info(("Skipping extraction of page %d, as it is marked as extracted. Use option --force to override.")
-		    :format(page_number))
-            end
 
-        end --/MMIZ_NewExtern
-    end ) end --end try_warn ) end for loop
+                local extern_file_out = find_out(extern_path)
+
+                if not item.MMIZ_Extracted then
+		    reraise(
+			("I failed to extract this page into '%s'\t%%s")
+			:format(extern_path),
+                        function()
+                            local extern = pdf.new()
+                            extern:insert_page(page)
+                            extern:save(extern_file_out)
+                            logging:info(("%s --> '%s'"):format(item_str, extern_path))
+                            item.MMIZ_Extracted = true
+                        end
+                    )
+                    if args.prune then
+			reraise('I failed to remove this page\t%s',
+				doc.remove_page, doc, page)
+                    end
+		else
+		    error("Skipping extraction of this page, because it is \z
+                           marked as extracted. Use option --force to force extraction")
+		end
+
+	    end --/MMIZ_NewExtern
+	end ) --end try_warn )
+    end -- end for loop
 
     if not args.keep or args.prune then
         if doc:update() == 0 then
