@@ -19,14 +19,14 @@
 -- The files belonging to this work and covered by LPPL are listed in
 -- <texmf>/doc/generic/memoize/FILES.
 
-local VERSION = '2025/01/17 v1.4.1' -- TODO(release)
+local VERSION = '2025/01/17 v1.4.1'
 
 -- The following libraries are already available due to the use of LuaTeX: kpse
 -- (Kpathsea), lfs (LuaFileSystem).  Furthermore, the following libraries are
 -- extended in LuaTeX: lfs, os.  Finally, we also require several further
 -- LuaTeX modules (note that they create global tables):
 
---require 'lualibs-basic-merged' --only for debugging
+require 'lualibs-basic-merged' --only for debugging
 require 'lualibs-lpeg' --required by lualibs-file
 require 'lualibs-file'
 require 'lualibs-dir'
@@ -43,11 +43,6 @@ local pdf = require 'luapdfrw'
 
 -- List all the functions used in the script as local, then empty the global
 -- environment.  This way, we precisely know what the script uses.
-
-local
-    arg, error, ipairs, pcall, print, tonumber, tostring, type
-    =
-    arg, error, ipairs, pcall, print, tonumber, tostring, type
 
 local dir = {
     makedirs = dir.makedirs,
@@ -103,7 +98,9 @@ local error = function(message, level) ---@diagnostic disable-line
     error(message or '', level and level+1 or 0)
 end
 
-_ENV = {}
+--_ENV = { table = table }
+--    arg, error, pairs, ipairs, pcall, print, tonumber, tostring, type
+
 
 --\paragraph{Messages}
 
@@ -508,103 +505,59 @@ local function mkdir(folder)
     end
 end
 
----Unquote a quoted string
----@param fn string -- filename which might contain a quoted jobname
+---Remove pairs of quotes from the filename, which might contain a quoted jobname.
+
+---@param fn string
 ---@return string
 local function unquote(fn)
     return (fn:gsub("\"(.-)\"", "%1"))
 end
 
-
----------------------------------
--- restricted area starts here --
----------------------------------
-
-local help = [[
-usage: memoize-extract.lua [-h] [-k] [-F {latex,plain,context}] [-f] [-q] [-m] [-V] pdf
-
-Extract extern pages produced by package Memoize out of the document PDF.
-
-positional arguments:
-  pdf                   the PDF file: doc.pdf when compiling doc.pdf (doc, doc.tex and doc.mmz are accepted as well)
-
-options:
-  -h, --help            show this help message and exit
-  -k, --keep            do not mark externs as extracted
-  -F, --format {latex,plain,context}
-                        the format of the TeX document invoking extraction
-  -f, --force           extract even if the size-check fails
-  -q, --quiet           describe what's happening
-  -m, --mkdir           create a directory (and exit); mmz argument is interpreted as directory name
-  -V, --version         show program's version number and exit
-
-For details, see the man page or the Memoize documentation.]]
+-- A quick and dirty argument parser.  Supports, long (--) and short (-)
+-- options, positional arguments may occur between options (-a pos -b), short
+-- options may be merged (-ab) and don't require space before the argument
+-- (both -Flatex and -F latex are ok).
 
 local parse_args
 do
-    local formats = { latex = true, plain = true, context = true }
-    ---Parse some CLI arguments
-    ---@param as string[] array of arguments
-    ---@return table? updated_parameters
-    ---@return string? err_msg
-    parse_args = function(as)
-        local args = { script_name = file.basename(arg[0]) }
+    local function parse_next(argspec, args, a, ...)
+        if not a then
+	    argspec.positional.f(args)
+	    return args
+	elseif a == '--' then
+	    local rest = table.unpack(...)
+	    return table.move(rest,1,#rest,#args+1,args)
+	elseif a:sub(1,2) == '--' then
+	    local f = argspec.options[a:sub(3)].f
+	    assert(f, "Unknown option " .. a)
+	    return parse_next(argspec, args, f(args, ...))
+	elseif a:sub(1,1) == '-' then
+	    local opt_spec = argspec.short_options[a:sub(2,2)]
+	    assert(opt_spec, "Unknown option " .. a)
+	    if a:len() > 2 then
+		a = a:sub(3)
+		a = opt_spec.arg_desc and a or '-' .. a
+		return parse_next(argspec, args, opt_spec.f(args, a, ...))
+	    else
+		return parse_next(argspec, args, opt_spec.f(args, ...))
+	    end
+	else
+	    table.insert(args, a)
+	    return parse_next(argspec, args, ...)
+	end
+    end
 
-        local i = 1
-        local len = #as
-        while i <= len do
-            if as[i] == "--" then break end
-
-            local a = as[i]:match("^%-([a-zA-Z])$")
-            if not a then
-                a = as[i]:match("^%-%-([a-zA-Z]+)$")
-            end
-
-            -- positional argument reached
-            if not a then
-                -- no flags are parsed after the first positional
-                i = i - 1 -- "unparse" that argument
-                break
-            end
-
-            if a == "h" then
-		print(help)
-                exit.succ()
-            elseif a == "V" or a == "version" then
-                print(("memoize-extract.py of Memoize %s"):format(VERSION))
-                exit.succ()
-            elseif a == "p" or a == "prune" then
-                args.prune = true
-            elseif a == "k" or a == "keep" then
-                args.keep = true
-            elseif a == "F" or a == "format" then
-                if len < i + 1 then return nil, ("argument f/format needs an argument") end
-                args.format = as[i + 1]
-                if not formats[args.format] then
-                    return nil, ("invalid format passed")
-                end
-                i = i + 1
-            elseif a == "f" or a == "force" then
-                args.force = true
-            elseif a == "q" or a == "quiet" then
-                args.quiet = true
-            elseif a == "m" or a == "mkdir" then
-                args.mkdir = true
-            else
-                return nil, ("invalid token passed '%s'"):format(as[i])
-            end
-            i = i + 1
-        end
-
-        if i + 1 ~= #as then
-            error("wrong number of arguments passed, \z
-                   exactly one positional needs to be given")
-        end
-        args.pdf = as[#as]
-
-        return args
+    function parse_args(argspec, argtable)
+	argspec.short_options = {}
+	for _, spec in pairs(argspec.options) do
+	    if spec.short then argspec.short_options[spec.short] = spec end
+	end
+	local args, i = {}, 0
+	while argtable[i] do args[i] = argtable[i] i = i - 1 end
+	return parse_next(argspec, args, table.unpack(argtable))
     end
 end
+
 
 local md5pat = ("%x"):rep(32)
 ---@param path string
@@ -657,7 +610,7 @@ local function main(args)
     -- Once we have the |.pdf| filename, we can open the log.
     logging.quiet = args.quiet
     logging.format = args.format
-    logging.header = args.format and args.script_name .. ': ' or ''
+    logging.header = args.format and file.basename(args[0]) .. ': ' or ''
     if args.format then
         local log_fn = find_out(file.replacesuffix(args.pdf, "mmz.log"))
         paranoia_out(log_fn)
@@ -723,8 +676,8 @@ local function main(args)
 
             if item.Type == "/MMIZ_Prefix" then
 
-                current_prefix = item.MMIZ_Filename
-                assert (current_prefix, "Missing /MMIZ_Filename key")
+                assert (item.MMIZ_Filename, "Missing /MMIZ_Filename key")
+                current_prefix = unquote(item.MMIZ_Filename)
 
             elseif item.Type == "/MMIZ_NewExtern" then
 
@@ -740,7 +693,6 @@ local function main(args)
 		--todo in LuaPDFrw: a way to retrieve the object id
 
 		assert(item.MMIZ_Filename, "Missing /MMIZ_Filename")
-
                 local extern_path = unquote(item.MMIZ_Filename)
 		local dir_prefix, name_prefix, code_md5sum, context_md5sum = reraise(
 		    ("%s: Illicit extern filename '%s'"):format(item_str, extern_path),
@@ -778,7 +730,7 @@ local function main(args)
 
                 local extern_file_out = find_out(extern_path)
 
-                if not item.MMIZ_Extracted then
+                if args.force or not item.MMIZ_Extracted then
 		    reraise(
 			("I failed to extract this page into '%s'\t%%s")
 			:format(extern_path),
@@ -820,9 +772,46 @@ local function main(args)
     exit.succ()
 end
 
+local formats = { latex = true, plain = true, context = true }
+local memoize_extract_argspec = {
+    header = "Extract extern pages produced by package Memoize out of the document PDF.",
+    positional = {
+	help = "the PDF file (doc.pdf when compiling doc.tex)",
+	f = function(args)
+	    assert(#args == 1,
+		   "Exactly one positional argument, the PDF filename, should be given.")
+	    args.pdf, args[1] = args[1]
+	end
+    },
+    options = {
+        help = { short = "h", help = "show this help message and exit",
+		 f = function() print(help) exit.succ() end },
+        keep = { short = "k", help = "do not mark externs as extracted",
+		 f = function(args, ...) args.keep = true return(...) end },
+        format = { short = "F", arg_desc = "{latex,plain,context}",
+		   help = "the format of the TeX document invoking extraction",
+		   f = function(args, format, ...) args.format = format
+		       assert(formats[format], ("The argument of --format/-f should be \z
+                              one of 'latex', 'plain', and 'context', not '%s'")
+			      :format(format)) return(...) end },
+        force = { short = "f", help = "ignore warnings and extract problematic pages",
+		  f = function(args, ...) args.force = true return(...) end },
+        quiet = { short = "q", help = "don't describe what's happening",
+		  f = function(args, ...) args.quiet = true return(...) end },
+        mkdir = { short = "m", help = "create the directory and exit\n\z
+                      (the positional argument pdf is interpreted as directory name)",
+		      f = function(args, ...) args.mkdir = true return(...) end },
+        version = {
+	    short = "V", help = "show program's version number and exit",
+	    f = function() print(("memoize-extract.lua of Memoize %s"):format(VERSION))
+		exit.succ() end },
+    },
+    footer = "For details, see the man page or the Memoize documentation."
+}
+
 local script_name = file.basename(arg[0])
 if script_name == "memoize-extract" or script_name == "memoize-extract.lua" then
-    main(parse_args(arg))
+    main(parse_args(memoize_extract_argspec, arg))
 else
     -- allows this module to be loaded in LuaLaTeX via require
     return { main = main, parse_args = parse_args }
