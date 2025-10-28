@@ -24,51 +24,80 @@ local VERSION = '2025/01/17 v1.4.1' -- TODO(release)
 -- The following libraries are already available due to the use of LuaTeX: kpse
 -- (Kpathsea), lfs (LuaFileSystem).  Furthermore, the following libraries are
 -- extended in LuaTeX: lfs, os.  Finally, we also require several further
--- LuaTeX modules:
+-- LuaTeX modules (note that they create global tables):
 
-require 'lualibs-basic-merged' --only for debugging
+--require 'lualibs-basic-merged' --only for debugging
 require 'lualibs-lpeg' --required by lualibs-file
 require 'lualibs-file'
 require 'lualibs-dir'
-
--- I don't know how to properly set up Lua Language Server (luals) to load the
--- meta files from GitHub repo TeXLuaCATS/LuaTeX.  A workaround:
-
----@class os
----@field type string
-os = os
-
----@class file
----@field splitname function
----@field suffix function
----@field replacesuffix function
----@field addsuffix function
----@field dirname function
----@field join function
----@field basename function
----@field is_rootbased_path function
-file = file
-
----@class dir
----@field makedirs function
-dir = dir
-
----@class lfs
----@field isfile function
----@field attributes function
-lfs = lfs
-
----@class io
----@field exists function
-io = io
 
 -- Load "our own" PDF writer, LuaPDFrw.
 
 local pdf = require 'luapdfrw'
 
--- Setup kpse.
+-- List all the functions used in the script as local, then empty the global
+-- environment.  This way, we precisely know what the script uses.
 
-kpse.set_program_name("texlua", "memoize-extract.lua")
+local
+    arg, error, ipairs, pcall, print, tonumber, tostring, type
+    =
+    arg, error, ipairs, pcall, print, tonumber, tostring, type
+
+local dir = {
+    makedirs = dir.makedirs,
+}
+local file = {
+    addsuffix = file.addsuffix,
+    basename = file.basename,
+    dirname = file.dirname,
+    is_rootbased_path = file.is_rootbased_path,
+    join = file.join,
+    replacesuffix = file.replacesuffix,
+    splitname = file.splitname,
+    suffix = file.suffix,
+}
+local io = {
+    exists = io.exists, ---@diagnostic disable-line
+    open = io.open,
+}
+local kpse = {
+    in_name_ok_silent_extended = kpse.in_name_ok_silent_extended,
+    out_name_ok_silent_extended = kpse.out_name_ok_silent_extended,
+    set_program_name = kpse.set_program_name,
+    var_value = kpse.var_value,
+}
+local lfs = {
+    attributes = lfs.attributes, ---@diagnostic disable-line
+}
+local os = {
+    exit = os.exit,
+    type = os.type, ---@diagnostic disable-line
+    getenv = os.getenv,
+}
+
+---@diagnostic disable-next-line
+local inspect = inspect --for debugging, from lualibs-basic-merged 
+
+-- We write our own assert, because the official function lacks the level
+-- parameter.  We also have different defaults: an empty message and level=0.
+-- Note that we increase a non-zero level by one in the code, to function the
+-- same as the official assert.
+---@param v any
+---@param message any
+---@param level integer?
+local assert = function(v, message, level)
+    if not v then error(message or '', level and level+1 or 0) end
+end
+
+-- What the heck, let's also change the default level of error to 0, for
+-- consistency.
+---@param message any
+---@param level integer?
+local error = function(message, level) ---@diagnostic disable-line
+    error(message or '', level and level+1 or 0)
+end
+
+_ENV = {}
 
 --\paragraph{Messages}
 
@@ -97,11 +126,9 @@ logging = {
     texindent = "",
     quiet = false,
     format = "None",
-    header = '',
     package_name = 'memoize (lua-based extraction)',
 }
 do
-    local package_name = "memoize (texlua-based extraction)"
     local ERROR = {
         latex = function(self, short, long) return
 		("\\PackageError{%s}{%s}{%s}")
@@ -113,8 +140,8 @@ do
 		("\\errhelp{%s}\\errmessage{%s: %s}")
 		:format(long, self.package_name, short) end,
         None = function(self, short, long) return
-		("%s%s.\n%s")
-		:format(self.header, short, long)       end,
+		(long ~= '' and "%s%s. (%s)" or "%s%s.")
+		:format(self.header, short, long) end,
     }
     local WARNING = {
         latex = function(self, text) return
@@ -145,7 +172,7 @@ do
 		:format(self.header, self.indent, text)          end,
     }
 
-    ---@param fh file*
+    ---@param fn string
     function logging:open(fn)
 	self.fh = io.open(fn, "w")
     end
@@ -159,22 +186,16 @@ do
         end
     end
 
-    ---@param short string
-    ---@param long string
-    function logging:error(short, long)
-        short = short or ''
-        long = long or ''
+    ---@param text string
+    function logging:error(text)
+	text = text:gsub("\\", "\\string\\")
+	local short, long = text:match("^(.-)\t(.*)$")
+	if not short then short, long = text, '' end
         if not self.quiet then
             print(ERROR.None(self, short, long))
         end
         if self.fh then
-            self.fh:write(
-		ERROR[self.format](
-		    self,
-		    short:gsub("\\", "\\string\\"),
-		    long:gsub("\\", "\\string\\"),
-		    "\n"
-	    ))
+            self.fh:write(ERROR[self.format](self, short, long), "\n")
 	end
 	--Exit immediately.
         exit.error()
@@ -187,7 +208,7 @@ do
             print(WARNING.None(self, text))
         end
         if self.fh then
-            self.fh:write(WARNING[self.format](self, text:gsub("\\", "\\string\\"), "\n"))
+            self.fh:write(WARNING[self.format](self, text:gsub("\\", "\\string\\")), "\n")
         end
         -- Set the exit code.
         exit.succ = exit.warn
@@ -209,24 +230,23 @@ end
 local function reraise(msg, f, ...)
     local function g(success, ...)
 	if success then return ... end
-	error(msg:format(tostring(...)), 0)
+	error(msg:format(tostring(...)))
     end
     return g(pcall(f,...))
 end
 
-local function try_error(short, long, f, ...)
+local function try_error(msg, f, ...)
     local function g(success, ...)
 	if success then return ... end
-	logging:error(short:format(tostring(...)), long:format(tostring(...)))
+	logging:error(msg:format(tostring(...)))
     end
     return g(pcall(f,...))
 end
 
 local function try_warn(msg, f, ...)
-    assert(type(msg) == 'string')
     msg = msg ~= '' and msg
     local function g(success, ...)
-	if not success then 
+	if not success then
 	    logging:warn(msg:format(tostring(...)))
 	end
 	return ...
@@ -267,13 +287,15 @@ function pathlib.is_absolute(path)
     local drive, dir_path = file.splitname(path)
     local is_rootbased = file.is_rootbased_path(dir_path)
     assert(os.type ~= 'windows' or (drive ~= '' == is_rootbased),
-	   ("\"Semi-absolute\" paths are disallowed: '%s'"):format(path),
-	   ("The path must either contain both the drive letter and start with '\\', \z
-             or none of these; paths like 'C:foo' and '\\foo' are disallowed"))
+	   ("Disallowed \"semi-absolute\" path '%s'\tThe path must either contain \z
+             both the drive letter and start with '\\', or none of these; paths like \z
+             'C:foo' and '\\foo' are disallowed"):format(path))
     return is_rootbased
 end
 
 -- \paragraph{Permission-related functions}
+
+kpse.set_program_name("texlua", "memoize-extract.lua")
 
 ---@param fn string
 local function paranoia_in(fn)
@@ -282,7 +304,7 @@ local function paranoia_in(fn)
     end
     if not kpse.in_name_ok_silent_extended(fn) then
 	error(("I'm not allowed to read from '%s' (openin_any = {%s})")
-	    :format(fn, kpse.expand_var('openin_any'), 2))
+	    :format(fn, kpse.var_value('openin_any')))
     end
 end
 
@@ -293,7 +315,7 @@ local function paranoia_out(fn)
     end
     if not kpse.out_name_ok_silent_extended(fn) then
 	error(("I'm not allowed to write to '%s' (openout_any = {%s})")
-	    :format(fn, kpse.expand_var('openout_any'), 2))
+	    :format(fn, kpse.var_value('openout_any')))
     end
 end
 
@@ -319,14 +341,15 @@ do
 
         local my_euid, my_egid
         local status, err = io.open("/proc/self/status")
-        assert(status, err)
+        assert(status, err, 1)
         local lines = status:lines()
         for line in lines do
 	    my_euid = line:match("^Uid:\t%d+\t(%d+)\t%d+\t%d+$")
 	    if my_euid then
 		my_euid = tonumber(my_euid)
 		my_egid = tonumber(lines():match("^Gid:\t%d+\t(%d+)\t%d+\t%d+$"))
-		assert(my_egid)
+		assert(my_egid, "Internal error\tthe Gid line does not follow \z
+                                 the Uid line in /proc/self/status", 1)
 		break
 	    end
         end
@@ -487,47 +510,6 @@ local function unquote(fn)
 end
 
 
--- Restrict the rest of the script by undefining security relevant libraries
--- this defines an allow-list what functions of these libraries still should be
--- accessible
-local env = {
-    -- lua libraries
-    arg      = arg,
-    ipairs   = ipairs,
-    math     = math,
-    os       = { type = os.type, },
-    pairs    = pairs,
-    print    = print,
-    table    = table,
-    tonumber = tonumber,
-    tostring = tostring,
-    select   = select,
-    pcall    = pcall,
-    assert   = assert,
-    error = error,
-    type = type,
-
-    -- texlua specific libraries (loaded automatically by texlua) 
-    lfs      = {
-	isfile = lfs.isfile,
-	attributes = lfs.attributes,
-    },
-    kpse     = kpse,
-
-    -- luatex specific libraries (loaded automatically by luatex but not texlua)
-    file     = file,
-    dir      = dir,
-    io = io,
-
-    -- our additions to file
-    pathlib = pathlib,
-
-    --for debugging
-    inspect = inspect, --from lualibs-basic-merged
-}
-
-_ENV = env
-
 ---------------------------------
 -- restricted area starts here --
 ---------------------------------
@@ -663,20 +645,19 @@ local function main(args)
     if args.format then
         local log_fn = find_out(file.replacesuffix(args.pdf, "mmz.log"))
         paranoia_out(log_fn)
-        logging:info("Logging to " .. log_fn)
+        logging:info(("Logging to '%s'"):format(log_fn))
 	logging:open(log_fn)
     end
 
     --Find the PDF file and check whether (a) we may read from it, and (b) we
     --may write to it, if --prune was given or --keep was not given.
     local pdf_fn = try_error(
-	("Cannot find input PDF file '%s'"):format(args.pdf), '',
+	("Cannot find input PDF file '%s'"):format(args.pdf),
 	find_in, args.pdf
     )
     paranoia_in(pdf_fn)
     if args.prune or not args.keep then
 	try_error(
-	    '',
 	    ("I would have to write to '%s' because %s%s%s")
             :format(pdf_fn,
 		    args.prune and 'option --prune/-p was given' or '',
@@ -690,10 +671,10 @@ local function main(args)
 
     local doc, catalog, pages = try_error(
 	("PDF file '%s' seems corrupted. Perhaps you have to load Memoize \z
-          earlier in the preamble"):format(pdf_fn),
-	"In particular, Memoize must be loaded before TikZ library 'fadings' \z
-         and any package deploying it, and in Beamer, load Memoize by writing \z
-         \\RequirePackage{memoize} before \\documentclass{beamer}.",
+          earlier in the preamble\tIn particular, Memoize must be loaded before\z
+          TikZ library 'fadings' and any package deploying it, and in Beamer, \z
+          load Memoize by writing \\RequirePackage{memoize} before \z
+          \\documentclass{beamer}."):format(pdf_fn),
         function()
             local doc = pdf.open(pdf_fn)
             local catalog = doc.trailer.Root()
@@ -704,7 +685,6 @@ local function main(args)
 
     local record = try_error(
 	("PDF file '%s' does not contain a Memoize record"):format(args.pdf),
-	"",
         function()
             return catalog.MMIZ_Record()
         end
@@ -792,7 +772,7 @@ local function main(args)
 		    )
                 end
 	    else
-		logging:info(("Skipping extraction of page %d, it was already extracted")
+		logging:info(("Skipping extraction of page %d, as it is marked as extracted. Use option --force to override.")
 		    :format(page_number))
             end
 
