@@ -80,61 +80,77 @@ kpse.set_program_name("texlua", "memoize-extract.lua")
 --The format of the messages.  It depends on the given |--format|; the last
 --entry is for t the terminal output.
 
-local exit
+local exit, logging
 do
     local os_exit = os.exit
     exit = {
-        error = function() os_exit(11) end,
-        warn  = function() os_exit(10) end,
-        succ  = function() os_exit(0) end,
+        error = function() logging:close() os_exit(11) end,
+        warn  = function() logging:close() os_exit(10) end,
+        succ  = function() logging:close() os_exit(0) end,
     }
 end
 
-local logging = {
+logging = {
     file      = nil,
-    header    = "memoize-extract.lua: ",
+    header    = "",
     indent    = "",
     texindent = "",
+    quiet = false,
+    format = "None",
+    header = '',
+    package_name = 'memoize (lua-based extraction)',
 }
 do
     local package_name = "memoize (texlua-based extraction)"
-    local ERROR        = {
-        latex   = function(a)
-            return ("\\PackageError{%s}{%s}{%s}"):format(a.package_name or "", a.short or "",
-                a.long or "")
-        end,
-        plain   = function(a)
-            return ("\\errhelp{%s}\\errmessage{%s: %s}"):format(a.long or "", a.package_name or "",
-                a.short or "")
-        end,
-        context = function(a)
-            return ("\\errhelp{%s}\\errmessage{%s: %s}"):format(a.long or "", a.package_name or "",
-                a.short or "")
-        end,
-        None    = function(a) return ("%s%s.\n%s"):format(a.header or "", a.short or "", a.long or "") end,
+    local ERROR = {
+        latex = function(self, short, long) return
+		("\\PackageError{%s}{%s}{%s}")
+		:format(self.package_name, short, long) end,
+        plain = function(self, short, long) return
+		("\\errhelp{%s}\\errmessage{%s: %s}")
+		:format(long, self.package_name, short) end,
+        context = function(self, short, long) return
+		("\\errhelp{%s}\\errmessage{%s: %s}")
+		:format(long, self.package_name, short) end,
+        None = function(self, short, long) return
+		("%s%s.\n%s")
+		:format(self.header, short, long)       end,
+    }
+    local WARNING = {
+        latex = function(self, text) return
+		("\\PackageWarning{%s}{%s%s}")
+		:format(self.package_name, self.texindent, text) end,
+        plain = function(self, text) return
+		("\\message{%s: %s%s}")
+		:format(self.package_name, self.texindent, text) end,
+        context = function(self, text) return
+		("\\message{%s: %s%s}")
+		:format(self.package_name, self.texindent, text) end,
+        None = function(self, text) return
+		("%s%s%s.")
+		:format(self.header, self.indent, text)          end,
+    }
+    local INFO = {
+        latex = function(self, text) return
+		("\\PackageInfo{%s}{%s%s}")
+		:format(self.package_name, self.texindent, text) end,
+        plain = function(self, text) return
+		("\\message{%s: %s%s}")
+		:format(self.package_name, self.texindent, text) end,
+        context = function(self, text) return
+		("\\message{%s: %s%s}")
+		:format(self.package_name, self.texindent, text) end,
+        None = function(self, text) return
+		("%s%s%s.")
+		:format(self.header, self.indent, text)          end,
     }
 
-    local WARNING      = {
-        latex   = function(a)
-            return ("\\PackageWarning{%s}{%s%s}"):format(a.package_name or "", a.texindent or "",
-                a.text or "")
-        end,
-        plain   = function(a) return ("\\message{%s: %s%s}"):format(a.package_name or "", a.texindent or "", a.text or "") end,
-        context = function(a) return ("\\message{%s: %s%s}"):format(a.package_name or "", a.texindent or "", a.text or "") end,
-        None    = function(a) return ("%s%s%s."):format(a.header or "", a.indent or "", a.text or "") end,
-    }
+    ---@param fh file*
+    function logging:open(fn)
+	self.fh = io.open(fn, "w")
+    end
 
-    local INFO         = {
-        latex   = function(a)
-            return ("\\PackageInfo{%s}{%s%s}"):format(a.package_name or "", a.texindent or "",
-                a.text or "")
-        end,
-        plain   = function(a) return ("\\message{%s: %s%s}"):format(a.package_name or "", a.texindent or "", a.text or "") end,
-        context = function(a) return ("\\message{%s: %s%s}"):format(a.package_name or "", a.texindent or "", a.text or "") end,
-        None    = function(a) return ("%s%s%s."):format(a.header or "", a.indent or "", a.text or "") end,
-    }
-
-    ---Marks the log as complete
+    ---Closes the file after marking the log as complete.
     function logging:close()
         if self.fh then
             self.fh:write("\\endinput\n")
@@ -143,124 +159,79 @@ do
         end
     end
 
-    ---Setup logging with specific arguments to avoid needing to pass quiet and format arguments to each logging call
-    ---@param quiet boolean
-    ---@param format string?
-    ---@param fh file*?
-    function logging:setup(quiet, format, fh)
-	self.fh = fh
-        self.error = function(this, short, long)
-	    return this:_error(short, long, quiet, format) end
-        self.info  = function(this, text) return this:_info(text, quiet, format) end
-        self.warn  = function(this, text) return this:_warn(text, quiet, format) end
-    end
-
-    ---Log an error
     ---@param short string
     ---@param long string
-    ---@param quiet boolean
-    ---@param format string?
-    function logging:_error(short, long, quiet, format)
-        format = format or "None"
+    function logging:error(short, long)
         short = short or ''
         long = long or ''
-        if not quiet then
-            print(ERROR.None { short = short, long = long, header = self.header })
+        if not self.quiet then
+            print(ERROR.None(self, short, long))
         end
         if self.fh then
-            short = short:gsub("\\", "\\string\\")
-            long  = long:gsub("\\", "\\string\\")
-            self.fh:write(ERROR[format] { short = short, long = long, package_name = package_name }, "\n")
-        end
-        -- set the exitcode this way
-        exit.succ = exit.error
+            self.fh:write(
+		ERROR[self.format](
+		    self,
+		    short:gsub("\\", "\\string\\"),
+		    long:gsub("\\", "\\string\\"),
+		    "\n"
+	    ))
+	end
+	--Exit immediately.
+        exit.error()
     end
 
-    logging.error = logging._error
-
-    ---Log a warning
     ---@param text string
-    ---@param quiet boolean
-    ---@param format string?
-    function logging:_warn(text, quiet, format)
-        format = format or "None"
-        if not quiet then
-            print(WARNING.None { text = text, header = self.header, indent = self.indent })
+    function logging:warn(text)
+	text = text or ''
+        if not self.quiet then
+            print(WARNING.None(self, text))
         end
         if self.fh then
-            text = text:gsub("\\", "\\")
-            self.fh:write(
-                WARNING[format] { text = text, texindent = self.texindent, package_name = self.package_name },
-                "\n")
+            self.fh:write(WARNING[self.format](self, text:gsub("\\", "\\string\\"), "\n"))
         end
-        -- set the exitcode this way
+        -- Set the exit code.
         exit.succ = exit.warn
     end
 
-    logging.warn = logging._warn
-
-    ---Log info message
     ---@param text string
-    ---@param quiet boolean
-    ---@param format string?
-    function logging:_info(text, quiet, format)
-        format = format or "None"
-        if not quiet then
-            print(INFO.None { text = text, header = self.header, indent = self.indent })
+    function logging:info(text)
+	text = text or ''
+        if not self.quiet then
+            print(INFO.None(self, text))
         end
         if self.fh then
-            text = text:gsub("\\", "\\")
-            self.fh:write(INFO[format] { text = text, texindent = self.texindent, package_name = self.package_name },
-                "\n")
+            self.fh:write(INFO[self.format](self, text:gsub("\\", "\\string\\")), "\n")
         end
     end
 
-    logging.info = logging._info
 end
 
-local function prefix_error_interpret_pcall(msg, success, ...)
-    if success then
-	return ...
-    else
-	error(((not msg or msg=='') and '' or msg .. ": ").. tostring(...), 0)
+local function reraise(msg, f, ...)
+    local function g(success, ...)
+	if success then return ... end
+	error(msg:format(tostring(...)), 0)
     end
+    return g(pcall(f,...))
 end
 
-local function prefix_error(msg, f, ...)
-    return prefix_error_interpret_pcall(msg, pcall(f, ...))
-end
-
-local function log_error_interpret_pcall(short_msg, long_msg, success, ...)
-    if success then
-	return ...
-    else
-	logging:error(
-	    short_msg,
-	    ((not long_msg or long_msg=='') and '' or long_msg .. ": ")
-	    .. tostring(...)
-	)
-	exit.error()
+local function try_error(short, long, f, ...)
+    local function g(success, ...)
+	if success then return ... end
+	logging:error(short:format(tostring(...)), long:format(tostring(...)))
     end
+    return g(pcall(f,...))
 end
 
-local function log_error(short_msg, long_msg, f, ...)
-    return log_error_interpret_pcall(short_msg, long_msg, pcall(f, ...))
-end
-
-local function log_warning_interpret_pcall(msg, success, ...)
-    if success then
+local function try_warn(msg, f, ...)
+    assert(type(msg) == 'string')
+    msg = msg ~= '' and msg
+    local function g(success, ...)
+	if not success then 
+	    logging:warn(msg:format(tostring(...)))
+	end
 	return ...
-    else
-	logging:warning(
-	    ((not msg or msg=='') and '' or msg .. ": ")
-	    .. tostring(...)
-	)
-	exit.warning()
     end
-end
-
-local function log_warning(msg, f, ...)
-    return log_warning_interpret_pcall(msg, pcall(f, ...))
+    return g(pcall(f,...))
 end
 
 -- \paragraph{Additions to lualibs-file and lualibs-dir}
@@ -278,7 +249,7 @@ end
 ---@vararg string
 ---@return string
 function pathlib.join(...)
-    return file.join(...):gsub('[/\\]+', '/')
+    return (file.join(...):gsub('[/\\]+', '/'))
 end
 
 ---@param path string
@@ -304,19 +275,25 @@ end
 
 -- \paragraph{Permission-related functions}
 
----@param f string
-local function paranoia_in(f)
-    if not kpse.in_name_ok_silent_extended(f) then
+---@param fn string
+local function paranoia_in(fn)
+    if type(fn) ~= 'string' then
+        error(("A value of type '%s' was passed to paranoia_in"):format(type(fn)), 2)
+    end
+    if not kpse.in_name_ok_silent_extended(fn) then
 	error(("I'm not allowed to read from '%s' (openin_any = {%s})")
-	    :format(f, kpse.expand_var('openin_any'), 2))
+	    :format(fn, kpse.expand_var('openin_any'), 2))
     end
 end
 
----@param f string
-local function paranoia_out(f)
-    if not kpse.out_name_ok_silent_extended(f) then
+---@param fn string
+local function paranoia_out(fn)
+    if type(fn) ~= 'string' then
+        error(("A value of type '%s' was passed to paranoia_out"):format(type(fn)), 2)
+    end
+    if not kpse.out_name_ok_silent_extended(fn) then
 	error(("I'm not allowed to write to '%s' (openout_any = {%s})")
-	    :format(f, kpse.expand_var('openout_any'), 2))
+	    :format(fn, kpse.expand_var('openout_any'), 2))
     end
 end
 
@@ -345,13 +322,13 @@ do
         assert(status, err)
         local lines = status:lines()
         for line in lines do
-    	my_euid = line:match("^Uid:\t%d+\t(%d+)\t%d+\t%d+$")
-    	if my_euid then
-    	    my_euid = tonumber(my_euid)
-    	    my_egid = tonumber(lines():match("^Gid:\t%d+\t(%d+)\t%d+\t%d+$"))
-    	    assert(my_egid)
-    	    break
-    	end
+	    my_euid = line:match("^Uid:\t%d+\t(%d+)\t%d+\t%d+$")
+	    if my_euid then
+		my_euid = tonumber(my_euid)
+		my_egid = tonumber(lines():match("^Gid:\t%d+\t(%d+)\t%d+\t%d+$"))
+		assert(my_egid)
+		break
+	    end
         end
         status:close()
 
@@ -362,10 +339,12 @@ do
         ---|"'x'" # executable?
         ---@return boolean
         function os_access(fn, mode)
-    	local attrs = lfs.attributes(fn)
-    	local ugo_offset = my_euid == attrs.uid and 2 or (my_egid == attrs.gid and 5 or 8)
-    	local rwx_offset = rwx_offsets[mode]
-    	return attrs.permissions:sub(ugo_offset + rwx_offset, 1) == mode
+	    local attrs = lfs.attributes(fn)
+	    if not attrs then return false end
+	    local ugo_offset = my_euid == attrs.uid and 1
+		or (my_egid == attrs.gid and 4 or 7)
+	    local rwx_offset = rwx_offsets[mode]
+	    return attrs.permissions:sub(ugo_offset + rwx_offset, 1) == mode
         end
     end
 end
@@ -418,11 +397,12 @@ do
         local path = f(var)
 	if path then
             if not pathlib.is_dir(path) then
-                log_warning(("'%s' is not a directory: '%s'"):format(var, path))
+                logging:warn(("I refuse to set %s to '%s', which is not a directory.")
+		    :format(var, path))
                 return
             end
 	    if os.type ~= 'windows' and pathlib.join(path) ~= pathlib.sep then
-		log_warning(("Root directory is not allowed as %s"):format(var))
+		logging:warn(("I refuse to set %s to the root directory"):format(var))
 	    end
 	end
 	return path
@@ -524,9 +504,14 @@ local env = {
     select   = select,
     pcall    = pcall,
     assert   = assert,
+    error = error,
+    type = type,
 
     -- texlua specific libraries (loaded automatically by texlua) 
-    lfs      = { isfile = lfs.isfile },
+    lfs      = {
+	isfile = lfs.isfile,
+	attributes = lfs.attributes,
+    },
     kpse     = kpse,
 
     -- luatex specific libraries (loaded automatically by luatex but not texlua)
@@ -575,7 +560,7 @@ do
     ---@return table? updated_parameters
     ---@return string? err_msg
     parse_args = function(as)
-        local args = {}
+        local args = { script_name = file.basename(arg[0]) }
 
         local i = 1
         local len = #as
@@ -651,9 +636,6 @@ end
 
 local function main(args)
 
-    --Start a new line in the TeX terminal output.
-    if args.format then print() end
-
     -- \paragraph{Initialization}
 
     -- With |--mkdir|, argument |pdf| is interpreted as the directory to create.
@@ -675,24 +657,25 @@ local function main(args)
     end
 
     -- Once we have the |.pdf| filename, we can open the log.
+    logging.quiet = args.quiet
+    logging.format = args.format
+    logging.header = args.format and args.script_name .. ': ' or ''
     if args.format then
-        local log_fn = find_out(file.replacesuffix(args.pdf, ".mmz.log"))
-	paranoia_out(log_file)
+        local log_fn = find_out(file.replacesuffix(args.pdf, "mmz.log"))
+        paranoia_out(log_fn)
         logging:info("Logging to " .. log_fn)
-	logging:setup(args.quiet, args.format, io_open_w(log_fn))
-    else
-	logging:setup(args.quiet)
+	logging:open(log_fn)
     end
 
     --Find the PDF file and check whether (a) we may read from it, and (b) we
     --may write to it, if --prune was given or --keep was not given.
-    local pdf_fn = log_error(
+    local pdf_fn = try_error(
 	("Cannot find input PDF file '%s'"):format(args.pdf), '',
 	find_in, args.pdf
     )
     paranoia_in(pdf_fn)
     if args.prune or not args.keep then
-	log_error(
+	try_error(
 	    '',
 	    ("I would have to write to '%s' because %s%s%s")
             :format(pdf_fn,
@@ -705,7 +688,7 @@ local function main(args)
 
     --Open the PDF.
 
-    local doc, catalog, pages = log_error(
+    local doc, catalog, pages = try_error(
 	("PDF file '%s' seems corrupted. Perhaps you have to load Memoize \z
           earlier in the preamble"):format(pdf_fn),
 	"In particular, Memoize must be loaded before TikZ library 'fadings' \z
@@ -719,7 +702,7 @@ local function main(args)
         end
     )
 
-    local record = log_error(
+    local record = try_error(
 	("PDF file '%s' does not contain a Memoize record"):format(args.pdf),
 	"",
         function()
@@ -728,8 +711,9 @@ local function main(args)
     )
 
     local current_prefix
+    logging:info(("Extracting new externs from '%s'"):format(pdf_fn))
 
-    for item_n, item in ipairs(record) do log_warning('', function()
+    for item_n, item in ipairs(record) do try_warn("%s", function()
 
         if item.Type == "/MMIZ_Prefix" then
 
@@ -755,7 +739,7 @@ local function main(args)
                      for page number %d"):format(item_n, page_number))
 
             local extern_path = unquote(item.MMIZ_Filename)
-	    local dir_prefix, name_prefix, code_md5sum, context_md5sum = prefix_error(
+	    local dir_prefix, name_prefix, code_md5sum, context_md5sum = reraise(
 		("Illicit extern filename '%s'"):format(extern_path),
 		split_extern_path, extern_path)
 
@@ -781,38 +765,39 @@ local function main(args)
 		       ("I refuse to extract page %d into extern '%s', \z
                          because the associated %s%s%s do%s not exist")
 		       :format(page_number, extern_path,
-			       not access_c and c_memo_file or '',
+			       not access_c and "c-memo" or '',
 			       not access_c and not access_cc and ' and ' or '',
-			       not access_cc and cc_memo_file or '',
+			       not access_cc and "cc-memo" or '',
 			       not access_c and not access_cc and '' or 'es'))
             end
 
             local extern_file_out = find_out(extern_path)
 
             if not item.MMIZ_Extracted then
-		prefix_error(
-		    ("Failed to extract page %d into %s")
+		reraise(
+		    ("Failed to extract page %d into '%s': %%s")
 		    :format(page_number, extern_path),
                     function()
                         local extern = pdf.new()
                         extern:insert_page(page)
                         extern:save(extern_file_out)
-                        logging:info(("Page %d --> %s"):format(page_number, extern_path))
+                        logging:info(("Page %d --> '%s'"):format(page_number, extern_path))
                         item.MMIZ_Extracted = true
                     end
                 )
                 if args.prune then
-		    prefix_error(
-			('I failed to remove page %d'):format(page_number),
+		    reraise(
+			('I failed to remove page %d: %%s'):format(page_number),
 			doc.remove_page, doc, page
 		    )
                 end
 	    else
-		logging:info("Skipping extraction of page %d, it was already extracted")
+		logging:info(("Skipping extraction of page %d, it was already extracted")
+		    :format(page_number))
             end
 
         end --/MMIZ_NewExtern
-    end ) end --end log_warning ) end for loop
+    end ) end --end try_warn ) end for loop
 
     if not args.keep or args.prune then
         if doc:update() == 0 then

@@ -151,6 +151,7 @@
 \def\PackageWarning#1#2{{%
     \newlinechar`\^^J\def\MessageBreak{^^J\space\space#1: }%
     \message{#1: #2}}}
+\def\typeout{\immediate\write17}
 %</mmz&(plain,context)>
 % Same as the official definition, but without |\outer|.  Needed for record
 % file declarations.
@@ -2460,7 +2461,6 @@
   \pgfkeysalso{/mmz/record/used extern={\mmz@extern@path}}%
 }
 \def\mmz@typeset@box#1{%
-  %\begingroup\typeout{DEBUG}\tracingall
   \ifhbox#1\relax
     \mmz@before@this@hbox
     \box#1\relax
@@ -2470,7 +2470,6 @@
     \box#1\relax
     \mmz@after@this@vbox
   \fi
-  %\endgroup
 }
 % \end{macro}
 \def\mmz@use@memo@warning#1#2#3#4{%
@@ -4238,6 +4237,9 @@
 \mmzset{
   extract/.is choice,
   extract/.default=\mmz@extraction@method,
+  % Write an empty line to the log and the terminal before executing the
+  % extraction script, for prettier output.
+  extract/.prefix code={\typeout{}},
   % But only once:
   extract/.append style={
     extract/.code={\PackageError{memoize}{Key "extract" was invoked twice.}{In
@@ -4255,6 +4257,9 @@
 %<*!plain>
 \def\mmz@temp{no}
 \ifx\mmz@extraction@method\mmz@temp
+  % Write an empty line to the log and the terminal before executing the
+  % extraction script, for prettier output.
+  \typeout{}%
   \pgfkeyslet{/mmz/extract/.@cmd}\mmz@temp@extract
   \let\mmz@extraction@method\mmz@initial@extraction@method
 \fi
