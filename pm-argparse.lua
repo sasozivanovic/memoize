@@ -33,11 +33,11 @@
 ]] --
 
 ---@class argument_parser
+---@field spec argspec
 ---@field parse_args function
 ---@field private parse_next function
 ---@field usage function
 ---@field help function
----@field private spec argspec
 ---@field private long_options table
 ---@field private short_options table
 local argument_parser = {}

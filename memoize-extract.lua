@@ -130,7 +130,7 @@ logging = {
     texindent = "",
     quiet = false,
     format = "None",
-    package_name = 'memoize (lua-based extraction)',
+    package_name = '',
 }
 do
     local ERROR = {
@@ -571,7 +571,7 @@ memoize_extract_argspec = {
         { long = "help", short = "h", help = "show this help message and exit",
 	  f = function() print(parser:help()) exit.succ() end },
         { long = "version", short = "V", help = "show program's version number and exit",
-	    f = function() print(("memoize-extract.lua of Memoize %s"):format(VERSION))
+	    f = function() print(("%s of Memoize %s"):format(script_name, VERSION))
 		exit.succ() end },
         { long = "quiet", short = "q", help = "don't describe what's happening",
 	  f = function(args, ...) args.quiet = true return ... end },
@@ -636,6 +636,7 @@ local function main(args)
     end
 
     -- Once we have the |.pdf| filename, we can open the log.
+    logging.package_name = 'memoize (lua-based extraction)'
     logging.quiet = args.quiet
     logging.format = args.format
     logging.header = args.format and file.basename(args[0]) .. ': ' or ''
