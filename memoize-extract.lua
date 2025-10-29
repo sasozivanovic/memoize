@@ -101,6 +101,7 @@ end
 --_ENV = { table = table }
 --    arg, error, pairs, ipairs, pcall, print, tonumber, tostring, type
 
+local script_name = file.basename(arg[0])
 
 --\paragraph{Messages}
 
@@ -230,6 +231,10 @@ do
 
 end
 
+---@param msg string
+---@param f function
+---@param ... any
+---@return ... any
 local function reraise(msg, f, ...)
     local function g(success, ...)
 	if success then return ... end
@@ -238,6 +243,10 @@ local function reraise(msg, f, ...)
     return g(pcall(f,...))
 end
 
+---@param msg string
+---@param f function
+---@param ... any
+---@return ... any
 local function try_error(msg, f, ...)
     local function g(success, ...)
 	if success then return ... end
@@ -246,8 +255,11 @@ local function try_error(msg, f, ...)
     return g(pcall(f,...))
 end
 
+---@param msg string
+---@param f function
+---@param ... any
+---@return ... any
 local function try_warn(msg, f, ...)
-    msg = msg ~= '' and msg
     local function g(success, ...)
 	if not success then
 	    logging:warn(msg:format(tostring(...)))
@@ -521,14 +533,13 @@ local md5pat = ("%x"):rep(32)
 ---@return string context_md5sum
 ---@return string seq
 local function split_extern_path(path)
-    local dir_prefix, rest = path:match("^(.*/)(.*)$")
-    if not dir_prefix then dir_prefix, rest = '', path end
-    local name_prefix, code_md5sum, context_md5sum, seq
+	local dir_prefix, rest = path:match("^(.*/)(.*)$")
+	if not dir_prefix then dir_prefix, rest = '', path end
+	local name_prefix, code_md5sum, context_md5sum, seq
 	= rest:match("^(.-)(" .. md5pat .. ")%-(" .. md5pat .. ")(.-).pdf$")
-    assert(name_prefix and (seq == '' or seq:match("^%-%d+$")))
-    return dir_prefix, name_prefix, code_md5sum, context_md5sum, seq
+	assert(name_prefix and (seq == '' or seq:match("^%-%d+$")))
+	return dir_prefix, name_prefix, code_md5sum, context_md5sum, seq
 end
-
 local MMIZ_Record_Types = {
     ['/MMIZ_NewExtern'] = true,
     ['/MMIZ_Prefix'] = true,
@@ -539,30 +550,35 @@ local MMIZ_Record_Types = {
     ['/MMIZ_UsedCCMemo'] = true,
 }
 
+---@type argspec
+local memoize_extract_argspec
 
-local memoize_extract_argspec, parser
+---@type argument_parser
+local parser --forward declaration because it is used in option help
+
 memoize_extract_argspec = {
+    prog = script_name,
     header = "Extract extern pages produced by package Memoize out of the document PDF.",
     positional = {
 	help = "the PDF file (doc.pdf when compiling doc.tex)", arg_desc = "pdf",
 	f = function(args)
 	    assert(#args == 1,
 		   "Exactly one positional argument, the PDF filename, should be given.")
-	    args.pdf, args[1] = args[1]
+	    args.pdf, args[1] = args[1], nil
 	end
     },
     options = {
         { long = "help", short = "h", help = "show this help message and exit",
-	  f = function() print(parser.help()) exit.succ() end },
+	  f = function() print(parser:help()) exit.succ() end },
         { long = "version", short = "V", help = "show program's version number and exit",
 	    f = function() print(("memoize-extract.lua of Memoize %s"):format(VERSION))
 		exit.succ() end },
         { long = "quiet", short = "q", help = "don't describe what's happening",
-	  f = function(args, ...) args.quiet = true return(...) end },
+	  f = function(args, ...) args.quiet = true return ... end },
         { long = "keep", short = "k", help = "do not mark externs as extracted",
-	  f = function(args, ...) args.keep = true return(...) end },
+	  f = function(args, ...) args.keep = true return ... end },
         { long = "prune", short = "p", help = "remove the extern pages after extraction",
-	  f = function(args, ...) args.prune = true return(...) end },
+	  f = function(args, ...) args.prune = true return ... end },
         { long = "format", short = "F", arg_desc = "{latex,plain,context}",
 	  help = "the format of the TeX document invoking extraction",
 	  f = function(args, format, ...)
@@ -570,24 +586,35 @@ memoize_extract_argspec = {
 	      assert(({latex = true, plain = true, context = true})[format],
 		  ("The argument of --format/-f should be \z
                     one of 'latex', 'plain', and 'context', not '%s'.")
-		  :format(format)) return(...) end },
+		  :format(format)) return ... end },
         { long = "force", short = "f",
 	  help = "ignore warnings and extract problematic pages",
-	  f = function(args, ...) args.force = true return(...) end },
+	  f = function(args, ...) args.force = true return ... end },
         { long = "mkdir", short = "m", help = "create the directory and exit\n\z
           (the positional argument pdf is interpreted as directory name)",
-	  f = function(args, ...) args.mkdir = true return(...) end },
+	  f = function(args, ...) args.mkdir = true return ... end },
     },
     footer = "For details, see the man page or the Memoize documentation."
 }
 
+---@class extraction_parameters
+---@field quiet boolean?
+---@field keep boolean?
+---@field prune boolean?
+---@field format 'latex'|'plain'|'context'?
+---@field force boolean?
+---@field mkdir boolean?
+---@field pdf string
+
+---@param args string[] | extraction_parameters
 local function main(args)
 
-    if not args.main then
+    -- Convert command line arguments to extraction_parameters if necessary.
+    if not args.pdf then
 	parser = argparse.argument_parser(memoize_extract_argspec)
-	args = parser.parse_args(args, 0)
+	args = parser:parse_args(args, 0)
     end
-    
+
     -- \paragraph{Initialization}
 
     -- With |--mkdir|, argument |pdf| is interpreted as the directory to create.
@@ -617,6 +644,10 @@ local function main(args)
         paranoia_out(log_fn)
         logging:info(("Logging to '%s'"):format(log_fn))
 	logging:open(log_fn)
+    end
+
+    if args.keep and args.prune then
+	logging:error("Options --keep and --prune are incompatible")
     end
 
     --Find the PDF file and check whether (a) we may read from it, and (b) we
@@ -756,27 +787,25 @@ local function main(args)
 	end ) --end try_warn )
     end -- end for loop
 
-    if not args.keep or args.prune then
-        if doc:update() == 0 then
-            logging:info("No changes to the PDF were made")
-        elseif args.prune and not args.keep then
-            logging:info("The extraced extern pages were marked as extracted \z
+    if doc:update() == 0 then
+	logging:info("No changes to the PDF were made")
+    elseif args.prune and not args.keep then
+	logging:info("The extracted extern pages were marked as extracted \z
                           and removed from the PDF")
-        elseif args.prune then
-            logging:info("The extraced extern pages were removed from the PDF")
-        elseif not args.keep then
-            logging:info("The extraced extern pages were marked as extracted in the PDF")
-        end
+    elseif args.prune then
+	logging:info("The extracted extern pages were removed from the PDF")
+    elseif not args.keep then
+	logging:info("The extracted extern pages were marked as extracted in the PDF")
+    else
+	logging:info("No changes to the PDF were made")
     end
 
     logging:close()
     exit.succ()
 end
 
-script_name = file.basename(arg[0])
 if script_name == "memoize-extract" or script_name == "memoize-extract.lua" then
     main(arg)
 else
-    -- allows this module to be loaded in LuaLaTeX via require
     return main
 end

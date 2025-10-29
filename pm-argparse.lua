@@ -9,7 +9,7 @@
 
     Module pm-argparse is free software distributed under the terms of the MIT
     license reproduced below.
-    
+
     Copyright (c) 2025- Saso Zivanovic <saso.zivanovic@guest.arnes.si>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -30,27 +30,58 @@
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
     DEALINGS IN THE SOFTWARE.
 
-]]--
+]] --
 
-local function usage(argspec)
+---@class argument_parser
+---@field parse_args function
+---@field private parse_next function
+---@field usage function
+---@field help function
+---@field private spec argspec
+---@field private long_options table
+---@field private short_options table
+local argument_parser = {}
+
+---@class argspec
+---@field prog string
+---@field header string?
+---@field positional pos_arg
+---@field options opt_arg[]
+---@field footer string?
+
+---@class pos_arg
+---@field f function
+---@field arg_desc string?
+---@field help string?
+
+---@class opt_arg
+---@field long string?
+---@field short string?     --either long or short shoudl should be non-nil
+---@field f function
+---@field arg_desc string?
+---@field help string?
+
+---@return string
+function argument_parser:usage()
     local usages = {}
-    for _, spec in pairs(argspec.options) do
+    for _, spec in pairs(self.spec.options) do
 	table.insert(usages, ("[-%s%s]"):format
 		     (spec.short, spec.arg_desc and ' ' .. spec.arg_desc or ''))
     end
     return ("Usage: %s %s %s")
-	:format(argspec.prog, table.concat(usages, ' '), argspec.positional.arg_desc)
+	:format(self.spec.prog, table.concat(usages, ' '), self.spec.positional.arg_desc)
 end
 
-local function help(argspec, help_column)
+---@return string
+function argument_parser:help(help_column)
     help_column = help_column or 24
-    to_help_column = '\n' .. (' '):rep(help_column)
+    local to_help_column = '\n' .. (' '):rep(help_column)
     local missing_short_space = ''
-    for _, spec in pairs(argspec.options) do
+    for _, spec in pairs(self.spec.options) do
 	if spec.short then missing_short_space = '   ' break end
     end
     local usages = {}
-    for _, spec in pairs(argspec.options) do
+    for _, spec in pairs(self.spec.options) do
 	local option = ("  %s%s %s%s"):format(
 	    spec.short and '-' .. spec.short or missing_short_space,
 	    spec.short and spec.long and ',' or '',
@@ -63,62 +94,72 @@ local function help(argspec, help_column)
 	table.insert(usages, ("%s%s%s"):format(option, sep, option_help))
     end
     return ("%s\n%s\noptions:\n%s%s")
-	:format(usage(argspec),
-		argspec.header and ('\n' .. argspec.header .. '\n') or '',
+	:format(self:usage(),
+		self.spec.header and ('\n' .. self.spec.header .. '\n') or '',
 		table.concat(usages, '\n'),
-		argspec.footer and ('\n\n' .. argspec.footer) or '')
+		self.spec.footer and ('\n\n' .. self.spec.footer) or '')
 end
 
-local function parse_next(argspec, args, a, ...)
+---@param args table
+---@param a string?
+---@param ... any # it's actually ... string
+---@return table
+function argument_parser:parse_next(args, a, ...)
     if not a then
-	argspec.positional.f(args)
+	self.spec.positional.f(args)
 	return args
     elseif a == '--' then
 	local rest = table.unpack(...)
 	return table.move(rest, 1, #rest, #args+1, args)
-    elseif a:sub(1,2) == '--' then
-	local opt_spec = argspec.long_options[a:sub(3)]
-	assert(opt_spec, ("Unknown option '%s'."):format(a))
-	return parse_next(argspec, args, opt_spec.f(args, ...))
+    elseif a:sub(1, 2) == '--' then
+	local opt_spec = self.long_options[a:sub(3)]
+        assert(opt_spec, ("Unknown option '%s'."):format(a))
+	return self:parse_next(args, opt_spec.f(args, ...))
     elseif a:sub(1,1) == '-' then
-	local opt_spec = argspec.short_options[a:sub(2,2)]
+	local opt_spec = self.short_options[a:sub(2,2)]
 	assert(opt_spec, ("Unknown option '-%s'."):format(a:sub(2,2)))
 	if a:len() > 2 then
 	    a = a:sub(3)
-	    a = opt_spec.arg_desc and a or '-' .. a
-	    return parse_next(argspec, args, opt_spec.f(args, a, ...))
+            a = opt_spec.arg_desc and a or '-' .. a
+	    return self:parse_next(args, opt_spec.f(args, a, ...))
 	else
-	    return parse_next(argspec, args, opt_spec.f(args, ...))
+	    return self:parse_next(args, opt_spec.f(args, ...))
 	end
     else
 	table.insert(args, a)
-	return parse_next(argspec, args, ...)
+	return self:parse_next(args, ...)
     end
 end
 
-function parse_args(argspec, argtable, error_level)
-    argspec.prog = argspec.prog or file.basename(arg[0])
-    argspec.long_options, argspec.short_options = {}, {}
-    for _, spec in ipairs(argspec.options) do
-	if spec.long then argspec.long_options[spec.long] = spec end
-	if spec.short then argspec.short_options[spec.short] = spec end
+---@param self argument_parser
+---@param argtable string[]
+---@param error_level integer?
+---@return table
+---@return boolean
+function argument_parser:parse_args(argtable, error_level)
+    self.long_options, self.short_options = {}, {}
+    for _, spec in ipairs(self.spec.options) do
+	if spec.long then self.long_options[spec.long] = spec end
+	if spec.short then self.short_options[spec.short] = spec end
     end
+    local success
     local args, i = {}, 0
     while argtable[i] do args[i] = argtable[i] i = i - 1 end
-    success, args = pcall(parse_next, argspec, args, table.unpack(argtable))
+    success, args = pcall(self.parse_next, self, args, table.unpack(argtable))
     if error_level then
-	if success then return args end
-	error(("%s\n%s"):format(args, usage(argspec)), error_level)
+        if success then return args, true end
+	error(("%s\n%s"):format(args, self:usage()), error_level)
     else
-	return success, args
+	return args, success
     end
 end
 
-local function argument_parser(argspec)
-    argspec.parse_args = function(...) return parse_args(argspec, ...) end
-    argspec.usage = function() return usage(argspec) end
-    argspec.help = function() return help(argspec) end
-    return argspec
+---@param argspec argspec
+---@return argument_parser
+local function create_argument_parser(argspec)
+    local parser = { spec = argspec }
+    for k, f in pairs(argument_parser) do parser[k] = f end
+    return parser
 end
 
-return { argument_parser = argument_parser }
+return { argument_parser = create_argument_parser }
