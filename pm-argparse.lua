@@ -1,8 +1,36 @@
--- The poor mans' argument parser.  Supports, long (--) and short (-) options,
--- positional arguments may occur between options (-a pos -b), short options
--- may be merged (-ab) and don't require space before the argument (both
--- -Flatex and -F latex are ok).  Automatically generates usage and help,
--- options occur in the order listed in code.
+--[[
+
+    The poor man's argument parser.  It supports long (--option) and short (-o)
+    options, positional arguments may occur between options (-a <positional>
+    -b), short options may be merged (-io) and don't require space before the
+    argument (-o file and -ofile are both ok).  It automatically generates
+    usage and help, options occur in the order listed in code.  For usage, see
+    memoize-extract.lua of TeX package memoize (https://ctan.org/pkg/memoize).
+
+    Module pm-argparse is free software distributed under the terms of the MIT
+    license reproduced below.
+    
+    Copyright (c) 2025- Saso Zivanovic <saso.zivanovic@guest.arnes.si>
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+
+]]--
 
 local function usage(argspec)
     local usages = {}
