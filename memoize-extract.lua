@@ -612,7 +612,7 @@ local function main(args)
     -- Convert command line arguments to extraction_parameters if necessary.
     if not args.pdf then
 	parser = argparse.argument_parser(memoize_extract_argspec)
-	args = parser:parse_args(args, 0)
+        args = parser:parse_args(args)
     end
 
     -- \paragraph{Initialization}
@@ -639,7 +639,7 @@ local function main(args)
     logging.package_name = 'memoize (lua-based extraction)'
     logging.quiet = args.quiet
     logging.format = args.format
-    logging.header = args.format and file.basename(args[0]) .. ': ' or ''
+    logging.header = args.format and script_name .. ': ' or ''
     if args.format then
         local log_fn = find_out(file.replacesuffix(args.pdf, "mmz.log"))
         paranoia_out(log_fn)

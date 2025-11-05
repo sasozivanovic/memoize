@@ -109,8 +109,10 @@ function argument_parser:parse_next(args, a, ...)
 	self.spec.positional.f(args)
 	return args
     elseif a == '--' then
-	local rest = table.unpack(...)
-	return table.move(rest, 1, #rest, #args+1, args)
+	local rest = table.pack(...)
+	table.move(rest, 1, #rest, #args+1, args)
+	self.spec.positional.f(args)
+	return args
     elseif a:sub(1, 2) == '--' then
 	local opt_spec = self.long_options[a:sub(3)]
         assert(opt_spec, ("Unknown option '%s'."):format(a))
@@ -133,25 +135,17 @@ end
 
 ---@param self argument_parser
 ---@param argtable string[]
----@param error_level integer?
----@return table
----@return boolean
+---@param error_level integer
+---@return table?
+---@return string?
+---@overload fun(self: argument_parser, argtable string[]): table
 function argument_parser:parse_args(argtable, error_level)
     self.long_options, self.short_options = {}, {}
     for _, spec in ipairs(self.spec.options) do
 	if spec.long then self.long_options[spec.long] = spec end
 	if spec.short then self.short_options[spec.short] = spec end
     end
-    local success
-    local args, i = {}, 0
-    while argtable[i] do args[i] = argtable[i] i = i - 1 end
-    success, args = pcall(self.parse_next, self, args, table.unpack(argtable))
-    if error_level then
-        if success then return args, true end
-	error(("%s\n%s"):format(args, self:usage()), error_level)
-    else
-	return args, success
-    end
+    return self:parse_next({}, table.unpack(argtable))
 end
 
 ---@param argspec argspec
