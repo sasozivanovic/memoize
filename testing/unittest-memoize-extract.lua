@@ -29,629 +29,322 @@ local expect   = lester.expect
 
 local extract --receives all locals from module memoize-extract
 do
-    function debug_get_locals(f)
-	locals = {}
-	local i = 1
-	repeat
-	    var, val = debug.getlocal(f, i)
-	    if var and var:sub(1,1) ~= '(' then
-		locals[var] = val
-	    end
-	    i = i + 1
-	until not var
-	return locals
+  function debug_get_locals(f)
+    locals = {}
+    local i = 1
+    repeat
+      var, val = debug.getlocal(f, i)
+      if var and var:sub(1,1) ~= '(' then
+	locals[var] = val
+      end
+      i = i + 1
+    until not var
+    return locals
+  end
+
+  function hook(_event)
+    if debug.getinfo(2).what == 'main' then
+      extract = debug_get_locals(3)
     end
+  end
 
-    function hook(_event)
-	if debug.getinfo(2).what == 'main' then
-	    extract = debug_get_locals(3)
-	end
-    end
+  debug.sethook(hook, 'r')
+  require "memoize-extract"
+  debug.sethook(nil, 'r')
 
-    debug.sethook(hook, 'r')
-    require "memoize-extract"
-    debug.sethook(nil, 'r')
-
-    extract.exit.error = function() error("exited with error") end
-    extract.exit.warn  = function() error("exited with warn") end
-    extract.exit.succ  = function() error("exited with succ") end
+  extract.exit.error = function() error("exited with error") end
+  extract.exit.warn  = function() error("exited with warn") end
+  extract.exit.succ  = function() error("exited with succ") end
 end
 
+describe(
+  "memoize-extract.lua",
+  function()
+    before(function() end)
+    after(function() end)
 
-describe("memoize-extract.lua", function()
-	before(function() end)
-	after(function() end)
+    describe(
+      "split_extern_path",
+      function()
+	it("should parse a valid path with all parts", function()
+	     local path = "/dir/prefix/file1234567890abcdef1234567890abcdef-1234567890abcdef1234567890abcdef-42.pdf"
+	     local dir_prefix, name_prefix, code_md5sum, context_md5sum = extract.split_extern_path(path)
 
-	describe("parse_extern_path", function()
-		it("should parse a valid path with all parts", function()
-			local path = "/dir/prefix/file1234567890abcdef1234567890abcdef-1234567890abcdef1234567890abcdef-42.pdf"
-			local dir_prefix, name_prefix, code_md5sum, context_md5sum = extract.parse_extern_path(path)
-
-			expect.equal(dir_prefix, "/dir/prefix/")
-			expect.equal(name_prefix, "file")
-			expect.equal(code_md5sum, "1234567890abcdef1234567890abcdef")
-			expect.equal(context_md5sum, "1234567890abcdef1234567890abcdef")
-		end)
-
-		it("should parse a valid path with no dir_prefix", function()
-			local path = "file1234567890abcdef1234567890abcdef-1234567890abcdef1234567890abcdef.pdf"
-			local dir_prefix, name_prefix, code_md5sum, context_md5sum = extract.parse_extern_path(path)
-
-			expect.equal(dir_prefix, "")
-			expect.equal(name_prefix, "file")
-			expect.equal(code_md5sum, "1234567890abcdef1234567890abcdef")
-			expect.equal(context_md5sum, "1234567890abcdef1234567890abcdef")
-		end)
-
-		it("should parse a valid path with a numeric suffix", function()
-			local path = "/dir/prefix/file1234567890abcdef1234567890abcdef-1234567890abcdef1234567890abcdef-99.pdf"
-			local dir_prefix, name_prefix, code_md5sum, context_md5sum = extract.parse_extern_path(path)
-
-			expect.equal(dir_prefix, "/dir/prefix/")
-			expect.equal(name_prefix, "file")
-			expect.equal(code_md5sum, "1234567890abcdef1234567890abcdef")
-			expect.equal(context_md5sum, "1234567890abcdef1234567890abcdef")
-		end)
-
-		-- Test invalid paths
-		it("should return nil for invalid paths", function()
-			local path = "/dir/prefix/file1234567890abcdef1234567890abcdef-1234567890abcdef1234567890abcdef-invalid.pdf"
-			local dir_prefix, name_prefix, code_md5sum, context_md5sum = extract.parse_extern_path(path)
-
-			expect.not_exist(dir_prefix)
-			expect.not_exist(name_prefix)
-			expect.not_exist(code_md5sum)
-			expect.not_exist(context_md5sum)
-		end)
-
-		it("should return nil for paths with missing code_md5sum", function()
-			local path = "/dir/prefix/file-no-md5sum-1234567890abcdef1234567890abcdef.pdf"
-			local dir_prefix, name_prefix, code_md5sum, context_md5sum = extract.parse_extern_path(path)
-
-			expect.not_exist(dir_prefix)
-			expect.not_exist(name_prefix)
-			expect.not_exist(code_md5sum)
-			expect.not_exist(context_md5sum)
-		end)
-
-		-- Test paths without suffix and multiple hyphens
-		it("should parse a valid path without a suffix", function()
-			local path = "/dir/prefix/file1234567890abcdef1234567890abcdef-1234567890abcdef1234567890abcdef.pdf"
-			local dir_prefix, name_prefix, code_md5sum, context_md5sum = extract.parse_extern_path(path)
-
-			expect.equal(dir_prefix, "/dir/prefix/")
-			expect.equal(name_prefix, "file")
-			expect.equal(code_md5sum, "1234567890abcdef1234567890abcdef")
-			expect.equal(context_md5sum, "1234567890abcdef1234567890abcdef")
-		end)
-
-		-- Test paths with no context_md5sum
-		it("should return nil for paths missing context_md5sum", function()
-			local path = "/dir/prefix/file1234567890abcdef1234567890abcdef-.pdf"
-			local dir_prefix, name_prefix, code_md5sum, context_md5sum = extract.parse_extern_path(path)
-
-			expect.not_exist(dir_prefix)
-			expect.not_exist(name_prefix)
-			expect.not_exist(code_md5sum)
-			expect.not_exist(context_md5sum)
-		end)
-
-		-- Test edge cases
-		it("should handle an empty path", function()
-			local path = ""
-			local dir_prefix, name_prefix, code_md5sum, context_md5sum = extract.parse_extern_path(path)
-
-			expect.not_exist(dir_prefix)
-			expect.not_exist(name_prefix)
-			expect.not_exist(code_md5sum)
-			expect.not_exist(context_md5sum)
-		end)
-
-		it("should return nil for path with only one part", function()
-			local path = "1234567890abcdef1234567890abcdef-1234567890abcdef1234567890abcdef.pdf"
-			local dir_prefix, name_prefix, code_md5sum, context_md5sum = extract.parse_extern_path(path)
-
-			expect.equal(dir_prefix, "")
-			expect.equal(name_prefix, "")
-			expect.equal(code_md5sum, "1234567890abcdef1234567890abcdef")
-			expect.equal(context_md5sum, "1234567890abcdef1234567890abcdef")
-		end)
+	     expect.equal(dir_prefix, "/dir/prefix/")
+	     expect.equal(name_prefix, "file")
+	     expect.equal(code_md5sum, "1234567890abcdef1234567890abcdef")
+	     expect.equal(context_md5sum, "1234567890abcdef1234567890abcdef")
 	end)
 
-	describe("split_prefix", function()
-		it("should split a valid prefix with directory and name", function()
-			local dir_prefix, name_prefix = extract.split_prefix("path/to/file")
-			expect.equal(dir_prefix, "path/to/")
-			expect.equal(name_prefix, "file")
-		end)
-
-		it("should handle a prefix with no directory", function()
-			local dir_prefix, name_prefix = extract.split_prefix("file")
-			expect.equal(dir_prefix, "")
-			expect.equal(name_prefix, "file")
-		end)
-
-		it("should return nil for an empty string", function()
-			local dir_prefix, name_prefix = extract.split_prefix("")
-			expect.exist(dir_prefix)
-			expect.equal(dir_prefix, "")
-			expect.equal(name_prefix, "")
-		end)
-
-		it("should return a slash as dir_prefix and empty name_prefix for '/'", function()
-			local dir_prefix, name_prefix = extract.split_prefix("/")
-			expect.equal(dir_prefix, "/")
-			expect.equal(name_prefix, "")
-		end)
-
-		it("should correctly handle input with trailing slash", function()
-			local dir_prefix, name_prefix = extract.split_prefix("path/to/")
-			expect.equal(dir_prefix, "path/to/")
-			expect.equal(name_prefix, "")
-		end)
-
-		it("should handle input with multiple slashes but no name", function()
-			local dir_prefix, name_prefix = extract.split_prefix("path///")
-			expect.equal(dir_prefix, "path///")
-			expect.equal(name_prefix, "")
-		end)
-
-		it("should handle input with special characters", function()
-			local dir_prefix, name_prefix = extract.split_prefix("path/to/@#$%^&*()")
-			expect.equal(dir_prefix, "path/to/")
-			expect.equal(name_prefix, "@#$%^&*()")
-		end)
-
-		it("should handle input with whitespace", function()
-			local dir_prefix, name_prefix = extract.split_prefix("path/to/ file ")
-			expect.equal(dir_prefix, "path/to/")
-			expect.equal(name_prefix, " file ")
-		end)
+	it("should parse a valid path with no dir_prefix", function()
+	     local path = "file1234567890abcdef1234567890abcdef-1234567890abcdef1234567890abcdef.pdf"
+	     local dir_prefix, name_prefix, code_md5sum, context_md5sum = extract.split_extern_path(path)
+	     
+	     expect.equal(dir_prefix, "")
+	     expect.equal(name_prefix, "file")
+	     expect.equal(code_md5sum, "1234567890abcdef1234567890abcdef")
+	     expect.equal(context_md5sum, "1234567890abcdef1234567890abcdef")
 	end)
 
-	describe("parse_args", function()
-		it("should parse valid arguments with defaults", function()
-			local defaults = {pdf = nil, format = "plain", quiet = false}
-			local args, err = extract.parse_args({"-F", "latex", "pdf"}, defaults)
-			expect.equal(args, {
-				format = "latex",
-				quiet  = false,
-				pdf    = "pdf",
-			})
-		end)
+	it("should parse a valid path with a numeric suffix", function()
+	     local path = "/dir/prefix/file1234567890abcdef1234567890abcdef-1234567890abcdef1234567890abcdef-99.pdf"
+	     local dir_prefix, name_prefix, code_md5sum, context_md5sum = extract.split_extern_path(path)
 
-		it("should raise an error for invalid format", function()
-			local defaults = {}
-
-			local a, err = extract.parse_args({"-F", "invalidformat", "pdf"}, defaults)
-
-			expect.not_exist(a)
-			expect.equal(err, "invalid format passed")
-		end)
-
-		it("should handle multiple flags correctly", function()
-			local defaults = {}
-			local args = extract.parse_args({"-p", "-k", "-q", "pdf"}, defaults)
-			expect.equal(args, {
-				quiet = true,
-				prune = true,
-				keep  = true,
-				pdf   = "pdf",
-			})
-		end)
-
-		it("should handle long argument names correctly", function()
-			local defaults = {}
-			local args = extract.parse_args({"--prune", "--quiet", "pdf"}, defaults)
-			expect.equal(args, {
-				quiet = true,
-				prune = true,
-				pdf   = "pdf",
-			})
-		end)
-
-		it("should assign the last argument to pdf", function()
-			local defaults = {}
-			local args = extract.parse_args({"-F", "latex", "final.pdf"}, defaults)
-			expect.equal(args, {
-				format = "latex",
-				pdf = "final.pdf",
-			})
-		end)
-
-		it("should fail if no pdf is given", function()
-			local defaults = {format = "plain", quiet = false}
-
-			local a, err = extract.parse_args({"-F", "latex", "-p"}, defaults)
-
-			expect.not_exist(a)
-			expect.equal(err, "wrong number of arguments passed, exactly one positional needs to be given")
-		end)
-
-		it("should exit successfully and print help for '-h'", function()
-			local defaults = {}
-
-			expect.fail(function()
-				extract.parse_args({"-h"}, defaults)
-			end, "exited with succ")
-		end)
-
-		it("should exit successfully and print version for '-V'", function()
-			local defaults = {}
-
-			expect.fail(function()
-				extract.parse_args({"-V"}, defaults)
-			end, "exited with succ")
-		end)
-
-		it("should handle no flags and return defaults", function()
-			local defaults = {pdf = nil, prune = false}
-			local args = extract.parse_args({"pdf"}, defaults)
-			expect.equal(args, {
-				prune = false,
-				pdf   = "pdf",
-			})
-		end)
-
-		it("should fail with no arguments", function()
-			local defaults = {pdf = nil, prune = false}
-
-			local a, err = extract.parse_args({}, defaults)
-
-			expect.not_exist(a)
-			expect.equal(err, "wrong number of arguments passed, exactly one positional needs to be given")
-		end)
-
-		it("should raise an error for an unrecognized argument", function()
-			local defaults = {}
-
-			local args, err = extract.parse_args({"-z", "pdf"}, defaults)
-
-			expect.not_exist(args)
-			expect.equal(err, "invalid token passed '-z'")
-		end)
-
-		it("nothing flag-like is allowed for the positional", function()
-			local defaults = {prune = false}
-
-			local a, err = extract.parse_args({"-F", "latex", "--pdf"}, defaults)
-
-			expect.not_exist(a)
-			expect.equal(err, "invalid token passed '--pdf'")
-		end)
-
-		it("uses -- as separator for the positionals", function()
-			local defaults = {prune = false}
-			local args = extract.parse_args({"-F", "latex", "--", "--pdf"}, defaults)
-			expect.equal(args, {
-				format   = "latex",
-				prune = false,
-				pdf   = "--pdf",
-			})
-		end)
+	     expect.equal(dir_prefix, "/dir/prefix/")
+	     expect.equal(name_prefix, "file")
+	     expect.equal(code_md5sum, "1234567890abcdef1234567890abcdef")
+	     expect.equal(context_md5sum, "1234567890abcdef1234567890abcdef")
 	end)
 
-	describe("normalize_pdf", function()
-		it("should replace .tex extension with .pdf", function()
-			local input = "document.tex"
-			local expected = "document.pdf"
-			local result = extract.normalize_pdf(input)
-			expect.equal(result, expected)
-		end)
-
-		it("should add .pdf to files with no extension", function()
-			local input = "document"
-			local expected = "document.pdf"
-			local result = extract.normalize_pdf(input)
-			expect.equal(result, expected)
-		end)
-
-		it("should add .pdf to files with non-matching extensions", function()
-			local input = "document.unknown"
-			local expected = "document.unknown.pdf"
-			local result = extract.normalize_pdf(input)
-			expect.equal(result, expected)
-		end)
-
-		it("should not change files that already have a .pdf extension", function()
-			local input = "document.pdf"
-			local expected = "document.pdf"
-			local result = extract.normalize_pdf(input)
-			expect.equal(result, expected)
-		end)
-
-		it("should handle file paths with directories for .tex files", function()
-			local input = "/path/to/document.tex"
-			local expected = "/path/to/document.pdf"
-			local result = extract.normalize_pdf(input)
-			expect.equal(result, expected)
-		end)
-
-		it("should handle file paths with directories for files without extensions", function()
-			local input = "/path/to/document"
-			local expected = "/path/to/document.pdf"
-			local result = extract.normalize_pdf(input)
-			expect.equal(result, expected)
-		end)
-
-		it("should handle file paths with directories for non-matching extensions", function()
-			local input = "/path/to/document.unknown"
-			local expected = "/path/to/document.unknown.pdf"
-			local result = extract.normalize_pdf(input)
-			expect.equal(result, expected)
-		end)
-
-		it("should handle file paths with directories for .pdf files", function()
-			local input = "/path/to/document.pdf"
-			local expected = "/path/to/document.pdf"
-			local result = extract.normalize_pdf(input)
-			expect.equal(result, expected)
-		end)
-
-		it("should handle files with multiple dots correctly", function()
-			local input = "my.file.name.tex"
-			local expected = "my.file.name.pdf"
-			local result = extract.normalize_pdf(input)
-			expect.equal(result, expected)
-		end)
-
-		it("should handle files with multiple dots and non-matching extensions", function()
-			local input = "my.file.name.unknown"
-			local expected = "my.file.name.unknown.pdf"
-			local result = extract.normalize_pdf(input)
-			expect.equal(result, expected)
-		end)
+	-- Test invalid paths
+	it("should fail for invalid paths", function()
+	     local path = "/dir/prefix/file1234567890abcdef1234567890abcdef-1234567890abcdef1234567890abcdef-invalid.pdf"
+	     expect.fail(function() local dir_prefix, name_prefix, code_md5sum, context_md5sum = extract.split_extern_path(path) end)
 	end)
 
-	describe("pathlib library", function()
-		describe("sanitize_path", function()
-			it("raises an error for paths with invalid characters", function()
-				local input = "valid/path\0/with\tinvalid"
-
-				local p, err = extract.pathlib.sanitize_path(input)
-
-				expect.not_exist(p)
-				expect.equal(err, "Path contains invalid characters: valid/path\000/with\tinvalid")
-			end)
-
-			it("handles valid paths without errors", function()
-				local input = "valid/path/without/invalid"
-				expect.not_fail(function() extract.pathlib.sanitize_path(input) end)
-			end)
-		end)
-
-		describe("sanitize_name", function()
-			it("raises an error for names with invalid characters", function()
-				local input = "invalid/name\0\\with\tchars"
-
-				local n, err = extract.pathlib.sanitize_name(input)
-
-				expect.not_exist(n)
-				expect.equal(err, "File has an invalid name: invalid/name\0\\with\tchars")
-			end)
-
-			it("handles valid names without errors", function()
-				local input = "valid_name"
-				expect.not_fail(function() extract.pathlib.sanitize_name(input) end)
-			end)
-		end)
-
-		describe("sanitize_suffix", function()
-			it("raises an error for suffixes with invalid characters", function()
-				local input = "..\0suffix"
-
-				local s, err = extract.pathlib.sanitize_suffix(input)
-
-				expect.not_exist(s)
-				expect.equal(err, "Suffix contains invalid characters: ..\0suffix")
-			end)
-
-			it("handles valid suffixes without errors", function()
-				local input = "validsuffix"
-				expect.not_fail(function() extract.pathlib.sanitize_suffix(input) end)
-			end)
-		end)
-
-		describe("name", function()
-			it("extracts the name from a valid path", function()
-				local input = "/path/to/file.txt"
-				local expected_name = "file.txt"
-				local expected_remainder = "/path/to"
-				local name, remainder = extract.pathlib.name(input)
-				expect.equal(name, expected_name)
-				expect.equal(remainder, expected_remainder)
-			end)
-
-			it("raises an error for invalid paths", function()
-				local input = "/path/with\0invalid"
-
-				local n, err = extract.pathlib.name(input)
-
-				expect.not_exist(n)
-				expect.equal(err, "Path contains invalid characters: /path/with\0invalid")
-			end)
-		end)
-
-		describe("with_name", function()
-			it("replaces the name in a valid path", function()
-				local path = "/path/to/file.txt"
-				local new_name = "newfile.txt"
-				local expected = "/path/to/newfile.txt"
-				local result = extract.pathlib.with_name(path, new_name)
-				expect.equal(result, expected)
-			end)
-
-			it("raises an error for invalid names", function()
-				local path = "/path/to/file.txt"
-				local new_name = "invalid\0name"
-
-				local p, err = extract.pathlib.with_name(path, new_name)
-				expect.not_exist(p)
-				expect.equal(err, "File has an invalid name: invalid\0name")
-			end)
-		end)
-
-		describe("suffix", function()
-			it("extracts the suffix from a valid path", function()
-				local input = "file.tar.gz"
-				local expected_suffix = "gz"
-				local expected_remainder = "file.tar"
-				local suffix, remainder = extract.pathlib.suffix(input)
-				expect.equal(suffix, expected_suffix)
-				expect.equal(remainder, expected_remainder)
-			end)
-
-			it("raises an error for invalid paths", function()
-				local input = "file\0invalid.txt"
-
-				local s, err = extract.pathlib.suffix(input)
-
-				expect.not_exist(s)
-				expect.equal(err, "Path contains invalid characters: file\0invalid.txt")
-			end)
-		end)
-
-		describe("with_suffix", function()
-			it("replaces the suffix in a valid path", function()
-				local path = "file.txt"
-				local new_suffix = "md"
-				local expected = "file.md"
-				local result = extract.pathlib.with_suffix(path, new_suffix)
-				expect.equal(result, expected)
-			end)
-
-			it("raises an error for invalid suffixes", function()
-				local path = "file.txt"
-				local new_suffix = "\0invalid"
-
-				local p, err = extract.pathlib.with_suffix(path, new_suffix)
-
-				expect.not_exist(p)
-				expect.equal(err, "Suffix contains invalid characters: \0invalid")
-			end)
-		end)
-
-		describe("join", function()
-			it("joins two valid paths", function()
-				local result, err = extract.pathlib.join("/media", "memoize")
-
-				expect.not_exist(err)
-				expect.equal(result, "/media/memoize")
-			end)
-
-			it("joins multiple valid paths", function()
-				local result, err = extract.pathlib.join("/media", "memoize", "testing", "assets")
-
-				expect.not_exist(err)
-				expect.equal(result, "/media/memoize/testing/assets")
-			end)
-
-			it("no duplicated pathsep", function()
-				local result, err = extract.pathlib.join("/media/", "memoize", "/testing", "assets")
-
-				expect.not_exist(err)
-				expect.equal(result, "/media/memoize/testing/assets")
-			end)
-
-			it("works with no path", function()
-				local result, err = extract.pathlib.join()
-
-				expect.not_exist(err)
-				expect.equal(result, "")
-			end)
-
-			it("aborts with invalid path (1)", function()
-				local result, err = extract.pathlib.join("/me\0dia", "memoize", "testing", "assets")
-
-				expect.not_exist(result)
-				expect.equal(err,  "Path contains invalid characters: /me\0dia")
-			end)
-			it("aborts with invalid path (2)", function()
-				local result, err = extract.pathlib.join("/media", "memoize", "testing", "ass\0ets")
-
-				expect.not_exist(result)
-				expect.equal(err, "Path contains invalid characters: ass\000ets")
-			end)
-		end)
-
-		describe("iter_path", function()
-			it("absolute unix", function()
-				local should = {"/one", "/one/deep", "/one/deep/dir"}
-				for c in extract.pathlib.iter_path("/one/deep/dir") do
-					expect.equal(c, should[1])
-					table.remove(should, 1)
-				end
-			end)
-			it("relative unix", function()
-				local should = {"one", "one/shallow", "one/shallow/dir"}
-				for c in extract.pathlib.iter_path("one/shallow/dir") do
-					expect.equal(c, should[1])
-					table.remove(should, 1)
-				end
-			end)
-			-- TODO general issue with unittests with windows (mixed OS)
-			-- it("absolute windows", function()
-			-- 	local should = {"C:/one", "C:/one/deep", "C:/one/deep/dir"}
-			-- 	for c in extract.pathlib.iter_path("C:\\one\\deep\\dir") do
-			-- 		expect.equal(c, should[1])
-			-- 		table.remove(should, 1)
-			-- 	end
-			-- end)
-			-- it("relative windows", function()
-			-- 	local should = {"one", "one/shallow", "one/shallow/dir"}
-			-- 	for c in extract.pathlib.iter_path("one\\shallow\\dir") do
-			-- 		expect.equal(c, should[1])
-			-- 		table.remove(should, 1)
-			-- 	end
-			-- end)
-		end)
+	it("should fail for paths with missing code_md5sum", function()
+	     local path = "/dir/prefix/file-no-md5sum-1234567890abcdef1234567890abcdef.pdf"
+	     expect.fail(function() local dir_prefix, name_prefix, code_md5sum, context_md5sum = extract.split_extern_path(path) end)
 	end)
 
-	-- in case we need tests working on the filesystem.
-	-- This snippet allows to do this in a temporary directory
-	-- (doesn't sandbox/chroot though)
+	-- Test paths without suffix and multiple hyphens
+	it("should parse a valid path without a suffix", function()
+	     local path = "/dir/prefix/file1234567890abcdef1234567890abcdef-1234567890abcdef1234567890abcdef.pdf"
+	     local dir_prefix, name_prefix, code_md5sum, context_md5sum = extract.split_extern_path(path)
 
-	-- describe("xyz", function()
-	-- 	local tmp_dir = ""
-	-- 	local original_dir = ""
+	     expect.equal(dir_prefix, "/dir/prefix/")
+	     expect.equal(name_prefix, "file")
+	     expect.equal(code_md5sum, "1234567890abcdef1234567890abcdef")
+	     expect.equal(context_md5sum, "1234567890abcdef1234567890abcdef")
+	end)
+
+	-- Test paths with no context_md5sum
+	it("should fail for paths missing context_md5sum", function()
+	     local path = "/dir/prefix/file1234567890abcdef1234567890abcdef-.pdf"
+	     expect.fail(function() local dir_prefix, name_prefix, code_md5sum, context_md5sum = extract.split_extern_path(path) end)
+	end)
+
+	-- Test edge cases
+	it("should fail for an empty path", function()
+	     local path = ""
+	     expect.fail(function() local dir_prefix, name_prefix, code_md5sum, context_md5sum = extract.split_extern_path(path) end)
+	end)
+
+	it("should return nil for path with only one part", function()
+	     local path = "1234567890abcdef1234567890abcdef-1234567890abcdef1234567890abcdef.pdf"
+	     local dir_prefix, name_prefix, code_md5sum, context_md5sum = extract.split_extern_path(path)
+
+	     expect.equal(dir_prefix, "")
+	     expect.equal(name_prefix, "")
+	     expect.equal(code_md5sum, "1234567890abcdef1234567890abcdef")
+	     expect.equal(context_md5sum, "1234567890abcdef1234567890abcdef")
+	end)
+    end)
+
+    describe(
+      "parse_args",
+      function()
+
+	local parser = extract.argparse.argument_parser(extract.memoize_extract_argspec)
+	extract.parse_args = function(args) return parser:parse_args(args) end
+
+	it("should parse valid arguments", function()
+	     local args = extract.parse_args({"-F", "latex", "pdf"})
+	     expect.equal(args, { format = "latex", pdf    = "pdf",})
+	end)
+
+	it("should raise an error for invalid format", function()
+	     expect.fail(function()
+		 extract.parse_args({"-F", "invalidformat", "pdf"},0)
+	     end)
+	end)
+
+	it("should handle multiple flags correctly", function()
+	     local args = extract.parse_args({"-p", "-k", "-q", "pdf"}, defaults)
+	     expect.equal(args, {
+			    quiet = true,
+			    prune = true,
+			    keep  = true,
+			    pdf   = "pdf",
+	     })
+	end)
+
+	it("should handle long argument names correctly", function()
+	     local args = extract.parse_args({"--prune", "--quiet", "pdf"}, defaults)
+	     expect.equal(args, {
+			    quiet = true,
+			    prune = true,
+			    pdf   = "pdf",
+	     })
+	end)
+
+	it("should assign the last argument to pdf", function()
+	     local args = extract.parse_args({"-F", "latex", "final.pdf"}, defaults)
+	     expect.equal(args, {
+			    format = "latex",
+			    pdf = "final.pdf",
+	     })
+	end)
+
+	it("should fail if no pdf is given", function()
+	     expect.fail(function()
+		 extract.parse_args({"-F", "latex", "-p"}, defaults)
+	     end)
+	end)
+
+	-- -h and -V are difficult to test because they use upvalue parser
+	--it("should exit successfully and print help for '-h'", function()
+	--     expect.fail(function()
+	--	 extract.parse_args({"-h"})
+	--     end, "exited with succ")
+	--end)
 	--
-	-- 	before(function()
-	-- 		-- Save the current working directory
-	-- 		original_dir = assert(lfs.currentdir())
+	--it("should exit successfully and print version for '-V'", function()
+	--     local defaults = {}
 	--
-	-- 		-- Create a unique temporary directory
-	-- 		tmp_dir = os.tmpname()
-	-- 		os.remove(tmp_dir) -- Remove the temp file placeholder
-	-- 		lfs.mkdir(tmp_dir)
-	--
-	-- 		-- Change to the temporary directory
-	-- 		lfs.chdir(tmp_dir)
-	-- 	end)
-	--
-	-- 	after(function()
-	-- 		-- Change back to the original working directory
-	-- 		lfs.chdir(original_dir)
-	--
-	-- 		-- Cleanup: Remove the temporary directory and its contents
-	-- 		local function rmdir(path)
-	-- 			for file in lfs.dir(path) do
-	-- 				if file ~= "." and file ~= ".." then
-	-- 					-- TODO only works on unix due to the pathsep
-	-- 					local fullpath = path .. "/" .. file
-	-- 					local attr = lfs.attributes(fullpath)
-	-- 					if attr and attr.mode == "directory" then
-	-- 						rmdir(fullpath)
-	-- 					else
-	-- 						os.remove(fullpath)
-	-- 					end
-	-- 				end
-	-- 			end
-	-- 			lfs.rmdir(path)
-	-- 		end
-	-- 		rmdir(tmp_dir)
-	-- 	end)
-	--
-	-- 	it("xyz", function()
-	-- 	end)
-	-- end)
+	--     expect.fail(function()
+	--	 extract.parse_args({"-V"})
+	--     end, "exited with succ")
+	--end)
+
+	it("should handle no flags and return defaults", function()
+	     local args = extract.parse_args({"pdf"})
+	     expect.equal(args, {
+			    pdf   = "pdf",
+	     })
+	end)
+
+	it("should fail with no arguments", function()
+	     expect.fail(function()extract.parse_args({})end)
+	end)
+
+	it("should raise an error for an unrecognized argument", function()
+	     expect.fail(function()extract.parse_args({"-z", "pdf"})end)
+	end)
+
+	it("nothing flag-like is allowed for the positional", function()
+	     expect.fail(function()extract.parse_args({"-F", "latex", "--pdf"})end)
+	end)
+
+	it("uses -- as separator for the positionals", function()
+	     local args = extract.parse_args({"-F", "latex", "--", "--pdf"})
+	     expect.equal(args, {
+			    format   = "latex",
+			    pdf   = "--pdf",
+	     })
+	end)
+    end)
+
+    if false then describe(
+      "normalize_pdf",
+      function()
+	it("should replace .tex extension with .pdf", function()
+	     local input = "document.tex"
+	     local expected = "document.pdf"
+	     local result = extract.normalize_pdf(input)
+	     expect.equal(result, expected)
+	end)
+
+	it("should add .pdf to files with no extension", function()
+	     local input = "document"
+	     local expected = "document.pdf"
+	     local result = extract.normalize_pdf(input)
+	     expect.equal(result, expected)
+	end)
+
+	it("should add .pdf to files with non-matching extensions", function()
+	     local input = "document.unknown"
+	     local expected = "document.unknown.pdf"
+	     local result = extract.normalize_pdf(input)
+	     expect.equal(result, expected)
+	end)
+
+	it("should not change files that already have a .pdf extension", function()
+	     local input = "document.pdf"
+	     local expected = "document.pdf"
+	     local result = extract.normalize_pdf(input)
+	     expect.equal(result, expected)
+	end)
+
+	it("should handle file paths with directories for .tex files", function()
+	     local input = "/path/to/document.tex"
+	     local expected = "/path/to/document.pdf"
+	     local result = extract.normalize_pdf(input)
+	     expect.equal(result, expected)
+	end)
+
+	it("should handle file paths with directories for files without extensions", function()
+	     local input = "/path/to/document"
+	     local expected = "/path/to/document.pdf"
+	     local result = extract.normalize_pdf(input)
+	     expect.equal(result, expected)
+	end)
+
+	it("should handle file paths with directories for non-matching extensions", function()
+	     local input = "/path/to/document.unknown"
+	     local expected = "/path/to/document.unknown.pdf"
+	     local result = extract.normalize_pdf(input)
+	     expect.equal(result, expected)
+	end)
+
+	it("should handle file paths with directories for .pdf files", function()
+	     local input = "/path/to/document.pdf"
+	     local expected = "/path/to/document.pdf"
+	     local result = extract.normalize_pdf(input)
+	     expect.equal(result, expected)
+	end)
+
+	it("should handle files with multiple dots correctly", function()
+	     local input = "my.file.name.tex"
+	     local expected = "my.file.name.pdf"
+	     local result = extract.normalize_pdf(input)
+	     expect.equal(result, expected)
+	end)
+
+	it("should handle files with multiple dots and non-matching extensions", function()
+	     local input = "my.file.name.unknown"
+	     local expected = "my.file.name.unknown.pdf"
+	     local result = extract.normalize_pdf(input)
+	     expect.equal(result, expected)
+	end)
+    end) end
+
+    describe(
+      "pathlib library",
+      function()
+	describe(
+	  "join",
+	  function()
+	    it("joins two valid paths", function()
+		 local result, err = extract.pathlib.join("/media", "memoize")
+
+		 expect.not_exist(err)
+		 expect.equal(result, "/media/memoize")
+	    end)
+
+	    it("joins multiple valid paths", function()
+		 local result, err = extract.pathlib.join("/media", "memoize", "testing", "assets")
+
+		 expect.not_exist(err)
+		 expect.equal(result, "/media/memoize/testing/assets")
+	    end)
+
+	    it("no duplicated pathsep", function()
+		 local result, err = extract.pathlib.join("/media/", "memoize", "/testing", "assets")
+
+		 expect.not_exist(err)
+		 expect.equal(result, "/media/memoize/testing/assets")
+	    end)
+
+	    it("throws an error if no path is given", function()
+		 expect.fail(function() extract.pathlib.join() end)
+	    end)
+
+	end)
+
+    end)
 end)
+
+-- Local Variables:
+-- lua-indent-level: 2
+-- End:
