@@ -69,6 +69,7 @@ local kpse = {
 }
 local lfs = {
     attributes = lfs.attributes, ---@diagnostic disable-line
+    isfile = lfs.isfile,         ---@diagnostic disable-line
 }
 local os = {
     exit = os.exit,
@@ -284,6 +285,7 @@ end
 ---@vararg string
 ---@return string
 function pathlib.join(...)
+    assert((...), "No path was given")
     return (file.join(...):gsub('[/\\]+', '/'))
 end
 
@@ -313,21 +315,15 @@ end
 kpse.set_program_name("texlua", "memoize-extract.lua")
 
 ---@param fn string
-local function paranoia_in(fn)
-    if type(fn) ~= 'string' then
-        error(("A value of type '%s' was passed to paranoia_in"):format(type(fn)), 2)
-    end
+local function check_name_in(fn)
     if not kpse.in_name_ok_silent_extended(fn) then
-	error(("I'm not allowed to read from '%s' (openin_any = {%s})")
-	    :format(fn, kpse.var_value('openin_any')))
+        error(("I'm not allowed to read from '%s' (openin_any = {%s})")
+            :format(fn, kpse.var_value('openin_any')))
     end
 end
 
 ---@param fn string
-local function paranoia_out(fn)
-    if type(fn) ~= 'string' then
-        error(("A value of type '%s' was passed to paranoia_out"):format(type(fn)), 2)
-    end
+local function check_name_out(fn)
     if not kpse.out_name_ok_silent_extended(fn) then
 	error(("I'm not allowed to write to '%s' (openout_any = {%s})")
 	    :format(fn, kpse.var_value('openout_any')))
@@ -349,7 +345,7 @@ do
         function os_access(fn, mode)
         local permissions = lfs.attributes(fn, "permissions")
         local offset = rwx_offsets[mode]
-        return permissions:sub(offset, 1) == mode
+        return permissions:sub(offset, offset) == mode
         end
 
     else
@@ -381,16 +377,20 @@ do
 	    if not attrs then return false end
 	    local ugo_offset = my_euid == attrs.uid and 1
 		or (my_egid == attrs.gid and 4 or 7)
-	    local rwx_offset = rwx_offsets[mode]
-	    return attrs.permissions:sub(ugo_offset + rwx_offset, 1) == mode
+            local rwx_offset = rwx_offsets[mode]
+	    local offset = ugo_offset + rwx_offset
+	    return attrs.permissions:sub(offset, offset) == mode
         end
     end
 end
 
 ---@param fn string
----@return boolean
-local function access_in(fn)
-    return os_access(fn, 'r')
+---@param mode string?
+local function check_access_in(fn, mode)
+    assert(io.exists(fn), ("File '%s' does not exist"):format(fn))
+    assert(os_access(fn, 'r'), ("File '%s' is not readable"):format(fn))
+    assert(not mode or lfs.attributes(fn, 'mode') == mode,
+	   ("'%s' exists but is not a %s"):format(fn, mode))
 end
 
 --This function can fail on Windows, reporting a non-writable file or dir as
@@ -399,24 +399,24 @@ end
 --output directory instead of switching to the temporary directory.
 
 ---@param fn string
----@return boolean
-local function access_out(fn)
-	local success, exists = pcall(io.exists, fn)
-	-- Presumably, we do not succeed when the parent directory is not executable.
-	if success then
-		if exists then
-			--An existing file should be writable, and if it's a directory, it
-			--should also be executable.
-			return os_access(fn, 'w') and (not pathlib.is_dir(fn) or os_access(fn, 'x'))
-		else
-			--For a non-existing file, the parent directory should be writable.
-			--(This is the only place where function |pathlib.parent| is used,
-			--so it's ok that it returns the logical parent.)
-			return os_access(fn, 'w')
-		end
-	else
-		return false
-	end
+---@param mode string?
+local function check_access_out(fn, mode)
+    if io.exists(fn) then
+	--An existing file should be writable, and if it's a directory, it
+	--should also be executable.
+	assert(os_access(fn, 'w'),
+	       ("File '%s' is not writable"):format(fn))
+	assert(not mode or lfs.attributes(fn, 'mode') == mode,
+	       ("'%s' exists but is not a %s"):format(fn, mode))
+	assert(not pathlib.is_dir(fn) or os_access(fn, 'x'),
+	       ("Directory '%s' is not executable"):format(fn))
+    else
+	--For a non-existing file, the parent directory should be writable.
+	--(This is the only place where function |pathlib.parent| is used,
+	--so it's ok that it returns the logical parent.)
+	assert(os_access(file.dirname(fn), 'w'),
+	       ("Cannot create '%s' in a non-writable directory"):format(fn))
+    end
 end
 
 local find_in, find_out
@@ -468,7 +468,7 @@ do
 		texmfoutput and pathlib.join(texmfoutput, fn),
             }
         ) do
-            if df and access_in(df) then return df end
+            if df and pcall(check_access_in, df) then return df end
         end
 	return fn
     end
@@ -493,7 +493,7 @@ do
 		texmfoutput and pathlib.join(texmfoutput, fn),
             }
         ) do
-            if df and access_out(df) then return df end
+            if df and pcall(check_access_out, df) then return df end
         end
 	return texmf_output_directory and pathlib.join(texmf_output_directory, fn) or fn
     end
@@ -504,7 +504,8 @@ end
 ---@param folder string
 local function mkdir(folder)
     folder = find_out(folder)
-    paranoia_out(folder)
+    check_name_out(folder)
+    check_access_out(folder)
     if io.exists(folder) then
 	local attr = lfs.attributes(folder)
 	if attr.mode ~= 'directory' then
@@ -642,7 +643,8 @@ local function main(args)
     logging.header = args.format and script_name .. ': ' or ''
     if args.format then
         local log_fn = find_out(file.replacesuffix(args.pdf, "mmz.log"))
-        paranoia_out(log_fn)
+        check_name_out(log_fn)
+        check_access_out(log_fn)
         logging:info(("Logging to '%s'"):format(log_fn))
 	logging:open(log_fn)
     end
@@ -653,19 +655,26 @@ local function main(args)
 
     --Find the PDF file and check whether (a) we may read from it, and (b) we
     --may write to it, if --prune was given or --keep was not given.
-    local pdf_fn = try_error(
-	("Cannot find input PDF file '%s'"):format(args.pdf),
-	find_in, args.pdf
+    local pdf_fn
+    try_error(
+	("Cannot open the PDF: %%s"):format(args.pdf),
+	function()
+	    pdf_fn = find_in(args.pdf)
+	    check_name_in(pdf_fn)
+	    check_access_in(pdf_fn)
+	end
     )
-    paranoia_in(pdf_fn)
     if args.prune or not args.keep then
 	try_error(
-	    ("I would have to write to '%s' because %s%s%s")
+	    ("Cannot open the PDF for writing: %%s. I would have to write to '%s' because %s%s%s")
             :format(pdf_fn,
 		    args.prune and 'option --prune/-p was given' or '',
 		    args.prune and not args.keep and ' and ' or '',
-		    not args.keep and 'option --keep/-k was not given'),
-	    paranoia_out, pdf_fn
+                not args.keep and 'option --keep/-k was not given'),
+	    function()
+		check_name_out(pdf_fn)
+		check_access_out(pdf_fn)
+	    end
 	)
     end
 
@@ -740,28 +749,37 @@ local function main(args)
 		       ("Extern filename '%s' does not start with the expected prefix '%s'")
 		       :format(extern_path, current_prefix))
 
-                -- Check whether c-memo and cc-memo exist (in any input directory).
-                local c_memo_file = find_in(
-                    file.join(file.dirname(extern_path),
-			      name_prefix .. code_md5sum .. ".memo"))
-                local cc_memo_file = find_in(
-                    file.join(file.dirname(extern_path),
-			      name_prefix .. code_md5sum
-			      .. "-" .. context_md5sum .. ".memo"))
+                -- Check whether the c-memo and the cc-memo are accessible.
 		if not args.force then
-		    local access_c = access_in(c_memo_file)
-		    local access_cc = access_in(cc_memo_file)
-		    assert(access_c and access_cc,
-			   ("I refuse to extract this page into extern '%s', \z
-                             because the associated %s%s%s do%s not exist")
-			   :format(extern_path,
-				   not access_c and "c-memo" or '',
-				   not access_c and not access_cc and ' and ' or '',
-				   not access_cc and "cc-memo" or '',
-				   not access_c and not access_cc and '' or 'es'))
+		    local c_memo_file = find_in(
+			file.join(file.dirname(extern_path),
+				  name_prefix .. code_md5sum .. ".memo"))
+		    reraise(("I refuse to extract this page into extern '%s', \z
+                              because the associated c-memo is not accessible: %%s")
+			:format(extern_path),
+			function()
+			    check_name_in(c_memo_file)
+			    check_access_in(c_memo_file)
+			end
+		    )
+
+		    local cc_memo_file = find_in(
+			file.join(file.dirname(extern_path),
+				  name_prefix .. code_md5sum
+			      .. "-" .. context_md5sum .. ".memo"))
+		    reraise(("I refuse to extract this page into extern '%s', \z
+                              because the associated cc-memo is not accessible: %%s")
+			:format(extern_path),
+			function()
+			    check_name_out(cc_memo_file)
+			    check_access_out(cc_memo_file)
+			end
+		    )
                 end
 
                 local extern_file_out = find_out(extern_path)
+		check_name_out(extern_file_out)
+		check_access_out(extern_file_out)
 
                 if args.force or not item.MMIZ_Extracted then
 		    reraise(
