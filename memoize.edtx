@@ -2455,7 +2455,10 @@
   % Use the extern box, with the precise size as remembered at memoization.
   \wd\mmz@box=#3\relax
   \ht\mmz@box=#4\relax
+  % For LaTeX, we use the tagging sockets, which have noop plugs by default.
+%<latex>    \UseTaggingSocket{memoize/include/extern/before}{#3}{#4}{#5}%
   \mmz@typeset@box\mmz@box
+%<latex>    \UseTaggingSocket{memoize/include/extern/after}%
   % Record that we have used this extern.
   \pgfkeysalso{/mmz/record/used extern={\mmz@extern@path}}%
 }
@@ -4149,6 +4152,23 @@
   auto=\citefield{cite, args=l*mlm},
 }
 %</biblatex>
+% 
+% \subsection{Tagging}
+% \label{sec:code:tagsupport}
+%
+%<*latex>
+\input{memoize-tagsupport-code.tex}%
+%</latex>
+% 
+%<*tagsupport>
+% New sockets: \texttt{noop} plugs are created by default.
+% So users must do something else to actually get support for tagging,
+% but this is much easier to do with the sockets in the right places.
+% Otherwise it is difficult (impossible?) to wrap the tagging markup
+% correctly around the included extern.
+\NewTaggingSocket {memoize/include/extern/before} {3}
+\NewTaggingSocket {memoize/include/extern/after} {0}
+%</tagsupport>
 %<*mmz>
 %
 %
