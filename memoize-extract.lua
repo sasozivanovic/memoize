@@ -1118,9 +1118,9 @@ local function main(args)
 		if doc:update() == 0 then
 			logging:info("No changes to the PDF were made")
 		elseif args.prune then
-			logging:info("The extraced extern pages were removed from the PDF")
+			logging:info("The extracted extern pages were removed from the PDF")
 		elseif not args.keep then
-			logging:info("The extraced extern pages were marked as extracted in the PDF")
+			logging:info("The extracted extern pages were marked as extracted in the PDF")
 		end
 	end
 
