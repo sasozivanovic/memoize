@@ -155,5 +155,11 @@ uninstall-all-runtimes: uninstall-runtimes
 	$(MAKE) -f Makefile.advice uninstall-runtimes
 	$(MAKE) -f Makefile.collargs uninstall-runtimes
 
+test-venv:
+	rm -rf testing/venv
+	cd testing && python -m venv venv
+	testing/venv/bin/pip install --upgrade pip
+	testing/venv/bin/pip install -r testing/requirements.txt
+
 test:
-	cd testing && ./MakeTests.py
+	cd testing && source venv/bin/activate && ./MakeTests.py
