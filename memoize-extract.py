@@ -501,7 +501,7 @@ if __name__ == '__main__':
                     page = pdf.pages[page_n]
                     expected_width_pt = float(m_ne['expected_width'])
                     expected_height_pt = float(m_ne['expected_height'])
-                    mb = page['/MediaBox']
+                    mb = page.inheritable['/MediaBox']
                     width_bp = float(mb[2]) - float(mb[0])
                     height_bp = float(mb[3]) - float(mb[1])
                     width_pt = width_bp / 72 * 72.27
