@@ -76,10 +76,10 @@
 %   sequence as the (unbraced) |#1|; |#2| is the text to append.
 \ifdefined\luatexversion
 \else
-  \def\toksapp{\toks@cs@or@num\@toksapp}
-  \def\gtoksapp{\toks@cs@or@num\@gtoksapp}
-  \def\etoksapp{\toks@cs@or@num\@etoksapp}
-  \def\xtoksapp{\toks@cs@or@num\@xtoksapp}
+  \protected\def\toksapp{\toks@cs@or@num\@toksapp}
+  \protected\def\gtoksapp{\toks@cs@or@num\@gtoksapp}
+  \protected\def\etoksapp{\toks@cs@or@num\@etoksapp}
+  \protected\def\xtoksapp{\toks@cs@or@num\@xtoksapp}
   \def\toks@cs@or@num#1#2#{%
     % Test whether |#2| (the original |#1|) is a number or a control sequence.
     \ifnum-2>-1#2
