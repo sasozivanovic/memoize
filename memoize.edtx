@@ -210,17 +210,26 @@
 %</context>
 % Take care of some further differences between the engines.
 \ifdef\pdftexversion{%
+  % This macro expands to the reference to the PDF page object for page number
+  % |#1|.  It is used in |\mmz@shipout@extern|.
+  \def\mmz@pageref#1{\pdfpageref#1 \space 0 R}%
 }{%
   \def\pdfhorigin{1true in}%
   \def\pdfvorigin{1true in}%
   \ifdef\XeTeXversion{%
     \let\quitvmode\leavevmode
+    \protected\def\pdfcatalog#1{\special{pdf:put @catalog <<#1>>}}%
+    \def\mmz@pageref#1{@page#1}%
   }{%
     \ifdef\luatexversion{%
       \let\pdfpagewidth\pagewidth
       \let\pdfpageheight\pageheight
       \def\pdfmajorversion{\pdfvariable majorversion}%
       \def\pdfminorversion{\pdfvariable minorversion}%
+      \protected\def\pdfobj{\pdfextension obj }%
+      \def\pdflastobj{\numexpr\pdffeedback lastobj\relax}%
+      \protected\def\pdfcatalog{\pdfextension catalog }%
+      \def\mmz@pageref#1{\pdffeedback pageref #1 \space 0 R}%
     }{%
       \PackageError{memoize}{Support for this TeX engine is not implemented}{}%
     }%
@@ -398,10 +407,10 @@
 %   The user primarily interacts with Memoize through the |pgfkeys|-based
 %   configuration macro |\mmzset|, which executes keys in path |/mmz|.  In
 %   |nomemoize| and |memoizable|, is exists as a no-op.
-\def\mmzset#1{\pgfqkeys{/mmz}{#1}\ignorespaces}
+\long\def\mmzset#1{\pgfqkeys{/mmz}{#1}\ignorespaces}
 %</mmz>
 %<*nommz,mmzable&generic>
-\def\mmzset#1{\ignorespaces}
+\long\def\mmzset#1{\ignorespaces}
 %</nommz,mmzable&generic>
 % \end{macro}
 %
@@ -669,7 +678,7 @@
     % was wrong, so we will use option |\collargsFixFromNoVerbatim| to ask
     % CollArgs to fix the situation.  (|\mmz@verbatim@fix| will only be used in
     % the verbatim mode.)
-    \def\mmz@verbatim@fix{\noexpand\collargsFixFromNoVerbatim}%
+    \def\mmz@verbatim@fix{\collargsFixFromNoVerbatim}%
     % No optional argument, so we can skip |\mmz@ii|.
     \expandafter\mmz@iii
   \fi
@@ -698,14 +707,19 @@
 % verbatim mode triggering raw option was put in |\mmzRawCollectorOptions| by
 % key |verb(atim)|.  The macro also |\mmz@verbatim@fix| contains the potential
 % request for a category code fix (\S\ref{sec:code:collargs:fix}).
-\def\mmz@do@verbatim#1{%
+\def\mmz@do@verbatim{%
   \expanded{%
     \noexpand\CollectArgumentsRaw{%
-      \noexpand\collargsCaller{\noexpand\mmz}%
       \expandonce\mmzRawCollectorOptions
-      \mmz@verbatim@fix
+      \expandonce\mmz@verbatim@fix
+      \unexpanded{%
+        \collargsCaller{\mmz}%
+        \collargsNoDelimiterstrue
+        \collargsNoSpacestrue
+        \collargsAppendPreprocessor{\global\collargsArgs{}}%
+      }%
     }%
-  }{+m}\mmz@do
+  }{v}\mmz@do
 }
 % \end{macro}
 % 
@@ -901,10 +915,21 @@
 % argument, but only up to the first newline character, effectively losing most
 % of the tokens.  (We need to manually save and restore |\newlinechar| because
 % we don't want to execute the memoized code in yet another group.)
+% 
+% |\unskip| is there (for hbox capture in verbatim mode) to remove the space
+% token resulting from the final newline, which eventually turned into typeset
+% space.  The previous approach was to add |\endinput| after |#1|, but
+% environment |Verbatim| of package Fancyvrb choked on this |\endinput|.  Note
+% that we cannot set |\endlinechar=-1| because we need the rest of the
+% newlines.  Now, the idea is to remove the resulting typeset space with
+% |\unskip|, limited to horizontal mode capture.  This should work because the
+% memoized stuff is boxed, and therefore cannot produce any visible horizontal
+% space.
 \long\def\mmz@scantokens#1{%
   \expanded{%
     \newlinechar=13
-    \unexpanded{\scantokens{#1\endinput}}%
+    \unexpanded{\scantokens{#1}}%
+    \ifhmode\unskip\fi
     \newlinechar=\the\newlinechar
   }%
 }
@@ -1106,11 +1131,16 @@
   \global\mmzContextExtra{}%
   \gdef\mmzAtEndMemoizationExtra{}%
   \gdef\mmzAfterMemoizationExtra{}%
+  \gdef\mmzMemoizedCodeSuffixExtra{}%
   \mmz@lua@atbeginmemoization
   % Execute the pre-memoization hook, the memoized code (wrapped in the
   % driver), and the post-memoization hook.
   \mmzAtBeginMemoization
-  \mmzDriver{\the\mmz@exec@source}%
+  \mmzDriver{%
+    \mmzMemoizedCodePrefix
+    \the\mmz@exec@source
+    \mmzMemoizedCodeSuffix\mmzMemoizedCodeSuffixExtra
+  }%
   \mmzAtEndMemoization
   \mmzAtEndMemoizationExtra
   \mmz@lua@atendmemoization
@@ -1130,6 +1160,7 @@
       % successfully memoized.
       \mmz@trace@endmemoize@aborted
       \PackageInfo{memoize}{Memoization was aborted}%
+      \global\let\mmz@abort@warning\mmz@abort@warning@do
       \mmz@compute@context@mdfivesum
       \mmz@write@cmemo
     \else
@@ -1167,6 +1198,11 @@
 % \begin{macro}{\mmzAbort}
 % Memoized code may execute this macro to abort memoization.
 \def\mmzAbort{\global\mmz@aborttrue}
+\let\mmz@abort@warning\relax
+\def\mmz@abort@warning@do{%
+  \PackageWarning{memoize}{Some memoizations were aborted, you might have to recompile the document}%
+}
+\mmzset{enddocument/afterlastpage/.append code={\mmz@abort@warning}}
 % \end{macro}
 % 
 % \begin{macro}{\ifmmz@abort}
@@ -1207,8 +1243,10 @@
 %     ``extra'' approach and the auto-adapting keys for other options, like
 %     |context|, as well.
 \def\mmzAtBeginMemoization{}
-\def\mmzAtEndMemoization{}
-\def\mmzAfterMemoization{}
+\gdef\mmzAtEndMemoization{}
+\gdef\mmzAfterMemoization{}
+\def\mmzMemoizedCodePrefix{}
+\gdef\mmzMemoizedCodeSuffix{}
 \mmzset{
   at begin memoization/.code={%
     \ifmemoizing
@@ -1231,6 +1269,22 @@
       \expandafter\gappto\expandafter\mmzAfterMemoizationExtra
     \else
       \expandafter\appto\expandafter\mmzAfterMemoization
+    \fi
+    {#1}%
+  },
+  memoized code prefix/.code={%
+    \ifmemoizing
+      \expandafter\@firstofone
+    \else
+      \expandafter\appto\expandafter\mmzMemoizedCodePrefix
+    \fi
+    {#1}%
+  },
+  memoized code suffix/.code={%
+    \ifmemoizing
+      \expandafter\gappto\expandafter\mmzMemoizedCodeSuffixExtra
+    \else
+      \expandafter\appto\expandafter\mmzMemoizedCodeSuffix
     \fi
     {#1}%
   },
@@ -1258,45 +1312,66 @@
 %   produces exactly one extern, and including the extern will be the only
 %   effect of inputting the cc-memo (unless the memoized code contained some
 %   commands, like |\label|, which added extra instructions to the cc-memo.)
-%   The macro (i) adds |\quitvmode| to the cc-memo, if we're capturing into a
-%   horizontal box, and it puts it to the very front, so that it comes before
-%   any |\label| and |\index| replications, guaranteeing (hopefully) that they
-%   refer to the correct page; (ii) takes the code and typesets it in a box
-%   (|\mmz@box|); (iii) submits the box for externalization; (iv) adds the
-%   extern-inclusion code to the cc-memo, and (v) puts the box into the
-%   document (again prefixing it with |\quitvmode| if necessary).  (The listing
-%   region markers help us present this code in the manual.)
+%
+%   The macro (i) takes the code and typesets it in a box (|\mmz@box|) of
+%   appropriate type (|\hbox| or |\vbox|), depending on key |capture|; (ii)
+%   submits the box to externalization; (iii) adds the extern-inclusion code to
+%   the cc-memo, and (iv) puts the box into the document.  The latter is done
+%   by |\mmz@typeset@box|, which (again, respecing |capture|) outsources the
+%   job to user-configurable macros |\mmzTypesetHBox| and |\mmzTypesetVBox|.
+%   (The listing region markers help us present this code in the manual.)
+% 
 %   \begin{listingregion}{single-extern-driver}
 \long\def\mmzSingleExternDriver#1{%
-  \xtoksapp\mmzCCMemo{\mmz@maybe@quitvmode}%
-  \setbox\mmz@box\mmz@capture{#1}%
+  \setbox\mmz@box\mmzCapture{#1}%
   \mmzExternalizeBox\mmz@box\mmz@temptoks
   \xtoksapp\mmzCCMemo{\the\mmz@temptoks}%
-  \mmz@maybe@quitvmode\box\mmz@box
+  \ifhbox\mmz@box\relax
+    \mmzBeforeHBox\relax\box\mmz@box\mmzAfterHBox\relax
+  \else
+    \mmzBeforeVBox\relax\box\mmz@box\mmzAfterVBox\relax
+  \fi
 }
 %   \end{listingregion}
 % \end{macro}
 % 
 % \begin{key}{capture}
-%   The default memoization driver uses |\mmz@capture| and
-%   |\mmz@maybe@quitvmode|, which are set by this key.  |\mmz@maybe@quitvmode|
-%   will be expanded, but for \hologo{XeTeX}, we have defined |\quitvmode| as a
-%   synonym for |\leavevmode|, which is a macro rather than a primitive, so we
-%   have to prevent its expansion in that case.  It is easiest to just add
-%   |\noexpand|, regardless of the engine used.
+%   The choice of |capture| determines the meaning of |\mmzCapture| (either
+%   |\hbox| or |\vbox|), used by the default memoization driver.
 \mmzset{
   capture/.is choice,
-  capture/hbox/.code={%
-    \let\mmz@capture\hbox
-    \def\mmz@maybe@quitvmode{\noexpand\quitvmode}%
-  },
-  capture/vbox/.code={%
-    \let\mmz@capture\vbox
-    \def\mmz@maybe@quitvmode{}%
-  },
+  capture/hbox/.code=\let\mmzCapture\hbox,
+  capture/vbox/.code=\let\mmzCapture\vbox,
   capture=hbox,
-}
 % \end{key}
+% \begin{key}{before hbox, after hbox, before vbox, after vbox, top sep, bottom sep}
+%   \begin{macro}{\mmzBeforeHBox,\mmzAfterHBox,\mmzBeforeVBox,\mmzAfterVBox,\mmzTopSep,\mmzBottomSep}
+%     The default memoization driver wraps the box resulting from memoization
+%     or utilization into either |\mmzTypesetHBox| or |\mmzTypesetVBox|,
+%     depending on |capture|.  (The decision macro |\mmz@typeset@box| tests for
+%     the actual type of the box, but that type ultimately depends on
+%     |capture|.)  The content of these macros is can be set either directly or
+%     through |typeset hbox| and |typeset vbox|.  Furthermore, the default
+%     value of |typeset vbox|, which first of all makes sure that the extern is
+%     typeset in vertical mode, allows for customization of the top and bottom
+%     separation through |top sep| and |bottom sep|.  \indentmacrocode
+  before hbox/.store in=\mmzBeforeHBox,
+  after hbox/.store in=\mmzAfterHBox,
+  before vbox/.store in=\mmzBeforeVBox,
+  after vbox/.store in=\mmzAfterVBox,
+  top sep/.store in=\mmzTopSep,
+  bottom sep/.store in=\mmzBottomSep,
+  % \noindentmacrocode*
+  before hbox=\quitvmode,
+  after hbox=,
+  before vbox=\vskip\glueexpr\mmzTopSep\relax,
+  after vbox=\vskip\glueexpr\mmzBottomSep\noindent,
+  top sep=0pt,
+  bottom sep=0pt,
+}
+%   \end{macro}
+% \end{key}
+% 
 % The memoized code may be memoization-aware; in such a case, we say that the
 % driver is \emph{integrated} into the code.  Code containing an integrated
 % driver must take care to execute it only when memoizing, and not during a
@@ -1892,6 +1967,11 @@
   }%
   % Reset |\mmz@seq| for |\mmzResorce|.
   \global\mmz@seq=0
+  % Remember |[before/after] [h/v]box| because we will close the group.
+  \xdef\mmz@before@this@hbox{\mmzBeforeHBox}%
+  \xdef\mmz@after@this@hbox{\mmzAfterHBox}%
+  \xdef\mmz@before@this@vbox{\mmzBeforeVBox}%
+  \xdef\mmz@after@this@vbox{\mmzAfterVBox}%
   % Input the cc-memo if it exists.
   \IfFileExists{\mmz@ccmemo@path}{%
     \ifmmz@direct@ccmemo@input
@@ -2208,6 +2288,7 @@
 %<context>    -1%
     +\mmzExternPages+\mmzExtraPages
   }%
+  \edef\pageobjref{\mmz@pageref{\pagenumber}}%
   % Record the creation of the new extern.  We do this after shipping out the
   % extern page, so that the recording mechanism can serve as an after-shipout
   % hook, for the unlikely situation that some package really needs to do
@@ -2374,9 +2455,22 @@
   % Use the extern box, with the precise size as remembered at memoization.
   \wd\mmz@box=#3\relax
   \ht\mmz@box=#4\relax
-  \box\mmz@box
+  \mmz@typeset@box\mmz@box
   % Record that we have used this extern.
   \pgfkeysalso{/mmz/record/used extern={\mmz@extern@path}}%
+}
+\def\mmz@typeset@box#1{%
+  %\begingroup\typeout{DEBUG}\tracingall
+  \ifhbox#1\relax
+    \mmz@before@this@hbox
+    \box#1\relax
+    \mmz@after@this@hbox
+  \else
+    \mmz@before@this@vbox
+    \box#1\relax
+    \mmz@after@this@vbox
+  \fi
+  %\endgroup
 }
 % \end{macro}
 \def\mmz@use@memo@warning#1#2#3#4{%
@@ -2433,7 +2527,7 @@
     }%
     \box\mmz@box
   }%
-  \box1
+  \mmz@typeset@box1%
 }
 % \end{macro}
 %
@@ -2448,6 +2542,7 @@
 %   package options list, less commonly in the preamble, and never in the
 %   document body.
 \def\mmzvalueof#1{\pgfkeysvalueof{/mmz/#1}}
+\def\mmzcmd#1#2{\pgfkeysvalueof{/mmz/#1/.@cmd}#2\pgfeov}
 \mmzset{
   extract/.estore in=\mmz@extraction@method,
   extract/.value required,
@@ -2494,6 +2589,26 @@
   },
   python extraction command/.initial=memoize-extract.py,
   python extraction options/.initial={\space
+    %<latex>-F latex
+    %<plain>-F plain
+    %<context>-F context
+    \jobname\space
+  },
+  extract/lua/.code={%
+    \mmz@clear@extraction@log
+    \pdf@system{%
+      \mmzvalueof{lua extraction command}\space
+      \mmzvalueof{lua extraction options}%
+    }%
+    \mmz@check@extraction@log{lua}%
+    % Change the initial value of |mkdir command| to |memoize-extract.py
+    % --mkdir|, but only in the case the user did not modify it.
+    \ifx\mmz@mkdir@command\mmz@initial@mkdir@command
+      \def\mmz@mkdir@command{\mmzvalueof{lua extraction command} --mkdir}%
+    \fi
+  },
+  lua extraction command/.initial=memoize-extract.lua,
+  lua extraction options/.initial={\space
     %<latex>-F latex
     %<plain>-F plain
     %<context>-F context
@@ -2610,9 +2725,72 @@
   no record,
   record=mmz,
   begindocument/.append style={record/begin},
-  enddocument/afterlastpage/.append style={record/end},
+  enddocument/.append style={record/end},
 }
 % 
+% \subsubsection{A \texttt{MMIZ\_Info} entry in the PDF catalog}
+% \label{sec:code:record:mmz}
+% 
+\mmzset{
+  record/pdf/begin/.code={%
+    \gdef\mmz@record@pdf{}%
+  },
+  record/pdf/prefix/.code={%
+    \xappto\mmz@record@pdf{%
+      << /Type /MMIZ_Prefix /MMIZ_Filename (#1) >>
+    }%
+  },
+  record/pdf/new extern/.code={%
+    \xappto\mmz@record@pdf{<<
+      /Type /MMIZ_NewExtern
+      /MMIZ_Filename (#1)
+      /MMIZ_Page \pageobjref
+      % The page number is merely informative, or perhaps it could be used for
+      % a sanity check.
+      /MMIZ_PageNumber \pagenumber\space
+      >>
+    }%
+  },
+  record/pdf/new cmemo/.code={%
+    \xappto\mmz@record@pdf{%
+      << /Type /MMIZ_NewCMemo /MMIZ_Filename (#1) >>
+    }%
+  },
+  record/pdf/new ccmemo/.code={%
+    \xappto\mmz@record@pdf{%
+      << /Type /MMIZ_NewCCMemo /MMIZ_Filename (#1) >>
+    }%
+  },
+  record/pdf/used extern/.code={%
+    \xappto\mmz@record@pdf{%
+      << /Type /MMIZ_UsedExtern /MMIZ_Filename (#1) >>
+    }%
+  },
+  record/pdf/used cmemo/.code={%
+    \xappto\mmz@record@pdf{%
+      << /Type /MMIZ_UsedCMemo /MMIZ_Filename (#1) >>
+    }%
+  },
+  record/pdf/used ccmemo/.code={%
+    \xappto\mmz@record@pdf{%
+      << /Type /MMIZ_UsedCCMemo /MMIZ_Filename (#1) >>
+    }%
+  },
+  record/pdf/end/.code={%
+    \ifdef\XeTeXversion{%
+      \special{pdf:obj @mmzrecord [\mmz@record@pdf]}%
+      \def\mmz@record@pdfobjref{@mmzrecord}%
+    }{%
+      \immediate\pdfobj{[ \mmz@record@pdf]}%
+      \edef\mmz@record@pdfobjref{\number\pdflastobj\space 0 R}%
+    }%
+    \pdfcatalog{%
+      /Extensions <</MMIZ <</BaseVersion /1.7 /ExtensionLevel 1>> >>
+      /MMIZ_Record \mmz@record@pdfobjref
+    }%
+  },
+}
+%
 % \subsubsection{The \texttt{.mmz} file}
 % \label{sec:code:record:mmz}
 % 
@@ -3424,7 +3602,7 @@
   force refrange/.style={outer handler=\mmz@auto@refrange\mmzForceNoRef,
     bailout handler=\relax, run if memoizing},
 }
-% \noindentmacrocode
+% \noindentmacrocode*
 \def\mmz@auto@refrange#1#2#{\mmz@auto@refrange@i#1{#2}}
 \def\mmz@auto@refrange@i#1#2#3#4{%
   #1{#3}%
@@ -3993,6 +4171,7 @@
 \AddToHook{begindocument/before}{\mmzset{begindocument/before}}
 \AddToHook{begindocument}{\mmzset{begindocument}}
 \AddToHook{begindocument/end}{\mmzset{begindocument/end}}
+\AddToHook{enddocument}{\mmzset{enddocument}}
 \AddToHook{enddocument/afterlastpage}{\mmzset{enddocument/afterlastpage}}
 %</latex>
 % In \hologo{plainTeX}, the user must execute these hooks manually; but at

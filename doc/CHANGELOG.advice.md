@@ -14,6 +14,16 @@ those cases, please see [Memoize's GitHub
 repository](https://github.com/sasozivanovic/memoize) for the recent
 development history.
 
+## 2025/10/?? v1.1.2
+
+* Drop the `xparse` requirement in favour of the new code-level function
+  `\cmd_arg_spec:N` offering the functionality of the deprecated
+  `\GetDocumentCommandArgSpec`.  More precisely, begin a transition period in
+  which `xparse` will still be loaded if `\cmd_arg_spec:N` is unavailable.
+
+* Fix a bug in the automatic retrieval of argument specification of LaTeX3
+  commands.
+  
 ## 2024/03/15 v1.1.1
 * Bugfix in `\AdviceGetOriginal`.
 * Simplify the definition of the initial outer handler.

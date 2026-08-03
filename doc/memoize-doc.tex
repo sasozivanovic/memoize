@@ -46,7 +46,7 @@
       cmd={name=label}, cmd={name=@currentlabel},
       cmd={name=ref}, cmd={name=pageref},
       cmd={name=index},
-      cmd={name=NewDocumentCommand}, cmd={name=GetDocumentCommandArgSpec},
+      cmd={name=NewDocumentCommand},
       env={name=verbatim},
       cmd={name=ReadonlyShipoutCounter},
       hook={name=begindocument},
@@ -74,6 +74,10 @@
       before/.style={index annotation=\hologo{LuaTeX} primitive},
       pdfcmd={name=savepos},
       cmd={name=pdfvariable},
+    },
+    scope={
+      before/.style={index annotation=\hologo{XeTeX} primitive},
+      cmd={name=leavevmode},
     },
     pdfvariable={name=compresslevel},
     pdfvariable={name=horigin},
@@ -153,6 +157,7 @@
     generic={name=openin\_any, label=openin_any,
       index annotation={variable in \reffile[into index=false]{texmf.cnf}}},
     file={pkg=latexmk, name=memoize\_latexmkrc, label=memoize_latexmkrc},
+    file={name=memoize-doc.sty, index annotation=the Memoize manual style file},
   }%
   \docindex{%
     cmd={name=pdfprimitive, see={\refcmd[into index=false,short]{primitive}}},
@@ -204,6 +209,7 @@
     listing only,
     remember as=tex,
   }
+  \mmzUnmemoizable
   \begin{tcolorbox}[example title=doc.pdf, no attachment, remember as=pdf1]
     \includeexamplepdf[page box=extern1][titlepage](.c1){page=1,trim=1in 1in 1in 1in}\hfill
     \includeexamplepdf[page box=extern2][titlepage](.c1){page=2,trim=1in 1in 1in 1in}\hfill
@@ -225,6 +231,7 @@
 \end{tcboxedraster}
 
 \begin{tcolorbox}[title=Using the externalized graphics]
+  \mmzUnmemoizable
   \begin{tcolorbox}[example title=doc.pdf,
     halign=center, remember as=pdf2]
     \tcbox[remember, enhanced]{\footnotesize
@@ -241,7 +248,8 @@
 
 \vfill
 
-\begin{tcolorbox}[colback=emphcolor, fontupper=\footnotesize]
+\begin{tcolorbox}[emph, fontupper=\footnotesize]
+  \mmzUnmemoizable
   This manual also documents packages Advice
   ({\ParseProvidesPackage
     \ProvidesPackage{advice}[2024/03/15 v1.1.1 Extend commands and environments]
@@ -526,7 +534,7 @@ as it does not contain an empty line (bottom right).  I like to add a comma
 after the final key (bottom left), because if I don't, I often forget to insert
 it when I add more keys.
 
-\begin{tcbraster}[raster columns=4, raster valign=bottom]
+\begin{tcboxedraster}[raster columns=4, raster valign=bottom]{blankest}
   \begin{tcboxedraster}[raster columns=1]{blankest, raster multicolumn=3, valign=bottom}
     \begin{tcblisting}{listing only}
 ~\mmzset~{recompile,auto={circuitikz}{memoize},deactivate=\tikz}
@@ -541,8 +549,8 @@ it when I add more keys.
   verbatim,
   padding=2in}
   \end{tcblisting}
-\end{tcbraster}\par
-\begin{tcbraster}[raster columns=4, raster valign=top]
+\end{tcboxedraster}\par
+\begin{tcboxedraster}[raster columns=4, raster valign=top]{blankest}
   \begin{tcblisting}{listing only, raster multicolumn=2}
 ~\mmzset~{
   auto    = \qrcode{memoize, args=om},
@@ -567,7 +575,7 @@ it when I add more keys.
   prefix=memos/
 }
   \end{tcblisting}
-\end{tcbraster}
+\end{tcboxedraster}
 
 Command \refcmd{mmzset} can be used any time after loading the package.  It is
 very common in the preamble, but also useful in the document body, where its
@@ -583,7 +591,7 @@ applied only at the next instance of automemoization, overriding any keys set
 by \refcmd{mmzset} in case of a conflict.  If the command is given more than
 once, only the final invocation takes effect.
 
-\begin{tcbraster}[raster columns=2, raster equal height=rows, raster force size=false]
+\begin{tcboxedraster}[raster columns=2, raster equal height=rows, raster force size=false]{blankest}
 \begin{tcblisting}{listing only, mark region={3}{6}}
 ~{~
   ~\mmzset~{recompile}
@@ -602,7 +610,7 @@ once, only the final invocation takes effect.
 % ...
 
 \end{tcblisting} 
-\end{tcbraster}
+\end{tcboxedraster}
 
 I like to follow |\usepackage{memoize}| by \refcmd{mmzset}, but if you prefer,
 you can also provide the document-wide configuration as \Emph{package options.}
@@ -612,7 +620,7 @@ re-externalization of all the externs in the document.\footnote{Note that a
   is usually not an issue, it prevents using \pkg{pgfkeys} key handlers.  The
   workaround is to use key \refmmz{options}.}
 
-\begin{tcbraster}[raster columns=2, raster equal height=rows]
+\begin{tcboxedraster}[raster columns=2, raster equal height=rows]{blankest}
   \begin{tcblisting}{listing only}
 \usepackage{memoize}
 \mmzset{recompile}
@@ -620,7 +628,7 @@ re-externalization of all the externs in the document.\footnote{Note that a
   \begin{tcblisting}{listing only}
 \usepackage[recompile]{memoize}
   \end{tcblisting}
-\end{tcbraster}
+\end{tcboxedraster}
 
 
 \subsection{The configuration file}
@@ -918,7 +926,7 @@ node with a red background.  Let's say we compile the document (with
 memoization) and then change this style to set the yellow background.
 Curiously, the node will remain red.
 
-\begin{tcbraster}[raster columns=2, raster valign=top, raster column skip=4mm]
+\begin{tcboxedraster}[raster columns=2, raster valign=top, raster column skip=4mm]{blankest}
   \tcbinputexample{recompile}(.c1){
     after title pre={\ (version~1)},
     comment={\centering
@@ -932,7 +940,7 @@ Curiously, the node will remain red.
       \includeexamplepdf[document page]{page=1}
     },
   }
-\end{tcbraster}
+\end{tcboxedraster}
 
 The curious thing happens (or rather, doesn't happen) because Memoize doesn't
 keep track of how commands and styles are defined; it just uses the extern file
@@ -999,7 +1007,7 @@ selected pictures.
   mark the parts of the document where memoization is \emph{disabled}.)
 \end{tcolorbox}
 
-\begin{tcbraster}[raster columns=2, raster equal height=rows]
+\begin{tcboxedraster}[raster columns=2, raster equal height=rows]{blankest}
   \tcbinputexample{disable-bad}{
     listing and comment, bad, mark region={4}{7},
     comment={\raggedright The upper \refcmd{mmzset}\braces{\refmmz{disable}}
@@ -1009,7 +1017,7 @@ selected pictures.
     listing and comment, mark region={4}{10},
     comment={\raggedright The upper \refcmd{mmzset}\braces{\refmmz{disable}} applies
       to the entire document, as expected.}}
-\end{tcbraster}
+\end{tcboxedraster}
 
 In fact, it might be better to disable memoization using environment
 \Emph{\refenv{nomemoize}} or macro \Emph{\refcmd{nommz}}.  I also like these
@@ -1017,12 +1025,12 @@ commands because it is easy to add and remove prefix |no| to switch manual
 memoization (triggered using environment \refenv{memoize} or macro
 \refcmd{mmz}) off and on.
 
-\begin{tcbraster}[raster columns=2, raster equal height=rows]
+\begin{tcboxedraster}[raster columns=2, raster equal height=rows]{blankest}
   \tcbinputexample{disable-nomemoize}{listing and comment, mark region={2}{2},
     comment=\raggedright Disable using the dedicated environment.}
   \tcbinputexample{disable-nommz}{listing and comment, mark region={2}{2},
     comment=\raggedright Disable using the dedicated command.}
-\end{tcbraster}
+\end{tcboxedraster}
 
 It is also possible to disable memoization for all occurrences of a selected
 command or environment.  In fact, we're already familiar with the procedure
@@ -1037,7 +1045,7 @@ execution; for example, if |\foo| executes \cs{tikz} under the hood,
 autodisabling |\foo| prevents memoization of the inner \cs{tikz}, even though
 that command is normally automemoized.
 
-\begin{tcbraster}[raster columns=2, raster equal height=rows]
+\begin{tcboxedraster}[raster columns=2, raster equal height=rows]{blankest}
   \tcbinputexample{disable-auto-cmd}{
     listing and comment,
     mark region={3}{3}, mark region={5}{5},
@@ -1048,7 +1056,7 @@ that command is normally automemoized.
     mark region={3}{5},
     comment=\raggedright Autodisable within an environment.,
   }
-\end{tcbraster}
+\end{tcboxedraster}
 
 All that said, Memoize actually offers a neater way to switch off the
 externalization for the picture I'm currently working on.  The
@@ -1064,7 +1072,7 @@ work on stuff, and once I'm happy with the most recent pictures, remove
 \refmmz{readonly} from the package options for one compilation.
 
 
-\begin{tcbraster}[raster columns=5, raster valign=top, raster column skip=4mm]
+\begin{tcboxedraster}[raster columns=5, raster valign=top, raster column skip=4mm]{blankest}
   \tcbinputexample{readonly}(.c1){
     raster multicolumn=2,
     after title pre={\ (work in progress)},
@@ -1081,7 +1089,7 @@ work on stuff, and once I'm happy with the most recent pictures, remove
       \includeexamplepdf[document page]{page=2}
     },
   }
-\end{tcbraster}
+\end{tcboxedraster}
 
 We're now ready to tackle a completely different way of avoiding the issue, by
 informing Memoize which definitions the externalized picture depends on.  We do
@@ -1358,10 +1366,10 @@ externs in directory \code{\meta{name}.memo.dir}.\footnote{Use key
   the auxiliary files.}  (As you can see below on the left, \meta{name} may
 contain a directory part.)
 
-\begin{tcbraster}[raster columns=2, raster valign=top]
+\begin{tcboxedraster}[raster columns=2, raster valign=top]{blankest}
   \tcbinputexample{book}{listing only}
   \tcbinputexample{chapters/chapter1}{listing only}
-\end{tcbraster}
+\end{tcboxedraster}
 
 In the above example, the individual chapters reside in files stored in the
 |chapters| subdirectory, and that's why the |book.tex| preamble uses
@@ -1419,7 +1427,7 @@ set), you will have a reasonably up-to-date set of externs.
   \end{tcblisting}
 \end{tcboxedraster}
 
-\begin{tcolorbox}[title=For \Emacs users]
+\begin{tcolorbox}[title=For {\hypercolor{url}{white}\Emacs} users]
   I often use this \refmmz{readonly} trick myself, but with a twist.  As an Emacs user,
   I don't use a \hologo{TeX}-based mechanism (such as the \pkg{docmute} package) to
   compile a chapter, but rely on the region compilation feature of Emacs'
@@ -1762,7 +1770,7 @@ your source, so the document won't compile without
 Memoize does, but does nothing.  In effect, your document will compile, but you
 can be sure that not a single memo or extern was loaded or produced.
 
-\begin{tcbraster}[raster columns=3, raster force size=false, raster valign=top]
+\begin{tcboxedraster}[raster columns=3, raster force size=false, raster valign=top]{blankest}
   \begin{tcblisting}{listing only, add to width=2.4em, enhanced}
 \usepackage[~disable~]{memoize}
   \end{tcblisting}
@@ -1773,7 +1781,7 @@ can be sure that not a single memo or extern was loaded or produced.
   \begin{tcblisting}{listing only, add to width=-0.8em, enhanced}
 \usepackage{~no~memoize}
   \end{tcblisting}
-\end{tcbraster}
+\end{tcboxedraster}
 
 There is one issue you might need to resolve manually before package
 \refpkg{nomemoize} works as intended, though.  If you have used any
@@ -1941,7 +1949,7 @@ there is only |\end{sectionbox}|, and this results in the |Environment
 
 \begingroup
 \mmzset{disable}
-\begin{tcbraster}[raster equal height]
+\begin{tcboxedraster}[raster equal height]{blankest}
 \begin{tcblisting}{listing only, bad, valign=center}
 \newenvironment{foo}% ... args
 {% the begin-code of foo
@@ -1961,7 +1969,7 @@ there is only |\end{sectionbox}|, and this results in the |Environment
       ! Package collargs Error: Environment\\"minipage" ended as "sectionbox".
     },
   }
-\end{tcbraster}
+\end{tcboxedraster}
 \endgroup
 
 What are your options in this kind of a situation?
@@ -2904,6 +2912,102 @@ section~\ref{sec:memoization-complex-single-driver}, where we will revisit our
 memoizable and user-friendly.
 
 
+\subsection{Examples}
+\label{sec:examples}
+
+\paragraph*{The challenges of the vertical capture mode} can sometimes be
+addressed relatively easily using options \refmmz{before vbox} and
+\refmmz{after vbox}.  Below, it is shown how the vertical spacing around
+memoized \env{tcolorbox}es in this manual was made (almost) identical to the
+unmemoized situation.%
+\footnote{This code can be found \reffile{memoize-doc.sty}, the style file used
+  for this manual, which also contains settings for dealing (more of less
+  successfully) with breakable and floating boxes, equal height groups, and
+  enumeration of \env{tcolorbox}es.}%
+
+The issue we are facing stems from the fact that a \env{tcolorbox} itself
+controls the amount of vertical space around it (ultimately using keys |before|
+and |after|).  One part of the issue is that this vertical space gets baked
+into the extern (well, partially so: the space at the top actually disappears,
+set \refmmz{padding}|=0pt| to see this clearly).  The other part is that when
+the extern is utilized, \env{tcolorbox} cannot add the right amount of space
+around it, simply because it is never executed --- this is particularly
+unfortunate if the surrounding space was set to stretch or shrink.
+
+The solution is to first prevent any space getting baked into the extern (a job
+for \refmmz{memoized code suffix}), and then add the correct amount of space
+when the extern is utilized (using \refmmz{before vbox} and \refmmz{after vbox}).
+
+In broad strokes, we define style |tcb options| (lines~2--24), which is then
+included among the among the \refmmz{auto}-options of the various environments
+offered by package \pkg{tcolorbox} (lines~25--27).\cprotect\footnote{In the
+  code, the style is applied by writing |options=tcb options|; this is
+  equivalent to but executes a bit faster than plain |tcb options|.}  We now
+turn to the definition of the style.  First of all, we set
+\refmmz{capture}|=|\refmmz{capture=vbox} (line~3) so that the extern is
+captured into a vertical box, and later typeset as a vertical box as well.  Key
+\refmmz{verbatim} (line~4) is only used because the \env{tcolorbox}es in this
+manual contain a lot of code; it is irrelevant for the issue of vertical
+spacing.
+
+\begin{tcblisting}{
+    listing only, float,
+    listing options app={numbers=left, numberstyle=\tiny, numbersep=0.5em},
+  }
+\mmzset{
+  tcb options/.style={
+    capture=vbox,
+    verbatim,
+    memoized code suffix=\vskip-\lastskip,
+    before vbox=\unexpanded{%
+      \begingroup
+      \let\iftcb@minipage\if@minipage
+      \if@nobreak
+        \iftcb@ignorenobreak
+          \kvtcb@beforebox
+        \else
+          \kvtcb@beforebox@nobreak
+        \fi
+      \else
+        \kvtcb@beforebox
+      \fi
+    },
+    after vbox=\unexpanded{%
+      \let\iftcb@minipage\if@minipage
+      \kvtcb@afterbox
+      \endgroup
+    },  
+  },
+  auto={tcolorbox}{memoize, options=tcb options},
+  auto={tcboxedraster}{memoize, options=tcb options},
+  auto={tcblisting}{memoize, options=tcb options},
+}
+\end{tcblisting}
+
+When the code submitted to memoization is compiled in order to produce an
+extern, it is surrounded by \refmmz{memoized code prefix} and \refmmz{memoized
+  code suffix}.  In other words, the code submitted to these hooks ``gets into
+the extern'' and can be therefore used to change the vertical space around
+whatever is typeset by the submitted code.  In our case, no space gets above
+the \env{tcolorbox}, so \refmmz{memoized code prefix} may remain empty; we get
+rid of the space below the box by setting (line~5) \refmmz{memoized code
+  suffix} to (hardcore \hologo{TeX}) |\vskip-\lastskip|.
+
+To have a utilized extern surrounded by the same amount of vertical space as
+the original \env{tcolorbox}, we copy--paste--adjust some code from package
+\pkg{tcolorbox} itself into the value of \refmmz{before vbox} and \refmmz{after
+  vbox} (lines~8--17, 20--21).  In a nutshell, we have to execute macros
+|\kvtcb@beforebox| and |\kvtcb@afterbox|, but there are some complications: we
+have to define an internal \pkg{tcolorbox} macro (|\iftcb@minipage|), %>\fi
+and take care to execute an ``alternative'' |\kvtcb@beforebox| at the start of
+a section.  The values of \refmmz{before vbox} and \refmmz{after vbox} start
+and finish by |\begingroup| (line~7) and |\endgroup| (line~22), respectively,
+because the deployed internal macros change some paragraph-related settings.
+Finally, these values are wrapped in |\unexpanded| because the code submitted
+to these hooks is fully expanded before it is used.
+
+
+
 \section{Under the hood}
 \label{sec:under-the-hood}
 
@@ -3021,7 +3125,8 @@ it \emph{expects a group to be opened prior to calling it}, as it will issue an
 before regular compilation or utilization, but after memoization.  If you want
 to know why, read the boxed text below.
 
-\begin{tcolorbox}[title=\string\Memoize\ and grouping, enhanced, breakable]
+\begin{tcolorbox}[title=\string\Memoize\ and grouping, enhanced, breakable,
+    label=frame:grouping]
   One important desideratum behind the design of Memoize was that using the
   package should disrupt the original, Memoize-less compilation as little as
   possible.  In particular, if the memoized code contains local assignments
@@ -4404,7 +4509,7 @@ to write to enable automemoization for a command is thus
 when it comes to commands defined by \hologo{LaTeX3}'s \refcmd{NewDocumentCommand}
 or friends, writing \refmmz{auto}|=|\meta{command}\braces{\refmmzauto{memoize}}
 will suffice, as the argument specification of these commands can be retrieved
-by \refcmd{GetDocumentCommandArgSpec}.
+automatically.
 
 \paragraph{Weird commands}
 Not every argument structure can be described using \pkg{xparse}'s argument
@@ -5008,42 +5113,42 @@ simplify matters, but a macro which acts as the ``bridge'' between Advice and
 CollArgs, by compiling an invocation of \refcmd{CollectArgumentsRaw} from the
 given advice setup, and executing it.
 
-The bridge macro is shown below in its full glory, but it is really less
-complicated than it might appear at first sight.  In line~2, we use
-\refcmd{AdviceIfArgs} to see whether the argument structure of the handled
-command was given by the user.  If it wasn't, we assume that the handled
-command was defined using \cs{NewDocumentCommand} or similar, and use
-\refcmd{GetDocumentCommandArgSpec} to retrieve it (line~3; note that
-\refcmd{AdviceName} holds the handled control sequence) and store it into
-\refcmd{AdviceArgs} (line~4), which also receives the argument specification
-when given by the user via key \refmmzauto{args}.
+The bridge macro is shown below, and it is less complicated than it might
+appear at first sight.  In line~2, we use \refcmd{AdviceIfArgs} to see whether
+the argument structure of the handled command was given by the user (if it was,
+it is available in macro \refcmd{AdviceArgs}).  If it wasn't, we assume that
+the handled command was defined using \cs{NewDocumentCommand} or similar, and
+use a code-level \hologo{LaTeX3} command |\cmd_arg_spec:N| to retrieve it and
+store it into \refcmd{AdviceArgs} (this part of the code is omitted, as
+signaled by the ellipsis in line~3).
 
 \tcbinputexample{_advice-CollectArgumentsRaw}[.excerpt]{%
+  listing options app={linerange={-3,15-}},
   listing only, no .listing, no attachment,
   listing options app={numbers=left, numberstyle=\tiny, numbersep=0.5em},
   title={The definition of the initial collector},
 }
 
-Lines~6--17 are somewhat of an expansion mess, because we have to construct the
+Lines~5--15 are somewhat of an expansion mess, because we have to construct the
 invocation of the CollArgs' collector from the advice setup stored in various
 macros.  But once we think away all the (non-)expansion commands, we're left
 with \refcmd{CollectArgumentsRaw} plus the following three arguments:
 \begin{enumerate}
-\item The raw options (lines 8--11):
+\item The raw options (lines 7--11):
   \begin{enumerate}
-  \item In line 8, the advised command's control sequence is designated as the
+  \item In line 7, the advised command's control sequence is designated as the
     \refcollargs{caller}.  The effect is that if the given arguments don't
     conform to the specification, the error thrown seems to come from the
     advised command rather than some internal CollArgs macro.  The author will
     be grateful for this little detail.
-  \item In line 9, we add any \refmmzauto{raw collector options} set by Advice
+  \item In line 8, we add any \refmmzauto{raw collector options} set by Advice
     (plus the package deploying Advice, like Memoize); user-given options are of
     course possible, but not really expected here, because:
-  \item In lines 10--11, we add the user-given \refmmzauto{collector options},
+  \item In lines 9--11, we add the user-given \refmmzauto{collector options},
     if there are any, embedded under \refcmd{collargsSet}.
   \end{enumerate}
-\item The argument specification (line 14).
-\item The \refmmzauto{inner handler} (line 15).
+\item The argument specification (line 13).
+\item The \refmmzauto{inner handler} (line 14).
 \end{enumerate}
 
 
@@ -5487,15 +5592,16 @@ on how to handle this properly.
   Set all the above |padding| keys to the given value.
 \end{doc}
 
+\subsubsection{Context}
+\label{sec:ref:memoization:context}
+
 \begin{doc}{
-    easy,
-    key={name=context, par=\meta{tokens}, desc={cumulative, no default,
-        initially set by \refmmz{padding to context}}},
-    key={name=clear context},
+    key={name=context, par=\meta{tokens}, easy, desc={cumulative, glocal,
+        no default, initially set by \refmmz{padding to context}}},
   }
-  These keys append the given \meta{tokens} to the \emph{context expression},
-  or clear this expression.  Memoized code gets recompiled whenever the
-  expansion of the context expression changes.
+  This key appends the given \meta{tokens} to the \emph{context expression}.
+  Memoized code gets recompiled whenever the expansion of the context
+  expression changes.
 
   The \meta{tokens} must be fully expandable (modulo protection); in
   \hologo{LaTeX}, they will be expanded by |\protected@edef| when calculating
@@ -5506,21 +5612,57 @@ on how to handle this properly.
   contains any additions to the context expression accumulated during
   memoization).  At evaluation, the given context expression is fully expanded,
   yielding the \emph{context value}, whose md5 sum forms the \meta{context md5
-    sum} part of the filename of the cc-memo and the extern.
+    sum} part of the filename of the cc-memo and the extern.  (Use key
+  \refmmz{trace} to have the context information (expression, value and md5
+  sum) printed to the terminal.)
 
-  These keys may be used both prior to the memoization process, or during
-  memoization.  In the former case, their effect is local to the current group;
-  in the latter case, the effect is global, so that the changes surely survive
-  until the end of memoization, when the c-memo, where the context expression
-  is stored, is written into a file.
+  This key manipulates a glocal token register (see the frame below) consisting
+  of the base token register \docaux{cmd}{mmzContext} and the extra token
+  register \docaux{cmd}{mmzContextExtra}.  The user may change the contents of
+  these registers directly, as long as they conform to the requirement of
+  changing \refcmd{mmzContext} locally and only outside memoization, and
+  changing \refcmd{mmzContextExtra} globally and only during memoization.
+\end{doc}
 
-  Under the hood, these keys manipulate token registers
-  \docaux{cmd}{mmzContext} and \docaux{cmd}{mmzContextExtra}, changing the
-  contents of the former while not memoizing, and the contents of the latter
-  during memoization.  These token registers may also be manipulated directly
-  by the user, as long as one keeps to the convention of adjusting
-  \refcmd{mmzContext} locally and only while not memoizing, and adjusting
-  \refcmd{mmzContextExtra} globally and only during memoization.
+\begin{tcolorbox}[title=Glocal variables, label=frame:glocal]
+  For some variables (in this frame, let ``variable'' be understood as a macro
+  or a token register), it makes sense that they are manipulated both outside
+  and during memoization process.  For example, font size is best added to
+  \refmmz{context} in the preamble (so outside memoization), so that the
+  setting affects all memoized code, but a \refcmd{ref} or a citation command
+  inside memoized code can only add its key to the context during memoization.
+  This creates an issue with locality.  On one hand, it is often crucial that
+  changes to a variable are local, i.e.\ that they respect \hologo{TeX}
+  grouping.  On the other hand, manipulating the variable from within the
+  memoized code locally would not have the desired effect: memoization, here
+  understood narrowly as typesetting of the memoized code into the extern box,
+  happens in the \hologo{TeX} group introduced by the box (and furthermore, the
+  memoized code itself might open arbitrary groups), but the value of variables
+  like \refmmz{context} is needed just after memoization, so outside this
+  group.  During memoization, manipulation of variables such as
+  \refmmz{context} is best global so that it survives until the end of
+  memoization.  What are we to do, given that mixing local and global
+  assignment to the same variable is not advisable?
+  
+  A \Emph{glocal} variable is a pair of variables working in tandem to resolve
+  this issue.  The ``base'' variable of the pair (for \refmmz{context},
+  \refcmd{mmzContext}) should be manipulated only outside memoization, and the
+  changes should always be local.  The ``extra'' variable (for
+  \refmmz{context}, \refcmd{mmzContextExtra}), which is cleared before each
+  memoization, should be manipulated only during memoization, and the changes
+  should always be global.  Memoize's keys manipulating glocal variables
+  automatically conform to this requirement.
+
+  The value of the combined glocal variable at the end of memoization is the
+  concatenation of the base and the extra variable, in this order.
+\end{tcolorbox}
+
+\begin{doc}{
+    key={name=clear context, easy},
+  }
+  This key clears the context expression.  More precisely, it locally clears
+  \refcmd{mmzContext} outside memoization, and it globally clears
+  \refcmd{mmzContextExtra} during memoization.
 \end{doc}
 
 \begin{doc}{
@@ -5532,7 +5674,8 @@ on how to handle this properly.
     key={name=key value to context,
       par=\marg{full path to a pgfkeys value key}},
   }
-  These keys append the definition of the given construct to the context.
+  These keys (glocally) append the definition of the given construct to the
+  context.
 
   Essentially, the ``meaning'' keys append \cs{meaning}\meta{control sequence}
   to the context, for the appropriate \meta{control sequence}.  For example,
@@ -5564,10 +5707,10 @@ on how to handle this properly.
 
 
 \begin{doc}{key={name=padding to context,desc=style}}
-  This key appends the values of the \refmmz{padding} keys to the context,
-  causing the memoized code to be recompiled whenever the padding values are
-  changed.  This key is used to initialize \refmmz{context}, so the author
-  normally shouldn't have to use this key.
+  This key (glocally) appends the values of the \refmmz{padding} keys to the
+  context, causing the memoized code to be recompiled whenever the padding
+  values are changed.  This key is used to initialize \refmmz{context}, so the
+  author normally shouldn't have to use this key.
 \end{doc}
 
 \begin{doc}{
@@ -5591,14 +5734,14 @@ on how to handle this properly.
   contributes to its code md5 sum.  In other words, two pieces of the same code
   memoized under a different expansion of the salt will behave as if they
   contained different code; most importantly, they will have distinct c-memos.
-  
-  The keys listed above behave in the same way as their \refmmz{context}
-  counterparts used outside memoization, i.e.\ in the same way as the local
-  variant of the \refmmz{context} keys.  Using the salt keys during memoization
-  has no effect.
 
-  While salt and context are mostly interchangeable, one example where only the
-  salt can do the job is presented in the Beamer section~\ref{sec:per-overlay}.
+  While using \refmmz{context} instead of \refmmz{salt} would most often yield
+  the same result, one example where only the salt can do the job is presented
+  in the Beamer section~\ref{sec:per-overlay}.
+
+  Note that the salt keys manipulate a normal local token register, not a
+  glocal token register like \refmmz{context}.  Using the salt keys during
+  memoization has no effect.
 \end{doc}
 
 \begin{doc}{
@@ -5606,9 +5749,9 @@ on how to handle this properly.
     cmd={name=mmzForceNoRef, par=\marg{reference key}, desc=\hologo{LaTeX} only},
   }
   These macros append the current value of the \meta{reference key} to the
-  context,\footnote{More precisely, it is \meta{reference key}|=|\marg{current
-      value} which is appended.}  causing the memoized code to be recompiled
-  when the reference changes.
+  context (more precisely, it is \meta{reference key}|=|\marg{current value}
+  which is appended), making sure that the memoized code is recompiled when the
+  reference changes.
 
   If the reference key is undefined, \refcmd{mmzNoRef} aborts memoization,
   while \refcmd{mmzForceNoRef} uses \cs{relax} as the reference string.
@@ -5619,29 +5762,213 @@ on how to handle this properly.
   likely have no need of these macros.
 \end{doc}
 
+
+\subsubsection{Advanced configuration}
+\label{sec:ref:memoization:advanced}
+
 \begin{doc}{
-    key={name=capture, par=\docAux{of=key:/mmz/capture, value={name=hbox}, text=\alt,
-      value={name=vbox,of=key:/mmz/capture}},
-      desc={no default, initially \refmmz{capture=hbox}}}
+    cmd={name=Memoize, par=\marg{key}\marg{code}},
   }
-  Select the capture mode.  This setting only applies to the default
-  memoization \refmmz{driver}.
+  Depending on various factors, this command either memoizes \meta{code} under
+  key \meta{key}, utilizes the results of a previous memoization, or performs a
+  regular compilation of \meta{code}.
 
-  By default, it is assumed that the memoized code should be executed in the
-  horizontal mode, so the default memoization driver captures the output of the
-  memoized code in a \refcmd{hbox} --- and also issues a \refcmd{quitvmode}
-  (both in the document and in the cc-memo), just in case the memoized code
-  occurs at the start of the paragraph.
+  The outcome of executing this command --- memoization, utilization or regular
+  compilation --- depends upon the Memoize's state (\refcmd{ifmemoize},
+  \refcmd{ifmemoizing}) and mode (\refmmz{normal}, \refmmz{readonly},
+  \refmmz{recompile}), and the existence of the relevant memos and externs.
+  The decision process is depicted in section~\ref{sec:Memoize}.
 
-  Use \refmmz{capture}|=|\refmmz{capture=vbox} to execute the memoized code in
-  the vertical mode: Memoize will capture the output of the memoized code in a
-  \refcmd{vbox}, and avoid issuing \refcmd{quitvmode}.  For example, this
-  capture mode is necessary to memoize a \refenv{verbatim} environment.
+  This command expects to be executed in a dedicated group, which it will close
+  itself.
+
+  Invoking memoization through \refcmd{Memoize} might be useful for packages
+  which want to save the results of intensive computations, regardless of
+  whether the author loads (and enables) memoization or not.  However, this
+  usage is not yet officially allowed, because there is currently no way to
+  load the core memoization routines without loading the entire package,
+  thereby forcing the author to use Memoize.  Please open a
+  \href{https://github.com/sasozivanovic/memoize/issues}{Github issue} if you
+  require this functionality.
 \end{doc}
 
+\begin{doc}{
+    key={
+      name=driver, par=\marg{code},
+      desc={no default, initially \refcmd{mmzSingleExternDriver}}
+    },
+  }
+  This key sets \meta{code} as the memoization driver.
 
-\subsubsection{Inside the memoization process}
-\label{sec:ref:memoization:process}
+  Given some code submitted to memoization, the memoization driver should
+  produce the memos and externs which will replicate the effect of that code
+  (while retaining its regular effect).  For details, see
+  section~\ref{sec:memoization-drivers}.
+
+  Typically, the \meta{code} argument of this key will consist of a single
+  control sequence (the driver control sequence), but any amount of tokens is
+  allowed.  Memoize executes the driver followed by the code which it is
+  supposed to memoize, in braces, and only cares that the driver consumes that
+  code.
+\end{doc}
+
+\begin{doc}{
+    key={name=capture, par=\docAux{of=key:/mmz/capture, value={name=hbox}, text=\alt,
+        value={name=vbox,of=key:/mmz/capture}},
+      desc={no default, initially \refmmz{capture=hbox}}}
+  }
+  This key determines whether the \emph{default} memoizaton \refmmz{driver}
+  captures the typeset result of the memoized code in a horizontal
+  (\refmmz{capture=hbox}, the default) or a vertical (\refmmz{capture=vbox})
+  box.
+
+  Using this key |\let|s control sequence \docaux{cmd}{mmzCapture} to either
+  \refcmd{hbox} or \refcmd{vbox}, which may (but does not have to) be used by a
+  user- or package-defined memoization \refmmz{driver}.  The user may also
+  |\let| \refcmd{mmzCapture} to \refcmd{hbox} or \refcmd{vbox} directly.
+
+  When a driver that honors this key is in effect, the value of the key also
+  indirectly determines what code will be inserted before and after the extern
+  box when the extern is typeset (both in memoization and utilization), see
+  \refmmz{before hbox} and friends for further information.
+\end{doc}
+
+\begin{doc}{
+    key={name=before hbox, par={\meta{code}},
+      desc={no default, initially \code{\cs{quitvmode}}}},
+    key={name=after hbox, par={\meta{code}},
+      desc={no default, initially empty}},
+    key={name=before vbox, par={\meta{code}}, desc={no default,
+        initially \code{\cs{vskip}\cs{glueexpr}\refcmd{mmzTopSep}\cs{relax}}}},
+    key={name=after vbox, par={\meta{code}}, desc={no default,
+        initially \code{\cs{vskip}\cs{glueexpr}\refcmd{mmzBottomSep}\cs{noindent}}}},
+  }
+  These keys set the code which will be inserted before and after the extern
+  box when typesetting the extern.  This applies to both memoization (when
+  typesetting the extern into its regular position after having externalized it
+  into an extern page) and utilization (when including the extern file).
+
+  \begin{tcolorbox}[warning]
+    For \hologo{TeX}nical reasons,\footnotemark\ the values of these keys are
+    fully expanded before inserting them around the extern box.  In many cases,
+    one therefore needs to enclose (parts of) the given code by
+    \cs{unexpanded}.
+  \end{tcolorbox}\footnotetext{The memoization group is closed before inputting
+    a cc-memo (the frame in section~\ref{frame:grouping} explains why), which
+    includes the externs.  The contents of \refcmd{mmzBeforeHBox} and friends
+    therefore have to be smuggled out of the memoization group.  However, these
+    macros may refer to other settings (and the |vbox| macros do, namely to
+    \refmmz{mmzTopSep} and \refmmz{mmzBottomSep}), so there is no principled
+    way of knowing what else should be smuggled out of the group.  The problem
+    is resolved at the cost of user's inconvenience: \refcmd{mmzBeforeHBox} and
+    friends are expanded inside the memoization group, and it is the expansion
+    which is smuggled out.}
+  
+  Keys \refmmz{before hbox} and \refmmz{after hbox} set the code which will be
+  inserted around an extern captured into a \refcmd{hbox}.  The initial
+  settings ensure that the extern box is typeset in the horizontal
+  mode.\footnote{This works even in \hologo{XeTeX}, where the
+    \refcmd{quitvmode} primitive is called \refcmd{leavevmode}, because Memoize
+    defines the former as an alias for the latter.}
+
+  Keys \refmmz{before vbox} and \refmmz{after vbox} set the code which will be
+  inserted around an extern captured into a \refcmd{vbox}.  The initial
+  settings ensure that the extern box is typeset in the vertical mode, and
+  surround it by a configurable amount of vertical glue (see \refmmz{top sep}
+  and \refmmz{bottom sep}).
+
+  Instead of using these keys, the user may also directly set the underlying
+  macros \docaux{cmd}{mmzBeforeHBox}, \docaux{cmd}{mmzAfterHBox},
+  \docaux{cmd}{mmzBeforeVBox} and \docaux{cmd}{mmzAfterVBox}.
+\end{doc}
+
+\begin{doc}{
+    key={name=top sep, easy, par={\meta{glue}}, desc={no default, initially \code{0pt}}},
+    key={name=bottom sep, easy, par={\meta{glue}}, desc={no default, initially \code{0pt}}},
+  }
+  These keys set the amount of vertical glue inserted before and after an
+  extern typeset in the vertical mode, assuming that the initial settings of
+  keys \refmmz{driver}, \refmmz{before vbox} and \refmmz{after vbox} are in
+  effect.
+
+  Under the hood, these keys store the given \meta{glue} into macros
+  \docaux{cmd}{mmzTopSep} and \docaux{cmd}{mmzBottomSep}.  The user may
+  redefine these macros directly.
+\end{doc}
+
+\begin{doc}{
+    par=\meta{code}, desc={cumulative, initially empty},
+    key={name=at begin memoization},
+    key={name=at end memoization},
+    key={name=after memoization},
+    key={name=memoized code prefix},
+    key={name=memoized code suffix},
+  }
+  These keys append \meta{code} to various memoization hooks.  Under the hood,
+  the \meta{code} is appended to the underlying macros as shown below.  Note
+  that three of the hooks are implemented as a glocal variable (see the frame
+  in section~\ref{frame:glocal}) and therefore correspond to a pair of macros
+  (a base and an extra macro).
+
+  \begin{itemize}
+    \item \refmmz{at begin memoization}: \docaux{cmd}{mmzAtBeginMemoization}
+    \item \refmmz{at end memoization}:
+      \docaux{cmd}{mmzAtEndMemoization} and \docaux{cmd}{mmzAtEndMemoizationExtra}
+    \item \refmmz{after memoization}:
+      \docaux{cmd}{mmzAfterMemoization} and \docaux{cmd}{mmzAfterMemoizationExtra}
+    \item \refmmz{memoized code prefix}: \docaux{cmd}{mmzMemoizedCodePrefix}
+    \item \refmmz{memoized code suffix}:
+      \docaux{cmd}{mmzMemoizedCodeSuffix} and \docaux{cmd}{mmzMemoizedCodeSuffixExtra}
+  \end{itemize}
+
+  The macros listed above may also be redefined directly by the
+  user,\footnote{Use \cs{appto}, \cs{eappto}, \cs{gappto} and \cs{xappto} of
+    package \pkg{etoolbox} (loaded by Memoize) to easily append code to these
+    macros.}  as long as one keeps to the requirement of redefining the base
+  macros (without ``\texttt{Extra}'') locally and only outside memoization, and
+  redefining the extra macros (with ``\texttt{Extra}'') globally and only
+  during memoization (with the term ``memoization'' here understood narrowly as
+  the compilation of the code submitted to memoization).
+
+  The keys automatically conform to the above requirement, and may therefore be
+  used both outside and during memoization.  In the former case, their effect
+  is local to the current group; in the latter case, the code given to
+  \refmmz{at begin memoization} and \refmmz{memoized code prefix} is executed
+  immediately, while the assignment performed by the other keys is global, so
+  that the changes surely survive until the end of memoization.
+
+  These complications explained, let us take a look at how memoization proceeds
+  to learn when the hooks are used:
+  \begin{enumerate}
+  \item Initialize various conditionals, macros and token registers.  (Here is
+    where the ``\texttt{Extra}'' hooks are cleared.)  Note that at this point,
+    we're inside a ``memoization group'' opened for \refcmd{Memoize} (e.g.\ by
+    the automemoization handler).
+  \item Execute \refmmz{at begin memoization} hook, i.e.\ the contents of
+    macro \refcmd{mmzAtBeginMemoization}.
+  \item Execute the memoization \refmmz{driver} (which normally compiles the
+    given code in another \hologo{TeX} group), which receives:
+    \begin{itemize}
+    \item the contents of \refmmz{memoized code prefix} hook, i.e.\ macro
+      \refcmd{mmzMemoizedCodePrefix},
+    \item the code being memoized,
+    \item the contents of \refmmz{memoized code suffix} hook, i.e.\ macros
+      \refcmd{mmzMemoizedCodeSuffix} and \refcmd{mmzMemoizedCodeSuffixExtra} (in
+      this order).
+    \end{itemize}
+  \item Execute \refmmz{at end memoization} hook, i.e.\ the contents of macros
+    \refcmd{mmzAtEndMemoization} and \refcmd{mmzAtEndMemoizationExtra} (in this
+    order).
+  \item Write out the memos and ship out the externs to extern pages (unless
+    memoization was aborted).
+  \item Close the memoization group.
+  \item Execute \refmmz{after memoization} hook, i.e.\ the contents of macros
+    \refcmd{mmzAfterMemoization} and \refcmd{mmzAfterMemoizationExtra} (in this
+    order).  (The contents of \refcmd{mmzAfterMemoization} are smuggled of the
+    memoization group, ensuring that any changes to this macro within the
+    memoization group, e.g.\ by \refmmz{auto}-options, are respected.)
+  \end{enumerate}
+\end{doc}
 
 \begin{doc}{easy, cmd={name=mmzAbort}}
   This command aborts the ongoing memoization.
@@ -5669,100 +5996,6 @@ on how to handle this properly.
   sure that after the first compilation when memoization is attempted, the box
   will be compiled regularly, and will have the intended ability to break
   across pages, or float.
-\end{doc}
-
-
-\begin{doc}{
-    cmd={name=Memoize, par=\marg{key}\marg{code}},
-  }
-  Depending on various factors, this command either memoizes \meta{code} under
-  key \meta{key}, utilizes the results of a previous memoization, or performs a
-  regular compilation of \meta{code}.
-
-  The outcome of executing this command --- memoization, utilization or regular
-  compilation --- depends upon the Memoize's state (\refcmd{ifmemoize},
-  \refcmd{ifmemoizing}) and mode (\refmmz{normal}, \refmmz{readonly},
-  \refmmz{recompile}), and the existence of the relevant memos and externs.
-  The decision process is depicted in section~\ref{sec:Memoize}.
-
-  This command expects to be executed in a dedicated group, which it will close
-  itself.
-
-  Invoking memoization through \refcmd{Memoize} might be useful for packages
-  which want to save the results of intensive computations, regardless of
-  whether the author loads (and enables) memoization or not.  However, this
-  usage is not yet officially allowed, because there is currently no way to
-  load the core memoization routines without loading the entire package,
-  thereby forcing the author to use Memoize.
-\end{doc}
-
-\begin{doc}{
-    key={
-      name=driver, par=\marg{code},
-      desc={no default, initially \refcmd{mmzSingleExternDriver}}
-    },
-  }
-  This key sets \meta{code} as the memoization driver.
-
-  Given some code submitted to memoization, the memoization driver should
-  produce the memos and externs which will replicate the effect of that code
-  (while retaining its regular effect).  For details, see
-  section~\ref{sec:memoization-drivers}.
-
-  Typically, the \meta{code} argument of this key will consist of a single
-  control sequence (the driver control sequence), but any amount of tokens is
-  allowed.  Memoize executes the driver followed by the code which it is
-  supposed to memoize, in braces, and only cares that the driver consumes that
-  code.
-\end{doc}
-
-
-\begin{doc}{
-    key={name=at begin memoization, par=\meta{code}, desc={cumulative, initially empty}},
-    key={name=at end memoization, par=\meta{code}, desc={cumulative, initially empty}},
-    key={name=after memoization, par=\meta{code}, desc={cumulative, initially empty}},
-  }
-  Use these keys to set up memoization hooks.
-
-  These keys may be used both prior to the memoization process, or during
-  memoization.  In the former case, their effect is local to the current group;
-  in the latter case, the code given to \refmmz{at begin memoization} is
-  executed immediately, while the assignment performed by the other two keys is
-  global, so that the changes surely survive until the end of memoization.
-
-  The code given to hook \refmmz{at begin memoization} is kept in macro
-  \docaux{cmd}{mmzAtBeginMemoization}, while the content of the other two hooks
-  resides in two macros per hook: \docaux{cmd}{mmzAtEndMemoization} and
-  \docaux{cmd}{mmzAtEndMemoizationExtra}, and \docaux{cmd}{mmzAfterMemoization}
-  and \docaux{cmd}{mmzAfterMemoizationExtra}. All these macros may be
-  manipulated directly by the user,\footnote{Use \cs{appto}, \cs{eappto},
-    \cs{gappto} and \cs{xappto} of package \pkg{etoolbox} (loaded by Memoize)
-    to easily append code to these macros.} as long as one keeps to the
-  convention of adjusting the macros without ``\texttt{Extra}'' locally and
-  only while not memoizing, and adjusting the macros with ``\texttt{Extra}''
-  globally and only during memoization.  The ``\texttt{Extra}'' macros require
-  global assignments as they might be manipulated by code residing within a
-  \hologo{TeX} group of any depth.
-
-  These complications explained, let us take a look at how memoization proceeds
-  to learn when the hooks are used:
-  \begin{enumerate}
-  \item Initialize various conditionals, macros and token registers.  (Here is
-    where the ``\texttt{Extra}'' hooks are cleared.)  Remember that at this
-    point, we're inside a group opened by \refcmd{Memoize}.
-  \item Execute \refmmz{at begin memoization} hook, i.e.\ the contents of
-    macro \refcmd{mmzAtBeginMemoization}.
-  \item Execute the memoization \refmmz{driver}.
-  \item Execute \refmmz{at end memoization} hook, i.e.\ the contents of macros
-    \refcmd{mmzAtEndMemoization} and \refcmd{mmzAtEndMemoizationExtra} (in this
-    order).
-  \item Write out the memos and ship out the externs to extern pages (unless
-    memoization was aborted).
-  \item Close the memoization group.
-  \item Execute \refmmz{after memoization} hook, i.e.\ the contents of
-    macros \refcmd{mmzAfterMemoization} and \refcmd{mmzAfterMemoizationExtra}
-    (in this order).
-  \end{enumerate}
 \end{doc}
 
 \begin{doc}{
@@ -7637,9 +7870,7 @@ headers.
   If \meta{argument specification} is not provided, the initial collector
   assumes that the advised command was defined using \hologo{LaTeX3}'s
   \refcmd{NewDocumentCommand} (or similar), and will attempt to retrieve the
-  argument specification automatically.\footnote{The automatic retrieval
-    deploys command \refcmd{GetDocumentCommandArgSpec} of package \pkg{xparse},
-    which is the sole reason that Advice loads this package in \hologo{LaTeX}.}
+  argument specification automatically.
   
   In general, however, an argument collector may this interpret this setting 
   in any way it sees fit --- or not at all.  For example, in Memoize the value
@@ -8586,7 +8817,7 @@ their behaviour by setting \refcollargs{ignore nesting}, as shown below on the
 right.  (Of course we also need to set \refcollargs{verbatim} if we want to
 grab the environment body in the verbatim mode.)
 
-  \begin{tcbraster}[raster columns=2]
+  \begin{tcboxedraster}[raster columns=2]{blankest}
     \begin{tcblisting}{listing only, mark region={1}{5},
       example title=\texttt{ignore nesting=false}}
   ...
@@ -8600,7 +8831,7 @@ grab the environment body in the verbatim mode.)
       listing only, no attachment, mark region={1}{3}, 
       example title=\texttt{ignore nesting=true}
     }
-  \end{tcbraster}
+  \end{tcboxedraster}
 
   This key applies not only to argument type \docref{xparse:b} (in either
   normal or verbatim mode), but also to the verbatim argument type
@@ -8631,14 +8862,14 @@ grab the environment body in the verbatim mode.)
   is shown below, where the shaded area marks the code collected into
   environment |foo|.
 
-  \begin{tcbraster}
+  \begin{tcboxedraster}{blankest}
     \tcbinputexample{collargs-ignore-other-tags}(.c1){
       listing only, no attachment, mark region={3}{3},
       example title=\texttt{ignore other tags=false}}
     \tcbinputexample{collargs-ignore-other-tags}(.c2){
       listing only, no attachment, mark region={3}{5},
       example title=\texttt{ignore other tags=true}}
-  \end{tcbraster}
+  \end{tcboxedraster}
 
   This key does not have any effect the full verbatim mode, which always
   behaves as if this key was set to true, because braces are of category
