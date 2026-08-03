@@ -144,7 +144,7 @@ endef
 .PHONY: runtimes link-runtimes install-runtimes uninstall-runtimes version
 .IGNORE: uninstall-runtimes
 
-cp=$(intcmp $(words $(1)),0,,,cp $(1) $(2))
+cp=$(intcmp $(words $(1)),0,,,cp --remove-destination $(1) $(2))
 
 runtimes: $(RUNTIME)
 

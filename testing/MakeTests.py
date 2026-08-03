@@ -191,7 +191,7 @@ for test in Test(['memodir with spaces', 'build/memodir with spaces/doc with spa
     assert diff('{expected,build}/memodir with spaces/doc with spaces.memo.dir/prefix with spaces.7DBC7B29C0C49BCFD5C4A18740E06E80-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo')
 
     
-for pyl in ('py', 'pl'):
+for pyl in ('py', 'pl', 'lua'):
     inexisting_absolute = ('C:\\' if platform.system() == 'Windows' else '/') + 'inexisting'
     
     for test in Test([f'extract-nomemodir.{pyl}'],

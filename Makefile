@@ -162,4 +162,8 @@ test-venv:
 	testing/venv/bin/pip install -r testing/requirements.txt
 
 test:
+	mkdir -p testing/{build,success}
 	cd testing && source venv/bin/activate && ./MakeTests.py
+
+test-clean:
+	rm -rf testing/build
