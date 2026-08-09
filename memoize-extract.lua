@@ -4,7 +4,8 @@
 -- graphics and memoization of compilation results in general, available at
 -- https://ctan.org/pkg/memoize and https://github.com/sasozivanovic/memoize.
 --
--- Copyright (c) 2025- TODO(all)
+-- Copyright (c) 2025  Lukas ?? (atticus-sullivan @ github.com)
+--               2025- Saso Zivanovic <saso.zivanovic@guest.arnes.si>
 --
 -- This work may be distributed and/or modified under the conditions of the
 -- LaTeX Project Public License, either version 1.3c of this license or (at
@@ -18,1104 +19,809 @@
 -- The files belonging to this work and covered by LPPL are listed in
 -- <texmf>/doc/generic/memoize/FILES.
 
--------------------
--- general notes --
--------------------
+local VERSION = '2025/01/17 v1.4.1'
 
--- libraries already available due to the use of texlua
--- lfs:
---  lua-filesystem: used for checking/creating/deleting files/directories
---  see https://lunarmodules.github.io/luafilesystem/manual.html#reference
---  and https://texdoc.org/serve/LuaTeX/0
---
--- pdfe:
---  interface to pdf files: used to get information about a pdf file
---  see https://texdoc.org/serve/LuaTeX/0
-
--- policy regarding error handling:
--- - Functions other than the main-function should not exit
---   (this includes calling log_error and log_assert) as they don't know the
---   context in which they have been called (includes what cleanup needs to be
---   done).
---
--- - Instead, functions might do return nil, "errmsg" in order to indicate an
---   error has occured and describe it. (This is quite common in lua)
---
--- - Functions without return value should return true in case of success in
---   order to be able to detect the nil in the error case
-
-------------------
--- some globals --
-------------------
-local VERSION = '2025/01/17 v1.4.1' -- TODO(release)
-
--- global variable STAGE is used as indicator whether this is loaded as library for testing or executed directly
--- variable is "testing" if exactly this string and "production" in all other cases
-STAGE = STAGE == "testing" and "testing" or "production"
+-- The following libraries are already available due to the use of LuaTeX: kpse
+-- (Kpathsea), lfs (LuaFileSystem).  Furthermore, the following libraries are
+-- extended in LuaTeX: lfs, os.  Finally, we also require several further
+-- LuaTeX modules (note that they create global tables):
 
 --Search for the libraries within the tex tree (see LuaTeX manual 10.7).
 kpse.set_program_name("luatex")
+--todo: if program name is not yet set
 
-local pdf = require('luapdfrw')
+require 'lualibs-basic-merged' --only for debugging
+require 'lualibs-lpeg' --required by lualibs-file
+require 'lualibs-file'
+require 'lualibs-dir'
 
---luacheck: read_globals kpse (loaded by texlua)
+--luacheck: read_globals dir
+--luacheck: read_globals file
+--luacheck: read_globals kpse
+--luacheck: read_globals lfs
+--luacheck: read_globals inspect
 
+-- Load "our own" PDF writer and argument parser.
+local pdf = require 'luapdfrw'
+local argparse = require 'pm-argparse'
 
----------------------------------------------------------------------
--- some functions also used inside the security relevant functions --
--- -> need to be defined beforehand                                --
----------------------------------------------------------------------
+-- List all the functions used in the script as local, then empty the global
+-- environment.  This way, we precisely know what the script uses.
 
----@param bp number
----@return number
-local function bp2pt(bp)
-	return bp / 72 * 72.27
-end
-
--- not per-se a critical function, but variable strings used as patterns in
--- critical functions make this function critical
-
----make an arbitrary string safe for use in a lua pattern
----@param pat string
----@return string
-local function escape_pattern_for_format(pat)
-	local r = pat:gsub("[%%]", "%%%0")
-	return r
-end
-
------------------------------------------
--- security relevant functions go here --
---                libs                 --
------------------------------------------
-
--------------
--- pathlib --
--------------
--- -> probably moved to a different library eventually
-local pathlib = {}
-do
-	-- other projects like penlight or l3build do stuff with different pathseps, according to
-	-- https://learn.microsoft.com/en-us/dotnet/standard/io/file-path-formats#canonicalize-separators
-	-- and
-	-- https://retrocomputing.stackexchange.com/questions/28344/since-when-does-windows-support-forward-slash-as-path-separator
-	-- windows since quite a while also works with / as pathsep.
-	-- Thus, this pathlib will normalize paths for having / as pathsep before working on paths
-	if os.type == "windows" then
-		---Normalize path such that windows also uses /
-		---@param path string
-		---@return string
-		function pathlib.path_normalize(path)
-			return path:gsub("\\", "/")
-		end
-	else
-		---Unix already uses / as pathsep -> no-op
-		---@param path string
-		---@return string
-		function pathlib.path_normalize(path)
-			return path
-		end
-	end
-
-	-- still windows paths work with disk specifiers -> special handling required
-	if os.type == "windows" then
-		---Check if path is an absolute path
-		---NOTE: Windows UNC paths aren't supported
-		---(see https://learn.microsoft.com/en-us/dotnet/standard/io/file-path-formats#unc-paths)
-		---@param path string
-		---@return boolean? is_abs
-		---@return string? err_msg
-		function pathlib.path_is_absolute(path)
-			local err
-			path, err = pathlib.sanitize_path(path)
-			if not path then return nil, err end
-
-			return path:sub(2,2) == ":" and path:sub(3,3) == "/"
-		end
-	else
-		---Check if path is an absolute path
-		---@param path string
-		---@return boolean? is_abs
-		---@return string? err_msg
-		function pathlib.path_is_absolute(path)
-			local err
-			path, err = pathlib.sanitize_path(path)
-			if not path then return nil, err end
-
-			if path:match("/%.%.+/") then
-				return false
-			end
-
-			return path:match("^/") and true or false
-		end
-	end
-
-	---check for weird characters in the path
-	---@param path string
-	---@return string path
-	---@overload fun(path:string):nil, string?
-	function pathlib.sanitize_path(path)
-		if path:match("[%c%%\t\r\n><*|]") then
-			return nil, ("Path contains invalid characters: %s"):format(path)
-		end
-		return path
-	end
-	---check for weird characters in the path
-	---same as sanitize_path but includes / and \
-	---@param name string
-	---@return string? name
-	---@overload fun(name:string):nil, string?
-	function pathlib.sanitize_name(name)
-		if name:match("[%c%%\t\r\n><*|/\\]") then
-			return nil, ("File has an invalid name: %s"):format(name)
-		end
-		return name
-	end
-	---check for invalid suffixes
-	---@param suffix string
-	---@return string? suffix
-	---@overload fun(suffix:string):nil, string?
-	function pathlib.sanitize_suffix(suffix)
-		if suffix:match("[%c%%\t\r\n><*|/\\]") then
-			return nil, ("Suffix contains invalid characters: %s"):format(suffix)
-		end
-		if suffix:match("^%.") then
-			return nil, ("Suffix should not start with a dot: %s"):format(suffix)
-		end
-		if suffix == "" then
-			return nil, ("suffix must not be empty")
-		end
-		return suffix
-	end
-
-	---@param path string
-	---@return string name
-	---@return string remainder
-	---@overload fun(name:string):nil,string?
-	function pathlib.name(path)
-		path = pathlib.path_normalize(path)
-
-		local err
-		path, err = pathlib.sanitize_path(path)
-		if not path then return nil, err end
-
-		local r, name = path:match("^(.*)/([^/]+)/?$")
-		return name or path, name and r or nil
-	end
-
-	---@param path string
-	---@param name string
-	---@return string
-	---@overload fun(name:string, path:string):nil,string?
-	function pathlib.with_name(path, name)
-		path = pathlib.path_normalize(path)
-
-		local err
-		name, err = pathlib.sanitize_name(name)
-		if not name then return nil, err end
-
-		local n, r = pathlib.name(path)
-		if not n then return nil, r end
-
-		if r then
-			return r.."/"..name
-		end
-		return name
-	end
-
-	---@param path string
-	---@return string suffix
-	---@return string remainder
-	---@overload fun(path:string):nil,string?
-	function pathlib.suffix(path)
-		path = pathlib.path_normalize(path)
-
-		local err
-		path, err = pathlib.sanitize_path(path)
-		if not path then return nil, err end
-
-		local r, suffix = path:match("^(.*)%.([^./]*)$")
-		if not suffix and path:match("^%.") then
-			-- is hidden file
-			return "", path
-		end
-		return suffix or "", r or path
-	end
-
-	---@param path string
-	---@param suffix string
-	---@return string
-	---@overload fun(path:string, suffix:string):nil,string?
-	function pathlib.with_suffix(path, suffix)
-		path = pathlib.path_normalize(path)
-
-		local err
-		suffix, err = pathlib.sanitize_suffix(suffix)
-		if not suffix then return nil, err end
-
-		local s, r = pathlib.suffix(path)
-		if not s then return nil, r end
-
-		return r.."."..suffix
-	end
-
-	function pathlib.join(path, ...)
-		if not path then return "" end
-
-		path = pathlib.path_normalize(path)
-
-		local err
-		path, err = pathlib.sanitize_path(path)
-		if not path then return nil, err end
-
-		local r, err = pathlib.join(...)
-		if not r then return nil, err end
-
-		if r == "" then return path end
-
-		local p_sep = path:sub(-1,-1) == "/"
-		local r_sep = r:sub(1,1) == "/"
-
-		-- avoid duplicated pathseps
-		if p_sep and r_sep then
-			-- remove one of the /
-			return path..r:sub(2)
-		elseif p_sep or r_sep then
-			-- no new / needed
-			return path..r
-		else
-			-- no / yet present
-			return path.."/"..r
-		end
-	end
-
-	function pathlib.iter_path(path)
-		path = pathlib.path_normalize(path)
-		local root = pathlib.path_is_absolute(path) and "/" or ""
-		local drive = ""
-		if os.type == "windows" then
-			drive = path:match("^%a:")
-			if drive then
-				path = path:sub(3)
-			end
-		end
-		drive = drive or ""
-		local components = {}
-		for component in path:gmatch("([^/]+)") do
-			table.insert(components, component)
-		end
-		local idx = 0
-		return function()
-			idx = idx + 1
-			if components[idx] then
-				return drive .. root .. table.concat({table.unpack(components, 1, idx)}, "/")
-			else
-				return nil
-			end
-		end
-	end
-end
-
------------------------------------------
--- security relevant functions go here --
---           simple wrappers           --
------------------------------------------
-
--- restricted function defined here
-local mkdir
-local mkdir_rec
-do
-	-- safe the functions/libraries needed in this restricted area
-	local lfs = lfs
-	-- this is not inside the function but the startup code -> can error here
-	if not lfs then error("lfs is not available. This script needs to be executed with texlua") end
-
-	---safely make new directory (non-recursive)
-	---Note: this is a nop if the directory already exists
-	---@param name string
-	---@return boolean? success
-	---@return string? error message
-	mkdir = function(name)
-		if lfs.isdir(name) then
-			return true
-		end
-
-		-- from https://gitlab.lisn.upsaclay.fr/texlive/luatex/-/blob/master/source/texk/web2c/luatexdir/lua/luatex-core.lua#L269
-		-- why also checking for `in`? isn't mkdir only about output?
-		-- -> decided to keep both checks just in case
-		if kpse.out_name_ok_silent_extended(name) and kpse.in_name_ok_silent_extended(name) then
-			return lfs.mkdir(name)
-		else
-			return nil, ("mkdir '%s' not permitted"):format(name)
-		end
-	end
-	---safely make new directory (recursive)
-	---Note: this is a nop if the directory already exists
-	---@param name string
-	---@return boolean? success
-	---@return string? error message
-	mkdir_rec = function(name)
-		local succ, err
-		for c in pathlib.iter_path(name) do
-			succ, err = mkdir(c)
-			if not succ then
-				return nil, err
-			end
-		end
-		return true
-	end
-end
-
--- restricted function defined here
-local io_open_w
-do
-	-- safe the functions/libraries needed in this restricted area
-	local io_open = io.open
-
-	---safely open a file in write mode
-	---@param name string
-	---@return file*? file_handle
-	---@return string? error message
-	io_open_w = function(name)
-		if kpse.out_name_ok_silent_extended(name) then
-			return io_open(name, "w")
-		else
-			return nil, ("Opening (write) '%s' not permitted"):format(name)
-		end
-	end
-end
-
--- restricted function defined here
-local mv
-do
-	-- safe the functions/libraries needed in this restricted area
-	local os_rename = os.rename
-
-	---safely rename a file aka moving it
-	---@param src string
-	---@param dst string
-	---@return boolean? success
-	---@return string? error message
-	mv = function(src, dst)
-		if not kpse.in_name_ok_silent_extended(src) then
-			return nil, ("Moving (copy) from '%s' not permitted."):format(src)
-		elseif not kpse.out_name_ok_silent_extended(src) then
-			return nil, ("Moving (delete) from '%s' not permitted."):format(src)
-		elseif not kpse.out_name_ok_silent_extended(dst) then
-			return nil, ("Moving to '%s' not permitted."):format(dst)
-		else
-			return os_rename(src, dst)
-		end
-	end
-end
-
--- restricted function defined here
-local io_lines
-do
-	-- safe the functions/libraries needed in this restricted area
-	local _io_lines = io.lines
-
-	---safely get an iterator over the lines of a file
-	---@param name string
-	---@return fun()? iterator
-	---@return string? error message
-	io_lines = function(name)
-		if kpse.in_name_ok_silent_extended(name) then
-			return _io_lines(name)
-		else
-			return nil, ("Opening (read) '%s' not permitted"):format(name)
-		end
-	end
-end
-
-local pdfe_open
-do
-	local _pdfe_open = pdfe.open
-
-	---safely open a pdf file with the pdfe library, other functions of that library are exposed directly
-	---@param path string
-	---@return pdfe.Document
-	---@return string? error message
-	pdfe_open = function(path)
-		if kpse.in_name_ok_silent_extended(path) then
-			return _pdfe_open(path)
-		else
-			return nil, ("Opening (read) '%s' not permitted"):format(path)
-		end
-	end
-end
-
------------------------------------------
--- security relevant functions go here --
---       more complex functions        --
------------------------------------------
-
--- restricted function defined here
-local extract_pages
-do
-	---extract all pages specified in `pages` from `src_pdf` to dedicated files specified via `out_prefix`
-	---can raise an error
-	---@param src_pdf string
-	---@param out_prefix string
-	---@param pages [integer]
-	---@param pdf_version string
-	---@return integer? return_code of the underlying os.execute
-	---@return string? error returned by os.execute
-	---@return function? cleanup clean up all files created in the process
-	---@return string? out_pat pattern to which the pages were written to
-	extract_pages = function(src_pdf, out_prefix, pages, pdf_version)
-		if not kpse.in_name_ok_silent_extended(src_pdf) then
-			return nil, ("Opening '%s' not permitted."):format(src_pdf), nil, nil
-		end
-
-		local out_pat = ("%s%%d.pdf.tmp"):format(escape_pattern_for_format(out_prefix))
-		if not kpse.out_name_ok_silent_extended(out_pat:format(0)) then
-			return nil, ("Writing to '%s' (and following) not permitted."):format(out_pat:format(0)), nil, nil
-		end
-
-		if not pdf_version:find("^%d%.%d$") then
-			return nil, ("Invalid pdf_version provided: %s"):format(pdf_version)
-		end
-	end
-end
-
--- restrict the complete rest of the script by undefining security relevant libraries
--- this defines an allow-list what functions of these libraries still should be accessible
-local env = {
-	-- lua libraries
-	arg      = arg,
-	ipairs   = ipairs,
-	math     = math,
-	os       = { type = os.type, },
-	pairs    = pairs,
-	print    = print,
-	table    = table,
-	tonumber = tonumber,
-	tostring = tostring,
-	select   = select,
-	inspect  = inspect,
-	pcall    = pcall,
-	assert   = assert,
-
-	-- luatex specific libraries
-	lfs      = {isfile=lfs.isfile},
-	kpse     = kpse,
-	pdfe = {
-		getpage    = pdfe.getpage,
-		getbox     = pdfe.getbox,
-		getversion = pdfe.getversion,
-		close      = pdfe.close,
-	},
-
-	-- own library
-	pathlib = pathlib,
-
-	-- memoize-extract specific global
-	STAGE    = STAGE,
+local dir = {
+    makedirs = dir.makedirs,
+}
+local file = {
+    addsuffix = file.addsuffix,
+    basename = file.basename,
+    dirname = file.dirname,
+    is_rootbased_path = file.is_rootbased_path,
+    join = file.join,
+    replacesuffix = file.replacesuffix,
+    splitname = file.splitname,
+    suffix = file.suffix,
+}
+local io = {
+    exists = io.exists, ---@diagnostic disable-line
+    open = io.open,
+}
+local kpse = {
+    in_name_ok_silent_extended = kpse.in_name_ok_silent_extended,
+    out_name_ok_silent_extended = kpse.out_name_ok_silent_extended,
+    set_program_name = kpse.set_program_name,
+    var_value = kpse.var_value,
+}
+local lfs = {
+    attributes = lfs.attributes, ---@diagnostic disable-line
+    isfile = lfs.isfile,         ---@diagnostic disable-line
+}
+local os = {
+    exit = os.exit,
+    type = os.type, ---@diagnostic disable-line
+    getenv = os.getenv,
 }
 
-local exit
-if STAGE == "testing" then
-	-- in testing environment avoid exiting the whole test
-	-- -> instead raise an error which can be catched
+---@diagnostic disable-next-line
+local inspect = inspect --for debugging, from lualibs-basic-merged
 
-	-- store the error function independent of the environment
-	local error = error
-	exit = {
-		error = function() error("exited with error") end,
-		warn  = function() error("exited with warn") end,
-		succ  = function() error("exited with succ") end,
-	}
-else
-	local os_exit = os.exit
-	exit = {
-		error = function() os_exit(11) end,
-		warn  = function() os_exit(10) end,
-		succ  = function() os_exit(0) end,
-	}
+-- We write our own assert, because the official function lacks the level
+-- parameter.  We also have different defaults: an empty message and level=0.
+-- Note that we increase a non-zero level by one in the code, to function the
+-- same as the official assert.
+---@param v any
+---@param message any
+---@param level integer?
+local assert = function(v, message, level)
+    if not v then error(message or '', level and level+1 or 0) end
 end
 
+-- What the heck, let's also change the default level of error to 0, for
+-- consistency.
+---@param message any
+---@param level integer?
+local error = function(message, level) ---@diagnostic disable-line
+    error(message or '', level and level+1 or 0)
+end
+
+--_ENV = { table = table }
+--    arg, error, pairs, ipairs, pcall, print, tonumber, tostring, type
+
+local script_name = file.basename(arg[0])
+
+--\paragraph{Messages}
+
+--The messages are written both to the extraction log and the terminal (we
+--output to stdout rather than stderr so that messalges on the TeX terminal and
+--document |.log| appear in chronological order).  Messages are automatically
+--adapted to the TeX |--format|.
+
+--The format of the messages.  It depends on the given |--format|; the last
+--entry is for t the terminal output.
+
+local exit, logging
 do
-	-- I don't like using the debug library, but getting a traceback here is a
-	-- must to find where the error originates from
-	local debug_traceback = debug.traceback
-	-- use the lua error function -> exits immediately
-	local error = error
-
-	-- Prevent trying to change the environment.
-	local function bad_index(...)
-		local msg = "Attempt to access an undefined index: "
-		for i = 2, select("#", ...) do
-			msg = msg ..tostring(select(i, ...)).." "
-		end
-		msg = msg.."\n\n"..debug_traceback(nil, 2)
-		error(msg,2)
-	end
-	setmetatable(env, {
-		__index     = bad_index,
-		__metatable = false,
-		__newindex  = bad_index,
-	})
+    local os_exit = os.exit
+    exit = {
+        error = function() logging:close() os_exit(11) end,
+        warn  = function() logging:close() os_exit(10) end,
+        succ  = function() logging:close() os_exit(0) end,
+    }
 end
 
-_ENV = env
-----------------------------------
--- restricted area startes here --
-----------------------------------
+logging = {
+    file      = nil,
+    header    = "",
+    indent    = "",
+    texindent = "",
+    quiet = false,
+    format = "None",
+    package_name = '',
+}
+do
+    local ERROR = {
+        latex = function(self, short, long) return
+		("\\PackageError{%s}{%s}{%s}")
+		:format(self.package_name, short, long) end,
+        plain = function(self, short, long) return
+		("\\errhelp{%s}\\errmessage{%s: %s}")
+		:format(long, self.package_name, short) end,
+        context = function(self, short, long) return
+		("\\errhelp{%s}\\errmessage{%s: %s}")
+		:format(long, self.package_name, short) end,
+        None = function(self, short, long) return
+		(long ~= '' and "%s%s. (%s)" or "%s%s.")
+		:format(self.header, short, long) end,
+    }
+    local WARNING = {
+        latex = function(self, text) return
+		("\\PackageWarning{%s}{%s%s}")
+		:format(self.package_name, self.texindent, text) end,
+        plain = function(self, text) return
+		("\\message{%s: %s%s}")
+		:format(self.package_name, self.texindent, text) end,
+        context = function(self, text) return
+		("\\message{%s: %s%s}")
+		:format(self.package_name, self.texindent, text) end,
+        None = function(self, text) return
+		("%s%s%s.")
+		:format(self.header, self.indent, text)          end,
+    }
+    local INFO = {
+        latex = function(self, text) return
+		("\\PackageInfo{%s}{%s%s}")
+		:format(self.package_name, self.texindent, text) end,
+        plain = function(self, text) return
+		("\\message{%s: %s%s}")
+		:format(self.package_name, self.texindent, text) end,
+        context = function(self, text) return
+		("\\message{%s: %s%s}")
+		:format(self.package_name, self.texindent, text) end,
+        None = function(self, text) return
+		("%s%s%s.")
+		:format(self.header, self.indent, text)          end,
+    }
 
------------------
--- normal code --
------------------
+    ---@param fn string
+    function logging:open(fn)
+	self.fh = io.open(fn, "w")
+    end
 
--- setup kpse
+    ---Closes the file after marking the log as complete.
+    function logging:close()
+        if self.fh then
+            self.fh:write("\\endinput\n")
+            self.fh:close()
+            self.fh = nil
+        end
+    end
+
+    ---@param text string
+    function logging:error(text)
+	text = text:gsub("\\", "\\string\\")
+	local short, long = text:match("^(.-)\t(.*)$")
+	if not short then short, long = text, '' end
+        if not self.quiet then
+            print(ERROR.None(self, short, long))
+        end
+        if self.fh then
+            self.fh:write(ERROR[self.format](self, short, long), "\n")
+	end
+	--Exit immediately.
+        exit.error()
+    end
+
+    ---@param text string
+    function logging:warn(text)
+	text = text or ''
+        if not self.quiet then
+            print(WARNING.None(self, text))
+        end
+        if self.fh then
+            self.fh:write(WARNING[self.format](self, text:gsub("\\", "\\string\\")), "\n")
+        end
+        -- Set the exit code.
+        exit.succ = exit.warn
+    end
+
+    ---@param text string
+    function logging:info(text)
+	text = text or ''
+        if not self.quiet then
+            print(INFO.None(self, text))
+        end
+        if self.fh then
+            self.fh:write(INFO[self.format](self, text:gsub("\\", "\\string\\")), "\n")
+        end
+    end
+
+end
+
+---@param msg string
+---@param f function
+---@param ... any
+---@return ... any
+local function reraise(msg, f, ...)
+    local function g(success, ...)
+	if success then return ... end
+	error(msg:format(tostring(...)))
+    end
+    return g(pcall(f,...))
+end
+
+---@param msg string
+---@param f function
+---@param ... any
+---@return ... any
+local function try_error(msg, f, ...)
+    local function g(success, ...)
+	if success then return ... end
+	logging:error(msg:format(tostring(...)))
+    end
+    return g(pcall(f,...))
+end
+
+---@param msg string
+---@param f function
+---@param ... any
+---@return ... any
+local function try_warn(msg, f, ...)
+    local function g(success, ...)
+	if not success then
+	    logging:warn(msg:format(tostring(...)))
+	end
+	return ...
+    end
+    return g(pcall(f,...))
+end
+
+-- \paragraph{Additions to lualibs-file and lualibs-dir}
+
+local pathlib = {}
+
+---@param char string
+---@return boolean
+function pathlib.is_sep(char)
+    return char == '/' or (os.type == 'windows' and char == '\\')
+end
+
+-- Like file.join, but also compress multiple separators into one.
+
+---@vararg string
+---@return string
+function pathlib.join(...)
+    assert((...), "No path was given")
+    return (file.join(...):gsub('[/\\]+', '/'))
+end
+
+---@param path string
+---@return boolean
+function pathlib.is_dir(path)
+    return lfs.attributes(path, 'mode') == 'directory'
+end
+
+-- On Windows, we disallow ``semi-absolute'' paths, i.e.\ paths starting with
+-- the |\| but lacking the drive, or the reverse.
+
+---@param path string
+---@return boolean
+function pathlib.is_absolute(path)
+    local drive, dir_path = file.splitname(path)
+    local is_rootbased = file.is_rootbased_path(dir_path)
+    assert(os.type ~= 'windows' or (drive ~= '' == is_rootbased),
+	   ("Disallowed \"semi-absolute\" path '%s'\tThe path must either contain \z
+             both the drive letter and start with '\\', or none of these; paths like \z
+             'C:foo' and '\\foo' are disallowed"):format(path))
+    return is_rootbased
+end
+
+-- \paragraph{Permission-related functions}
+
 kpse.set_program_name("texlua", "memoize-extract.lua")
 
-local find_in
+---@param fn string
+local function check_name_in(fn)
+    if not kpse.in_name_ok_silent_extended(fn) then
+        error(("I'm not allowed to read from '%s' (openin_any = {%s})")
+            :format(fn, kpse.var_value('openin_any')))
+    end
+end
+
+---@param fn string
+local function check_name_out(fn)
+    if not kpse.out_name_ok_silent_extended(fn) then
+	error(("I'm not allowed to write to '%s' (openout_any = {%s})")
+	    :format(fn, kpse.var_value('openout_any')))
+    end
+end
+
+local os_access
 do
-	local texmf_output_directory = kpse.var_value("TEXMF_OUTPUT_DIRECTORY")
-	local texmfoutput            = kpse.var_value("TEXMFOUTPUT")
+    local rwx_offsets = { r=0, w=1, x=2 }
 
-	---@param fname string
-	---@return string?
-	---@return string? -- error
-	find_in = function(fname)
-		local abs, err = pathlib.path_is_absolute(fname)
-		if abs == nil then return nil, err end
-		if abs then return fname end
+    if os.type == 'windows' then  --todo: test rwx_offsets
 
-		if texmf_output_directory then
-			local p, err = pathlib.join(texmf_output_directory, fname)
-			if not p then return nil, err end
-			if kpse.in_name_ok_silent_extended(p) then return p end
-		end
-		if not texmf_output_directory then
-			if kpse.in_name_ok_silent_extended(fname) and lfs.isfile(fname) then return fname end
-		end
-		if texmfoutput then
-			local p, err = pathlib.join(texmfoutput, fname)
-			if not p then return nil, err end
-			if kpse.in_name_ok_silent_extended(p) then return p end
-		end
+        ---@param fn string
+        ---@param mode string
+        ---|"'r'" # readable?
+        ---|"'w'" # writable?
+        ---|"'x'" # executable?
+        ---@return boolean
+        function os_access(fn, mode)
+        local permissions = lfs.attributes(fn, "permissions")
+        local offset = rwx_offsets[mode]
+        return permissions:sub(offset, offset) == mode
+        end
 
-		return fname
-	end
+    else
+
+        local my_euid, my_egid
+        local status, err = io.open("/proc/self/status")
+        assert(status, err, 1)
+        local lines = status:lines()
+        for line in lines do
+	    my_euid = line:match("^Uid:\t%d+\t(%d+)\t%d+\t%d+$")
+	    if my_euid then
+		my_euid = tonumber(my_euid)
+		my_egid = tonumber(lines():match("^Gid:\t%d+\t(%d+)\t%d+\t%d+$"))
+		assert(my_egid, "Internal error\tthe Gid line does not follow \z
+                                 the Uid line in /proc/self/status", 1)
+		break
+	    end
+        end
+        status:close()
+
+        ---@param fn string
+        ---@param mode string
+        ---|"'r'" # readable?
+        ---|"'w'" # writable?
+        ---|"'x'" # executable?
+        ---@return boolean
+        function os_access(fn, mode)
+	    local attrs = lfs.attributes(fn)
+	    if not attrs then return false end
+	    local ugo_offset = my_euid == attrs.uid and 1
+		or (my_egid == attrs.gid and 4 or 7)
+            local rwx_offset = rwx_offsets[mode]
+	    local offset = ugo_offset + rwx_offset
+	    return attrs.permissions:sub(offset, offset) == mode
+        end
+    end
 end
 
-local find_out
+---@param fn string
+---@param mode string?
+local function check_access_in(fn, mode)
+    assert(io.exists(fn), ("File '%s' does not exist"):format(fn))
+    assert(os_access(fn, 'r'), ("File '%s' is not readable"):format(fn))
+    assert(not mode or lfs.attributes(fn, 'mode') == mode,
+	   ("'%s' exists but is not a %s"):format(fn, mode))
+end
+
+--This function can fail on Windows, reporting a non-writable file or dir as
+--writable, because |os.access| does not work with Windows' |icacls|
+--permissions.  Consequence: we might try to write to a read-only current or
+--output directory instead of switching to the temporary directory.
+
+---@param fn string
+---@param mode string?
+local function check_access_out(fn, mode)
+    if io.exists(fn) then
+	--An existing file should be writable, and if it's a directory, it
+	--should also be executable.
+	assert(os_access(fn, 'w'),
+	       ("File '%s' is not writable"):format(fn))
+	assert(not mode or lfs.attributes(fn, 'mode') == mode,
+	       ("'%s' exists but is not a %s"):format(fn, mode))
+	assert(not pathlib.is_dir(fn) or os_access(fn, 'x'),
+	       ("Directory '%s' is not executable"):format(fn))
+    else
+	--For a non-existing file, the parent directory should be writable.
+	--(This is the only place where function |pathlib.parent| is used,
+	--so it's ok that it returns the logical parent.)
+	assert(os_access(file.dirname(fn), 'w'),
+	       ("Cannot create '%s' in a non-writable directory"):format(fn))
+    end
+end
+
+local find_in, find_out
 do
-	local texmf_output_directory = kpse.var_value("TEXMF_OUTPUT_DIRECTORY")
-	local texmfoutput            = kpse.var_value("TEXMFOUTPUT")
 
-	---@param fname string
-	---@return string?
-	---@return string?
-	find_out = function(fname)
-		local abs, err = pathlib.path_is_absolute(fname)
-		if abs == nil then return nil, err end
-		if abs then return fname end
+    --First, get the values of |TEXMFOUTPUT| and |TEXMF_OUTPUT_DIRECTORY|.
+    --An output directory should exist, and may not point to the root on Linux
+    --(Karl Berry, p.c.). On Windows, it may point to the root (of a drive),
+    --because we only allow absolute filenames containing the drive, e.g.\
+    --|F:\|; see |is_absolute|.
 
-		local texmf_od
-		if texmf_output_directory then
-			local p, err = pathlib.join(texmf_output_directory, fname)
-			if not p then return nil, err end
-			texmf_od = p
-			if kpse.out_name_ok_silent_extended(p) then return p end
-		end
-		if not texmf_output_directory then
-			if kpse.out_name_ok_silent_extended(fname) then return fname end
-		end
-		if texmfoutput then
-			local p, err = pathlib.join(texmfoutput, fname)
-			if not p then return nil, err end
-			if kpse.out_name_ok_silent_extended(p) then return p end
-		end
-
-		return texmf_od or fname
+    ---@param f function
+    ---@param var string
+    ---@return string?
+    local function get_outdir(f, var)
+        local path = f(var)
+	if path then
+            if not pathlib.is_dir(path) then
+                logging:warn(("I refuse to set %s to '%s', which is not a directory.")
+		    :format(var, path))
+                return
+            end
+	    if os.type ~= 'windows' and pathlib.join(path) ~= pathlib.sep then
+		logging:warn(("I refuse to set %s to the root directory"):format(var))
+	    end
 	end
+	return path
+    end
+
+    local texmf_output_directory = get_outdir(os.getenv, "TEXMF_OUTPUT_DIRECTORY")
+    local texmfoutput = get_outdir(kpse.var_value, "TEXMFOUTPUT")
+
+    --This function finds the location for an input file, respecting
+    --|TEXMF_OUTPUT_DIRECTORY| and |TEXMFOUTPUT|, and the permissions in the
+    --filesystem.  It returns an absolute file as-is.  For a relative file, it
+    --tries |TEXMF_OUTPUT_DIRECTORY| (if defined), the current directory
+    --(always), and |TEXMFOUTPUT| directory (if defined), in this order.  The
+    --first readable file found is returned; if no readable file is found, the
+    --file in the current directory is returned.
+
+    ---@param fn string
+    ---@return string
+    function find_in(fn)
+        if pathlib.is_absolute(fn) then return fn end
+        for _, df in ipairs(
+	    {
+		texmf_output_directory and pathlib.join(texmf_output_directory, fn),
+		fn,
+		texmfoutput and pathlib.join(texmfoutput, fn),
+            }
+        ) do
+            if df and pcall(check_access_in, df) then return df end
+        end
+	return fn
+    end
+
+    --This function finds the location for an output file, respecting
+    --|TEXMF_OUTPUT_DIRECTORY| and |TEXMFOUTPUT|, and the permissions in the
+    --filesystem.  It returns an absolute file as-is.  For a relative file, it
+    --tries |TEXMF_OUTPUT_DIRECTORY| (if defined), the current directory
+    --(unless |TEXMF_OUTPUT_DIRECTORY| is defined), and |TEXMFOUTPUT| directory
+    --(if defined), in this order.  The first writable file found is returned;
+    --if no writable file is found, the file in either the current or the
+    --output directory is returned.
+
+    ---@param fn string
+    ---@return string
+    function find_out(fn)
+        if pathlib.is_absolute(fn) then return fn end
+        for _, df in ipairs(
+	    {
+		texmf_output_directory and pathlib.join(texmf_output_directory, fn),
+		not texmf_output_directory and fn,
+		texmfoutput and pathlib.join(texmfoutput, fn),
+            }
+        ) do
+            if df and pcall(check_access_out, df) then return df end
+        end
+	return texmf_output_directory and pathlib.join(texmf_output_directory, fn) or fn
+    end
 end
 
--- setup something like a logging library
-local logging = {
-	file      = nil,
-	header    = "memoize-extract.lua: ",
-	indent    = "",
-	texindent = "",
-}
-do
-	local package_name = "memoize (texlua-based extraction)"
-	local ERROR   = {
-		latex     = function(a) return ("\\PackageError{%s}{%s}{%s}"):format(a.package_name or "", a.short or "", a.long or "") end,
-		plain     = function(a) return ("\\errhelp{%s}\\errmessage{%s: %s}"):format(a.long or "", a.package_name or "", a.short or "") end,
-		context   = function(a) return ("\\errhelp{%s}\\errmessage{%s: %s}"):format(a.long or "", a.package_name or "", a.short or "") end,
-		None      = function(a) return ("%s%s.\n%s"):format(a.header or "", a.short or "", a.long or "") end,
-	}
+--A paranoid |dir.makedirs|.  The given folder is preprocessed by |find_out|.
 
-	local WARNING = {
-		latex     = function(a) return ("\\PackageWarning{%s}{%s%s}"):format(a.package_name or "", a.texindent or "", a.text or "") end,
-		plain     = function(a) return ("\\message{%s: %s%s}"):format(a.package_name or "", a.texindent or "", a.text or "") end,
-		context   = function(a) return ("\\message{%s: %s%s}"):format(a.package_name or "", a.texindent or "", a.text or "") end,
-		None      = function(a) return ("%s%s%s."):format(a.header or "", a.indent or "", a.text or "") end,
-	}
-
-	local INFO    = {
-		latex     = function(a) return ("\\PackageInfo{%s}{%s%s}"):format(a.package_name or "", a.texindent or "", a.text or "") end,
-		plain     = function(a) return ("\\message{%s: %s%s}"):format(a.package_name or "", a.texindent or "", a.text or "") end,
-		context   = function(a) return ("\\message{%s: %s%s}"):format(a.package_name or "", a.texindent or "", a.text or "") end,
-		None      = function(a) return ("%s%s%s."):format(a.header or "", a.indent or "", a.text or "") end,
-	}
-
-	---Marks the log as complete
-	function logging:close()
-		if self.file then
-			self.file:write("\\endinput\n")
-			self.file:close()
-
-			-- avoid working with the closed file at all cost
-			self.file = nil
-		end
+---@param folder string
+local function mkdir(folder)
+    folder = find_out(folder)
+    check_name_out(folder)
+    check_access_out(folder)
+    if io.exists(folder) then
+	local attr = lfs.attributes(folder)
+	if attr.mode ~= 'directory' then
+	    error("Path '%s' already exists, but it is not a directory")
+	elseif false and attr.permissions == 'bad' then
+	    error("Path '%s' already exists, but it is not writable")
 	end
-
-	---Setup logging with specific arguments to avoid needing to pass quiet and format arguments to each logging call
-	---@param args table
-	function logging:set_args(args)
-		self.error = function(self, short, long) return self:_error(short, long, args.quiet, args.format) end
-		self.info  = function(self, text) return self:_info(text, args.quiet, args.format) end
-		self.warn  = function(self, text) return self:_warn(text, args.quiet, args.format) end
-	end
-
-	---Log an error
-	---@param short string
-	---@param long string
-	---@param quiet boolean
-	---@param format string
-	function logging:_error(short, long, quiet, format)
-		format = format or "None"
-		short = short or ''
-		long = long or ''
-		if not quiet then
-			print(ERROR.None{short=short, long=long, header=self.header})
-		end
-		if self.file then
-			short = short:gsub("\\", "\\string\\")
-			long  = long:gsub("\\", "\\string\\")
-			self.file:write(ERROR[format]{short=short, long=long, package_name=package_name},"\n")
-		end
-		-- set the exitcode this way
-		exit.succ = exit.error
-	end
-	logging.error = logging._error
-
-	---Log a warning
-	---@param text string
-	---@param quiet boolean
-	---@param format string
-	function logging:_warn(text, quiet, format)
-		format = format or "None"
-		if not quiet then
-			print(WARNING.None{text=text, header=self.header, indent=self.indent})
-		end
-		if self.file then
-			text = text:gsub("\\", "\\")
-			self.file:write(WARNING[format]{text=text, texindent=self.texindent, package_name=self.package_name},"\n")
-		end
-		-- set the exitcode this way
-		exit.succ = exit.warn
-	end
-	logging.warn = logging._warn
-
-	---Log info message
-	---@param text string
-	---@param quiet boolean
-	---@param format string
-	function logging:_info(text, quiet, format)
-		format = format or "None"
-		if not quiet then
-			print(INFO.None{text=text, header=self.header, indent=self.indent})
-		end
-		if self.file then
-			text = text:gsub("\\", "\\")
-			self.file:write(INFO[format]{text=text, texindent=self.texindent, package_name=self.package_name},"\n")
-		end
-	end
-	logging.info = logging._info
+    else
+	dir.makedirs(folder)
+    end
 end
 
--- "forward declarations" for logging versions of error/assert
-local log_assert
-local log_error
+---Remove pairs of quotes from the filename, which might contain a quoted jobname.
 
----analog to lua's assert, define a function which uses logging for the message instead
----@param cond boolean condition to be checked by this assertion
----@param msg string? message shown when the assertion fails
----@param cleanup fun()? function invoked after logging the message used for additional cleanup (can still use logging, the log-file is not yet closed). Might be omitted
-log_assert = function(cond, msg, cleanup)
-	if not cond then
-		logging:error("", msg or "")
-		if cleanup then cleanup() end
-		logging:close()
-		exit.error()
-	end
-end
-
----analog to lua's error, define a function which uses logging for the message instead
----@param msg string? message shown
----@param cleanup fun()? function invoked after logging the message used for additional cleanup (can still use logging, the log-file is not yet closed). Might be omitted
-log_error = function(msg, cleanup)
-	logging:error("", msg)
-	if cleanup then cleanup() end
-	logging:close()
-	exit.error()
-end
-
----Unquote a quoted string
----@param fn string quoted filename
+---@param fn string
 ---@return string
 local function unquote(fn)
-	local r = fn:gsub("\"(.-)\"", "%1")
-	return r
+    return (fn:gsub("\"(.-)\"", "%1"))
 end
 
 local md5pat = ("%x"):rep(32)
---- Parses the extern_path
--- in python this is a simple regex, but lua patterns cannot do the same things,
--- so we need multiple ones
 ---@param path string
----@return string? dir_prefix
----@return string? name_prefix
----@return string? code_md5sum
----@return string? context_md5sum
-local function parse_extern_path(path)
-	-- TODO maybe lpeg would be better suited for parsing this
-	-- first split into d_prefix, name_prefix and rest
-	local dir_prefix, name_prefix, code_md5sum, context_md5sum, remaining = path:match("^(.*/)(.-)("..md5pat..")%-("..md5pat..")(.-).pdf$")
-
-	if not remaining then
-		-- pattern did not match -> maybe the optional dir_prefix was not given
-		dir_prefix = ""
-		name_prefix, code_md5sum, context_md5sum, remaining = path:match("^(.-)("..md5pat..")%-("..md5pat..")(.-).pdf$")
-	end
-
-	if not remaining then
-		-- If the pattern didn't match, return nil
-		return nil
-	end
-
-	-- check if remaining fits the scheme
-	if remaining ~= "" and not remaining:find("^%-%d+$") then
-		return nil
-	end
-
-	-- Return the extracted components
-	return dir_prefix, name_prefix, code_md5sum, context_md5sum
+---@return string dir_prefix
+---@return string name_prefix
+---@return string code_md5sum
+---@return string context_md5sum
+---@return string seq
+local function split_extern_path(path)
+	local dir_prefix, rest = path:match("^(.*/)(.*)$")
+	if not dir_prefix then dir_prefix, rest = '', path end
+	local name_prefix, code_md5sum, context_md5sum, seq
+	= rest:match("^(.-)(" .. md5pat .. ")%-(" .. md5pat .. ")(.-).pdf$")
+	assert(name_prefix and (seq == '' or seq:match("^%-%d+$")))
+	return dir_prefix, name_prefix, code_md5sum, context_md5sum, seq
 end
+local MMIZ_Record_Types = {
+    ['/MMIZ_NewExtern'] = true,
+    ['/MMIZ_Prefix'] = true,
+    ['/MMIZ_NewCMemo'] = true,
+    ['/MMIZ_NewCCMemo'] = true,
+    ['/MMIZ_UsedExtern'] = true,
+    ['/MMIZ_UsedCMemo'] = true,
+    ['/MMIZ_UsedCCMemo'] = true,
+}
 
----Split a mmz prefix
--- in python this is a simple regex, but lua patterns cannot do the same things,
--- so we need multiple ones
----@param prefix string
----@return string? dir_prefix
----@return string? name_prefix
-local function split_prefix(prefix)
-	-- try with dir_prefix and name_prefix
-	local dir_prefix, name_prefix = prefix:match("^(.*/)(.-)$")
-	if not name_prefix then
-		-- pattern did not match -> maybe the optional dir_prefix was not given
-		dir_prefix = ""
-		name_prefix = prefix:match("^(.-)$")
+---@type argspec
+local memoize_extract_argspec
+
+---@type argument_parser
+local parser --forward declaration because it is used in option help
+
+memoize_extract_argspec = {
+    prog = script_name,
+    header = "Extract extern pages produced by package Memoize out of the document PDF.",
+    positional = {
+	help = "the PDF file (doc.pdf when compiling doc.tex)", arg_desc = "pdf",
+	f = function(args)
+	    assert(#args == 1,
+		   "Exactly one positional argument, the PDF filename, should be given.")
+	    args.pdf, args[1] = args[1], nil
 	end
+    },
+    options = {
+        { long = "help", short = "h", help = "show this help message and exit",
+	  f = function() print(parser:help()) exit.succ() end },
+        { long = "version", short = "V", help = "show program's version number and exit",
+	    f = function() print(("%s of Memoize %s"):format(script_name, VERSION))
+		exit.succ() end },
+        { long = "quiet", short = "q", help = "don't describe what's happening",
+	  f = function(args, ...) args.quiet = true return ... end },
+        { long = "keep", short = "k", help = "do not mark externs as extracted",
+	  f = function(args, ...) args.keep = true return ... end },
+        { long = "prune", short = "p", help = "remove the extern pages after extraction",
+	  f = function(args, ...) args.prune = true return ... end },
+        { long = "format", short = "F", arg_desc = "{latex,plain,context}",
+	  help = "the format of the TeX document invoking extraction",
+	  f = function(args, format, ...)
+	      args.format = format
+	      assert(({latex = true, plain = true, context = true})[format],
+		  ("The argument of --format/-f should be \z
+                    one of 'latex', 'plain', and 'context', not '%s'.")
+		  :format(format)) return ... end },
+        { long = "force", short = "f",
+	  help = "ignore warnings and extract problematic pages",
+	  f = function(args, ...) args.force = true return ... end },
+        { long = "mkdir", short = "m", help = "create the directory and exit\n\z
+          (the positional argument pdf is interpreted as directory name)",
+	  f = function(args, ...) args.mkdir = true return ... end },
+    },
+    footer = "For details, see the man page or the Memoize documentation."
+}
 
-	if not name_prefix then
-		return nil
-	end
+---@class extraction_parameters
+---@field quiet boolean?
+---@field keep boolean?
+---@field prune boolean?
+---@field format 'latex'|'plain'|'context'?
+---@field force boolean?
+---@field mkdir boolean?
+---@field pdf string
 
-	return dir_prefix, name_prefix
-end
-
-local parse_args
-do
-	local formats = {latex=true, plain=true, context=true}
-	---Parse some CLI arguments
-	---@param as string[] array of arguments
-	---@param defaults table default values for the parameters
-	---@return table? updated_parameters
-	---@return string? err_msg
-	parse_args = function(as, defaults)
-		local args = defaults
-
-		local i = 1
-		local len = #as
-		while i <= len do
-			if as[i] == "--" then break end
-
-			local a = as[i]:match("^%-([a-zA-Z])$")
-			if not a then
-				a = as[i]:match("^%-%-([a-zA-Z]+)$")
-			end
-
-			-- positional argument reached
-			if not a then
-				-- no flags are parsed after the first positional
-				i = i - 1 -- "unparse" that argument
-				break
-			end
-
-			if a == "h" then
-				print([[usage: memoize-extract.lua [-h] [-k] [-F {latex,plain,context}] [-f] [-q] [-m] [-V] pdf
-
-Extract extern pages produced by package Memoize out of the document PDF.
-
-positional arguments:
-  pdf                   the PDF file: doc.pdf when compiling doc.pdf (doc, doc.tex and doc.mmz are accepted as well)
-
-options:
-  -h, --help            show this help message and exit
-  -k, --keep            do not mark externs as extracted
-  -F, --format {latex,plain,context}
-                        the format of the TeX document invoking extraction
-  -f, --force           extract even if the size-check fails
-  -q, --quiet           describe what's happening
-  -m, --mkdir           create a directory (and exit); mmz argument is interpreted as directory name
-  -V, --version         show program's version number and exit
-
-For details, see the man page or the Memoize documentation.]])
-				exit.succ()
-			elseif a == "V" or a == "version" then
-				print(("memoize-extract.py of Memoize %s"):format(VERSION))
-				exit.succ()
-
-			elseif a == "p" or a == "prune" then
-				args.prune = true
-
-			elseif a == "k" or a == "keep" then
-				args.keep = true
-
-			elseif a == "F" or a == "format" then
-				if len < i+1 then return nil, ("argument f/format needs an argument") end
-				args.format = as[i+1]
-				if not formats[args.format] then
-					return nil, ("invalid format passed")
-				end
-				i = i+1
-
-			elseif a == "f" or a == "force" then
-				args.force = true
-
-			elseif a == "q" or a == "quiet" then
-				args.quiet = true
-
-			elseif a == "m" or a == "mkdir" then
-				args.mkdir = true
-
-			else
-				return nil, ("invalid token passed '%s'"):format(as[i])
-			end
-			i = i+1
-		end
-
-		if i+1 ~= #as then return nil, ("wrong number of arguments passed, exactly one positional needs to be given") end
-		args.pdf = as[#as]
-
-		return args
-	end
-end
-
----Normalizes the pdf argument into a .pdf filename
----@param pdf string
----@return string
----@overload fun(pdf:string): nil, string?
-local function normalize_pdf(pdf)
-	local suffix, err = pathlib.suffix(pdf)
-	if not suffix then return nil, err end
-
-	if suffix == "tex" or suffix == "mmz" then
-		return pathlib.with_suffix(pdf, "pdf")
-	elseif suffix ~= "pdf" then
-		return pathlib.with_name(pdf, pathlib.name(pdf)..".pdf")
-	end
-	return pdf
-end
-
+---@param args string[] | extraction_parameters
 local function main(args)
-	if not args.pdf then
-		log_error("pdf needs to be provided")
-	end
 
-	-- --mkdir -> just create a directory named |pdf|
-	if args.mkdir then
-		local succ, err = mkdir_rec(args.pdf)
-		if not succ then
-			log_error(err)
-		end
-		exit.succ()
-	end
+    -- Convert command line arguments to extraction_parameters if necessary.
+    if not args.pdf then
+	parser = argparse.argument_parser(memoize_extract_argspec)
+        args = parser:parse_args(args)
+    end
 
-	local err, pdf_fn
-	args.pdf, err = normalize_pdf(args.pdf)
-	if not args.pdf then
-		log_error(err)
-	end
-	--assert(args.pdf) -- only for the linter
-	pdf_fn, err = find_in(args.pdf)
-	if not args.pdf then
-		log_error(err)
-	end
-	--assert(pdf_fn) -- only for the linter
-	log_assert(args.pdf:match("^.*%.pdf$"), "malformed mmz parameter provided")
-	log_assert(lfs.isfile(pdf_fn), ".pdf file was not found")
-	--todo: access_in(pdf_fn), and access_out(pdf_fn) when not args.keep or args.prune
+    -- \paragraph{Initialization}
 
-	-- setup logging to file
-	if args.format then
-		local log_file = find_out(args.pdf..".log")
-		logging:info("Logging to "..log_file)
-		local f, err = io_open_w(log_file)
-		logging.file = f
-	end
+    -- With |--mkdir|, argument |pdf| is interpreted as the directory to create.
+    if args.mkdir then
+        mkdir(args.pdf)
+        exit.succ()
+    end
 
-	local success_doc, doc, catalog, pages = pcall(
-		function()
-			local doc = pdf.open(args.pdf)
-			local catalog = doc.trailer.Root()
-			local pages = doc:get_pages()
-			return doc, catalog, pages
-		end
+    -- Normalize the |pdf| argument into a |.pdf| filename.  This normalization
+    -- will be removed in the release of the package which will drop the
+    -- non-lua externalization scripts.
+    do
+	local suffix = file.suffix(args.pdf)
+	if suffix == "tex" or suffix == "mmz" then
+	    args.pdf = file.replacesuffix(args.pdf, "pdf")
+	elseif suffix ~= 'pdf' then
+	    args.pdf = file.addsuffix(args.pdf, "pdf")
+	end
+    end
+
+    -- Once we have the |.pdf| filename, we can open the log.
+    logging.package_name = 'memoize (lua-based extraction)'
+    logging.quiet = args.quiet
+    logging.format = args.format
+    logging.header = args.format and script_name .. ': ' or ''
+    if args.format then
+        local log_fn = find_out(file.replacesuffix(args.pdf, "mmz.log"))
+        check_name_out(log_fn)
+        check_access_out(log_fn)
+        logging:info(("Logging to '%s'"):format(log_fn))
+	logging:open(log_fn)
+    end
+
+    if args.keep and args.prune then
+	logging:error("Options --keep and --prune are incompatible")
+    end
+
+    --Find the PDF file and check whether (a) we may read from it, and (b) we
+    --may write to it, if --prune was given or --keep was not given.
+    local pdf_fn
+    try_error(
+	("Cannot open the PDF: %%s"):format(args.pdf),
+	function()
+	    pdf_fn = find_in(args.pdf)
+	    check_name_in(pdf_fn)
+	    check_access_in(pdf_fn)
+	end
+    )
+    if args.prune or not args.keep then
+	try_error(
+	    ("Cannot open the PDF for writing: %%s. I would have to write to '%s' because %s%s%s")
+            :format(pdf_fn,
+		    args.prune and 'option --prune/-p was given' or '',
+		    args.prune and not args.keep and ' and ' or '',
+                not args.keep and 'option --keep/-k was not given'),
+	    function()
+		check_name_out(pdf_fn)
+		check_access_out(pdf_fn)
+	    end
 	)
-	if not success_doc then
-		logging:error(
-			("PDF file '%s' seems corrupted. Perhaps you have to load Memoize \z
-		     earlier in the preamble"):format(args.pdf),
-			"In particular, Memoize must be loaded before TikZ library 'fadings' \z
-		    and any package deploying it, and in Beamer, load Memoize by writing \z
-		    \\RequirePackage{memoize} before \\documentclass{beamer}.")
-		exit.error()
-	end
+    end
 
-	local success_record, record = pcall(
-		function()
-			return catalog.MMIZ_Record()
-		end
-	)
-	if not success_record then
-		logging:error(("PDF file '%s' does not contain a Memoize record"):format(args.pdf))
-		exit.error()
-	end
+    --Open the PDF.
 
-	local current_prefix
-	
-	for i,item in ipairs(record) do
+    local doc, catalog, pages = try_error(
+	("PDF file '%s' seems corrupted. Perhaps you have to load Memoize \z
+          earlier in the preamble\tIn particular, Memoize must be loaded before\z
+          TikZ library 'fadings' and any package deploying it, and in Beamer, \z
+          load Memoize by writing \\RequirePackage{memoize} before \z
+          \\documentclass{beamer}."):format(pdf_fn),
+        function()
+            local doc = pdf.open(pdf_fn)
+            local catalog = doc.trailer.Root()
+            local pages = doc:get_pages()
+            return doc, catalog, pages
+        end
+    )
 
-		if item.Type == "/MMIZ_Prefix" then
+    local record = try_error(
+	("PDF file '%s' does not contain a Memoize record"):format(args.pdf),
+        function()
+            return catalog.MMIZ_Record()
+        end
+    )
 
-			current_prefix = item.MMIZ_Filename
-			if not current_prefix then
-				logging:warn(
-					"Malformed record: missing /MMIZ_Filename in a /MMIZ_Prefix item")
+    local current_prefix
+    logging:info(("Extracting new externs from '%s'"):format(pdf_fn))
+
+    for item_n, item in ipairs(record) do
+
+	assert(MMIZ_Record_Types[item.Type],
+	       ("/MMIZ_Record item %d: Unknown record type '%s'")
+	       :format(item_n, item.Type))
+
+	local item_str = item.MMIZ_PageNumber
+	    and 'Page ' .. item.MMIZ_PageNumber
+	    or  ('/MMIZ_Record item #%d (of type %s)'):format(item_n, item.Type)
+
+	try_warn(item_str .. ": " .. "%s", function()
+
+            if item.Type == "/MMIZ_Prefix" then
+
+                assert (item.MMIZ_Filename, "Missing /MMIZ_Filename key")
+                current_prefix = unquote(item.MMIZ_Filename)
+
+            elseif item.Type == "/MMIZ_NewExtern" then
+
+		local page = item.MMIZ_Page()
+		local page_number = item.MMIZ_PageNumber
+
+		assert(page, "Missing /MMIZ_Page key or invalid page reference")
+		assert(args.force or page_number, "Missing /MMIZ_PageNumber key")
+
+                assert(not page_number or args.force or pages[page_number] == page,
+		       "The page number recorded in /MMIZ_PageNumber does not \z
+                        refer to the page object recorded in /MMIZ_Page")
+		--todo in LuaPDFrw: a way to retrieve the object id
+
+		assert(item.MMIZ_Filename, "Missing /MMIZ_Filename")
+                local extern_path = unquote(item.MMIZ_Filename)
+		local dir_prefix, name_prefix, code_md5sum, context_md5sum = reraise(
+		    ("%s: Illicit extern filename '%s'"):format(item_str, extern_path),
+		    split_extern_path, extern_path)
+
+		assert(current_prefix,
+		       ("No /MMIZ_Prefix item was encountered before the record item \z
+                         for extern '%s', or the last such item was malformed")
+		       :format(extern_path))
+
+		assert(pathlib.join(dir_prefix, name_prefix) == current_prefix,
+		       ("Extern filename '%s' does not start with the expected prefix '%s'")
+		       :format(extern_path, current_prefix))
+
+                -- Check whether the c-memo and the cc-memo are accessible.
+		if not args.force then
+		    local c_memo_file = find_in(
+			file.join(file.dirname(extern_path),
+				  name_prefix .. code_md5sum .. ".memo"))
+		    reraise(("I refuse to extract this page into extern '%s', \z
+                              because the associated c-memo is not accessible: %%s")
+			:format(extern_path),
+			function()
+			    check_name_in(c_memo_file)
+			    check_access_in(c_memo_file)
 			end
+		    )
 
-		elseif item.Type == "/MMIZ_NewExtern" then
-
-			if not item.MMIZ_Filename then
-				logging:warn(
-					"Malformed record: missing /MMIZ_Filename in a /MMIZ_NewExtern item")
-				goto dont_extract
+		    local cc_memo_file = find_in(
+			file.join(file.dirname(extern_path),
+				  name_prefix .. code_md5sum
+			      .. "-" .. context_md5sum .. ".memo"))
+		    reraise(("I refuse to extract this page into extern '%s', \z
+                              because the associated cc-memo is not accessible: %%s")
+			:format(extern_path),
+			function()
+			    check_name_out(cc_memo_file)
+			    check_access_out(cc_memo_file)
 			end
+		    )
+                end
 
-			local extern_path = unquote(item.MMIZ_Filename)
-			local dir_prefix, name_prefix, code_md5sum, context_md5sum
-				= parse_extern_path(extern_path)
-			if not (dir_prefix and name_prefix and code_md5sum and context_md5sum) then
-				logging:warn(("Illicit extern filename '%s'"):format(extern_path))
-				goto dont_extract
-			end
+                local extern_file_out = find_out(extern_path)
+		check_name_out(extern_file_out)
+		check_access_out(extern_file_out)
 
-			if not current_prefix then
-				logging:warn(("No prefix was encountered before extern '%s'")
-					:format(extern_path))
-				goto dont_extract
-			end
-
-			--This was missing in the py/pl script.
-			if pathlib.join(dir_prefix, name_prefix) ~= current_prefix then
-				logging:warn(
-					("Extern filename '%s' does not start with the expected prefix '%s'")
-					:format(extern_path, current_prefix))
-				goto dont_extract
-			end
-
-			-- Check whether c-memo and cc-memo exist (in any input directory).
-			local c_memo_file = find_in(
-				pathlib.with_name(extern_path, name_prefix .. code_md5sum .. ".memo"))
-			local cc_memo_file = find_in(
-				pathlib.with_name(
-					extern_path,
-					name_prefix .. code_md5sum .. "-" .. context_md5sum .. ".memo"))
-
-			--todo: access_in(c_memo_file) and access_in(cc_memo_file)
-			if not args.force and not (c_memo_file and cc_memo_file) then
-				logging:warn(("I refuse to extract page %d into extern \z
-		                    '%s', because the associated c-memo \z
-		                    '%s' and/or cc-memo '%s' does not exist")
-					:format(page_n+1, extern_path, c_memo_file, cc_memo_file))
-				goto dont_extract
-			end
-
-			local extern_file_out = find_out(extern_path)
-
-			local success_page, page, page_number = pcall(
-				function()
-					local page = item.MMIZ_Page()
-					local page_number = item.MMIZ_PageNumber
-					assert(page and page_number)
-					return page, page_number
-				end
-			)
-			if not success_page then
-				logging:warn(("Missing page reference or number for extern '%s'")
-					:format(extern_path))
-				goto dont_extract
-			end
-
-			if pages[page_number] ~= page then
-				--todo: phrase the warning better
-				logging:warn(("Page number %d is not what was expected")
-					:format(page_number))
-				goto dont_extract
-			end
-			
-			if not item.MMIZ_Extracted then
-
-				local success_extract = pcall(
-					function()
-						local extern = pdf.new()
-						extern:insert_page(page)
-						extern:save(extern_file_out)
-						logging:info(("Page %d --> %s"):format(page_number, extern_path))
-						item.MMIZ_Extracted = true
-					end
-				)
-				if not success_extract then
-					logging:warn(("Failed to extract page %d into %s")
-						:format(page_number, extern_path))
-					goto dont_extract
-				end
-				
-				if args.prune then
-					local success_prune = pcall(
-						function()
-							doc:remove_page(page)
-						end
-					)
-					if not success_prune then
-						logging:warn(('I failed to remove page %d'):format(page_number))
-					end
-				end
-
-			end
-
+                if args.force or not item.MMIZ_Extracted then
+		    reraise(
+			("I failed to extract this page into '%s'\t%%s")
+			:format(extern_path),
+                        function()
+                            local extern = pdf.new()
+                            extern:insert_page(page)
+                            extern:save(extern_file_out)
+                            logging:info(("%s --> '%s'"):format(item_str, extern_path))
+                            item.MMIZ_Extracted = true
+                        end
+                    )
+                    if args.prune then
+			reraise('I failed to remove this page\t%s',
+				doc.remove_page, doc, page)
+                    end
+		else
+		    error("Skipping extraction of this page, because it is \z
+                           marked as extracted. Use option --force to force extraction")
 		end
 
-		::dont_extract::
+	    end --/MMIZ_NewExtern
+	end ) --end try_warn )
+    end -- end for loop
 
-	end
+    if doc:update() == 0 then
+	logging:info("No changes to the PDF were made")
+    elseif args.prune and not args.keep then
+	logging:info("The extracted extern pages were marked as extracted \z
+                          and removed from the PDF")
+    elseif args.prune then
+	logging:info("The extracted extern pages were removed from the PDF")
+    elseif not args.keep then
+	logging:info("The extracted extern pages were marked as extracted in the PDF")
+    else
+	logging:info("No changes to the PDF were made")
+    end
 
 	if doc and (not args.keep or args.prune) then
 		if doc:update() == 0 then
@@ -1131,44 +837,8 @@ local function main(args)
 	exit.succ()
 end
 
-if STAGE == "production" then
-	-----------------------------------------------
-	-- parsing + validating + deriving arguments --
-	-----------------------------------------------
-	local defaults = {
-		pdf = nil,
-		prune = false,
-		keep = false,
-		format = nil,
-		force = false,
-		quiet = false,
-		mkdir = false,
-		mmz = nil,
-	}
-
-	local args, err = parse_args(arg, defaults)
-	if not args then
-		print(err)
-		exit.error()
-	end
-
-	logging:set_args(args)
-	main(args)
-elseif STAGE == "LIBRARY" then
-	-- theoretically allows this to be loaded as library in LuaLaTeX via require
-	return main
+if script_name == "memoize-extract" or script_name == "memoize-extract.lua" then
+    main(arg)
 else
-	-- expose functions for tests
-	return {
-		parse_extern_path     = parse_extern_path,
-		split_prefix          = split_prefix,
-		parse_args            = parse_args,
-		normalize_pdf         = normalize_pdf,
-		write_new_mmz         = write_new_mmz,
-		postprocess_pages     = postprocess_pages,
-		handle_mmz_prefix     = handle_mmz_prefix,
-		handle_mmz_new_extern = handle_mmz_new_extern,
-		pathlib               = pathlib,
-		-- logging?
-	}
+    return main
 end

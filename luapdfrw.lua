@@ -518,6 +518,8 @@ end
 
 --Open (via pdfe) an existing PDF document.
 
+---@param filename string
+---@return table
 function pdfw.open(filename)
    local pdfe_doc = pdfe.open(filename)
    if not pdfe_doc then return end
@@ -617,9 +619,6 @@ function pdfw_doc.update(doc, prune)
       doc.trailer.Root().Version = ("/%d.%d"):format(doc.major, doc.minor)
    end
 
-   if not doc.trailer.Info then doc.trailer.Info = pdfw.reference({}) end
-   doc.trailer.Info().Producer = 'LuaPDFrw'
-
    --Get the location of the previous xref table.
    local fh = io.open(doc.filename, 'rb')
    fh:seek("end", -40)
@@ -648,6 +647,10 @@ function pdfw_doc.update(doc, prune)
 
    --Don't write anything if there were no new objects.
    if startxref ~= update_begin then
+       
+      if not doc.trailer.Info then doc.trailer.Info = pdfw.reference({}) end
+      doc.trailer.Info().Producer = 'LuaPDFrw'
+       
       doc.fh:write('xref\n',
 		   '0 1\n0000000000 65535 f \n')
 
