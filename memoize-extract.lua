@@ -53,6 +53,9 @@ local VERSION = '2025/01/17 v1.4.1' -- TODO(release)
 -- variable is "testing" if exactly this string and "production" in all other cases
 STAGE = STAGE == "testing" and "testing" or "production"
 
+--Search for the libraries within the tex tree (see LuaTeX manual 10.7).
+kpse.set_program_name("luatex")
+
 local pdf = require('luapdfrw')
 
 --luacheck: read_globals kpse (loaded by texlua)
