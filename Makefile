@@ -27,7 +27,7 @@ SCRIPTS := memoize-extract memoize-clean
 man-src := $(SCRIPTS:%=doc/%.1.md)
 MAN := $(SCRIPTS:%=%.1) $(SCRIPTS:%=%.pl.1) $(SCRIPTS:%=%.py.1)
 MAN := $(MAN:%=doc/%)
-SCRIPTS := $(SCRIPTS:%=%.pl) $(SCRIPTS:%=%.py)
+SCRIPTS := $(SCRIPTS:%=%.pl) $(SCRIPTS:%=%.py) $(SCRIPTS:%=%.lua)
 
 %.pl.1: %.1
 	echo .so man1/$*.1 > $@     # link to .1 man page
