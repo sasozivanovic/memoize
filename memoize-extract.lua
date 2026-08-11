@@ -418,7 +418,9 @@ local function check_access_out(fn, mode)
 	--For a non-existing file, the parent directory should be writable.
 	--(This is the only place where function |pathlib.parent| is used,
 	--so it's ok that it returns the logical parent.)
-	assert(os_access(file.dirname(fn), 'w'),
+	local dn = file.dirname(fn)
+	if dn == "" then dn = "." end
+	assert(os_access(dn, 'w'),
 	       ("Cannot create '%s' in a non-writable directory"):format(fn))
     end
 end
