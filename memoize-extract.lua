@@ -822,19 +822,9 @@ local function main(args)
     else
 	logging:info("No changes to the PDF were made")
     end
-
-	if doc and (not args.keep or args.prune) then
-		if doc:update() == 0 then
-			logging:info("No changes to the PDF were made")
-		elseif args.prune then
-			logging:info("The extracted extern pages were removed from the PDF")
-		elseif not args.keep then
-			logging:info("The extracted extern pages were marked as extracted in the PDF")
-		end
-	end
-
-	logging:close()
-	exit.succ()
+    
+    logging:close()
+    exit.succ()
 end
 
 if script_name == "memoize-extract" or script_name == "memoize-extract.lua" then
