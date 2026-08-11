@@ -107,9 +107,8 @@ def run(args, *, env = {}, **kwargs):
         args.insert(0, 'perl')
     if env:
         echo(run, args, env = env, **kwargs)
-        environ = os.environ
-        environ.update((key,str(value)) for key,value in env.items())
-        kwargs.update(env = environ)
+        kwargs['env'] = os.environ.copy()
+        kwargs['env'].update(env)
     else:
         echo(run, args, **kwargs)
     print(
