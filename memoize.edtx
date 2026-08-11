@@ -2748,6 +2748,10 @@
       % The page number is merely informative, or perhaps it could be used for
       % a sanity check.
       /MMIZ_PageNumber \pagenumber\space
+      % These are only for testing during the transition to extract=lua, to
+      % convert MMIZ --> .mmz and see whether the old MakeTest succeeds.
+      /MMIZ_PageWidth (\expandafter\mmz@Pgf@geT\expectedwidth)
+      /MMIZ_PageHeight (\expandafter\mmz@Pgf@geT\expectedheight)
       >>
     }%
   },

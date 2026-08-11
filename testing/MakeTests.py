@@ -120,6 +120,16 @@ def run(args, *, env = {}, **kwargs):
     )
     rc = subprocess.run(args, **kwargs).returncode
     print(f"Exit code: {rc}")
+    if args[0] == 'memoize-extract.lua':
+        mmz_fn = None
+        for arg in args[1:]:
+            if arg.endswith(".mmz"):
+                mmz_fn = arg
+                break
+        assert mmz_fn
+        mmz_fn = Path(kwargs['cwd']) / mmz_fn
+        print("Making .mmz file", mmz_fn, "from the .pdf MMIZ information")
+        makemmz('lua', mmz_fn)
     return rc == 0
 
 def exists(path):
@@ -144,6 +154,13 @@ def rm(*files):
     for fn in expand(*files):
         Path(fn).unlink()
 
+def makemmz(pyl, mmz):
+    if pyl == 'lua':
+        mmz = Path(mmz)
+        pdf = mmz.with_suffix('.pdf')
+        with open(mmz, 'w') as mmzf:
+            subprocess.run(['memoize-info.lua', '--mmz', pdf], stdout = mmzf)
+        
 parser = argparse.ArgumentParser()
 parser.add_argument('-B', '--always-make', action = 'store_true')
 parser.add_argument('targets', nargs = '*')
