@@ -467,7 +467,7 @@ do
     ---@return string
     function find_in(fn)
         if pathlib.is_absolute(fn) then return fn end
-        for _, df in ipairs(
+        for _, df in pairs(
 	    {
 		texmf_output_directory and pathlib.join(texmf_output_directory, fn),
 		fn,
@@ -492,7 +492,7 @@ do
     ---@return string
     function find_out(fn)
         if pathlib.is_absolute(fn) then return fn end
-        for _, df in ipairs(
+        for _, df in pairs(
 	    {
 		texmf_output_directory and pathlib.join(texmf_output_directory, fn),
 		not texmf_output_directory and fn,
@@ -710,7 +710,7 @@ local function main(args)
     local current_prefix
     logging:info(("Extracting new externs from '%s'"):format(pdf_fn))
 
-    for item_n, item in ipairs(record) do
+    for item_n, item in pairs(record) do
 
 	assert(MMIZ_Record_Types[item.Type],
 	       ("/MMIZ_Record item %d: Unknown record type '%s'")
