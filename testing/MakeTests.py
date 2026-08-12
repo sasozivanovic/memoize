@@ -124,11 +124,10 @@ def run(args, *, env = {}, **kwargs):
         for arg in args[1:]:
             if arg.endswith(".mmz"):
                 mmz_fn = arg
+                mmz_fn = Path(kwargs['cwd']) / mmz_fn
+                print("Making .mmz file", mmz_fn, "from the .pdf MMIZ information")
+                makemmz('lua', mmz_fn)
                 break
-        assert mmz_fn
-        mmz_fn = Path(kwargs['cwd']) / mmz_fn
-        print("Making .mmz file", mmz_fn, "from the .pdf MMIZ information")
-        makemmz('lua', mmz_fn)
     return rc == 0
 
 def exists(path):
