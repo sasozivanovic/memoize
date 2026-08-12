@@ -444,9 +444,10 @@ do
                 --logging:warn(("I refuse to set %s to '%s', which is not a directory."):format(var, path))
                 return
             end
-	    if os.type ~= 'windows' and pathlib.join(path) ~= pathlib.sep then
-		logging:warn(("I refuse to set %s to the root directory"):format(var))
-	    end
+	    --???? todo
+	    --if os.type ~= 'windows' and pathlib.join(path) ~= pathlib.sep then
+		--logging:warn(("I refuse to set %s to the root directory '%s'"):format(var, path))
+	    --end
 	end
 	return path
     end
