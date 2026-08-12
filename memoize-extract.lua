@@ -441,8 +441,7 @@ do
         local path = f(var)
 	if path then
             if not pathlib.is_dir(path) then
-                logging:warn(("I refuse to set %s to '%s', which is not a directory.")
-		    :format(var, path))
+                --logging:warn(("I refuse to set %s to '%s', which is not a directory."):format(var, path))
                 return
             end
 	    if os.type ~= 'windows' and pathlib.join(path) ~= pathlib.sep then
