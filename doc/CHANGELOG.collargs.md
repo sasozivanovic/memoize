@@ -14,6 +14,10 @@ those cases, please see [Memoize's GitHub
 repository](https://github.com/sasozivanovic/memoize) for the recent
 development history.
 
+## 2026/??/?? v1.2.1
+
+* Implement keys `no spaces` and `smuggle`.
+
 ## 2024/03/15 v1.2.0
 * Argument processors:
   * They now work without a formal argument, taking token register

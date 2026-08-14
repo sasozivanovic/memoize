@@ -3,7 +3,50 @@
 For the development history, see [Memoize's GitHub
 repository](https://github.com/sasozivanovic/memoize).
 
-* Bugfix: the Python extraction script works with XeTeX now.
+## 2026/??/?? v1.5.0
+
+* The major change: implemented a Lua-based extraction script (`extract=lua`). 
+  
+  At the moment, this script should be considered experimental (please report
+  about your experience).  In the long run, however, the Lua-based script is
+  intended to remain the only extraction script, i.e. `extract=python/perl/tex`
+  will be first declared deprecated, and eventually dropped from the package.
+  
+  The Lua-based extraction script expects the extraction information in the PDF
+  catalog under `/MMIZ_Record` rather than in a separate `.mmz` file.  The
+  `MMIZ` record is created by a new package option `record=pdf`, which is in
+  effect by default.
+  
+  Two utilities were developed in service of the Lua-based extraction script.  
+  Both are available as separate packages.
+  
+  * `luapdfrw`: a (raw) PDF writer (the reading part is outsourced to `pdfe`).
+  * `pm-argparse`: a simple argument parser.
+
+* Minor changes:
+  * Implemented keys `memoized code prefix/suffix`.
+  * Implemented keys and `before/after hbox/vbox`, with defaults configurable
+    by `top/bottom sep`.
+  * Better compatibility of `\label` support with various packages (see issue
+    #43).
+  * In the verbatim mode, command `\mmz` now accepts a verbatim argument of
+    (LaTeX3) type `v`.
+  * Configuration command `\mmzset` is now `\long`.
+  * Improved context tracing.
+  * A warning is now issued at the end of the document if any memoization was
+    aborted.
+
+* Bugfixes:
+  * The ends-of-lines and the end-of-file in cc-memos are dealt with in a
+    (hopefully) better way now (issues #47 and #50).
+  * The Python extraction script now works with XeTeX.
+  * The Python extraction script now respects `/MediaBox` inheritance.
+  * The `\toksapp` macros are now defined as `\protected`.
+	
+* Documentation:
+  * Fix several typos.
+  * Reorganized some parts of the reference section.
+  * Added section Examples.
 
 ## 2024/12/02 v1.4.1
 
