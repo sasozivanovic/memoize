@@ -6602,8 +6602,8 @@ require.
   extraction manually.
 
   Executing extraction method \refmmz{extract=python} has an additional effect
-  of setting \refmmz{mkdir command} to \code{\refscript{memoize-extract.pl}
-    \refscript{memoize-extract.pl--mkdir}}, but only if \refmmz{mkdir command}
+  of setting \refmmz{mkdir command} to \code{\refscript{memoize-extract.py}
+    \refscript{memoize-extract.py--mkdir}}, but only if \refmmz{mkdir command}
   is currently set to the initial value, i.e.\ it will not effect the change if
   the user adjusted \refmmz{mkdir command} manually.
 \end{doc}
@@ -6622,11 +6622,10 @@ Perl- and Python-based extraction is triggered by
       desc={no default, initially: \code{\refscript[short]{memoize-extract.pl--format}
         \meta{format} \string\jobname}}},
     key={name=python extraction command, par=\meta{system command}, desc={no
-        default, initially \refscript{memoize-extract.py}}}, key={name=python
-      extraction options, par=\meta{options}, desc={no default, initially:
-        \code{\refscript[short]{memoize-extract.pl--format} \meta{format}
-          \string\jobname}}}
-  }
+        default, initially \refscript{memoize-extract.py}}},
+    key={name=python extraction options, par=\meta{options}, desc={no default,
+        initially: \code{\refscript[short]{memoize-extract.pl--format}
+          \meta{format} \string\jobname}}} }
   
   These keys determine the system calls used for invoking the extraction
   scripts \refscript{memoize-extract.pl} and \refscript{memoize-extract.py}.
@@ -6690,8 +6689,8 @@ Perl- and Python-based extraction is triggered by
     need not be exact, a difference up to |0.01pt| is tolerated.  Some PDF
     tools, notably the |PDF::API2| library deployed by the Perl version of the
     script, round the dimensions of a PDF page, recorded in |/MediaBox|, to two
-    digits.}  If it does not, the script refuses to extract the page, yields a
-  warning and even removes the extern file if it exist.
+    digits.}  If it does not, the script refuses to extract the page, yielding
+  a warning.
 
   The extraction script's paranoia extends further.  It will refuse to extract
   the page, yielding a warning, if a (c)c-memo associated to the extern does
@@ -6827,6 +6826,218 @@ Perl- and Python-based extraction is triggered by
     section~\ref{sec:troubleshooting} for details.
   \end{itemize}
 \end{doc}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\subsubsection{Lua-based extraction}
+\label{sec:ref:extraction-lua}
+
+Lua-based extraction is triggered by \refmmz{extract}|=|\refmmz{extract=lua}.
+
+This extraction method is documented separately, because it differs somewhat
+from the Perl- and Python-based extraction methods.  Notably, it does not
+receive the extraction information from the \dmmz file, but from a
+%\refpdf{MMIZ_Record}
+|MMIZ_Record| entry in the PDF catalog.  Consequently, it does not need to
+perform page size checks.  Option |--keep| is also gone, because the script
+works by page references (not page numbers) and because it is so fast.
+
+This extraction method should currently be considered experimental.  It is
+intended, however, to eventually supersede all other extraction methods.
+Please provide feedback on your experience on Github. % todo: links
+Once the Lua-based extraction method is considered stable enough, it will be
+made the default.  The other extraction methods will be first marked as
+deprecated and eventually removed from the package.
+
+This extraction method is preferred (in the long run) to other methods for two
+reasons.  First, it is much faster, especially when pruning the PDF.  Second,
+the modern \hologo{TeX} distributions ship with Lua, so no installation of
+external tools is necessary.
+
+\begin{doc}{
+    key={name=lua extraction command, par=\meta{system command}, desc={no
+        default, initially \refscript{memoize-extract.lua}}},
+    key={name=lua extraction options, par=\meta{options}, desc={no default,
+        initially: \code{\refscript[short]{memoize-extract.lua--format}
+          \meta{format} \string\jobname}}} }
+  
+  These keys determine the system calls used for invoking the extraction
+  script \refscript{memoize-extract.lua}.
+
+  Use |lua extraction command| to set the name of the extraction script.  If
+  necessary, include the full path to the script, or |texlua| plus the path to
+  the script.  Whatever you set here must be allowed by the shell escape mode.
+
+  Use |lua extraction options| to set the options that the script will receive;
+  consult the documentation of \refscript{memoize-extract.lua} for their
+  meaning.  The initial value asks the script to process \meta{document
+    name}\dmmz, and informs it that it is executed from within a \hologo{TeX}
+  compilation of a document in the given \meta{format} (|latex| for
+  \hologo{LaTeX}, |plain| for \hologo{plainTeX}, |context| for
+  \hologo{ConTeXt}); the latter makes the script yield any warnings or errors
+  in a form expected by the format.
+
+  During the execution of a system call, the values of these settings are fully
+  expanded.  Furthermore, these keys were initialized using \pkg{pgfkeys}
+  handler |.initial|, so their values may be modified by handlers |.prefix|,
+  |.append|, etc.  The initial value of the extraction options contains a space
+  on both sides, so that these handlers are easy to use.  For example, write
+  \code{\refmmz{lua extraction
+      options}/.append=\refscript{memoize-extract.lua--quiet}} to ask
+  for less output.
+\end{doc}
+
+\begin{doc}{
+    script={name=memoize-extract.lua, par=[\meta{options}] \meta{name}\texttt{.pdf}},
+  }
+  This script extracts the externs produced by the previous compilation from
+  \meta{name}|.pdf|.  Memoize invoke it when loaded with package option
+  \refmmz{extract}|=|\refmmz{extract=lua}.  The information about which externs
+  were produced is recorded in the PDF itself, more precisely in the
+  |MMIZ_Record| entry of the PDF catalog.
+
+  Argument \meta{name}|.pdf| may be given either in full (e.g.\ |doc.pdf|), or
+  merely as the stem (|doc|).  In the latter case, |.pdf| is appended to the
+  given argument even if it already contains a suffix (e.g.\ |my.doc| will
+  result in |my.doc.pdf|); the exception is suffix |.tex|, which is replaced by
+  |.pdf|.
+  
+  The script inspects the |MMIZ_Record| record in the PDF catalog for
+  |MMIZ_NewExtern| entries, which contain subkeys |MMIZ_Filename|=\meta{extern
+    filename} and |MMIZ_Page|=\meta{extern page (reference)}. For each
+  |MMIZ_NewExtern| entry, the \meta{extern page} is extracted from the
+  \meta{name}|.pdf| into \meta{extern filename}.  (The script also creates
+  directories specified by |MMIZ_Prefix| entries.  Other entries in
+  |MMIZ_Record| are ignored.)
+
+  The \meta{extern filename} may contain a (relative or absolute) path to the
+  new extern file.  The relative paths are relative to the location of the
+  \dmmz file, even when the script is invoked from some other directory.
+
+  The extraction script will refuse to extract the page, yielding a warning, if
+  a (c)c-memo associated to the extern does not exist.  And it will respect the
+  |openin| and |openout| settings of |texmf.cnf|; under the default
+  configuration, it will therefore refuse (yielding an error) to write to any
+  file whose absolute path does not occur under the current directory, the
+  temporary directory set by \docref{TEXMFOUTPUT} (in \reffile{texmf.cnf} or as
+  an environment variable), or the output directory
+  (\docref{TEXMF_OUTPUT_DIRECTORY}).  Furthermore, it will refuse to write into
+  the root directory (except on Windows, where writing into a drive root might
+  potentially make sense).
+
+  Exit codes: 0 = success, 1 = Perl/Python error, 2 = usage error, 10 =
+  extraction warning, 11 = extraction error.
+  
+  \yadocset{ of=script:memoize-extract.lua, override/.style={ index
+      annotation={option of {%
+          \hypercolor{link}{gray}%
+          \hyperref[script:memoize-extract.lua]{\texttt{memoize-extract}}%
+        }}, }, }
+  \begin{doc}{
+      option={name=prune, short name=p}
+    }
+    After extraction, remove the extracted extern pages from the document PDF.
+  \end{doc}
+  \begin{doc}{
+      option={name=format, short name=F,
+        par=\code{latex}\Alt\code{plain}\Alt\code{context}}
+    }
+    When this option is given, the script assumes that it was called from
+    within a \hologo{TeX} compilation of a document in the given format
+    (|latex| for \hologo{LaTeX}, |plain| for \hologo{plainTeX}, |context| for
+    \hologo{ConTeXt}).
+    
+    For one, the script will prefix all its output by the script name, to be
+    easily identifiable in the terminal output, but more importantly, it will
+    create a log file (\code{\string\jobname.mmz.log}) which will receive any
+    warnings and errors yielded by the script (in absence of this option, the
+    warnings and errors are printed to the standard error).  The log contains
+    messages in a form recognized by the format (e.g.\ \cs{PackageError} for
+    \hologo{LaTeX}), so Memoize can then \cs{input}s this log to reproduce the
+    warnings and errors in the compilation.
+
+    There should be no need to use this option when executing the script form
+    the command line.
+  \end{doc}
+  \begin{doc}{
+      option={name=force, short name=f}
+    }
+    Force extern extraction even if the (c)c-memo existence check fails.  The
+    failure will still yield a warning.
+  \end{doc}
+  \begin{doc}{
+      option={name=quiet, short name=q}
+    }
+    Normally, the script prints what it is doing to the standard output; in
+    particular, it prints out the page number and the filename of each extern
+    it is extracting.  This option disables this behaviour.
+  \end{doc}
+  \begin{doc}{
+      option={name=mkdir, short name=m}
+    }
+    When given this option, the extraction script transforms into a paranoid
+    |mkdir| (|-p|).  Argument \meta{name}\dmmz is interpreted as a path to the
+    directory to create; all other options are ignored.
+
+    The ancestors of the directory are created as needed.  The script will
+    refuse to create any directory whose absolute path does not occur under the
+    current directory or a directory listed in \docref{TEXMFOUTPUT} (set in
+    \reffile{texmf.cnf} or as an environment variable).
+
+    This option exists so that the author using the restricted shell mode does
+    not have to list |mkdir| among the restricted shell mode commands (and it
+    is also safer than a plain |mkdir|).
+
+    Initially, \refmmz{mkdir command} is set to
+    \code{\refscript{memoize-extract.pl}
+      \refscript{memoize-extract.pl--mkdir}}.
+  \end{doc}
+  \begin{doc}{
+      option={name=version, short name=V}
+    }
+    Show Memoize version.
+  \end{doc}
+  \begin{doc}{
+      option={name=help, short name=h}
+    }
+    Show help.
+  \end{doc}
+
+  % Todo: Key differences from the Perl/Python version here.
+  
+\end{doc}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 \subsubsection{\texorpdfstring{\hologo{TeX}}{TeX}-based extraction}
 \label{sec:ref:extraction-tex}

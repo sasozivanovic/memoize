@@ -834,3 +834,5 @@ if script_name == "memoize-extract" or script_name == "memoize-extract.lua" then
 else
     return main
 end
+
+-- todo: mkdir for MMIZ_Prefix
