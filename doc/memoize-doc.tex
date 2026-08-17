@@ -459,6 +459,18 @@ lining: once Memoize is set up, it is set up for good.
 Once you have set up your system, I advise you to follow the instructions in
 section~\ref{sec:tut:test} to test if the setup was successful.
 
+\begin{tcolorbox}[warning,title=Experimental Lua-based extraction]
+  Memoize v1.5.0 ships with an experimental Lua-based extraction script, which
+  requires no additional software, and is faster than other extraction methods.
+  It can be selected by package option
+  \code{\refmmz{extract}=\refmmz{extract=lua}}. At the moment, you need to
+  compile the document with option \docref{-shell-escape}, or set up restricted
+  shell escape mode to allow the execution of \refscript{memoize-extract.lua},
+  see section~\ref{sec:extraction} for instructions.  In v2.0.0, the Lua-based
+  extraction will become the default extraction method.  The other methods will
+  be marked as deprecated and will be eventually removed from the package.
+\end{tcolorbox}
+
 \paragraph{Installing Perl}
 If you're running GNU/Linux or macOS, Perl is almost certainly already
 installed on your system; if it is not, install it using your system's package
@@ -6558,9 +6570,9 @@ require.
 
   Out of the box, Memoize recognizes the following \meta{extraction method}
   keywords: \docAux{easy, of=key:/mmz/extract, value={name=perl}, comma,
-    value={name=python}, comma, value={name=tex}, and, value={name=no}}.  The
-  first three keywords trigger extern extraction using the methods documented
-  in sections~\ref{sec:ref:extraction-perl-python}
+    value={name=python}, comma, value={name=lua}, comma, value={name=tex}, and,
+    value={name=no}}.  The first three keywords trigger extern extraction using
+  the methods documented in sections~\ref{sec:ref:extraction-perl-python}
   and~\ref{sec:ref:extraction-tex}.  The final keyword (not available in
   \hologo{plainTeX}) instructs Memoize to \emph{not} perform the extraction at
   the end of loading the package; it should be used when extraction is
