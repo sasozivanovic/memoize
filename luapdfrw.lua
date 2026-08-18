@@ -4,35 +4,6 @@
 
 --\section{Utilities}
 
-do
-   local function _inspect_table(x, levels, indent, received_done)
-      -- done prevents infinite regress
-      local done = {} for k,v in pairs(received_done) do done[k]=v end
-      if levels ~= 0 and (not done or not done[x]) then
-	 done[x] = true
-	 for k,v in pairs(x) do
-	    print(indent .. tostring(k), tostring(v))
-	    if type(v) == 'table' then
-	       _inspect_table(v, levels-1, indent .. '  ', done)
-	    end
-	 end
-      end
-   end
-   --luacheck: globals inspect (intentionally exported)
-   function inspect(x, levels, indent)
-      indent = indent or ''
-      levels = levels or -1
-      print(indent .. tostring(x))
-      if type(x) == 'table' then
-	 _inspect_table(x, levels, indent .. '| ', {})
-      elseif pdfe.type(x) == 'pdfe.dictionary' then
-	 _inspect_table(pdfe.dictionarytotable(x), levels, indent .. '| ', {})
-      elseif pdfe.type(x) == 'pdfe.array' then
-	 _inspect_table(pdfe.arraytotable(x), levels, indent .. '| ', {})
-      end
-   end
-end
-
 local function index_error() error("Invalid index", 2) end
 local function identity(obj) return obj end
 local function copy_table(t)
@@ -92,7 +63,7 @@ do --array & dictionary
    --parametrized metamethods.
 
    local mt_index = function(tbl, key, pdfe_doc, indirect_root, legal_index_f)
-      assert(legal_index_f(key))
+      assert(legal_index_f(key), "Illegal index" .. key)
       local value = tbl[key]
       if is_pdfe_triplet(value) then
 	 value = pdfw.from_pdfe_triplet(pdfe_doc, indirect_root, table.unpack(value))
@@ -241,10 +212,11 @@ do --reference
       function pdfw.from_pdfe_reference(pdfe_doc, _indirect_root,
 					pdfe_reference, referenced_pdfe_obj_id)
 	 return setmetatable({}, {
-	       pdfw_type = "reference",
-	       __index = ref_index_error, __newindex = ref_index_error,
-	       __call = function(obj) return mt_call(
-		     obj, pdfe_doc, pdfe_reference, referenced_pdfe_obj_id) end,
+		 pdfw_type = "reference",
+		 referenced_obj_id = referenced_pdfe_obj_id,
+		 __index = ref_index_error, __newindex = ref_index_error,
+		 __call = function(obj) return mt_call(
+			 obj, pdfe_doc, pdfe_reference, referenced_pdfe_obj_id) end,
 	 })
       end
 
@@ -893,5 +865,91 @@ do
       remove_from_pages(page, root_Pages)
    end
 end
+
+do
+    local print_obj
+    function print_obj(obj, out, indent)
+	local indent = indent or ""
+	local out = out or io.output()
+	local ob
+	print("\nPDFTYPE", pdfe.type(obj))
+	if pdfe.type(obj) == 'pdfe.dictionary' then
+	    ob = pdfe.dictionarytotable(obj)
+	elseif pdfe.type(obj) == 'pdfe.array' then
+	    ob = pdfe.arraytotable(obj)
+	else
+	    ob = obj
+	end
+	if type(ob) == 'table' then
+	    local ob_is_dict, t = pcall(function() return ob.Type end)
+	    if ob_is_dict then
+		out:write(t, " {\n")
+		for key, child in pairs(ob) do
+		    if key ~= 'Type' then
+			out:write(indent .. "  /", key, " = ")
+			print_obj(child, out, indent .. "  ")
+		    end
+		end
+		out:write(indent, "}\n")
+	    else --assume that ob is array
+		out:write("[\n")
+		for key, child in pairs(ob) do
+		    out:write(indent .. "  ")
+		    print_obj(child, out, indent .. "  ")
+		end
+		out:write(indent, "]\n")
+	    end
+	else
+	    out:write(ob, "\n")
+	end
+    end
+    pdfw.print = print_obj
+end
+
+function pdfw.referenced_obj_id(obj)
+   local mt = getmetatable(obj)
+   return mt and mt.referenced_obj_id
+end
+
+do
+    local print_obj
+    function print_obj(obj, out, indent)
+	local indent = indent or ""
+	local out = out or io.output()
+	t = pdfw.type(obj)
+	if t == 'string' then
+	    out:write("(", obj, ")", "\n")
+	elseif t == 'number' then
+	    out:write(obj, "\n")
+	elseif t == "dictionary" then
+	    out:write(obj.Type, " {\n")
+	    for key, child in pairs(obj) do
+		if key ~= 'Type' then
+		    out:write(indent .. "  /", key, " = ")
+		    print_obj(child, out, indent .. "  ")
+		end
+	    end
+	    out:write(indent, "}\n")
+	elseif t == "array" then
+	    out:write("[\n")
+	    for key, child in pairs(obj) do
+		out:write(indent .. "  ")
+		print_obj(child, out, indent .. "  ")
+	    end
+	    out:write(indent, "]\n")
+	elseif t == 'hex_string' then
+	    out:write("<", obj, ">", "\n")
+	elseif t == 'reference' then
+	    out:write("R ", pdfw.referenced_obj_id(obj), "\n")
+	elseif t then
+	    print(t)
+	else
+	    out:write(obj, "\n")
+	end
+    end
+    pdfw.print = print_obj
+end
+
+
 
 return pdfw
