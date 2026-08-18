@@ -2050,6 +2050,12 @@ extern extraction.  It ships with three \emph{extraction methods}:
   (loading the entire document PDF) has to be invoked for each extern, and this
   takes time (although the entire process is still much faster than the
   venerable \TikZ externalization library).
+\item[\refmmz{extract=lua}] A Lua script, \refscript{memoize-extract.lua}.
+  This method is the fastest, especially when pruning the document PDF.  It
+  also requires no additional software to be installed, see
+  section~\ref{sec:install}.  In Memoize v2.0.0, this method will become the
+  default extraction method.  The other methods will be marked as deprecated
+  and will be eventually removed from the package.
 \end{description}
 
 Memoize is also flexible in terms of how extern extraction is triggered,
@@ -2091,6 +2097,7 @@ loaded.
     \midrule
              &\refmmz{extract=perl}&\code{\refmmz{extract}=\refmmz{extract=perl}}, or none&\refscript{memoize-extract.pl}\\
     internal &\refmmz{extract=python}&\code{\refmmz{extract}=\refmmz{extract=python}}&\refscript{memoize-extract.py}\\
+             &\refmmz{extract=lua}&\code{\refmmz{extract}=\refmmz{extract=lua}}&\refscript{memoize-extract.lua}\\
              &\refmmz{extract=tex}&\code{\refmmz{extract}=\refmmz{extract=tex}}&|pdftex|\\
     \midrule
     external &any&(\code{\refmmz{extract}=\refmmz{extract=no}})&any\\
@@ -2105,8 +2112,10 @@ Strictly speaking, external extraction does not require
 next compilation takes place, and you do this using
 \refscript{memoize-extract.pl} or \refscript{memoize-extract.py} (without
 option \refscript{memoize-extract.pl--keep}), the extraction script will mark
-externs as extracted (by commenting out the relevant lines in the \dmmz file).
-The internal extraction, which is triggered at the beginning of the next
+externs as extracted (by commenting out the relevant lines in the \dmmz
+file).\footnote{The Lua extraction script does not mark the extracted extern
+  pages as extracted, see section~\ref{sec:ref:extraction-lua} for why.} The
+internal extraction, which is triggered at the beginning of the next
 compilation, will then find it has nothing to do.  Writing
 \code{\refmmz{extract}=\refmmz{extract=no}} merely saves you the bit of time
 needed for the internal extraction to realize that the externs were already
@@ -2117,11 +2126,17 @@ extracted.
 For internal extraction, \hologo{TeX} must be allowed to execute the external
 program implementing the chosen extraction method.  If you installed Memoize
 through the package manager of either \TeXLive or \MiKTeX, your system should
-be already set up to allow the execution of Memoize's extraction scripts,
+be already set up to allow the execution of Memoize's extraction scripts
 \refscript{memoize-extract.pl} and \refscript{memoize-extract.py}, so
 \code{\refmmz{extract}=\refmmz{extract=perl}} and
 \code{\refmmz{extract}=\refmmz{extract=python}} should work out of the box.
-Otherwise, you can:
+However, \refscript{memoize-extract.lua}, which is considered experimental at
+the moment (before Memoize~v2.0.0), cannot be executed by \hologo{TeX} out of
+the box. Here are your options:\footnote{If you want to use the Perl or Python
+  extraction script but your \hologo{TeX} installation cannot execute
+  \refscript{memoize-extract.pl} and \refscript{memoize-extract.py} for
+  whatever reason, follow the instructions below, replacing \code{lua} by
+  \code{pl} or \code{py}.}
 
 \begin{enumerate}[(a)]
 \item\label{item:fallback-external} perform the extraction externally
@@ -2134,8 +2149,7 @@ Otherwise, you can:
     on \href{https://tex.stackexchange.com}{\hologo{TeX} StackExchange} will
     tell you how you can ask your editor to do this for you.} or
 \item\label{item:fallback-restricted} set up the restricted shell escape mode
-  to allow for the execution of \refscript{memoize-extract.pl} and/or
-  \refscript{memoize-extract.py}.
+  to allow for the execution of \refscript{memoize-extract.lua}.
   
   On \TeXLive:
   \begin{enumerate}[1.]
@@ -2146,9 +2160,9 @@ Otherwise, you can:
     restricted shell escape mode.
   \item Execute |tlmgr conf texmf shell_escape_commands| to get the
     \meta{current} list of allowed commands.
-  \item To add (e.g.) \refscript{memoize-extract.pl} to the list of allowed
+  \item To add (e.g.) \refscript{memoize-extract.lua} to the list of allowed
     commands, execute \code{tlmgr conf texmf shell\_escape\_commands
-      \meta{current},memoize-extract.pl}.
+      \meta{current},memoize-extract.lua}.
   \end{enumerate}
 
   On \MiKTeX:
@@ -2161,9 +2175,9 @@ Otherwise, you can:
   \item Execute \code{initexmf
       --show-config-value=[Core]AllowedShellCommands[]} to get the
     \meta{current} list of allowed commands.
-  \item To add (e.g.) \refscript{memoize-extract.pl} to the list of allowed
+  \item To add (e.g.) \refscript{memoize-extract.lua} to the list of allowed
     commands, execute \code{initexmf
-      --set-config-value=[Core]AllowedShellCommands[]=\meta{current};memoize-extract.pl}
+      --set-config-value=[Core]AllowedShellCommands[]=\meta{current};memoize-extract.lua}
   \end{enumerate}
 \end{enumerate}
 
@@ -2179,14 +2193,17 @@ You may use any extraction method\slash program to perform external extraction.
 The simplest option is to use the Perl or the Python script,
 \refscript{memoize-extract.pl} or \refscript{memoize-extract.py}.  To do this
 manually from the command line, change into the directory containing your
-document, which should contain the auxiliary \dmmz file produced by Memoize,
-and execute:
+document, which should contain the auxiliary \dmmz file produced by
+Memoize,\footnote{The Lua script does not use the \dmmz file. It works directly
+  with the document PDF.}  and execute:
   
 \begin{enumerate}[(a)]
 \item \refscript{memoize-extract.pl} \meta{document name}\dmmz \hfill (for
   the Perl script)
 \item \refscript{memoize-extract.py} \meta{document name}\dmmz \hfill (for
   the Python script)
+\item \refscript{memoize-extract.lua} \meta{document name}|.pdf| \hfill (for
+  the Lua script)
 \end{enumerate}
 
 See sections~\ref{sec:.mmz} and \ref{sec:ref:extraction-perl-python} for
