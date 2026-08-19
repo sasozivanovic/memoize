@@ -11,6 +11,9 @@ local function copy_table(t)
    for k,v in pairs(t) do c[k]=v end
    return c
 end
+local function indent(s)
+	 return "  " .. s:gsub("\n", "\n  ")
+end
 
 --\section{Types}
 
@@ -42,6 +45,9 @@ do --hex string
       pdfw_type = 'hex_string',
       __index = index_error, __newindex = index_error,
       __call = identity,
+      __tostring = function(obj)
+			 return '<' .. tostring(obj.value) .. '>'
+		end,
    }
    function pdfw.hex_string(value)
       return setmetatable({value = value}, metatable_string)
@@ -117,6 +123,13 @@ do --array & dictionary
 	       return mt_pairs(tbl,pdfe_doc,indirect_root,ipairs) end,
 	    __len = function() return #tbl end,
 	    __call = identity,
+		 __tostring = function(obj)
+			  s = '[\n'
+			  for _, child in pairs(obj) do
+					s = s .. indent(tostring(child)) .. "\n"
+			  end
+			  return s .. ']'
+		 end,
 	 }
       )
    end
@@ -141,6 +154,15 @@ do --array & dictionary
 	    __pairs = function()
 	       return mt_pairs(tbl,pdfe_doc,indirect_root,pairs) end,
 	    __call = identity,
+		 __tostring = function(obj)
+			  s = obj.Type .. ' {\n'
+			  for key, child in pairs(obj) do
+					if key ~= 'Type' then
+						 s = s .. indent("/" .. tostring(key) .. " = " .. tostring(child)) .. "\n"
+					end
+			  end
+			  return s .. '}'
+		 end
 	 }
       )
    end
@@ -152,6 +174,7 @@ do --stream
    local metatable_stream = {
       pdfw_type = 'stream',
       __index = index_error, __newindex = index_error,
+		__tostring = function() return 'STREAM' end,
    }
 
    function pdfw.from_pdfe_stream(pdfe_doc, indirect_root, stream, dictionary)
@@ -216,7 +239,8 @@ do --reference
 		 referenced_obj_id = referenced_pdfe_obj_id,
 		 __index = ref_index_error, __newindex = ref_index_error,
 		 __call = function(obj) return mt_call(
-			 obj, pdfe_doc, pdfe_reference, referenced_pdfe_obj_id) end,
+					obj, pdfe_doc, pdfe_reference, referenced_pdfe_obj_id) end,
+		 __tostring = function() return 'R ' .. tostring(referenced_pdfe_obj_id) end,
 	 })
       end
 
@@ -230,6 +254,7 @@ do --reference
 	    pdfw_type = "reference",
 	    __index = ref_index_error, __newindex = ref_index_error,
 	    __call = function() return referenced_pdfw_obj end,
+		 __tostring = function() return 'R' end,
       })
    end
 
@@ -243,6 +268,9 @@ do --indirect
       pdfw_type = 'indirect',
       __index = index_error, __newindex = index_error,
       __call = identity,
+		__tostring = function(obj)
+			 return 'INDIRECT ' .. tostring(getmetatable(obj))
+		end,
    }
    function pdfw.indirect(value)
       assert(not pdfw.type(value))
@@ -905,51 +933,5 @@ do
     end
     pdfw.print = print_obj
 end
-
-function pdfw.referenced_obj_id(obj)
-   local mt = getmetatable(obj)
-   return mt and mt.referenced_obj_id
-end
-
-do
-    local print_obj
-    function print_obj(obj, out, indent)
-	local indent = indent or ""
-	local out = out or io.output()
-	t = pdfw.type(obj)
-	if t == 'string' then
-	    out:write("(", obj, ")", "\n")
-	elseif t == 'number' then
-	    out:write(obj, "\n")
-	elseif t == "dictionary" then
-	    out:write(obj.Type, " {\n")
-	    for key, child in pairs(obj) do
-		if key ~= 'Type' then
-		    out:write(indent .. "  /", key, " = ")
-		    print_obj(child, out, indent .. "  ")
-		end
-	    end
-	    out:write(indent, "}\n")
-	elseif t == "array" then
-	    out:write("[\n")
-	    for key, child in pairs(obj) do
-		out:write(indent .. "  ")
-		print_obj(child, out, indent .. "  ")
-	    end
-	    out:write(indent, "]\n")
-	elseif t == 'hex_string' then
-	    out:write("<", obj, ">", "\n")
-	elseif t == 'reference' then
-	    out:write("R ", pdfw.referenced_obj_id(obj), "\n")
-	elseif t then
-	    print(t)
-	else
-	    out:write(obj, "\n")
-	end
-    end
-    pdfw.print = print_obj
-end
-
-
 
 return pdfw
