@@ -398,11 +398,16 @@ $(eval $(call DTX+PDF+ATT,test))
 
 $(eval $(call DTX+PDF+ATT,titlepage,2))
 TARGETS += titlepage.mmz-pre titlepage.mmz-post \
+	   titlepage.mmiz-pre titlepage.mmiz-post \
 	   titlepage.cmemo titlepage.ccmemo.listing
 titlepage.mmz-pre: titlepage.mmz.c1
 	sed 's/\\mmzNewExtern/~\0~/' $< > $@
 titlepage.mmz-post: titlepage.mmz.c2
 	sed 's/\\mmzUsedExtern/~\0~/' $< > $@
+titlepage.mmiz-pre: titlepage.c1.pdf
+	memoize-info.lua $< > $@
+titlepage.mmiz-post: titlepage.c2.pdf
+	memoize-info.lua $< > $@
 titlepage.cmemo: titlepage.mmz.c1
 	$(call GET_FILENAME_FROM_MMZ,GetFirst,mmzNewCMemo,$<,mymemo,$@)
 titlepage.ccmemo: titlepage.mmz.c1

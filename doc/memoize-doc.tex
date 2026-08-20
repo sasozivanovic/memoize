@@ -3908,7 +3908,7 @@ clean-up.
 
 When \code{\refmmz{record}=\refmmz{record=pdf}} is in effect (out of the box,
 it is), Memoize records the information needed for the extraction of extern
-pages out of \code{\meta{document name}.pdf} in the PDF itself; specifically,
+pages out of \code{\meta{document name}.pdf} in the PDF itself, specifically,
 in entry \refmmiz{Record} of the PDF catalog.  This entry is used by the Lua
 extraction script \refscript{memoize-extract.lua}.
 
@@ -3919,71 +3919,62 @@ created during the compilation.  The full information contained in the
 \refscript{memoize-clean.lua} to safely remove stale memos and externs.  Let us
 take a look at the \refmmiz{Record} entry produced by the titlepage
 illustration.  In fact, we have two versions of this record, as it changes upon
-the second compilation.
+the second compilation: they are shown in boxes \texttt{titlepage.mmiz-pre} and
+\texttt{titlepage.mmiz-post} below.  (The printouts shown in these boxes were
+produced by script \refscript{memoize-info.lua}.)
 
-\tcbinputexample{titlepage}[.mmz-pre]{
+\tcbinputexample{titlepage}[.mmiz-pre]{
   listing only, no .listing, no attachment, float,
   after title pre={\ (after the first compilation)},
-  listing options app={breakatwhitespace=false,prebreak=\coloredpercentchar},
+  listing options app={basicstyle=\ttfamily\fontsize{7.7pt}{9.24pt}\selectfont},
+  %listing options app={breakatwhitespace=false,postbreak={\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space}},
 }
-\tcbinputexample{titlepage}[.mmz-post]{
+\tcbinputexample{titlepage}[.mmiz-post]{
   listing only, no .listing, no attachment, float,
   after title pre={\ (after subsequent compilations)},
-  listing options app={breakatwhitespace=false,prebreak=\coloredpercentchar},
+  listing options app={basicstyle=\ttfamily\fontsize{7.7pt}{9.24pt}\selectfont},
+  %listing options app={breakatwhitespace=false,postbreak={\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space}},
 }
 
-As you can see, the \dmmz file takes the form of a \hologo{TeX} script (the
-format was chosen because it facilitated the implementation of the internally
-triggered \hologo{TeX}-based extraction).  The crucial lines in this file, and
-the only lines used by the extraction script, occur in the first version of the
-file: they contain command \refcmd{mmzNewExtern}, which informs the extraction
-script that it should extract the document page given by the second argument
-into the extern file given by the first argument.\footnote{If you look at the
-  \dmmz file after extracting the externs using \refscript{memoize-extract.pl}
-  without the \refscript{memoize-extract.pl--keep} option, you will find that
-  the \refcmd{mmzNewExtern} commands are commented out; this is to prevent
-  multiple extractions (even if they are harmless).}  (The following two
-arguments provide the expected width and height of the extern; the
-extraction script may check whether the extern size conforms to these
-expectations, but this is not crucial, as the extern size is checked every time
-it is included anyway.)
+A \refmmiz{Record} entry is an array of items of several types.  The most
+important item type is \refmmiz{NewExtern}.  It can be found in the first box,
+and informs the extraction script that it should extract the document page
+given by subitem \refmmiz{Page} into the extern file given by subitem
+\refmmiz{Filename}.  The \refmmiz{Page} is given as an internal PDF reference.
+The page number, width and height are merely informative; they are not used by
+Memoize in any way.\footnote{In particular, unlike the Perl and the Python
+  script, the Lua script does not check the page size --- given that it
+  identifies the page to be extracted by the internal reference rather than the
+  page number, it does not need to.  However, the page size is still checked
+  against the expectations given in the cc-memo when utilizing the extern.}
 
-A \dmmz file also contains a record of the memos (both c-memos and cc-memos)
-created in the last compilation; this information is provided by the sole
-argument of commands \refcmd{mmzNewCMemo} and \refcmd{mmzNewCCMemo}.  And once
-memos and externs get used in subsequent compilations, the \dmmz file will
-reflect this with \refcmd{mmzUsedCMemo}, \refcmd{mmzUsedCCMemo} and
-\refcmd{mmzUsedExtern}, as shown in the second version of the file above.
+A \refmmiz{Record} entry also contains a record of the memos (both c-memos and
+cc-memos) created in the last compilation; this information is provided by
+subitems \refmmiz{NewCMemo} and \refmmiz{NewCCMemo}.  Once memos and externs
+get used in subsequent compilations, the \refmmiz{Record} entry will reflect
+this with \refmmiz{UsedCMemo}, \refmmiz{UsedCCMemo} and \refmmiz{UsedExtern},
+as shown in the second box.
 
-Finally, both versions illustrate that a \dmmz file always begins with command
-\refcmd{mmzPrefix} and ends with the |\endinput| marker.  The argument of
-\refcmd{mmzPrefix} is the prefix to the memo and extern files, as
-determined by the invocation of key \refmmz{prefix}.  The initial
-\refcmd{mmzPrefix} line is written to the \dmmz file at the beginning of the
-document, but an additional \refcmd{mmzPrefix} line will occur for every
-invocation of \refmmz{prefix} in the document body.  Finally, the |\endinput|
-marker signals that the \dmmz file is complete.
+Finally, both boxes illustrate that a \refmmiz{Record} entry always begins with
+\refmmiz{Prefix}.  This item provides the prefix to the memo and extern files,
+as determined by the invocation of key \refmmz{prefix}.  The initial
+\refmmiz{Prefix} item is written to the \refmmiz{Record} entry at the beginning
+of the document, but an additional \refmmiz{Prefix} item will occur for every
+invocation of \refmmz{prefix} in the document body.
 
-As mentioned above, the full contingent of \dmmz file commands is only used by
-the clean-up script \refscript{memoize-clean.pl}.  By default, this script
-removes all memos and externs with the prefix given by \refcmd{mmzPrefix}
-(relative to the directory hosting the \dmmz file) but those listed by any of
-\refcmd{mmzNewCMemo}, \refcmd{mmzNewCCMemo}, \refcmd{mmzNewExtern},
-\refcmd{mmzUsedCMemo}, \refcmd{mmzUsedCCMemo} and \refcmd{mmzUsedExtern}.
-Furthermore, the clean-up script will cowardly refuse to delete anything if the
-\dmmz file does not end with |\endinput|, as this means that the compilation
-ended prematurely and that the \dmmz file might not mention all memos and
-externs actually used in the document.  If given option
-\refscript{memoize-clean.pl--all}, the clean-up script removes even the memos
-and externs mentioned in the \dmmz file, and as this option is intended to
-bring Memoize to a clean slate after any ``disasters,'' the
-\refscript{memoize-clean.pl--all} mode also ignores the potential absence of
-the |\endinput| marker.  Incidentally, the \refscript{memoize-clean.pl--all}
-mode is also the raison d'être for \refcmd{mmzPrefix}: while the prefix is
-usually recognizable from \refcmd{mmzNewCMemo} and friends, these commands
-might not make it into the \dmmz file in a fatally failed compilation, but it
-is precisely such compilations that could occasionally require the full
-clean-up.
+As mentioned above, the full contingent of \refmmiz{Record} item types is only
+used by the clean-up script \refscript{memoize-clean.lua}.  By default, this
+script removes all memos and externs with the prefix given by \refmmiz{Prefix}
+(relative to the directory hosting the PDF file) but those listed by any of
+\refmmiz{NewCMemo}, \refmmiz{NewCCMemo}, \refmmiz{NewExtern},
+\refmmiz{UsedCMemo}, \refmmiz{UsedCCMemo} and \refmmiz{UsedExtern}.  If given
+option \refscript{memoize-clean.pl--all}, the clean-up script removes even the
+memos and externs mentioned in the \refmmiz{Record} entry.  Incidentally, the
+\refscript{memoize-clean.pl--all} mode is also the raison d'être for
+\refmmiz{Prefix}: while the prefix is usually recognizable from
+\refmmiz{NewCMemo} and friends, these items might not make it into the
+\refmmiz{Record} in a fatally failed compilation, but it is precisely such
+compilations that could occasionally require the full clean-up.
 
 
 
