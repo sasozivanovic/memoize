@@ -155,13 +155,13 @@ do --array & dictionary
 	       return mt_pairs(tbl,pdfe_doc,indirect_root,pairs) end,
 	    __call = identity,
 		 __tostring = function(obj)
-			  s = obj.Type .. ' {\n'
+			  s = obj.Type .. ' <<\n'
 			  for key, child in pairs(obj) do
 					if key ~= 'Type' then
 						 s = s .. indent("/" .. tostring(key) .. " = " .. tostring(child)) .. "\n"
 					end
 			  end
-			  return s .. '}'
+			  return s .. '>>'
 		 end
 	 }
       )
@@ -892,46 +892,6 @@ do
       --root Pages object.
       remove_from_pages(page, root_Pages)
    end
-end
-
-do
-    local print_obj
-    function print_obj(obj, out, indent)
-	local indent = indent or ""
-	local out = out or io.output()
-	local ob
-	print("\nPDFTYPE", pdfe.type(obj))
-	if pdfe.type(obj) == 'pdfe.dictionary' then
-	    ob = pdfe.dictionarytotable(obj)
-	elseif pdfe.type(obj) == 'pdfe.array' then
-	    ob = pdfe.arraytotable(obj)
-	else
-	    ob = obj
-	end
-	if type(ob) == 'table' then
-	    local ob_is_dict, t = pcall(function() return ob.Type end)
-	    if ob_is_dict then
-		out:write(t, " {\n")
-		for key, child in pairs(ob) do
-		    if key ~= 'Type' then
-			out:write(indent .. "  /", key, " = ")
-			print_obj(child, out, indent .. "  ")
-		    end
-		end
-		out:write(indent, "}\n")
-	    else --assume that ob is array
-		out:write("[\n")
-		for key, child in pairs(ob) do
-		    out:write(indent .. "  ")
-		    print_obj(child, out, indent .. "  ")
-		end
-		out:write(indent, "]\n")
-	    end
-	else
-	    out:write(ob, "\n")
-	end
-    end
-    pdfw.print = print_obj
 end
 
 return pdfw
