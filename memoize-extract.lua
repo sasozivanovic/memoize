@@ -703,7 +703,7 @@ local function main(args)
     local record = try_error(
 	("PDF file '%s' does not contain a Memoize record"):format(args.pdf),
         function()
-            return catalog.MMIZ_Record()
+            return catalog.MMIZ_Record().Kids()
         end
     )
 

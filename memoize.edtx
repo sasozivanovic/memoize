@@ -2782,17 +2782,30 @@
   },
   record/pdf/end/.code={%
     \ifdef\XeTeXversion{%
-      \special{pdf:obj @mmzrecord [\mmz@record@pdf]}%
+      \special{pdf:obj @mmzrecord \mmz@mmiz@record}%
       \def\mmz@record@pdfobjref{@mmzrecord}%
     }{%
-      \immediate\pdfobj{[ \mmz@record@pdf]}%
+      \immediate\pdfobj{\mmz@mmiz@record}%
       \edef\mmz@record@pdfobjref{\number\pdflastobj\space 0 R}%
     }%
     \pdfcatalog{%
-      /Extensions <</MMIZ <</BaseVersion /1.7 /ExtensionLevel 1>> >>
+      /Extensions <<
+        /MMIZ <<
+          /BaseVersion /1.7
+          /ExtensionLevel 1
+          /URL (https://github.com/sasozivanovic/memoize)
+        >>
+      >>
       /MMIZ_Record \mmz@record@pdfobjref
     }%
   },
+}
+\def\mmz@mmiz@version{1}
+\def\mmz@mmiz@record{<<
+    /Type /MMIZ_Record
+    /Version \mmz@mmiz@version
+    /Kids [ \mmz@record@pdf]
+  >>
 }
 %
 % \subsubsection{The \texttt{.mmz} file}

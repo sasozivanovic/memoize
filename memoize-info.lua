@@ -114,6 +114,6 @@ if args.mmz then
 
 else
 
-    io.write("/MMIZ_Record = ", tostring(mmiz))
+    print(mmiz)
 
 end
