@@ -582,8 +582,6 @@ memoize_extract_argspec = {
 		exit.succ() end },
         { long = "quiet", short = "q", help = "don't describe what's happening",
 	  f = function(args, ...) args.quiet = true return ... end },
-        { long = "keep", short = "k", help = "do not mark externs as extracted",
-	  f = function(args, ...) args.keep = true return ... end },
         { long = "prune", short = "p", help = "remove the extern pages after extraction",
 	  f = function(args, ...) args.prune = true return ... end },
         { long = "format", short = "F", arg_desc = "{latex,plain,context}",
@@ -606,7 +604,6 @@ memoize_extract_argspec = {
 
 ---@class extraction_parameters
 ---@field quiet boolean?
----@field keep boolean?
 ---@field prune boolean?
 ---@field format 'latex'|'plain'|'context'?
 ---@field force boolean?
@@ -655,12 +652,8 @@ local function main(args)
 	logging:open(log_fn)
     end
 
-    if args.keep and args.prune then
-	logging:error("Options --keep and --prune are incompatible")
-    end
-
     --Find the PDF file and check whether (a) we may read from it, and (b) we
-    --may write to it, if --prune was given or --keep was not given.
+    --may write to it, if --prune was given.
     local pdf_fn
     try_error(
 	("Cannot open the PDF: %%s"):format(args.pdf),
@@ -670,13 +663,9 @@ local function main(args)
 	    check_access_in(pdf_fn)
 	end
     )
-    if args.prune or not args.keep then
+    if args.prune then
 	try_error(
-	    ("Cannot open the PDF for writing: %%s. I would have to write to '%s' because %s%s%s")
-            :format(pdf_fn,
-		    args.prune and 'option --prune/-p was given' or '',
-		    args.prune and not args.keep and ' and ' or '',
-                not args.keep and 'option --keep/-k was not given'),
+	    ("Cannot open the PDF for writing: %%s. I would have to write to '%s' because iotuin option --prune/-p was given"),
 	    function()
 		check_name_out(pdf_fn)
 		check_access_out(pdf_fn)
@@ -701,7 +690,7 @@ local function main(args)
     )
 
     local record = try_error(
-	("PDF file '%s' does not contain a Memoize record"):format(args.pdf),
+	("File '%s' does not contain a Memoize record"):format(args.pdf),
         function()
             return catalog.MMIZ_Record().Kids()
         end
@@ -709,6 +698,10 @@ local function main(args)
 
     local current_prefix
     logging:info(("Extracting new externs from '%s'"):format(pdf_fn))
+    local done_message = 'Done (there was nothing to extract)'
+
+    logging.indent = '  '
+    logging.texindent = '\\space\\space'
 
     for item_n, item in pairs(record) do
 
@@ -729,6 +722,7 @@ local function main(args)
 
             elseif item.Type == "/NewExtern" then
 
+		done_message = 'Done'
 		local page = item.Page()
 		local page_number = item.PageNumber
 
@@ -787,46 +781,37 @@ local function main(args)
 		check_name_out(extern_file_out)
 		check_access_out(extern_file_out)
 
-                if args.force or not item.Extracted then
-		    reraise(
-			("I failed to extract this page into '%s'\t%%s")
-			:format(extern_path),
-                        function()
-                            local extern = pdf.new()
-                            extern:insert_page(page)
-                            extern:save(extern_file_out)
-                            logging:info(("%s --> '%s'"):format(item_str, extern_path))
-                            item.Extracted = true
-                        end
-                    )
-                    if args.prune then
-			reraise('I failed to remove this page\t%s',
-				doc.remove_page, doc, page)
-                    end
-		else
-		    error("Skipping extraction of this page, because it is \z
-                           marked as extracted. Use option --force to force extraction")
+		reraise(
+		    ("I failed to extract this page into '%s'\t%%s")
+		    :format(extern_path),
+		    function()
+			local extern = pdf.new()
+			extern:insert_page(page)
+			extern:save(extern_file_out)
+			logging:info(("%s --> '%s'"):format(item_str, extern_path))
+		    end
+		)
+		if args.prune then
+		    reraise('I failed to remove this page\t%s',
+			    doc.remove_page, doc, page)
 		end
-
+ 
 	    end --/NewExtern
 	end ) --end try_warn )
     end -- end for loop
 
-    if doc:update() == 0 then
-	logging:info("No changes to the PDF were made")
-    elseif args.prune and not args.keep then
-	logging:info("The extracted extern pages were marked as extracted \z
-                          and removed from the PDF")
-    elseif args.prune then
+    logging.indent = ''
+    logging.texindent = ''
+    
+    logging:info(done_message)
+    if args.prune then
+	doc:update()
 	logging:info("The extracted extern pages were removed from the PDF")
-    elseif not args.keep then
-	logging:info("The extracted extern pages were marked as extracted in the PDF")
-    else
-	logging:info("No changes to the PDF were made")
     end
     
     logging:close()
     exit.succ()
+
 end
 
 if script_name == "memoize-extract" or script_name == "memoize-extract.lua" then
