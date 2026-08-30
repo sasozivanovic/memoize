@@ -2737,47 +2737,47 @@
   },
   record/pdf/prefix/.code={%
     \xappto\mmz@record@pdf{%
-      << /Type /MMIZ_Prefix /MMIZ_Filename (#1) >>
+      << /Type /Prefix /Filename (#1) >>
     }%
   },
   record/pdf/new extern/.code={%
     \xappto\mmz@record@pdf{<<
-      /Type /MMIZ_NewExtern
-      /MMIZ_Filename (#1)
-      /MMIZ_Page \pageobjref
+      /Type /NewExtern
+      /Filename (#1)
+      /Page \pageobjref
       % The page number is merely informative, or perhaps it could be used for
       % a sanity check.
-      /MMIZ_PageNumber \pagenumber\space
+      /PageNumber \pagenumber\space
       % These are only for testing during the transition to extract=lua, to
       % convert MMIZ --> .mmz and see whether the old MakeTest succeeds.
-      /MMIZ_PageWidth (\expandafter\mmz@Pgf@geT\expectedwidth)
-      /MMIZ_PageHeight (\expandafter\mmz@Pgf@geT\expectedheight)
+      /PageWidth (\expandafter\mmz@Pgf@geT\expectedwidth)
+      /PageHeight (\expandafter\mmz@Pgf@geT\expectedheight)
       >>
     }%
   },
   record/pdf/new cmemo/.code={%
     \xappto\mmz@record@pdf{%
-      << /Type /MMIZ_NewCMemo /MMIZ_Filename (#1) >>
+      << /Type /NewCMemo /Filename (#1) >>
     }%
   },
   record/pdf/new ccmemo/.code={%
     \xappto\mmz@record@pdf{%
-      << /Type /MMIZ_NewCCMemo /MMIZ_Filename (#1) >>
+      << /Type /NewCCMemo /Filename (#1) >>
     }%
   },
   record/pdf/used extern/.code={%
     \xappto\mmz@record@pdf{%
-      << /Type /MMIZ_UsedExtern /MMIZ_Filename (#1) >>
+      << /Type /UsedExtern /Filename (#1) >>
     }%
   },
   record/pdf/used cmemo/.code={%
     \xappto\mmz@record@pdf{%
-      << /Type /MMIZ_UsedCMemo /MMIZ_Filename (#1) >>
+      << /Type /UsedCMemo /Filename (#1) >>
     }%
   },
   record/pdf/used ccmemo/.code={%
     \xappto\mmz@record@pdf{%
-      << /Type /MMIZ_UsedCCMemo /MMIZ_Filename (#1) >>
+      << /Type /UsedCCMemo /Filename (#1) >>
     }%
   },
   record/pdf/end/.code={%

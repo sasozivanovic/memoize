@@ -548,13 +548,13 @@ local function split_extern_path(path)
 	return dir_prefix, name_prefix, code_md5sum, context_md5sum, seq
 end
 local MMIZ_Record_Types = {
-    ['/MMIZ_NewExtern'] = true,
-    ['/MMIZ_Prefix'] = true,
-    ['/MMIZ_NewCMemo'] = true,
-    ['/MMIZ_NewCCMemo'] = true,
-    ['/MMIZ_UsedExtern'] = true,
-    ['/MMIZ_UsedCMemo'] = true,
-    ['/MMIZ_UsedCCMemo'] = true,
+    ['/NewExtern'] = true,
+    ['/Prefix'] = true,
+    ['/NewCMemo'] = true,
+    ['/NewCCMemo'] = true,
+    ['/UsedExtern'] = true,
+    ['/UsedCMemo'] = true,
+    ['/UsedCCMemo'] = true,
 }
 
 ---@type argspec
@@ -716,38 +716,38 @@ local function main(args)
 	       ("/MMIZ_Record item %d: Unknown record type '%s'")
 	       :format(item_n, item.Type))
 
-	local item_str = item.MMIZ_PageNumber
-	    and 'Page ' .. item.MMIZ_PageNumber
+	local item_str = item.PageNumber
+	    and 'Page ' .. item.PageNumber
 	    or  ('/MMIZ_Record item #%d (of type %s)'):format(item_n, item.Type)
 
 	try_warn(item_str .. ": " .. "%s", function()
 
-            if item.Type == "/MMIZ_Prefix" then
+            if item.Type == "/Prefix" then
 
-                assert (item.MMIZ_Filename, "Missing /MMIZ_Filename key")
-                current_prefix = unquote(item.MMIZ_Filename)
+                assert (item.Filename, "Missing /Filename key")
+                current_prefix = unquote(item.Filename)
 
-            elseif item.Type == "/MMIZ_NewExtern" then
+            elseif item.Type == "/NewExtern" then
 
-		local page = item.MMIZ_Page()
-		local page_number = item.MMIZ_PageNumber
+		local page = item.Page()
+		local page_number = item.PageNumber
 
-		assert(page, "Missing /MMIZ_Page key or invalid page reference")
-		assert(args.force or page_number, "Missing /MMIZ_PageNumber key")
+		assert(page, "Missing /Page key or invalid page reference")
+		assert(args.force or page_number, "Missing /PageNumber key")
 
                 assert(not page_number or args.force or pages[page_number] == page,
-		       "The page number recorded in /MMIZ_PageNumber does not \z
-                        refer to the page object recorded in /MMIZ_Page")
+		       "The page number recorded in /PageNumber does not \z
+                        refer to the page object recorded in /Page")
 		--todo in LuaPDFrw: a way to retrieve the object id
 
-		assert(item.MMIZ_Filename, "Missing /MMIZ_Filename")
-                local extern_path = unquote(item.MMIZ_Filename)
+		assert(item.Filename, "Missing /Filename")
+                local extern_path = unquote(item.Filename)
 		local dir_prefix, name_prefix, code_md5sum, context_md5sum = reraise(
 		    ("%s: Illicit extern filename '%s'"):format(item_str, extern_path),
 		    split_extern_path, extern_path)
 
 		assert(current_prefix,
-		       ("No /MMIZ_Prefix item was encountered before the record item \z
+		       ("No /Prefix item was encountered before the record item \z
                          for extern '%s', or the last such item was malformed")
 		       :format(extern_path))
 
@@ -787,7 +787,7 @@ local function main(args)
 		check_name_out(extern_file_out)
 		check_access_out(extern_file_out)
 
-                if args.force or not item.MMIZ_Extracted then
+                if args.force or not item.Extracted then
 		    reraise(
 			("I failed to extract this page into '%s'\t%%s")
 			:format(extern_path),
@@ -796,7 +796,7 @@ local function main(args)
                             extern:insert_page(page)
                             extern:save(extern_file_out)
                             logging:info(("%s --> '%s'"):format(item_str, extern_path))
-                            item.MMIZ_Extracted = true
+                            item.Extracted = true
                         end
                     )
                     if args.prune then
@@ -808,7 +808,7 @@ local function main(args)
                            marked as extracted. Use option --force to force extraction")
 		end
 
-	    end --/MMIZ_NewExtern
+	    end --/NewExtern
 	end ) --end try_warn )
     end -- end for loop
 
@@ -835,4 +835,4 @@ else
     return main
 end
 
--- todo: mkdir for MMIZ_Prefix
+-- todo: mkdir for Prefix
