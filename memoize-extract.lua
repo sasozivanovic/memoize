@@ -701,7 +701,7 @@ local function main(args)
     local done_message = 'Done (there was nothing to extract)'
 
     logging.indent = '  '
-    logging.texindent = '\\space\\space'
+    logging.texindent = '\\space\\space '
 
     for item_n, item in pairs(record) do
 

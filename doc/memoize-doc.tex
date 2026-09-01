@@ -2,7 +2,7 @@
 \usepackage[margin=2cm,top=1cm,bottom=1cm,nohead,includefoot]{geometry}
 
 % The perl-based extraction chokes on some externs.
-\usepackage[extract=python]{nomemoize}
+\usepackage[extract=lua]{memoize}
 \usepackage{memoize-doc}
 \mmzset{
   % recompile,
@@ -3903,21 +3903,21 @@ clean-up.
 
 
 
-\subsubsection{The \refmmiz{Record} PDF catalog entry}
+\subsubsection{The \docref{pdfobj:MMIZ_Record} PDF catalog entry}
 \label{sec:mmiz}
 
 When \code{\refmmz{record}=\refmmz{record=pdf}} is in effect (out of the box,
 it is), Memoize records the information needed for the extraction of extern
 pages out of \code{\meta{document name}.pdf} in the PDF itself, specifically,
-in entry \refmmiz{Record} of the PDF catalog.  This entry is used by the Lua
+in entry \docref{pdfobj:MMIZ_Record} of the PDF catalog.  This entry is used by the Lua
 extraction script \refscript{memoize-extract.lua}.
 
 In fact, this entry contains more than information on externs created during
 the last compilation: it records which memos and externs were either used or
 created during the compilation.  The full information contained in the
-\refmmiz{Record} file is used by the Lua clean-up script
+\docref{pdfobj:MMIZ_Record} file is used by the Lua clean-up script
 \refscript{memoize-clean.lua} to safely remove stale memos and externs.  Let us
-take a look at the \refmmiz{Record} entry produced by the titlepage
+take a look at the \docref{pdfobj:MMIZ_Record} entry produced by the titlepage
 illustration.  In fact, we have two versions of this record, as it changes upon
 the second compilation: they are shown in boxes \texttt{titlepage.mmiz-pre} and
 \texttt{titlepage.mmiz-post} below.  (The printouts shown in these boxes were
@@ -3936,11 +3936,11 @@ produced by script \refscript{memoize-info.lua}.)
   %listing options app={breakatwhitespace=false,postbreak={\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space}},
 }
 
-A \refmmiz{Record} entry is an array of items of several types.  The most
-important item type is \refmmiz{NewExtern}.  It can be found in the first box,
+A \docref{pdfobj:MMIZ_Record} entry is an array of items of several types.  The most
+important item type is \docref{mmiz:NewExtern}.  It can be found in the first box,
 and informs the extraction script that it should extract the document page
-given by subitem \refmmiz{Page} into the extern file given by subitem
-\refmmiz{Filename}.  The \refmmiz{Page} is given as an internal PDF reference.
+given by subitem \docref{mmiz:Page} into the extern file given by subitem
+\docref{mmiz:Filename}.  The \docref{mmiz:Page} is given as an internal PDF reference.
 The page number, width and height are merely informative; they are not used by
 Memoize in any way.\footnote{In particular, unlike the Perl and the Python
   script, the Lua script does not check the page size --- given that it
@@ -3948,32 +3948,32 @@ Memoize in any way.\footnote{In particular, unlike the Perl and the Python
   page number, it does not need to.  However, the page size is still checked
   against the expectations given in the cc-memo when utilizing the extern.}
 
-A \refmmiz{Record} entry also contains a record of the memos (both c-memos and
+A \docref{pdfobj:MMIZ_Record} entry also contains a record of the memos (both c-memos and
 cc-memos) created in the last compilation; this information is provided by
-subitems \refmmiz{NewCMemo} and \refmmiz{NewCCMemo}.  Once memos and externs
-get used in subsequent compilations, the \refmmiz{Record} entry will reflect
-this with \refmmiz{UsedCMemo}, \refmmiz{UsedCCMemo} and \refmmiz{UsedExtern},
+subitems \docref{mmiz:NewCMemo} and \docref{mmiz:NewCCMemo}.  Once memos and externs
+get used in subsequent compilations, the \docref{pdfobj:MMIZ_Record} entry will reflect
+this with \docref{mmiz:UsedCMemo}, \docref{mmiz:UsedCCMemo} and \docref{mmiz:UsedExtern},
 as shown in the second box.
 
-Finally, both boxes illustrate that a \refmmiz{Record} entry always begins with
-\refmmiz{Prefix}.  This item provides the prefix to the memo and extern files,
+Finally, both boxes illustrate that a \docref{pdfobj:MMIZ_Record} entry always begins with
+\docref{mmiz:Prefix}.  This item provides the prefix to the memo and extern files,
 as determined by the invocation of key \refmmz{prefix}.  The initial
-\refmmiz{Prefix} item is written to the \refmmiz{Record} entry at the beginning
-of the document, but an additional \refmmiz{Prefix} item will occur for every
+\docref{mmiz:Prefix} item is written to the \docref{pdfobj:MMIZ_Record} entry at the beginning
+of the document, but an additional \docref{mmiz:Prefix} item will occur for every
 invocation of \refmmz{prefix} in the document body.
 
-As mentioned above, the full contingent of \refmmiz{Record} item types is only
+As mentioned above, the full contingent of \docref{pdfobj:MMIZ_Record} item types is only
 used by the clean-up script \refscript{memoize-clean.lua}.  By default, this
-script removes all memos and externs with the prefix given by \refmmiz{Prefix}
+script removes all memos and externs with the prefix given by \docref{mmiz:Prefix}
 (relative to the directory hosting the PDF file) but those listed by any of
-\refmmiz{NewCMemo}, \refmmiz{NewCCMemo}, \refmmiz{NewExtern},
-\refmmiz{UsedCMemo}, \refmmiz{UsedCCMemo} and \refmmiz{UsedExtern}.  If given
+\docref{mmiz:NewCMemo}, \docref{mmiz:NewCCMemo}, \docref{mmiz:NewExtern},
+\docref{mmiz:UsedCMemo}, \docref{mmiz:UsedCCMemo} and \docref{mmiz:UsedExtern}.  If given
 option \refscript{memoize-clean.pl--all}, the clean-up script removes even the
-memos and externs mentioned in the \refmmiz{Record} entry.  Incidentally, the
+memos and externs mentioned in the \docref{pdfobj:MMIZ_Record} entry.  Incidentally, the
 \refscript{memoize-clean.pl--all} mode is also the raison d'être for
-\refmmiz{Prefix}: while the prefix is usually recognizable from
-\refmmiz{NewCMemo} and friends, these items might not make it into the
-\refmmiz{Record} in a fatally failed compilation, but it is precisely such
+\docref{mmiz:Prefix}: while the prefix is usually recognizable from
+\docref{mmiz:NewCMemo} and friends, these items might not make it into the
+\docref{pdfobj:MMIZ_Record} in a fatally failed compilation, but it is precisely such
 compilations that could occasionally require the full clean-up.
 
 
@@ -6940,13 +6940,6 @@ Perl- and Python-based extraction is triggered by
 
 Lua-based extraction is triggered by \refmmz{extract}|=|\refmmz{extract=lua}.
 
-This extraction method is documented separately, because it differs somewhat
-from the Perl- and Python-based extraction methods.  Notably, it does not
-receive the extraction information from the \dmmz file, but from a
-\docref{mmiz:Record} entry in the PDF catalog.  Consequently, it does not need
-to perform page size checks.  Option |--keep| is also gone, because the script
-works by page references (not page numbers) and because it is so fast.
-
 This extraction method should currently be considered experimental.  It is
 intended, however, to eventually supersede all other extraction methods.
 Please provide feedback on your experience on Github. % todo: links
@@ -6954,10 +6947,13 @@ Once the Lua-based extraction method is considered stable enough, it will be
 made the default.  The other extraction methods will be first marked as
 deprecated and eventually removed from the package.
 
-This extraction method is preferred (in the long run) to other methods for two
-reasons.  First, it is much faster, especially when pruning the PDF.  Second,
-the modern \hologo{TeX} distributions ship with Lua, so no installation of
-external tools is necessary.
+There are two reasons for preferring this extraction method to other methods in
+the long run.  First, it is much faster, especially when pruning the PDF.
+Second, the modern \hologo{TeX} distributions ship with Lua, so no installation
+of external tools is necessary.  Specifically, the PDF writer library
+\pkg{luapdfrw} used by the extraction script (and developed specifically for
+Memoize) is available on \href{https://ctan.org/pkg/luapdfrw}{CTAN} and
+therefore installed automatically.
 
 \begin{doc}{
     key={name=lua extraction command, par=\meta{system command}, desc={no
@@ -6993,32 +6989,35 @@ external tools is necessary.
 \end{doc}
 
 \begin{doc}{
-    script={name=memoize-extract.lua, par=[\meta{options}] \meta{name}\texttt{.pdf}},
+    script={name=memoize-extract.lua, par=[\meta{options}] \meta{filename}},
   }
   This script extracts the externs produced by the previous compilation from
-  \meta{name}|.pdf|.  Memoize invoke it when loaded with package option
-  \refmmz{extract}|=|\refmmz{extract=lua}.  The information about which externs
-  were produced is recorded in the PDF itself, more precisely in the
-  \docref{mmiz:Record} entry of the PDF catalog.
+  PDF file \meta{filename}.  Memoize invokes it when loaded with package option
+  \refmmz{extract}|=|\refmmz{extract=lua}.  It expects that the information
+  about which externs were produced is recorded in the PDF itself, more
+  precisely in the \docref{pdfobj:MMIZ_Record} entry of the PDF catalog; this
+  is achieved by \code{\refmmz{record}=\refmmz{record=pdf}}, which is in effect
+  by default.
 
-  Argument \meta{name}|.pdf| may be given either in full (e.g.\ |doc.pdf|), or
+  Argument \meta{filename} may be given either in full (e.g.\ |doc.pdf|), or
   merely as the stem (|doc|).  In the latter case, |.pdf| is appended to the
   given argument even if it already contains a suffix (e.g.\ |my.doc| will
   result in |my.doc.pdf|); the exception is suffix |.tex|, which is replaced by
   |.pdf|.
   
-  The script inspects the \docref{mmiz:Record} record in the PDF catalog for
-  \docref{mmiz:NewExtern} entries, which contain subkeys
+  The script inspects the \docref{pdfobj:MMIZ_Record} record in the PDF catalog
+  for \docref{mmiz:NewExtern} entries, which contain subkeys
   \docref{mmiz:Filename}=\meta{extern filename} and
   \docref{mmiz:Page}=\meta{extern page (reference)}. For each
   \docref{mmiz:NewExtern} entry, the \meta{extern page} is extracted from the
-  \meta{name}|.pdf| into \meta{extern filename}.  (The script also creates
+  \meta{filename} into \meta{extern filename}.  (The script also creates
   directories specified by \docref{mmiz:Prefix} entries.  Other entries in
-  \docref{mmiz:Record} are ignored.)
+  \docref{pdfobj:MMIZ_Record} are ignored.)
 
   The \meta{extern filename} may contain a (relative or absolute) path to the
   new extern file.  The relative paths are relative to the location of the
-  \dmmz file, even when the script is invoked from some other directory.
+  document PDF \meta{filename}, even when the script is invoked from some other
+  directory.
 
   The extraction script will refuse to extract the page, yielding a warning, if
   a (c)c-memo associated to the extern does not exist.  And it will respect the
@@ -7043,6 +7042,12 @@ external tools is necessary.
       option={name=prune, short name=p}
     }
     After extraction, remove the extracted extern pages from the document PDF.
+
+    In the interest of full disclosure, the extern pages are not actually
+    removed from the PDF.  The script merely removes the references to these
+    pages from the PDF /Pages object.  This is what makes it blindingly fast.
+    Also note that extern extraction continues to work even after the document
+    was pruned.
   \end{doc}
   \begin{doc}{
       option={name=format, short name=F,
@@ -7082,7 +7087,7 @@ external tools is necessary.
       option={name=mkdir, short name=m}
     }
     When given this option, the extraction script transforms into a paranoid
-    |mkdir| (|-p|).  Argument \meta{name}\dmmz is interpreted as a path to the
+    |mkdir| (|-p|).  Argument \meta{filename} is interpreted as a path to the
     directory to create; all other options are ignored.
 
     The ancestors of the directory are created as needed.  The script will
@@ -7109,7 +7114,17 @@ external tools is necessary.
     Show help.
   \end{doc}
 
-  % Todo: Key differences from the Perl/Python version here.
+  This extraction method is documented separately, because it differs somewhat
+  from the Perl- and Python-based extraction methods.  In particular, it does
+  not recognize option \refscript{memoize-extract.pl--keep}, and does not
+  perform page size checks, both ultimately because within
+  \docref{mmiz:NewExtern} of \docref{pdfobj:MMIZ_Record}, the extern pages are
+  referred to using internal PDF object references rather than page numbers,
+  which other methods, which receive the extraction instructions via the \dmmz
+  file, must rely upon.  The script also does not mark the extracted extern
+  pages as extracted.  Here, the rationale is that the script is fast enough
+  that (accidental) double extraction should not noticeably slow down the
+  compilation.
   
 \end{doc}
 
@@ -7457,69 +7472,91 @@ external tools is necessary.
     \end{doc}
   \end{doc}
   \begin{doc}{value={name=pdf}}
-    This record type produces a \refmmiz{Record} entry in the PDF catalog.  The
-    structure of the entry is shown in the box below.  The information is used
-    by the Lua-based extraction script \refscript{memoize-extract.lua} and the
+    This record type produces a \docref{pdfobj:MMIZ_Record} entry in the PDF
+    catalog.  The structure of the entry is shown in the box below.\footnote{In
+      the current version of the package, where \refscript{memoize-extract.lua}
+      is considered experimental, a PDF dictionary of type
+      \docref{mmiz:NewExtern} also contains the following fields in addition to
+      those listed in the box: /PageNumber, /PageWidth and /PageHeight.  These
+      correspond to the final three arguments of \refcmd{mmzNewExtern}.  They
+      are included for testing purposes, specifically so that the Lua
+      extraction script can be tested with the same testing system as the other
+      extraction scripts.  This roundabout testing is transitory, and these
+      additional \docref{mmiz:NewExtern} fields will be dropped once the
+      package transitions to a Lua testing system.} The information is used by
+    the Lua-based extraction script \refscript{memoize-extract.lua} and the
     Lua-based clean-up script \refscript{memoize-clean.lua}.
 
     \begin{tcolorbox}[
-        title=The structure of \hypercolor{link}{white}\docref{mmiz:Record},
-        sidebyside, lefthand width=15em, segmentation engine=empty,
+        title=The structure of \hypercolor{link}{white}\docref{pdfobj:MMIZ_Record},
+        sidebyside, lefthand width=13.5em, segmentation engine=empty,
+        left=2mm,
       ]
       \begin{forest}
-        for tree={folder, grow'=east, l sep+=0.5em, s sep=0ex},
-        [{\docaux{mmiz}{Record}=\meta{array}},
-          [{\docaux{mmiz}{NewExtern}=\meta{dictionary}},baseline
-            [{\docaux{mmiz}{Filename}=\meta{string}}]
-            [{\docaux{mmiz}{Page}=\rlap{\meta{reference}}}]
-          ]
-          [{\docaux{mmiz}{NewCMemo}=\meta{dictionary}}
-            [{\docaux{mmiz}{Filename}=\meta{string}}]
-          ]
-          [{\docaux{mmiz}{NewCCMemo}=\meta{dictionary}}
-            [{\docaux{mmiz}{Filename}=\meta{string}}]
-          ]
-          [{\docaux{mmiz}{UsedExtern}=\meta{dictionary}}
-            [{\docaux{mmiz}{Filename}=\meta{string}}]
-          ]
-          [{\docaux{mmiz}{UsedCMemo}=\meta{dictionary}}
-            [{\docaux{mmiz}{Filename}=\meta{string}}]
-          ]
-          [{\docaux{mmiz}{UsedCCMemo}=\meta{dictionary}}
-            [{\docaux{mmiz}{Filename}=\meta{string}}]
-          ]
-          [{\docaux{mmiz}{Prefix}=\meta{dictionary}}
-            [{\docaux{mmiz}{Filename}=\meta{string}}]
+        for tree={folder, grow'=east, l sep+=0.2em, s sep=0ex},
+        [{\docAux{{pdfobj={name=MMIZ\_Record,label=MMIZ_Record}}}=\meta{dictionary}}
+          [{\docaux{mmiz}{Version}=\meta{integer}}]
+          [{\docaux{mmiz}{Kids}=\meta{array}},
+            [{\docaux{mmiz}{NewExtern}=\meta{dictionary}},baseline
+              [{\docaux{mmiz}{Filename}=\meta{string}}]
+              [{\docaux{mmiz}{Page}=\rlap{\meta{reference}}}]
+            ]
+            [{\docaux{mmiz}{NewCMemo}=\meta{dictionary}}
+              [{\docaux{mmiz}{Filename}=\meta{string}}]
+            ]
+            [{\docaux{mmiz}{NewCCMemo}=\meta{dictionary}}
+              [{\docaux{mmiz}{Filename}=\meta{string}}]
+            ]
+            [{\docaux{mmiz}{UsedExtern}=\meta{dictionary}}
+              [{\docaux{mmiz}{Filename}=\meta{string}}]
+            ]
+            [{\docaux{mmiz}{UsedCMemo}=\meta{dictionary}}
+              [{\docaux{mmiz}{Filename}=\meta{string}}]
+            ]
+            [{\docaux{mmiz}{UsedCCMemo}=\meta{dictionary}}
+              [{\docaux{mmiz}{Filename}=\meta{string}}]
+            ]
+            [{\docaux{mmiz}{Prefix}=\meta{dictionary}}
+              [{\docaux{mmiz}{Filename}=\meta{string}}]
+            ]
           ]
         ]
       \end{forest}
       
       \tcblower
       \parskip 1ex
+
+      A PDF object of type \docref{pdfobj:MMIZ_Record} is a dictionary
+      containing two keys, \docref{mmiz:Version} and \docref{mmiz:Kids}.  The
+      former stores the version of \docref{pdfobj:MMIZ_Record} dictionary and
+      is set to 1 in this version of the package.  The latter is an array of
+      Memoize's record items, in the chronological order.  The children of node
+      \docref{mmiz:Kids} list the types of PDF objects allowed in this array.
       
-      An entry of type \refmmiz{NewExtern} records that an extern page with the
-      reference to its PDF object given in \refmmiz{Page} was created during
-      the compilation of the PDF, and that it should be extracted into a file
-      given in \refmmiz{Filename}.
+      An object of type \docref{mmiz:NewExtern} records that an extern page was
+      created during the compilation of the PDF.  The extern page is identified
+      by its PDF reference given in \docref{mmiz:Page}.  \docref{mmiz:Filename}
+      stores the filename of the extern file the extern page should be
+      extracted into.
 
-      Entries of type \refmmiz{NewCMemo} and \refmmiz{NewCCMemo} record that a
-      c-memo and a cc-memo with the filename given in \refmmiz{Filename} was
-      created during the compilation of the PDF.
+      Objects of type \docref{mmiz:NewCMemo} and \docref{mmiz:NewCCMemo} record
+      that a c-memo and a cc-memo with the filename given in
+      \docref{mmiz:Filename} was created during the compilation of the PDF.
 
-      Entries of type \refmmiz{UsedCMemo}, \refmmiz{UsedCCMemo} and
-      \refmmiz{UsedExtern} record that a c-memo, a cc-memo and an extern with
-      the filename given in \refmmiz{Filename} was created during the
+      Objects of type \docref{mmiz:UsedCMemo}, \docref{mmiz:UsedCCMemo} and
+      \docref{mmiz:UsedExtern} record that a c-memo, a cc-memo and an extern
+      with the filename given in \docref{mmiz:Filename} was created during the
       compilation of the PDF.
 
-      An entry of type \refmmiz{Prefix} records that the \refmmz{prefix} of
-      memo and extern files was changed.
+      An entry of type \docref{mmiz:Prefix} records that the \refmmz{prefix} of
+      memo and extern files was changed to the given \docref{mmiz:Filename}.
 
       Prefix \texttt{MMIZ} is registered in the
       \href{https://github.com/adobe/pdf-names-list}{PDF Name Registry} in accord
       with ISO 32000.
     \end{tcolorbox}
     
-    A \refmmiz{Record} contains a subset of the information available in the
+    A \docref{pdfobj:MMIZ_Record} contains a subset of the information available in the
     \dmmz file.  In particular, it does not contain the page size information,
     and it provides no way to mark the externs as extracted.  For reasons, see
     section~\ref{sec:ref:extraction-lua}.

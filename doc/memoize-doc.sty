@@ -642,15 +642,18 @@
     },
     index prefix=\textbackslash,
   },
+  pdfobj item/.style={
+    label prefix=pdfobj,
+    name prefix={/},
+    ref prefix={/},
+    index prefix={/},
+    index annotation={PDF object},
+    parameters prefix={=},
+  },
   mmiz item/.style={
+    pdfobj item,
     label prefix=mmiz,
-    name prefix={/MMIZ\_},
-    ref prefix={/MMIZ\_},
-    index prefix={/MMIZ\_},
-    name/.append style={
-      sort index/.expanded={MMIZ_\yadoc@name},
-    },
-    index annotation={PDF object type},
+    index annotation={PDF object (descendant of \docref{pdfobj:MMIZ_Record})},
     parameters prefix={=},
   },
 }
@@ -680,7 +683,6 @@
 \DeclareRobustCommand\refkeypath[2][]{\docref[#1]{keypath:#2}}
 \DeclareRobustCommand\refpkg[2][]{\docref[#1]{pkg:#2}}
 \DeclareRobustCommand\refscript[2][]{\docref[#1]{script:#2}}
-\DeclareRobustCommand\refmmiz[2][]{\docref[#1]{mmiz:#2}}
 
 \usepackage{xspace}
 \newcommand\dmmz{\docref{file:mmz}\xspace}

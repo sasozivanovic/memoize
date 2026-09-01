@@ -27,14 +27,14 @@ local function try_error(msg, f, ...)
 end
 
 ---@type argspec
-local memoize_info_argspec
+local argspec
 
 ---@type argument_parser
 local parser --forward declaration because it is used in option help
 
 local script_name = file.basename(arg[0])
 
-memoize_info_argspec = {
+argspec = {
     prog = script_name,
     header = "Read MMIZ information from the PDF.",
     positional = {
@@ -57,7 +57,7 @@ memoize_info_argspec = {
     footer = "For details, see the man page or the Memoize documentation."
 }
 
-parser = argparse.argument_parser(memoize_info_argspec)
+parser = argparse.argument_parser(argspec)
 args = parser:parse_args(arg)
 
 local doc, catalog = try_error(
