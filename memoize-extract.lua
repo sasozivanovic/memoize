@@ -709,6 +709,7 @@ local function main(args)
 	       ("/MMIZ_Record item %d: Unknown record type '%s'")
 	       :format(item_n, item.Type))
 
+	--todo: without item.PageNumber
 	local item_str = item.PageNumber
 	    and 'Page ' .. item.PageNumber
 	    or  ('/MMIZ_Record item #%d (of type %s)'):format(item_n, item.Type)

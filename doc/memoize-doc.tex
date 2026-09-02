@@ -460,13 +460,14 @@ Once you have set up your system, I advise you to follow the instructions in
 section~\ref{sec:tut:test} to test if the setup was successful.
 
 \begin{tcolorbox}[warning,title=Experimental Lua-based extraction]
-  Memoize v1.5.0 ships with an experimental Lua-based extraction script, which
-  requires no additional software, and is faster than other extraction methods.
-  It can be selected by package option
+  Memoize v1.5.0 ships with an experimental Lua-based extraction script,
+  \refscript{memoize-extract.lua}, which does not require installation of any
+  additional software, and is faster than other extraction methods.  The
+  Lua-based extraction can be selected using package option
   \code{\refmmz{extract}=\refmmz{extract=lua}}. At the moment, you need to
   compile the document with option \docref{-shell-escape}, or set up restricted
-  shell escape mode to allow the execution of \refscript{memoize-extract.lua},
-  see section~\ref{sec:extraction} for instructions.  In v2.0.0, the Lua-based
+  shell escape mode to allow the execution of the script, see
+  section~\ref{sec:extraction} for instructions.  In v2.0.0, the Lua-based
   extraction will become the default extraction method.  The other methods will
   be marked as deprecated and will be eventually removed from the package.
 \end{tcolorbox}
@@ -2052,10 +2053,10 @@ extern extraction.  It ships with three \emph{extraction methods}:
   venerable \TikZ externalization library).
 \item[\refmmz{extract=lua}] A Lua script, \refscript{memoize-extract.lua}.
   This method is the fastest, especially when pruning the document PDF.  It
-  also requires no additional software to be installed, see
-  section~\ref{sec:install}.  In Memoize v2.0.0, this method will become the
-  default extraction method.  The other methods will be marked as deprecated
-  and will be eventually removed from the package.
+  also does not require installation of any additional software.  In Memoize
+  v2.0.0, this method will become the default extraction method.  The other
+  methods will be marked as deprecated and will be eventually removed from the
+  package.
 \end{description}
 
 Memoize is also flexible in terms of how extern extraction is triggered,
@@ -6854,7 +6855,7 @@ Perl- and Python-based extraction is triggered by
     warnings and errors yielded by the script (in absence of this option, the
     warnings and errors are printed to the standard error).  The log contains
     messages in a form recognized by the format (e.g.\ \cs{PackageError} for
-    \hologo{LaTeX}), so Memoize can then \cs{input}s this log to reproduce the
+    \hologo{LaTeX}), so Memoize can then \cs{input} this log to reproduce the
     warnings and errors in the compilation.
 
     There should be no need to use this option when executing the script form
@@ -6898,7 +6899,9 @@ Perl- and Python-based extraction is triggered by
 
     Initially, \refmmz{mkdir command} is set to
     \code{\refscript{memoize-extract.pl}
-      \refscript{memoize-extract.pl--mkdir}}.
+      \refscript{memoize-extract.pl--mkdir}}. Applying
+    \code{\refmmz{extract}=\refmmz{extract=python}} changes the value to
+    \code{\refscript{memoize-extract.py} \refscript{memoize-extract.py--mkdir}}.
   \end{doc}
   \begin{doc}{
       option={name=version, short name=V}
@@ -6952,8 +6955,8 @@ the long run.  First, it is much faster, especially when pruning the PDF.
 Second, the modern \hologo{TeX} distributions ship with Lua, so no installation
 of external tools is necessary.  Specifically, the PDF writer library
 \pkg{luapdfrw} used by the extraction script (and developed specifically for
-Memoize) is available on \href{https://ctan.org/pkg/luapdfrw}{CTAN} and
-therefore installed automatically.
+Memoize) is available on \href{https://ctan.org/pkg/luapdfrw}{CTAN} and should
+therefore be installed automatically.
 
 \begin{doc}{
     key={name=lua extraction command, par=\meta{system command}, desc={no
@@ -6967,12 +6970,15 @@ therefore installed automatically.
 
   Use |lua extraction command| to set the name of the extraction script.  If
   necessary, include the full path to the script, or |texlua| plus the path to
-  the script.  Whatever you set here must be allowed by the shell escape mode.
+  the script.  Whatever you set here must be allowed by the shell escape mode
+  --- note that currently, with the Lua-based script considered experimental,
+  \refscript{memoize-extract.lua} is not listed among the commands allowed to
+  executed in the restricted shell escape mode out of the box.
 
   Use |lua extraction options| to set the options that the script will receive;
   consult the documentation of \refscript{memoize-extract.lua} for their
   meaning.  The initial value asks the script to process \meta{document
-    name}\dmmz, and informs it that it is executed from within a \hologo{TeX}
+    name}|.pdf|, and informs it that it is executed from within a \hologo{TeX}
   compilation of a document in the given \meta{format} (|latex| for
   \hologo{LaTeX}, |plain| for \hologo{plainTeX}, |context| for
   \hologo{ConTeXt}); the latter makes the script yield any warnings or errors
@@ -6993,11 +6999,11 @@ therefore installed automatically.
   }
   This script extracts the externs produced by the previous compilation from
   PDF file \meta{filename}.  Memoize invokes it when loaded with package option
-  \refmmz{extract}|=|\refmmz{extract=lua}.  It expects that the information
-  about which externs were produced is recorded in the PDF itself, more
-  precisely in the \docref{pdfobj:MMIZ_Record} entry of the PDF catalog; this
-  is achieved by \code{\refmmz{record}=\refmmz{record=pdf}}, which is in effect
-  by default.
+  \refmmz{extract}|=|\refmmz{extract=lua}, but it may also be executed
+  manually.  The script expects that the information about which externs were
+  produced is recorded in the PDF itself, more precisely in the
+  \docref{pdfobj:MMIZ_Record} entry of the PDF catalog.  This is achieved by
+  \code{\refmmz{record}=\refmmz{record=pdf}}, which is in effect by default.
 
   Argument \meta{filename} may be given either in full (e.g.\ |doc.pdf|), or
   merely as the stem (|doc|).  In the latter case, |.pdf| is appended to the
@@ -7005,14 +7011,17 @@ therefore installed automatically.
   result in |my.doc.pdf|); the exception is suffix |.tex|, which is replaced by
   |.pdf|.
   
-  The script inspects the \docref{pdfobj:MMIZ_Record} record in the PDF catalog
-  for \docref{mmiz:NewExtern} entries, which contain subkeys
-  \docref{mmiz:Filename}=\meta{extern filename} and
-  \docref{mmiz:Page}=\meta{extern page (reference)}. For each
-  \docref{mmiz:NewExtern} entry, the \meta{extern page} is extracted from the
-  \meta{filename} into \meta{extern filename}.  (The script also creates
-  directories specified by \docref{mmiz:Prefix} entries.  Other entries in
-  \docref{pdfobj:MMIZ_Record} are ignored.)
+  The script inspects (the \docref{mmiz:Kids} array in) the
+  \docref{pdfobj:MMIZ_Record} object in the PDF catalog for
+  \docref{mmiz:NewExtern} entries, which contain subkeys
+  \docref{mmiz:Page}=\meta{extern page (reference)} and
+  \docref{mmiz:Filename}=\meta{extern filename} (see
+  section~\ref{sec:ref:record-files} for the complete structure of
+  \docref{pdfobj:MMIZ_Record} objects). For each \docref{mmiz:NewExtern} entry,
+  the \meta{extern page} is extracted from the \meta{filename} into
+  \meta{extern filename}.  (The script also creates directories specified by
+  \docref{mmiz:Prefix} entries.  Other entries in \docref{pdfobj:MMIZ_Record}
+  are ignored.)
 
   The \meta{extern filename} may contain a (relative or absolute) path to the
   new extern file.  The relative paths are relative to the location of the
@@ -7020,8 +7029,8 @@ therefore installed automatically.
   directory.
 
   The extraction script will refuse to extract the page, yielding a warning, if
-  a (c)c-memo associated to the extern does not exist.  And it will respect the
-  |openin| and |openout| settings of |texmf.cnf|; under the default
+  a (c)c-memo associated to the extern does not exist.  It will also respect
+  the |openin| and |openout| settings of |texmf.cnf|; under the default
   configuration, it will therefore refuse (yielding an error) to write to any
   file whose absolute path does not occur under the current directory, the
   temporary directory set by \docref{TEXMFOUTPUT} (in \reffile{texmf.cnf} or as
@@ -7064,7 +7073,7 @@ therefore installed automatically.
     warnings and errors yielded by the script (in absence of this option, the
     warnings and errors are printed to the standard error).  The log contains
     messages in a form recognized by the format (e.g.\ \cs{PackageError} for
-    \hologo{LaTeX}), so Memoize can then \cs{input}s this log to reproduce the
+    \hologo{LaTeX}), so Memoize can then \cs{input} this log to reproduce the
     warnings and errors in the compilation.
 
     There should be no need to use this option when executing the script form
@@ -7101,7 +7110,9 @@ therefore installed automatically.
 
     Initially, \refmmz{mkdir command} is set to
     \code{\refscript{memoize-extract.pl}
-      \refscript{memoize-extract.pl--mkdir}}.
+      \refscript{memoize-extract.pl--mkdir}}.  Applying
+    \code{\refmmz{extract}=\refmmz{extract=lua}} changes the value to
+    \code{\refscript{memoize-extract.lua} \refscript{memoize-extract.lua--mkdir}}.
   \end{doc}
   \begin{doc}{
       option={name=version, short name=V}
@@ -7117,14 +7128,17 @@ therefore installed automatically.
   This extraction method is documented separately, because it differs somewhat
   from the Perl- and Python-based extraction methods.  In particular, it does
   not recognize option \refscript{memoize-extract.pl--keep}, and does not
-  perform page size checks, both ultimately because within
+  perform page size checks,\footnote{While the page size checks are not
+    performed by the Lua extraction script, they are still performed when
+    utilizing the externs.} both ultimately because within
   \docref{mmiz:NewExtern} of \docref{pdfobj:MMIZ_Record}, the extern pages are
   referred to using internal PDF object references rather than page numbers,
   which other methods, which receive the extraction instructions via the \dmmz
   file, must rely upon.  The script also does not mark the extracted extern
   pages as extracted.  Here, the rationale is that the script is fast enough
   that (accidental) double extraction should not noticeably slow down the
-  compilation.
+  compilation --- definitely not enough to the extent that merits the potential
+  complications of the updated document PDF.
   
 \end{doc}
 
