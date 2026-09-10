@@ -41,9 +41,8 @@ require 'lualibs-dir'
 --luacheck: read_globals lfs
 --luacheck: read_globals inspect
 
--- Load "our own" PDF writer and argument parser.
+-- Load "our own" PDF writer.
 local pdf = require 'luapdfrw'
-local argparse = require 'pm-argparse'
 
 -- List all the functions used in the script as local, then empty the global
 -- environment.  This way, we precisely know what the script uses.
@@ -557,51 +556,6 @@ local MMIZ_Record_Types = {
     ['/UsedCCMemo'] = true,
 }
 
----@type argspec
-local memoize_extract_argspec
-
----@type argument_parser
-local parser --forward declaration because it is used in option help
-
-memoize_extract_argspec = {
-    prog = script_name,
-    header = "Extract extern pages produced by package Memoize out of the document PDF.",
-    positional = {
-	help = "the PDF file (doc.pdf when compiling doc.tex)", arg_desc = "pdf",
-	f = function(args)
-	    assert(#args == 1,
-		   "Exactly one positional argument, the PDF filename, should be given.")
-	    args.pdf, args[1] = args[1], nil
-	end
-    },
-    options = {
-        { long = "help", short = "h", help = "show this help message and exit",
-	  f = function() print(parser:help()) exit.succ() end },
-        { long = "version", short = "V", help = "show program's version number and exit",
-	    f = function() print(("%s of Memoize %s"):format(script_name, VERSION))
-		exit.succ() end },
-        { long = "quiet", short = "q", help = "don't describe what's happening",
-	  f = function(args, ...) args.quiet = true return ... end },
-        { long = "prune", short = "p", help = "remove the extern pages after extraction",
-	  f = function(args, ...) args.prune = true return ... end },
-        { long = "format", short = "F", arg_desc = "{latex,plain,context}",
-	  help = "the format of the TeX document invoking extraction",
-	  f = function(args, format, ...)
-	      args.format = format
-	      assert(({latex = true, plain = true, context = true})[format],
-		  ("The argument of --format/-f should be \z
-                    one of 'latex', 'plain', and 'context', not '%s'.")
-		  :format(format)) return ... end },
-        { long = "force", short = "f",
-	  help = "ignore warnings and extract problematic pages",
-	  f = function(args, ...) args.force = true return ... end },
-        { long = "mkdir", short = "m", help = "create the directory and exit\n\z
-          (the positional argument pdf is interpreted as directory name)",
-	  f = function(args, ...) args.mkdir = true return ... end },
-    },
-    footer = "For details, see the man page or the Memoize documentation."
-}
-
 ---@class extraction_parameters
 ---@field quiet boolean?
 ---@field prune boolean?
@@ -612,11 +566,35 @@ memoize_extract_argspec = {
 
 ---@param args string[] | extraction_parameters
 local function main(args)
-
     -- Convert command line arguments to extraction_parameters if necessary.
     if not args.pdf then
-	parser = argparse.argument_parser(memoize_extract_argspec)
-        args = parser:parse_args(args)
+	local argparse = require 'argparse'
+	parser = argparse()
+	    :name(script_name)
+	    :description "Extract extern pages produced by package Memoize \z
+                          out of the document PDF."
+	    :epilog "For details, see the man page or the Memoize documentation."
+	parser:flag "--version -V"
+	    :description "show program's version number and exit"
+	    :action(function()
+		    print(script_name .. " of Memoize " .. VERSION)
+		    exit.succ()
+		   end)
+	parser:argument "pdf"
+	    :description "the PDF file (doc.pdf when compiling doc.tex)"
+	parser:flag "--quiet -q"
+	    :description "don't describe what's happening"
+	parser:flag "--prune -p"
+	    :description "remove the extern pages after extraction"
+	parser:option "--format -F"
+	    :description "the format of the TeX document invoking extraction"
+	    :choices {"latex", "plain", "context"}
+	parser:flag "--force -f"
+	    :description "ignore warnings and extract problematic pages"
+	parser:flag "--mkdir -m"
+	    :description "create the directory and exit\n\z
+                          (the positional argument pdf is interpreted as directory name)"
+        args = parser:parse(args)
     end
 
     -- \paragraph{Initialization}
