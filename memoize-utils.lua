@@ -6,9 +6,13 @@ local VERSION = '2025/01/17 v1.4.1'
 kpse.set_program_name("luatex")
 --todo: if program name is not yet set
 
+require "lualibs-lua"--for testing
+    
 require 'lualibs-lpeg' --required by lualibs-file
 require 'lualibs-file'
 require 'lualibs-dir'
+
+require "lualibs-table"--for testing
 
 local argparse = require 'argparse'
 
@@ -29,71 +33,150 @@ local function try_error(msg, f, ...)
     return g(pcall(f,...))
 end
 
-local function info(args)
-
+local function mmiz_open(pdf_fn)
     local doc, catalog = try_error(
-	("The PDF file '%s' seems corrupted."):format(args.pdf),
+	("PDF file '%s' seems corrupted."):format(pdf_fn),
 	function()
-	    local doc = pdf.open(args.pdf)
+	    local doc = pdf.open(pdf_fn)
 	    local catalog = doc.trailer.Root()
 	    return doc, catalog
 	end
     )
-
     local mmiz = try_error(
-	"The PDF file does not contain a Memoize record.",
+	("PDF file '%s' does not contain a Memoize record."):format(pdf_fn),
 	function()
 	    return catalog.MMIZ_Record()
 	end
     )
-
-    if args.mmz then
-
-	for _, item in pairs(mmiz) do
-
-	    assert(
-		item.Type:sub(1,6) == "/MMIZ_",
-		("Unrecognized prefix in type %s"):format(item.Type)
-	    )
-	    local type = item.Type:sub(7)
-	    
-	    assert(
-		type == 'NewExtern' or type == 'UsedExtern' or
-		type == 'NewCMemo' or type == 'UsedCMemo' or
-		type == 'NewCCMemo' or type == 'UsedCCMemo' or
-		type == 'Prefix',
-		("Unrecognized type %s"):format(item.Type)
-	    )
-
-	    if type == 'NewExtern' then
-
-		extracted = item.MMIZ_Extracted and '%' or ''
-		print(("%s\\mmz%s {%s}{%s}{%spt}{%spt}"):format(
-			extracted, type,
-			item.MMIZ_Filename, item.MMIZ_PageNumber,
-			item.MMIZ_PageWidth, item.MMIZ_PageHeight)
-		)
-
-	    else
-
-		print(("\\mmz%s {%s}"):format(type, item.MMIZ_Filename))
-
-	    end
-	end
-
-	print("\\endinput ")
-
-    else
-
-	print(mmiz)
-
-    end
-
+    return mmiz, doc, catalog
 end
 
+local function mmiz_type(item)
+    assert(item.Type:sub(1,1) == '/')
+    local type = item.Type:sub(2)
+    assert(
+	type == 'NewExtern' or type == 'UsedExtern' or
+	type == 'NewCMemo' or type == 'UsedCMemo' or
+	type == 'NewCCMemo' or type == 'UsedCCMemo' or
+	type == 'Prefix',
+	("Unrecognized type %s"):format(item.Type)
+    )
+    return type
+end
+
+local function info(args)
+    mmiz = mmiz_open(args.pdf)
+    if args.mmz then
+	for _, item in ipairs(mmiz.Kids) do
+	    local type = mmiz_type(item)
+	    if type == 'NewExtern' then
+		print(("\\mmzNewExtern {%s}{%s}{%spt}{%spt}"):format(
+			item.Filename, item.PageNumber,
+			item.PageWidth, item.PageHeight))
+	    else
+		print(("\\mmz%s {%s}"):format(type, item.Filename))
+	    end
+	end
+	print("\\endinput ")
+    else
+	print(mmiz)
+    end
+end
+
+local function parent(fn)
+    local parent = file.dirname(fn)
+    return parent == '' and '.' or parent
+end
 
 local function clean(args)
-    print("Cleaning ... todo")
+    -- We loop through the given .mmz files, adding prefixes to whatever
+    -- manually specified by the user, and collecting the files to keep.
+    prefixes = {}
+    if args.prefix then
+	for i, prefix in ipairs(args.prefix) do
+	    prefixes[i] = prefix --todo: resolve
+	end
+    end
+    local keep = {}
+    for _, pdf in ipairs(args.pdf) do
+	local pdf_parent = parent(pdf)
+	local mmiz = mmiz_open(pdf)
+	local prefix, empty
+	for _, item in ipairs(mmiz.Kids) do
+	    local type = mmiz_type(item)
+	    if type == 'Prefix' then
+		prefix = item.Filename
+		table.insert(prefixes, file.join(pdf_parent, prefix)) --todo: resolve
+		if empty == nil then
+		    empty = true
+		end
+	    else
+		assert(prefix,
+		       ("Bailing out, no prefix announced before file %s in %s")
+		       :format(item.Filename, pdf))
+		assert(item.Filename:sub(1,prefix:len())==prefix,
+		       ("Bailing out, prefix of file %s does not match \z
+                         the last announced prefix %s in %s")
+		       :format(item.Filename, prefix, pdf))
+		keep[file.join(pdf_parent, item.Filename)] = true
+		empty = false
+	    end
+	end
+	assert(not empty or args.all,
+	       ('Bailing out, /MMIZ_Record of file %s is empty.'):format(pdf))
+    end
+
+    local tbdeleted = {}
+    local function populate_tbdeleted(folder, basename_prefix)
+	local P, R = lpeg.P, lpeg.R
+	local hex = R"09"+R"AF"
+	local aux_pattern =
+	    P(basename_prefix)
+	    * hex^32
+	    * (P"-" * hex^32)^-1
+	    * (".memo" + ((P"-" * R"09"^1)^-1 * ".pdf") + ".log")
+	    * P(-1)
+	for basename in lfs.dir(folder) do
+	    local fn = file.join(folder, basename)
+	    if lpeg.match(aux_pattern, basename) and (args.all or not keep[fn]) then
+		table.insert(tbdeleted, fn)
+	    end
+	end
+    end
+    for _, prefix in ipairs(prefixes) do
+	if lfs.isdir(prefix) then
+	    populate_tbdeleted(prefix, '')
+	end
+	populate_tbdeleted(parent(prefix), file.basename(prefix))
+    end
+    if #tbdeleted > 0 then
+	table.sort(tbdeleted)
+	local a = args.yes
+	if not args.yes then
+	    print('I will delete the following files:')
+	    for _, fn in ipairs(tbdeleted) do
+		print(fn)
+	    end
+	    print("Proceed (y/n)? ")
+	    a = io.stdin:read()
+	end
+	if args.yes or a == 'y' or a == 'yes' then
+	    for _, fn in ipairs(tbdeleted) do
+		local ok, err = os.remove(fn)
+		if not args.quiet then
+		    if ok then
+			print("Deleted " .. fn)
+		    else
+			print("Deleting " .. err)
+		    end
+		end
+	    end
+	else
+	    print("Bailing out.")
+	end
+    elseif not args.quiet then
+	print('Nothing to do, the directory seems clean.')
+    end
 end
 
 local script_name = file.basename(arg[0])
@@ -125,6 +208,16 @@ local cmd_clean = parser:command "clean"
     :epilog(epilog)
     :action(clean)
 cmd_clean:argument "pdf"
+    :args '*'
     :description "the PDF file (doc.pdf when compiling doc.tex)"
+cmd_clean:option "--prefix -p"
+    :description "a path prefix to clean"
+    :args '*'
+cmd_clean:flag "--yes -y"
+    :description "do not ask for confirmation"
+cmd_clean:flag "--all -a"
+    :description "remove all (not just stale) memos and externs"
+cmd_clean:flag "--quiet -q"
+    :description "don't describe what's happening"
 
 args = parser:parse()
