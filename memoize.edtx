@@ -2451,14 +2451,14 @@
     }{}}{}%
   \ifmmz@temp
   \else
-    \mmz@use@memo@warning{\mmz@extern@path}{#3}{#4}{#5}%
+    \mmz@use@memo@warning{#1}{#3}{#4}{#5}%
   \fi
   % Use the extern box, with the precise size as remembered at memoization.
   \wd\mmz@box=#3\relax
   \ht\mmz@box=#4\relax
   \mmz@typeset@box\mmz@box
   % Record that we have used this extern.
-  \pgfkeysalso{/mmz/record/used extern={\mmz@extern@path}}%
+  \pgfkeysalso{/mmz/record/used extern={#1}}%
 }
 \def\mmz@typeset@box#1{%
   \ifhbox#1\relax
