@@ -216,9 +216,9 @@
   \end{list}%
 }
 
-\newcommand\docaux[2]{%
+\newcommand\docaux[3][]{%
   \begingroup
-  \yadocset{do/.default=aux,aux options,#1={name={#2}}}%
+  \yadocset{do/.default=aux,aux options,#2={name={#3},#1}}%
   \endgroup
 }
 

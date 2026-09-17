@@ -603,6 +603,13 @@
   short name/.store in=\yadoc@short@name,
   short/.is if=yadoc@short,
   long/.is if=yadoc@long,
+  subcommand item/.style={
+    name prefix={\docref[into index=false]{\yadoc@of}\ },
+    index prefix={},
+    parameters prefix=\ ,
+    label prefix:={\yadoc@of:},
+    index annotation=subcommand of {\docref[into index=false,link color=gray]{\yadoc@of}},
+  },
   conditional/.style={
     parameters={\texttt{true}\Alt\texttt{false}},
     /utils/exec={%

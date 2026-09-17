@@ -7333,16 +7333,14 @@ therefore be installed automatically.
 \begin{doc}{
     script={name=memoize-clean.pl, par=[\meta{options}] [\meta{name}\texttt{.mmz} \dots]},
     script={name=memoize-clean.py, par=[\meta{options}] [\meta{name}\texttt{.mmz} \dots]},
-    script={name=memoize-clean.lua, par=[\meta{options}] [\meta{name}\texttt{.pdf} \dots]},
   }
   This script removes memo and extern files whose filenames start with
   \meta{prefix}es mentioned in the given \dmmz files or by the
   \refscript{memoize-clean.pl--prefix} option.  Unless option
   \refscript{memoize-clean.pl--all} is given, the script only deletes the
   \emph{stale} files, i.e.\ the files not mentioned in any of the given \dmmz
-  files.  (The Lua-based clean-up script requires a |.pdf| file rather than a
-  |.mmz| file argument, but is otherwise equivalent to the Perl- and the
-  Python-based script.)
+  files.\footnote{The Lua version of the script is documented in
+    section~\ref{sec:ref:memoize-utils}.}
 
   A \meta{prefix} of a memo or an extern is what was set by key
   \refmmz{prefix}, or more commonly, one of the shortcut keys \refmmz{memo dir}
@@ -7499,7 +7497,7 @@ therefore be installed automatically.
       additional \docref{mmiz:NewExtern} fields will be dropped once the
       package transitions to a Lua testing system.} The information is used by
     the Lua-based extraction script \refscript{memoize-extract.lua} and the
-    Lua-based clean-up script \refscript{memoize-clean.lua}.
+    Lua-based clean-up script \refscript{memoize-utils.lua:clean}.
 
     \begin{tcolorbox}[
         title=The structure of \hypercolor{link}{white}\docref{pdfobj:MMIZ_Record},
@@ -7650,6 +7648,134 @@ therefore be installed automatically.
   \end{doc}
 \end{doc}
 
+
+\subsubsection{Utilities}
+\label{sec:ref:memoize-utils}
+
+\begin{doc}{
+    script={
+      name=memoize-utils.lua,
+      par=[\meta{options}] \meta{command} \meta{command options and arguments}
+    },
+  }
+  This script is a collection of various utilities triggered by different
+  \meta{command}s.  The available commands are documented below.
+  
+  \yadocset{
+    of=script:memoize-utils.lua,
+    override/.style={
+      index annotation={option of {%
+          \hypercolor{link}{gray}%
+         \hyperref[script:memoize-utils.lua]{\texttt{memoize-utils}}%
+        }},
+    },
+  }  
+  \begin{doc}{
+      option={name=help, short name=h}
+    }
+    Show help and exit.
+  \end{doc}
+  \begin{doc}{
+      option={name=version, short name=V}
+    }
+    Show Memoize version and exit.
+  \end{doc}
+\end{doc}
+
+\begin{doc}{
+    subcommand={
+      name=clean,
+      of=script:memoize-utils.lua,
+      par={[\meta{options}] [\meta{pdf}]*},
+    }
+  }
+  This script removes stale memo and extern files produced by the previous
+  compilations of the given \meta{pdf} files.  A memo or extern file is
+  considered stale if it was not created or used in the production of the
+  current version of the given \meta{pdf} files.
+
+  A file is a candidate for removal if its pathname (relative to the working
+  directory) matches pattern
+  \meta{prefix}\meta{md5sum}(|-|\meta{md5sum})(|.memo|\alt(|-|$N$)|.pdf|\alt|.log|),%
+  \footnote{The |.log| files are produced by the \hologo{TeX}-based extraction
+    script.} where the \meta{prefix} is either an explicit prefix given by
+  option \refscript{memoize-utils.lua:clean--prefix} or (more commonly)
+  \refmmz{record}ed in one of the given \meta{pdf} files (as the value of
+  \docref{mmiz:Filename} subkey in a \docref{mmiz:Prefix} key listed in the
+  \docref{pdfobj:MMIZ_Record}).
+
+  If option \refscript{memoize-utils.lua:clean--all} is given, all the
+  candidates are removed.  Otherwise, the script refrains from deleting the
+  files listed in the \docref{pdfobj:MMIZ_Record} (as the value of
+  \docref{mmiz:Filename} subkey of keys \docref{mmiz:UsedCMemo},
+  \docref{mmiz:UsedCCMemo}, \docref{mmiz:UsedExtern}, \docref{mmiz:NewCMemo},
+  \docref{mmiz:NewCCMemo} and \docref{mmiz:NewExtern}).
+
+  \yadocset{
+    of=script:memoize-utils.lua:clean,
+    override/.style={
+      index annotation={option of {%
+          \hypercolor{link}{gray}%
+         \hyperref[script:memoize-utils.lua:clean]{\texttt{memoize-utils clean}}%
+        }},
+    },
+  }
+  \begin{doc}{
+      option={name=prefix, short name=p, par=\meta{prefix}}
+    }
+    Add \meta{prefix} to the list of prefixes; the given prefix is
+    relative to the working directory.  This option may be given multiple
+    times.
+  \end{doc}
+  \begin{doc}{
+      option={name=all, short name=a}
+    }
+    When given this option, the script removes \emph{all} memos and externs
+    with a matching prefix, not just the stale ones, i.e.\ it effectively
+    ignores the occurrences of \docref{mmiz:UsedExtern} and friends in the
+    \docref{pdfobj:MMIZ_Record}.
+  \end{doc}
+  \begin{doc}{
+      option={name=yes, short name=y}
+    }
+    When given this option, the script does not ask for confirmation before
+    removing the files.
+  \end{doc}
+  \begin{doc}{
+      option={name=quiet, short name=q}
+    }
+    Normally, the script prints what it is doing to the standard output; in
+    particular, it prints out the filename of each file as it is deleting it.
+    This option disables this behaviour.
+  \end{doc}
+\end{doc}
+
+\begin{doc}{
+    subcommand={
+      name=info,
+      of=script:memoize-utils.lua,
+      par={[\meta{options}] \meta{pdf}},
+    }
+  }
+  This script writes the information contained in \docref{pdfobj:MMIZ_Record}
+  in human-readable form.
+  \yadocset{
+    of=script:memoize-utils.lua:info,
+    override/.style={
+      index annotation={option of {%
+          \hypercolor{link}{gray}%
+         \hyperref[script:memoize-utils.lua:info]{\texttt{memoize-utils info}}%
+        }},
+    },
+  }
+  \begin{doc}{
+      option={name=mmz, short name=m}
+    }
+    Produce the output in the format of a \dmmz file.  This option is
+    transitory; it will be removed once the tests for the Lua-based extraction
+    script are rewritten in a Lua testing framework.
+  \end{doc}  
+\end{doc}
 
 
 \subsection{Automemoization}
