@@ -3354,7 +3354,7 @@ compilation, even if the memoized code itself is not compiled.
 \begingroup
 \input{\exampledir label.ccmemo}
 \tcbinputexample{label}[.ccmemo]{float,
-  listing only, right=1.5mm,
+  listing only, left=1mm, right=1mm,
   example title=\mymemo,
   no attachment,
 }
@@ -3904,7 +3904,8 @@ clean-up.
 
 
 
-\subsubsection{The \docref{pdfobj:MMIZ_Record} PDF catalog entry}
+\subsubsection{The \texorpdfstring{\docref{pdfobj:MMIZ_Record}}{/MMIZ\_Record}
+  PDF catalog entry}
 \label{sec:mmiz}
 
 When \code{\refmmz{record}=\refmmz{record=pdf}} is in effect (out of the box,
@@ -3917,12 +3918,13 @@ In fact, this entry contains more than information on externs created during
 the last compilation: it records which memos and externs were either used or
 created during the compilation.  The full information contained in the
 \docref{pdfobj:MMIZ_Record} file is used by the Lua clean-up script
-\refscript{memoize-clean.lua} to safely remove stale memos and externs.  Let us
-take a look at the \docref{pdfobj:MMIZ_Record} entry produced by the titlepage
-illustration.  In fact, we have two versions of this record, as it changes upon
-the second compilation: they are shown in boxes \texttt{titlepage.mmiz-pre} and
-\texttt{titlepage.mmiz-post} below.  (The printouts shown in these boxes were
-produced by script \refscript{memoize-info.lua}.)
+\refscript{memoize-utils.lua:clean} to safely remove stale memos and externs.
+Let us take a look at the \docref{pdfobj:MMIZ_Record} entry produced by the
+titlepage illustration.  In fact, we have two versions of this record, as it
+changes upon the second compilation: they are shown in boxes
+\texttt{titlepage.mmiz-pre} and \texttt{titlepage.mmiz-post} below.  (The
+printouts shown in these boxes were produced by script
+\refscript{memoize-utils.lua:info}.)
 
 \tcbinputexample{titlepage}[.mmiz-pre]{
   listing only, no .listing, no attachment, float,
@@ -3963,19 +3965,21 @@ as determined by the invocation of key \refmmz{prefix}.  The initial
 of the document, but an additional \docref{mmiz:Prefix} item will occur for every
 invocation of \refmmz{prefix} in the document body.
 
-As mentioned above, the full contingent of \docref{pdfobj:MMIZ_Record} item types is only
-used by the clean-up script \refscript{memoize-clean.lua}.  By default, this
-script removes all memos and externs with the prefix given by \docref{mmiz:Prefix}
-(relative to the directory hosting the PDF file) but those listed by any of
-\docref{mmiz:NewCMemo}, \docref{mmiz:NewCCMemo}, \docref{mmiz:NewExtern},
-\docref{mmiz:UsedCMemo}, \docref{mmiz:UsedCCMemo} and \docref{mmiz:UsedExtern}.  If given
-option \refscript{memoize-clean.pl--all}, the clean-up script removes even the
-memos and externs mentioned in the \docref{pdfobj:MMIZ_Record} entry.  Incidentally, the
-\refscript{memoize-clean.pl--all} mode is also the raison d'être for
-\docref{mmiz:Prefix}: while the prefix is usually recognizable from
-\docref{mmiz:NewCMemo} and friends, these items might not make it into the
-\docref{pdfobj:MMIZ_Record} in a fatally failed compilation, but it is precisely such
-compilations that could occasionally require the full clean-up.
+As mentioned above, the full contingent of \docref{pdfobj:MMIZ_Record} item
+types is only used by the clean-up script \refscript{memoize-utils.lua:clean}.
+By default, this script removes all memos and externs with the prefix given by
+\docref{mmiz:Prefix} (relative to the directory hosting the PDF file) but those
+listed by any of \docref{mmiz:NewCMemo}, \docref{mmiz:NewCCMemo},
+\docref{mmiz:NewExtern}, \docref{mmiz:UsedCMemo}, \docref{mmiz:UsedCCMemo} and
+\docref{mmiz:UsedExtern}.  If given option
+\refscript{memoize-utils.lua:clean--all}, the clean-up script removes even the
+memos and externs mentioned in the \docref{pdfobj:MMIZ_Record} entry.
+Incidentally, the \refscript{memoize-utils.lua:clean--all} mode is also the
+raison d'être for \docref{mmiz:Prefix}: while the prefix is usually
+recognizable from \docref{mmiz:NewCMemo} and friends, these items might not
+make it into the \docref{pdfobj:MMIZ_Record} in a fatally failed compilation,
+but it is precisely such compilations that could occasionally require the full
+clean-up.
 
 
 
@@ -5967,7 +5971,7 @@ on how to handle this properly.
     includes the externs.  The contents of \refcmd{mmzBeforeHBox} and friends
     therefore have to be smuggled out of the memoization group.  However, these
     macros may refer to other settings (and the |vbox| macros do, namely to
-    \refmmz{mmzTopSep} and \refmmz{mmzBottomSep}), so there is no principled
+    \refcmd{mmzTopSep} and \refcmd{mmzBottomSep}), so there is no principled
     way of knowing what else should be smuggled out of the group.  The problem
     is resolved at the cost of user's inconvenience: \refcmd{mmzBeforeHBox} and
     friends are expanded inside the memoization group, and it is the expansion
@@ -6712,7 +6716,7 @@ require.
 
   Executing extraction method \refmmz{extract=python} has an additional effect
   of setting \refmmz{mkdir command} to \code{\refscript{memoize-extract.py}
-    \refscript{memoize-extract.py--mkdir}}, but only if \refmmz{mkdir command}
+    \refscript{memoize-extract.pl--mkdir}}, but only if \refmmz{mkdir command}
   is currently set to the initial value, i.e.\ it will not effect the change if
   the user adjusted \refmmz{mkdir command} manually.
 \end{doc}
@@ -6901,7 +6905,7 @@ Perl- and Python-based extraction is triggered by
     \code{\refscript{memoize-extract.pl}
       \refscript{memoize-extract.pl--mkdir}}. Applying
     \code{\refmmz{extract}=\refmmz{extract=python}} changes the value to
-    \code{\refscript{memoize-extract.py} \refscript{memoize-extract.py--mkdir}}.
+    \code{\refscript{memoize-extract.py} \refscript{memoize-extract.pl--mkdir}}.
   \end{doc}
   \begin{doc}{
       option={name=version, short name=V}
@@ -7014,12 +7018,12 @@ therefore be installed automatically.
   The script inspects (the \docref{mmiz:Kids} array in) the
   \docref{pdfobj:MMIZ_Record} object in the PDF catalog for
   \docref{mmiz:NewExtern} entries, which contain subkeys
-  \docref{mmiz:Page}=\meta{extern page (reference)} and
-  \docref{mmiz:Filename}=\meta{extern filename} (see
-  section~\ref{sec:ref:record-files} for the complete structure of
-  \docref{pdfobj:MMIZ_Record} objects). For each \docref{mmiz:NewExtern} entry,
-  the \meta{extern page} is extracted from the \meta{filename} into
-  \meta{extern filename}.  (The script also creates directories specified by
+  \docref{mmiz:Page}=\meta{reference} and \docref{mmiz:Filename}=\meta{extern
+    filename} (see section~\ref{sec:ref:record-files} for the complete
+  structure of \docref{pdfobj:MMIZ_Record} objects). For each
+  \docref{mmiz:NewExtern} entry, the extern page referred to by the
+  \meta{reference} is extracted from the \meta{filename} into \meta{extern
+    filename}.  (The script also creates directories specified by
   \docref{mmiz:Prefix} entries.  Other entries in \docref{pdfobj:MMIZ_Record}
   are ignored.)
 
@@ -7042,11 +7046,17 @@ therefore be installed automatically.
   Exit codes: 0 = success, 1 = Perl/Python error, 2 = usage error, 10 =
   extraction warning, 11 = extraction error.
   
-  \yadocset{ of=script:memoize-extract.lua, override/.style={ index
-      annotation={option of {%
+  \yadocset{
+    of=script:memoize-extract.lua,
+    override/.style={
+      index annotation={option of
+        {%
           \hypercolor{link}{gray}%
           \hyperref[script:memoize-extract.lua]{\texttt{memoize-extract}}%
-        }}, }, }
+        }%
+      },
+    },
+  }
   \begin{doc}{
       option={name=prune, short name=p}
     }
@@ -7514,26 +7524,26 @@ therefore be installed automatically.
               [{\docaux{mmiz}{Page}=\rlap{\meta{reference}}}]
             ]
             [{\docaux{mmiz}{NewCMemo}=\meta{dictionary}}
-              [{\docaux{mmiz}{Filename}=\meta{string}}]
+              [{\docaux[label=]{mmiz}{Filename}=\meta{string}}]
             ]
             [{\docaux{mmiz}{NewCCMemo}=\meta{dictionary}}
-              [{\docaux{mmiz}{Filename}=\meta{string}}]
+              [{\docaux[label=]{mmiz}{Filename}=\meta{string}}]
             ]
             [{\docaux{mmiz}{UsedExtern}=\meta{dictionary}}
-              [{\docaux{mmiz}{Filename}=\meta{string}}]
+              [{\docaux[label=]{mmiz}{Filename}=\meta{string}}]
             ]
             [{\docaux{mmiz}{UsedCMemo}=\meta{dictionary}}
-              [{\docaux{mmiz}{Filename}=\meta{string}}]
+              [{\docaux[label=]{mmiz}{Filename}=\meta{string}}]
             ]
             [{\docaux{mmiz}{UsedCCMemo}=\meta{dictionary}}
-              [{\docaux{mmiz}{Filename}=\meta{string}}]
+              [{\docaux[label=]{mmiz}{Filename}=\meta{string}}]
             ]
             [{\docaux{mmiz}{Prefix}=\meta{dictionary}}
-              [{\docaux{mmiz}{Filename}=\meta{string}}]
+              [{\docaux[label=]{mmiz}{Filename}=\meta{string}}]
             ]
           ]
         ]
-      \end{forest}
+      \end{forest}\hspace*{-1cm}% ignore overfull hbox
       
       \tcblower
       \parskip 1ex
@@ -8362,7 +8372,7 @@ headers.
   The above-mentioned collector settings were clearly tailored to suit
   \refcmd{CollectArgumentsRaw}.  In general, a collector might or might not use
   them, and if it does, it may interpret them in any way.  For example, Advice
-  ships with a \refcmd{tikz} collector, \docaux{cmd}{AdviceCollectTikZArguments}, which
+  ships with a \refcmd{tikz} collector, \refcmd{AdviceCollectTikZArguments}, which
   ignores them completely, as it knows everything about the idiosyncrasies of
   that command anyway.  Incidentally, \refcmd{AdviceCollectTikZArguments} becomes
   available upon loading \reffile{advice-tikz.code.tex} (which Memoize does
