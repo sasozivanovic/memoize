@@ -1579,7 +1579,7 @@
   meaning to context/.code={\mmz@Cos\forcsvlist\mmz@mtoc{#1}},
   csname meaning to context/.code={\mmz@Cos\mmz@mtoc@csname{#1}},
   key meaning to context/.code={\mmz@Cos
-    \forcsvlist\mmz@mtoc\mmz@mtoc@keycmd{#1}},
+    \forcsvlist\mmz@mtoc@keycmd{#1}},
   key value to context/.code={\mmz@Cos\forcsvlist\mmz@mtoc@key{#1}},
   /handlers/.meaning to context/.code={\mmz@Cos\expanded{%
       \noexpand\mmz@mtoc@csname{pgfk@\pgfkeyscurrentpath/.@cmd}}},
@@ -1604,7 +1604,7 @@
   meaning to salt/.code={\mmz@coS\forcsvlist\mmz@mtoc{#1}},
   csname meaning to salt/.code={\mmz@coS\mmz@mtoc@csname{#1}},
   key meaning to salt/.code={\mmz@coS
-    \forcsvlist\mmz@mtoc\mmz@mtoc@keycmd{#1}},
+    \forcsvlist\mmz@mtoc@keycmd{#1}},
   key value to salt/.code={\mmz@coS
     \forcsvlist\mmz@mtoc@key{#1}},
   /handlers/.meaning to salt/.code={\mmz@coS\expanded{%
