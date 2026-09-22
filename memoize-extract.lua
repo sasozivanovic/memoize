@@ -19,27 +19,18 @@
 -- The files belonging to this work and covered by LPPL are listed in
 -- <texmf>/doc/generic/memoize/FILES.
 
-local VERSION = '2025/01/17 v1.4.1'
+local VERSION = '2026/XX/YY v1.5.0'
 
--- The following libraries are already available due to the use of LuaTeX: kpse
--- (Kpathsea), lfs (LuaFileSystem).  Furthermore, the following libraries are
--- extended in LuaTeX: lfs, os.  Finally, we also require several further
--- LuaTeX modules (note that they create global tables):
+-- luacheck: std lua53+texlua+lualibs
 
---Search for the libraries within the tex tree (see LuaTeX manual 10.7).
+--Search for the libraries within the tex tree (see LuaTeX manual 10.7.1).
 kpse.set_program_name("luatex")
 --todo: if program name is not yet set
 
-require 'lualibs-basic-merged' --only for debugging
+--require 'lualibs-basic-merged' --only for debugging
 require 'lualibs-lpeg' --required by lualibs-file
 require 'lualibs-file'
 require 'lualibs-dir'
-
---luacheck: read_globals dir
---luacheck: read_globals file
---luacheck: read_globals kpse
---luacheck: read_globals lfs
---luacheck: read_globals inspect
 
 -- Load "our own" PDF writer.
 local pdf = require 'luapdfrw'
@@ -79,9 +70,6 @@ local os = {
     type = os.type, ---@diagnostic disable-line
     getenv = os.getenv,
 }
-
----@diagnostic disable-next-line
-local inspect = inspect --for debugging, from lualibs-basic-merged
 
 -- We write our own assert, because the official function lacks the level
 -- parameter.  We also have different defaults: an empty message and level=0.
@@ -569,7 +557,7 @@ local function main(args)
     -- Convert command line arguments to extraction_parameters if necessary.
     if not args.pdf then
 	local argparse = require 'argparse'
-	parser = argparse()
+	local parser = argparse()
 	    :name(script_name)
 	    :description "Extract extern pages produced by package Memoize \z
                           out of the document PDF."
@@ -774,20 +762,20 @@ local function main(args)
 		    reraise('I failed to remove this page\t%s',
 			    doc.remove_page, doc, page)
 		end
- 
+
 	    end --/NewExtern
 	end ) --end try_warn )
     end -- end for loop
 
     logging.indent = ''
     logging.texindent = ''
-    
+
     logging:info(done_message)
     if args.prune then
 	doc:update()
 	logging:info("The extracted extern pages were removed from the PDF")
     end
-    
+
     logging:close()
     exit.succ()
 

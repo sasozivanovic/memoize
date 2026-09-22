@@ -2,12 +2,13 @@
 
 local VERSION = '2025/01/17 v1.4.1'
 
+-- luacheck: std lua53+texlua+lualibs
+
 --Search for the libraries within the tex tree (see LuaTeX manual 10.7).
 kpse.set_program_name("luatex")
 --todo: if program name is not yet set
 
-require "lualibs-lua"--for testing
-    
+--require "lualibs-lua"--for testing
 require 'lualibs-lpeg' --required by lualibs-file
 require 'lualibs-file'
 require 'lualibs-dir'
@@ -17,7 +18,7 @@ require "lualibs-table"--for testing
 local argparse = require 'argparse'
 
 -- Load "our own" PDF writer.
-local pdf = require 'luapdfrw'
+local pdfrw = require 'luapdfrw'
 
 -- Utilities
 
@@ -37,7 +38,7 @@ local function mmiz_open(pdf_fn)
     local doc, catalog = try_error(
 	("PDF file '%s' seems corrupted."):format(pdf_fn),
 	function()
-	    local doc = pdf.open(pdf_fn)
+	    local doc = pdfrw.open(pdf_fn)
 	    local catalog = doc.trailer.Root()
 	    return doc, catalog
 	end
@@ -65,7 +66,7 @@ local function mmiz_type(item)
 end
 
 local function info(args)
-    mmiz = mmiz_open(args.pdf)
+    local mmiz = mmiz_open(args.pdf)
     if args.mmz then
 	for _, item in ipairs(mmiz.Kids) do
 	    local type = mmiz_type(item)
@@ -84,14 +85,14 @@ local function info(args)
 end
 
 local function parent(fn)
-    local parent = file.dirname(fn)
-    return parent == '' and '.' or parent
+    local parent_fn = file.dirname(fn)
+    return parent_fn == '' and '.' or parent_fn
 end
 
 local function clean(args)
     -- We loop through the given .mmz files, adding prefixes to whatever
     -- manually specified by the user, and collecting the files to keep.
-    prefixes = {}
+    local prefixes = {}
     if args.prefix then
 	for i, prefix in ipairs(args.prefix) do
 	    prefixes[i] = prefix --todo: resolve
@@ -182,8 +183,8 @@ end
 local script_name = file.basename(arg[0])
 local epilog = "For details, see the man page or the Memoize documentation \z
                 (https://ctan.org/pkg/memoize)."
-	     
-parser = argparse()
+
+local parser = argparse()
     :name(script_name)
     :description "Memoize utilities."
     :epilog(epilog)
@@ -220,4 +221,4 @@ cmd_clean:flag "--all -a"
 cmd_clean:flag "--quiet -q"
     :description "don't describe what's happening"
 
-args = parser:parse()
+parser:parse()
