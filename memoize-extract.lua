@@ -27,49 +27,13 @@ local VERSION = '2026/XX/YY v1.5.0'
 kpse.set_program_name("luatex")
 --todo: if program name is not yet set
 
---require 'lualibs-basic-merged' --only for debugging
-require 'lualibs-lpeg' --required by lualibs-file
-require 'lualibs-file'
-require 'lualibs-dir'
+require 'lualibs-io'   --extends global io
+require 'lualibs-lpeg' --extends global lpeg, required by lualibs-file
+require 'lualibs-file' --defines global file
+require 'lualibs-dir'  --defines global dir
 
 -- Load "our own" PDF writer.
-local pdf = require 'luapdfrw'
-
--- List all the functions used in the script as local, then empty the global
--- environment.  This way, we precisely know what the script uses.
-
-local dir = {
-    makedirs = dir.makedirs,
-}
-local file = {
-    addsuffix = file.addsuffix,
-    basename = file.basename,
-    dirname = file.dirname,
-    is_rootbased_path = file.is_rootbased_path,
-    join = file.join,
-    replacesuffix = file.replacesuffix,
-    splitname = file.splitname,
-    suffix = file.suffix,
-}
-local io = {
-    exists = io.exists, ---@diagnostic disable-line
-    open = io.open,
-}
-local kpse = {
-    in_name_ok_silent_extended = kpse.in_name_ok_silent_extended,
-    out_name_ok_silent_extended = kpse.out_name_ok_silent_extended,
-    set_program_name = kpse.set_program_name,
-    var_value = kpse.var_value,
-}
-local lfs = {
-    attributes = lfs.attributes, ---@diagnostic disable-line
-    isfile = lfs.isfile,         ---@diagnostic disable-line
-}
-local os = {
-    exit = os.exit,
-    type = os.type, ---@diagnostic disable-line
-    getenv = os.getenv,
-}
+local pdfrw = require 'luapdfrw'
 
 -- We write our own assert, because the official function lacks the level
 -- parameter.  We also have different defaults: an empty message and level=0.
@@ -89,9 +53,6 @@ end
 local error = function(message, level) ---@diagnostic disable-line
     error(message or '', level and level+1 or 0)
 end
-
---_ENV = { table = table }
---    arg, error, pairs, ipairs, pcall, print, tonumber, tostring, type
 
 local script_name = file.basename(arg[0])
 
@@ -302,8 +263,6 @@ function pathlib.is_absolute(path)
 end
 
 -- \paragraph{Permission-related functions}
-
-kpse.set_program_name("texlua", "memoize-extract.lua")
 
 ---@param fn string
 local function check_name_in(fn)
@@ -648,7 +607,7 @@ local function main(args)
           load Memoize by writing \\RequirePackage{memoize} before \z
           \\documentclass{beamer}."):format(pdf_fn),
         function()
-            local doc = pdf.open(pdf_fn)
+            local doc = pdfrw.open(pdf_fn)
             local catalog = doc.trailer.Root()
             local pages = doc:get_pages()
             return doc, catalog, pages
@@ -752,7 +711,7 @@ local function main(args)
 		    ("I failed to extract this page into '%s'\t%%s")
 		    :format(extern_path),
 		    function()
-			local extern = pdf.new()
+			local extern = pdfrw.new()
 			extern:insert_page(page)
 			extern:save(extern_file_out)
 			logging:info(("%s --> '%s'"):format(item_str, extern_path))
