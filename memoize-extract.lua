@@ -35,23 +35,17 @@ require 'lualibs-dir'  --defines global dir
 -- Load "our own" PDF writer.
 local pdfrw = require 'luapdfrw'
 
--- We write our own assert, because the official function lacks the level
--- parameter.  We also have different defaults: an empty message and level=0.
--- Note that we increase a non-zero level by one in the code, to function the
--- same as the official assert.
----@param v any
----@param message any
----@param level integer?
-local assert = function(v, message, level)
-    if not v then error(message or '', level and level+1 or 0) end
-end
-
--- What the heck, let's also change the default level of error to 0, for
--- consistency.
----@param message any
----@param level integer?
-local error = function(message, level) ---@diagnostic disable-line
-    error(message or '', level and level+1 or 0)
+local function try(f, error_handler)
+    local function wrapper(success, ...)
+	if success then
+	    -- ... = the return value
+	    return ...
+	else
+	    -- ... = error message
+	    return error_handler(...)
+	end
+    end
+    return wrapper(pcall(f))
 end
 
 local script_name = file.basename(arg[0])
@@ -59,7 +53,7 @@ local script_name = file.basename(arg[0])
 --\paragraph{Messages}
 
 --The messages are written both to the extraction log and the terminal (we
---output to stdout rather than stderr so that messalges on the TeX terminal and
+--output to stdout rather than stderr so that messages on the TeX terminal and
 --document |.log| appear in chronological order).  Messages are automatically
 --adapted to the TeX |--format|.
 
@@ -77,15 +71,18 @@ do
 end
 
 logging = {
-    file      = nil,
-    header    = "",
-    indent    = "",
+    file = nil,
+    headers = {},
+    footer = '',
+    indent = "",
     texindent = "",
     quiet = false,
     format = "None",
     package_name = '',
 }
+
 do
+
     local ERROR = {
         latex = function(self, short, long) return
 		("\\PackageError{%s}{%s}{%s}")
@@ -98,8 +95,9 @@ do
 		:format(long, self.package_name, short) end,
         None = function(self, short, long) return
 		(long ~= '' and "%s%s. (%s)" or "%s%s.")
-		:format(self.header, short, long) end,
+		:format(self:_header(), short, long) end,
     }
+
     local WARNING = {
         latex = function(self, text) return
 		("\\PackageWarning{%s}{%s%s}")
@@ -112,8 +110,9 @@ do
 		:format(self.package_name, self.texindent, text) end,
         None = function(self, text) return
 		("%s%s%s.")
-		:format(self.header, self.indent, text)          end,
+		:format(self:_header(), self.indent, text)          end,
     }
+
     local INFO = {
         latex = function(self, text) return
 		("\\PackageInfo{%s}{%s%s}")
@@ -126,9 +125,17 @@ do
 		:format(self.package_name, self.texindent, text) end,
         None = function(self, text) return
 		("%s%s%s.")
-		:format(self.header, self.indent, text)          end,
+		:format(self:_header(), self.indent, text)          end,
     }
 
+    function logging:_header()
+	local result = ''
+	for _, header in ipairs(self.headers) do
+	    result = result .. header .. ': '
+	end
+	return result
+    end
+    
     ---@param fn string
     function logging:open(fn)
 	self.fh = io.open(fn, "w")
@@ -144,7 +151,8 @@ do
     end
 
     ---@param text string
-    function logging:error(text)
+    function logging:error(formatstring, ...)
+	local text = formatstring:format(...)
 	text = text:gsub("\\", "\\string\\")
 	local short, long = text:match("^(.-)\t(.*)$")
 	if not short then short, long = text, '' end
@@ -159,8 +167,8 @@ do
     end
 
     ---@param text string
-    function logging:warn(text)
-	text = text or ''
+    function logging:warn(formatstring, ...)
+	local text = formatstring:format(...)
         if not self.quiet then
             print(WARNING.None(self, text))
         end
@@ -172,8 +180,8 @@ do
     end
 
     ---@param text string
-    function logging:info(text)
-	text = text or ''
+    function logging:info(formatstring, ...)
+	local text = formatstring:format(...)
         if not self.quiet then
             print(INFO.None(self, text))
         end
@@ -182,44 +190,14 @@ do
         end
     end
 
-end
-
----@param msg string
----@param f function
----@param ... any
----@return ... any
-local function reraise(msg, f, ...)
-    local function g(success, ...)
-	if success then return ... end
-	error(msg:format(tostring(...)))
-    end
-    return g(pcall(f,...))
-end
-
----@param msg string
----@param f function
----@param ... any
----@return ... any
-local function try_error(msg, f, ...)
-    local function g(success, ...)
-	if success then return ... end
-	logging:error(msg:format(tostring(...)))
-    end
-    return g(pcall(f,...))
-end
-
----@param msg string
----@param f function
----@param ... any
----@return ... any
-local function try_warn(msg, f, ...)
-    local function g(success, ...)
-	if not success then
-	    logging:warn(msg:format(tostring(...)))
+    function logging:assert(v, errmsg_formatstring, ...)
+	if v then
+	    return v
+	else
+	    logging:error(errmsg_formatstring, ...)
 	end
-	return ...
     end
-    return g(pcall(f,...))
+
 end
 
 -- \paragraph{Additions to lualibs-file and lualibs-dir}
@@ -260,6 +238,11 @@ function pathlib.is_absolute(path)
              both the drive letter and start with '\\', or none of these; paths like \z
              'C:foo' and '\\foo' are disallowed"):format(path))
     return is_rootbased
+end
+
+function pathlib.parent(fn)
+    local parent_fn = file.dirname(fn)
+    return parent_fn == '' and '.' or parent_fn
 end
 
 -- \paragraph{Permission-related functions}
@@ -364,8 +347,7 @@ local function check_access_out(fn, mode)
 	--For a non-existing file, the parent directory should be writable.
 	--(This is the only place where function |pathlib.parent| is used,
 	--so it's ok that it returns the logical parent.)
-	local dn = file.dirname(fn)
-	if dn == "" then dn = "." end
+	local dn = pathlib.parent(fn)
 	assert(os_access(dn, 'w'),
 	       ("Cannot create '%s' in a non-writable directory"):format(fn))
     end
@@ -486,13 +468,14 @@ local md5pat = ("%x"):rep(32)
 ---@return string context_md5sum
 ---@return string seq
 local function split_extern_path(path)
-	local dir_prefix, rest = path:match("^(.*/)(.*)$")
-	if not dir_prefix then dir_prefix, rest = '', path end
-	local name_prefix, code_md5sum, context_md5sum, seq
+    local dir_prefix, rest = path:match("^(.*/)(.*)$")
+    if not dir_prefix then dir_prefix, rest = '', path end
+    local name_prefix, code_md5sum, context_md5sum, seq
 	= rest:match("^(.-)(" .. md5pat .. ")%-(" .. md5pat .. ")(.-).pdf$")
-	assert(name_prefix and (seq == '' or seq:match("^%-%d+$")))
-	return dir_prefix, name_prefix, code_md5sum, context_md5sum, seq
+    assert(name_prefix and (seq == '' or seq:match("^%-%d+$")))
+    return dir_prefix, name_prefix, code_md5sum, context_md5sum, seq
 end
+
 local MMIZ_Record_Types = {
     ['/NewExtern'] = true,
     ['/Prefix'] = true,
@@ -568,162 +551,193 @@ local function main(args)
     logging.package_name = 'memoize (lua-based extraction)'
     logging.quiet = args.quiet
     logging.format = args.format
-    logging.header = args.format and script_name .. ': ' or ''
     if args.format then
+	table.insert(logging.headers, script_name)
         local log_fn = find_out(file.replacesuffix(args.pdf, "mmz.log"))
         check_name_out(log_fn)
         check_access_out(log_fn)
-        logging:info(("Logging to '%s'"):format(log_fn))
+        logging:info("Logging to '%s'", log_fn)
 	logging:open(log_fn)
     end
 
     --Find the PDF file and check whether (a) we may read from it, and (b) we
     --may write to it, if --prune was given.
     local pdf_fn
-    try_error(
-	("Cannot open the PDF: %%s"):format(args.pdf),
+    try(
 	function()
+	    --foto: actually, find_out, because we will open (even if for
+	    --reading) a file which was just produced by TeX
 	    pdf_fn = find_in(args.pdf)
 	    check_name_in(pdf_fn)
 	    check_access_in(pdf_fn)
+	end,
+	function(errmsg)
+	    logging:error("Cannot open file '%s'.\nThe underlying error: %s",
+			  args.pdf, errmsg)
 	end
     )
     if args.prune then
-	try_error(
-	    ("Cannot open the PDF for writing: %%s. I would have to write to '%s' because iotuin option --prune/-p was given"),
+	logging:try(
 	    function()
 		check_name_out(pdf_fn)
 		check_access_out(pdf_fn)
-	    end
+	    end,
+	    "Cannot open '%s' for writing. \z
+            (I would have to write to this file because option --prune/-p was given.)\n\z
+            The underlying error: %%s", pdf_fn
 	)
     end
 
     --Open the PDF.
-
-    local doc, catalog, pages = try_error(
-	("PDF file '%s' seems corrupted. Perhaps you have to load Memoize \z
-          earlier in the preamble\tIn particular, Memoize must be loaded before\z
-          TikZ library 'fadings' and any package deploying it, and in Beamer, \z
-          load Memoize by writing \\RequirePackage{memoize} before \z
-          \\documentclass{beamer}."):format(pdf_fn),
+    local doc, catalog = try(
         function()
             local doc = pdfrw.open(pdf_fn)
             local catalog = doc.trailer.Root()
-            local pages = doc:get_pages()
-            return doc, catalog, pages
-        end
+            return doc, catalog
+        end,
+	function(errmsg)
+	    logging:error(
+		"PDF file '%s' seems corrupted. Perhaps you have to load Memoize \z
+                earlier in the preamble\tIn particular, Memoize must be loaded before\z
+                TikZ library 'fadings' and any package deploying it, and in Beamer, \z
+                load Memoize by writing \\RequirePackage{memoize} before \z
+                \\documentclass{beamer}.\nThe underlying error: %s",
+		pdf_fn, errmsg
+	    )
+	end
+    )
+    
+    local mmiz_record = try(
+	function()
+	    return catalog.MMIZ_Record().Kids()
+	end,
+	function(errmsg) 
+	    logging:info("File '%s' does not contain a Memoize record\n%s",
+			 args.pdf, errmsg)
+	    exit.succ()
+	end
     )
 
-    local record = try_error(
-	("File '%s' does not contain a Memoize record"):format(args.pdf),
-        function()
-            return catalog.MMIZ_Record().Kids()
-        end
-    )
-
+    local pages = doc:get_pages()
+    for i, page in ipairs(pages) do
+	pages[page] = i
+    end
+    
     local current_prefix
-    logging:info(("Extracting new externs from '%s'"):format(pdf_fn))
+    logging:info("Extracting new externs from '%s'", pdf_fn)
     local done_message = 'Done (there was nothing to extract)'
 
     logging.indent = '  '
     logging.texindent = '\\space\\space '
 
-    for item_n, item in pairs(record) do
+    for item_n, item in pairs(mmiz_record) do
 
-	assert(MMIZ_Record_Types[item.Type],
-	       ("/MMIZ_Record item %d: Unknown record type '%s'")
-	       :format(item_n, item.Type))
+	local err_prefix = ('/MMIZ_Record/Kids[%d]: '):format(item_n)
+	logging:assert(item.Type, "%sUndefined item type", err_prefix)
+	logging:assert(MMIZ_Record_Types[item.Type],
+		   "%sUnknown record type %s", err_prefix, item.Type)
+	err_prefix = ('/MMIZ_Record/Kids[%d] of type %s: '):format(item_n, item.Type)
+	logging:assert(item.Filename, "Missing /Filename key")
 
-	--todo: without item.PageNumber
-	local item_str = item.PageNumber
-	    and 'Page ' .. item.PageNumber
-	    or  ('/MMIZ_Record item #%d (of type %s)'):format(item_n, item.Type)
+	if item.Type == "/Prefix" then
+	    current_prefix = unquote(item.Filename)
+	    local dir_prefix = current_prefix:sub(-1) == '/'
+		and current_prefix or pathlib.parent(current_prefix)
+	    mkdir(dir_prefix)
 
-	try_warn(item_str .. ": " .. "%s", function()
+	elseif item.Type == "/NewExtern" then
+	    done_message = 'Done'
+	    
+	    local extern_path = unquote(item.Filename)
+	    
+	    local page_ref = logging:assert(item.Page, "Missing /Page key")
+	    local page = logging:assert(page_ref(), "Invalid page reference")
+	    local page_number = pages[page]
+	    if page_number then
+		err_prefix = ("Page %s: "):format(page_number)
+	    end
 
-            if item.Type == "/Prefix" then
+	    local dir_prefix, name_prefix, code_md5sum, context_md5sum = try(
+		function() return split_extern_path(extern_path) end,
+		function() logging:error("Illicit extern filename '%s'", extern_path) end
+	    )
 
-                assert (item.Filename, "Missing /Filename key")
-                current_prefix = unquote(item.Filename)
+	    logging:assert(
+		current_prefix,
+		"No /Prefix item was encountered before this record item.",
+		extern_path
+	    )
 
-            elseif item.Type == "/NewExtern" then
-
-		done_message = 'Done'
-		local page = item.Page()
-		local page_number = item.PageNumber
-
-		assert(page, "Missing /Page key or invalid page reference")
-		assert(args.force or page_number, "Missing /PageNumber key")
-
-                assert(not page_number or args.force or pages[page_number] == page,
-		       "The page number recorded in /PageNumber does not \z
-                        refer to the page object recorded in /Page")
-		--todo in LuaPDFrw: a way to retrieve the object id
-
-		assert(item.Filename, "Missing /Filename")
-                local extern_path = unquote(item.Filename)
-		local dir_prefix, name_prefix, code_md5sum, context_md5sum = reraise(
-		    ("%s: Illicit extern filename '%s'"):format(item_str, extern_path),
-		    split_extern_path, extern_path)
-
-		assert(current_prefix,
-		       ("No /Prefix item was encountered before the record item \z
-                         for extern '%s', or the last such item was malformed")
-		       :format(extern_path))
-
-		assert(pathlib.join(dir_prefix, name_prefix) == current_prefix,
-		       ("Extern filename '%s' does not start with the expected prefix '%s'")
-		       :format(extern_path, current_prefix))
-
-                -- Check whether the c-memo and the cc-memo are accessible.
-		if not args.force then
-		    local c_memo_file = find_in(
-			file.join(file.dirname(extern_path),
-				  name_prefix .. code_md5sum .. ".memo"))
-		    reraise(("I refuse to extract this page into extern '%s', \z
-                              because the associated c-memo is not accessible: %%s")
-			:format(extern_path),
-			function()
-			    check_name_in(c_memo_file)
-			    check_access_in(c_memo_file)
-			end
-		    )
-
-		    local cc_memo_file = find_in(
-			file.join(file.dirname(extern_path),
-				  name_prefix .. code_md5sum
-			      .. "-" .. context_md5sum .. ".memo"))
-		    reraise(("I refuse to extract this page into extern '%s', \z
-                              because the associated cc-memo is not accessible: %%s")
-			:format(extern_path),
-			function()
-			    check_name_out(cc_memo_file)
-			    check_access_out(cc_memo_file)
-			end
-		    )
-                end
-
-                local extern_file_out = find_out(extern_path)
-		check_name_out(extern_file_out)
-		check_access_out(extern_file_out)
-
-		reraise(
-		    ("I failed to extract this page into '%s'\t%%s")
-		    :format(extern_path),
+	    logging:assert(pathlib.join(dir_prefix, name_prefix) == current_prefix,
+		   "Extern filename '%s' does not start with the expected prefix '%s'",
+		   extern_path, current_prefix)
+	    
+	    -- Check whether the c-memo and the cc-memo are accessible.
+	    for typ, memo_file in pairs(
+		{ c = file.join(file.dirname(extern_path),
+				name_prefix .. code_md5sum .. ".memo"),
+		  cc = file.join(file.dirname(extern_path),
+				 name_prefix .. code_md5sum
+				 .. "-" .. context_md5sum .. ".memo") }) do
+		if try(
 		    function()
-			local extern = pdfrw.new()
-			extern:insert_page(page)
-			extern:save(extern_file_out)
-			logging:info(("%s --> '%s'"):format(item_str, extern_path))
+			check_name_in(memo_file)
+			check_access_in(memo_file)
+		    end,
+		    function(errmsg)
+			if args.force then
+			    logging:warn(
+				"The associated %s-memo '%s' is not accessible: %s",
+				typ, extern_path, errmsg
+			    )
+			else			
+			    logging:warn(
+				"I refuse to extract this page into extern '%s', \z
+                                 because the associated %s-memo is not accessible: %s",
+				 typ, extern_path, errmsg
+			    )
+			    return true
+			end
+		    end
+		) then
+		    goto next_item
+		end
+	    end
+
+	    local extern_file_out = find_out(extern_path)
+	    check_name_out(extern_file_out)
+	    check_access_out(extern_file_out)
+	    
+	    try(
+		function()
+		    local extern = pdfrw.new()
+		    extern:insert_page(page)
+		    extern:save(extern_file_out)
+		    logging:info("Page %s --> '%s'", page_number, extern_path)
+		end,
+		function(errmsg)
+		    logging:warn(
+			"I failed to extract this page into '%s'\t%s",
+			extern_path, errmsg
+		    )
+		end
+	    )
+	    if args.prune then
+		try(
+		    function()
+			doc.remove_page(doc, page)
+		    end,
+		    function(errmsg)
+			logging:error(
+			    'I failed to remove this page\t%s',
+			    errmsg
+			)
 		    end
 		)
-		if args.prune then
-		    reraise('I failed to remove this page\t%s',
-			    doc.remove_page, doc, page)
-		end
-
-	    end --/NewExtern
-	end ) --end try_warn )
+	    end
+	    
+	end --/NewExtern
+	::next_item::
     end -- end for loop
 
     logging.indent = ''

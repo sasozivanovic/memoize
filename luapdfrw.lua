@@ -155,7 +155,7 @@ do --array & dictionary
 	       return mt_pairs(tbl,pdfe_doc,indirect_root,pairs) end,
 	    __call = identity,
 		 __tostring = function(obj)
-			  s = obj.Type .. ' <<\n'
+                          s = tostring(obj.Type) .. ' <<\n'
 			  for key, child in pairs(obj) do
 					if key ~= 'Type' then
 						 s = s .. indent("/" .. tostring(key) .. " = " .. tostring(child)) .. "\n"
@@ -700,21 +700,26 @@ end
 
 --Enumerate pages, i.e. produce an array of Page objects from the Page tree.
 do
-   local function get_pages_from_Pages(p, result)
-      if p.Type == '/Page' then
-	 table.insert(result, p)
-      else
-	 for _,kid in ipairs(p.Kids) do
-	    get_pages_from_Pages(kid(), result)
+	 local function get_pages_from_Pages(pages, result, resolve_refs)
+		  for _, kid_ref in ipairs(pages.Kids) do
+				local kid = kid_ref()
+				if kid.Type == '/Pages' then
+					 get_pages_from_Pages(kid, result, resolve_refs)
+				else
+					 table.insert(result, resolve_refs and kid or kid_ref)
+				end
+		  end
 	 end
-      end
-   end
-   function pdfw_doc.get_pages(doc)
-      local result = {}
-      local root_Pages = doc.trailer.Root().Pages()
-      get_pages_from_Pages(root_Pages, result)
-      return result
-   end
+	 function pdfw_doc.get_pages(doc)
+		  local result = {}
+		  get_pages_from_Pages(doc.trailer.Root().Pages(), result, true)
+		  return result
+	 end
+	 function pdfw_doc.get_page_references(doc)
+		  local result = {}
+		  get_pages_from_Pages(doc.trailer.Root().Pages(), result)
+		  return result
+	 end
 end
 
 --Get a specific page by number.
