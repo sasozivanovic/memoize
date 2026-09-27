@@ -204,12 +204,6 @@ end
 
 local pathlib = {}
 
----@param char string
----@return boolean
-function pathlib.is_sep(char)
-    return char == '/' or (os.type == 'windows' and char == '\\')
-end
-
 -- Like file.join, but also compress multiple separators into one.
 
 ---@vararg string
@@ -225,41 +219,54 @@ function pathlib.is_dir(path)
     return lfs.attributes(path, 'mode') == 'directory'
 end
 
--- On Windows, we disallow ``semi-absolute'' paths, i.e.\ paths starting with
--- the |\| but lacking the drive, or the reverse.
-
----@param path string
----@return boolean
-function pathlib.is_absolute(path)
-    local drive, dir_path = file.splitname(path)
-    local is_rootbased = file.is_rootbased_path(dir_path)
-    assert(os.type ~= 'windows' or (drive ~= '' == is_rootbased),
-	   ("Disallowed \"semi-absolute\" path '%s'\tThe path must either contain \z
-             both the drive letter and start with '\\', or none of these; paths like \z
-             'C:foo' and '\\foo' are disallowed"):format(path))
-    return is_rootbased
+do 
+    local absolute, semi_absolute, root
+    if os.type == 'windows' then
+	local drive = lpeg.R("az","AZ") * lpeg.P(":")
+	local sep = lpeg.S("/\\")
+	absolute = drive * sep
+	semi_absolute = drive * -sep + sep
+	root = false
+    else
+	local sep = lpeg.P'/'
+	absolute = sep
+	semi_absolute = false
+	root = sep^1 * -1
+    end
+    function pathlib.is_absolute(path)
+	return lpeg.match(absolute, path)
+    end
+    function pathlib.is_semi_absolute(path)
+	return lpeg.match(semi_absolute, path)
+    end
+    function pathlib.is_root(path)
+	return lpeg.match(root, path)
+    end
 end
 
 function pathlib.parent(fn)
-    local parent_fn = file.dirname(fn)
-    return parent_fn == '' and '.' or parent_fn
+    return parent_fn == '' and '.' or file.dirname(fn)
 end
 
 -- \paragraph{Permission-related functions}
 
+-- check_in/out_name should work exactly as kpse_in/out_name_ok. In particular,
+-- as of TeX Live 2026, kpse_in_name_ok always returns true, see texmf.cnf and
+-- https://tug.org/pipermail/tex-live/2025-December/051965.html.
+
 ---@param fn string
-local function check_name_in(fn)
+local function check_in_name(fn)
     if not kpse.in_name_ok_silent_extended(fn) then
         error(("I'm not allowed to read from '%s' (openin_any = {%s})")
-            :format(fn, kpse.var_value('openin_any')))
+            :format(fn, kpse.var_value('openin_any')), 0)
     end
 end
 
 ---@param fn string
-local function check_name_out(fn)
+local function check_out_name(fn)
     if not kpse.out_name_ok_silent_extended(fn) then
 	error(("I'm not allowed to write to '%s' (openout_any = {%s})")
-	    :format(fn, kpse.var_value('openout_any')))
+	    :format(fn, kpse.var_value('openout_any')), 0)
     end
 end
 
@@ -276,9 +283,9 @@ do
         ---|"'x'" # executable?
         ---@return boolean
         function os_access(fn, mode)
-        local permissions = lfs.attributes(fn, "permissions")
-        local offset = rwx_offsets[mode]
-        return permissions:sub(offset, offset) == mode
+	    local permissions = lfs.attributes(fn, "permissions")
+	    local offset = rwx_offsets[mode]
+	    return permissions:sub(offset, offset) == mode
         end
 
     else
@@ -319,11 +326,9 @@ end
 
 ---@param fn string
 ---@param mode string?
-local function check_access_in(fn, mode)
+local function check_access_in(fn)
     assert(io.exists(fn), ("File '%s' does not exist"):format(fn))
     assert(os_access(fn, 'r'), ("File '%s' is not readable"):format(fn))
-    assert(not mode or lfs.attributes(fn, 'mode') == mode,
-	   ("'%s' exists but is not a %s"):format(fn, mode))
 end
 
 --This function can fail on Windows, reporting a non-writable file or dir as
@@ -332,15 +337,12 @@ end
 --output directory instead of switching to the temporary directory.
 
 ---@param fn string
----@param mode string?
-local function check_access_out(fn, mode)
+local function check_access_out(fn)
     if io.exists(fn) then
 	--An existing file should be writable, and if it's a directory, it
 	--should also be executable.
 	assert(os_access(fn, 'w'),
 	       ("File '%s' is not writable"):format(fn))
-	assert(not mode or lfs.attributes(fn, 'mode') == mode,
-	       ("'%s' exists but is not a %s"):format(fn, mode))
 	assert(not pathlib.is_dir(fn) or os_access(fn, 'x'),
 	       ("Directory '%s' is not executable"):format(fn))
     else
@@ -356,32 +358,41 @@ end
 local find_in, find_out
 do
 
-    --First, get the values of |TEXMFOUTPUT| and |TEXMF_OUTPUT_DIRECTORY|.
-    --An output directory should exist, and may not point to the root on Linux
-    --(Karl Berry, p.c.). On Windows, it may point to the root (of a drive),
-    --because we only allow absolute filenames containing the drive, e.g.\
-    --|F:\|; see |is_absolute|.
+    -- On Windows, we disallow ``semi-absolute'' paths, i.e.\ paths starting with
+    -- the |\| but lacking the drive, or the reverse.
 
-    ---@param f function
-    ---@param var string
-    ---@return string?
-    local function get_outdir(f, var)
-        local path = f(var)
-	if path then
-            if not pathlib.is_dir(path) then
-                --logging:warn(("I refuse to set %s to '%s', which is not a directory."):format(var, path))
-                return
-            end
-	    --???? todo
-	    --if os.type ~= 'windows' and pathlib.join(path) ~= pathlib.sep then
-		--logging:warn(("I refuse to set %s to the root directory '%s'"):format(var, path))
-	    --end
+    local function sanitize_filename(path)
+	if path and pathlib.is_semi_absolute(path) then
+	    error(("\"Semi-absolute\" paths are disallowed: '%s'\t\z
+               The path must either contain both the drive letter and \z
+               start with '\\', or none of these; paths like \z
+               'C:foo' and '\\foo' are disallowed"):format(path), 0)
 	end
 	return path
     end
 
-    local texmf_output_directory = get_outdir(os.getenv, "TEXMF_OUTPUT_DIRECTORY")
-    local texmfoutput = get_outdir(kpse.var_value, "TEXMFOUTPUT")
+    -- An output directory should exist, and may not point to the root on Linux
+    -- (Karl Berry, p.c.). On Windows, it may point to the root of a drive,
+    -- because we only allow absolute filenames containing the drive, e.g.\
+    -- |F:\|; see |sanitize_filename|.
+
+    ---@param f function
+    ---@param var string
+    ---@return string?
+    local function sanitize_output_dir(d)
+	return d
+	    and sanitize_filename(d)
+	    and pathlib.is_dir(d)
+	    and not pathlib.is_root(d)
+	    and d
+    end
+
+    --First, get the values of |TEXMFOUTPUT| and |TEXMF_OUTPUT_DIRECTORY|.
+    
+    local texmf_output_directory
+	= sanitize_output_dir(kpse.var_value("TEXMF_OUTPUT_DIRECTORY"))
+    local texmfoutput
+	= sanitize_output_dir(kpse.var_value("TEXMFOUTPUT"))
 
     --This function finds the location for an input file, respecting
     --|TEXMF_OUTPUT_DIRECTORY| and |TEXMFOUTPUT|, and the permissions in the
@@ -394,6 +405,7 @@ do
     ---@param fn string
     ---@return string
     function find_in(fn)
+	sanitize_filename(path)
         if pathlib.is_absolute(fn) then return fn end
         for _, df in pairs(
 	    {
@@ -419,6 +431,7 @@ do
     ---@param fn string
     ---@return string
     function find_out(fn)
+	sanitize_filename(path)
         if pathlib.is_absolute(fn) then return fn end
         for _, df in pairs(
 	    {
@@ -438,14 +451,12 @@ end
 ---@param folder string
 local function mkdir(folder)
     folder = find_out(folder)
-    check_name_out(folder)
+    check_out_name(folder)
     check_access_out(folder)
     if io.exists(folder) then
 	local attr = lfs.attributes(folder)
 	if attr.mode ~= 'directory' then
-	    error("Path '%s' already exists, but it is not a directory")
-	elseif false and attr.permissions == 'bad' then
-	    error("Path '%s' already exists, but it is not writable")
+	    error("Path '%s' already exists, but it is not a directory", 0)
 	end
     else
 	dir.makedirs(folder)
@@ -554,7 +565,7 @@ local function main(args)
     if args.format then
 	table.insert(logging.headers, script_name)
         local log_fn = find_out(file.replacesuffix(args.pdf, "mmz.log"))
-        check_name_out(log_fn)
+        check_out_name(log_fn)
         check_access_out(log_fn)
         logging:info("Logging to '%s'", log_fn)
 	logging:open(log_fn)
@@ -568,7 +579,7 @@ local function main(args)
 	    --foto: actually, find_out, because we will open (even if for
 	    --reading) a file which was just produced by TeX
 	    pdf_fn = find_in(args.pdf)
-	    check_name_in(pdf_fn)
+	    check_in_name(pdf_fn)
 	    check_access_in(pdf_fn)
 	end,
 	function(errmsg)
@@ -579,7 +590,7 @@ local function main(args)
     if args.prune then
 	logging:try(
 	    function()
-		check_name_out(pdf_fn)
+		check_out_name(pdf_fn)
 		check_access_out(pdf_fn)
 	    end,
 	    "Cannot open '%s' for writing. \z
@@ -674,14 +685,14 @@ local function main(args)
 	    
 	    -- Check whether the c-memo and the cc-memo are accessible.
 	    for typ, memo_file in pairs(
-		{ c = file.join(file.dirname(extern_path),
+		{ c = pathlib.join(file.dirname(extern_path),
 				name_prefix .. code_md5sum .. ".memo"),
-		  cc = file.join(file.dirname(extern_path),
+		  cc = pathlib.join(file.dirname(extern_path),
 				 name_prefix .. code_md5sum
 				 .. "-" .. context_md5sum .. ".memo") }) do
 		if try(
 		    function()
-			check_name_in(memo_file)
+			check_in_name(memo_file)
 			check_access_in(memo_file)
 		    end,
 		    function(errmsg)
@@ -705,7 +716,7 @@ local function main(args)
 	    end
 
 	    local extern_file_out = find_out(extern_path)
-	    check_name_out(extern_file_out)
+	    check_out_name(extern_file_out)
 	    check_access_out(extern_file_out)
 	    
 	    try(
