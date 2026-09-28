@@ -47,6 +47,8 @@ repository](https://github.com/sasozivanovic/memoize).
   * Fix several typos.
   * Reorganized some parts of the reference section.
   * Added section Examples.
+  * Belatedly fix the information on the interpretation of relative directories
+    in a `.mmz` file in section 5.5.1. (It should be changed in v1.1.0.)
 
 ## 2024/12/02 v1.4.1
 

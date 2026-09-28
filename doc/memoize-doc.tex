@@ -6792,9 +6792,10 @@ Perl- and Python-based extraction is triggered by
   Other lines are ignored, and so are commented invocations of
   \refcmd{mmzNewExtern} and \refcmd{mmzPrefix}.)
 
-  The \meta{extern filename} may contain a (relative or absolute) path to the
-  new extern file.  The relative paths are relative to the location of the
-  \dmmz file, even when the script is invoked from some other directory.
+  The \meta{extern filename} may contain either a relative or an absolute path
+  to the new extern file.  The relative paths are relative to the working
+  directory of the script, so the script should be normally executed in the
+  same working directory as the \hologo{TeX} process which produced the PDF.
 
   To guard against extracting a wrong page, the script checks whether the size
   of each extracted page matches the \meta{expected width} and \meta{expected
