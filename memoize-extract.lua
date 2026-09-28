@@ -204,15 +204,6 @@ end
 
 local pathlib = {}
 
--- Like file.join, but also compress multiple separators into one.
-
----@vararg string
----@return string
-function pathlib.join(...)
-    assert((...), "No path was given")
-    return (file.join(...):gsub('[/\\]+', '/'))
-end
-
 ---@param path string
 ---@return boolean
 function pathlib.is_dir(path)
@@ -220,19 +211,21 @@ function pathlib.is_dir(path)
 end
 
 do 
-    local absolute, semi_absolute, root
+    local absolute, semi_absolute, root, sep
+    local P, S, R, C = lpeg.P, lpeg.S, lpeg.R, lpeg.C
     if os.type == 'windows' then
-	local drive = lpeg.R("az","AZ") * lpeg.P(":")
-	local sep = lpeg.S("/\\")
+	local drive = R("az","AZ") * P(":")
+	sep = S("/\\")
 	absolute = drive * sep
 	semi_absolute = drive * -sep + sep
 	root = false
     else
-	local sep = lpeg.P'/'
+	sep = P'/'
 	absolute = sep
 	semi_absolute = false
 	root = sep^1 * -1
     end
+    local nosep = 1 - sep
     function pathlib.is_absolute(path)
 	return lpeg.match(absolute, path)
     end
@@ -242,11 +235,16 @@ do
     function pathlib.is_root(path)
 	return lpeg.match(root, path)
     end
+    function pathlib.parent(fn)
+	local i = fn:len()
+	while i > 0 and lpeg.match(sep, fn, i) do
+	    i = i - 1
+	end
+	local dn = file.dirname(fn:sub(1,i))
+	return dn == '' and '.' or dn
+    end
 end
 
-function pathlib.parent(fn)
-    return parent_fn == '' and '.' or file.dirname(fn)
-end
 
 -- \paragraph{Permission-related functions}
 
@@ -351,7 +349,7 @@ local function check_access_out(fn)
 	--so it's ok that it returns the logical parent.)
 	local dn = pathlib.parent(fn)
 	assert(os_access(dn, 'w'),
-	       ("Cannot create '%s' in a non-writable directory"):format(fn))
+	       ("Cannot create '%s' in a non-writable directory '%s'"):format(fn, dn))
     end
 end
 
@@ -409,9 +407,9 @@ do
         if pathlib.is_absolute(fn) then return fn end
         for _, df in pairs(
 	    {
-		texmf_output_directory and pathlib.join(texmf_output_directory, fn),
+		texmf_output_directory and file.join(texmf_output_directory, fn),
 		fn,
-		texmfoutput and pathlib.join(texmfoutput, fn),
+		texmfoutput and file.join(texmfoutput, fn),
             }
         ) do
             if df and pcall(check_access_in, df) then return df end
@@ -435,14 +433,14 @@ do
         if pathlib.is_absolute(fn) then return fn end
         for _, df in pairs(
 	    {
-		texmf_output_directory and pathlib.join(texmf_output_directory, fn),
+		texmf_output_directory and file.join(texmf_output_directory, fn),
 		not texmf_output_directory and fn,
-		texmfoutput and pathlib.join(texmfoutput, fn),
+		texmfoutput and file.join(texmfoutput, fn),
             }
         ) do
             if df and pcall(check_access_out, df) then return df end
         end
-	return texmf_output_directory and pathlib.join(texmf_output_directory, fn) or fn
+	return texmf_output_directory and file.join(texmf_output_directory, fn) or fn
     end
 end
 
@@ -452,14 +450,11 @@ end
 local function mkdir(folder)
     folder = find_out(folder)
     check_out_name(folder)
-    check_access_out(folder)
-    if io.exists(folder) then
-	local attr = lfs.attributes(folder)
-	if attr.mode ~= 'directory' then
-	    error("Path '%s' already exists, but it is not a directory", 0)
-	end
-    else
+    -- We don't call "check_access_out(folder)" because it would fail if
+    -- multiple subdirectories need to be created.
+    if not io.exists(folder) then
 	dir.makedirs(folder)
+	logging:info("Created directory %s", folder)
     end
 end
 
@@ -468,6 +463,9 @@ end
 ---@param fn string
 ---@return string
 local function unquote(fn)
+    if fn:sub(1,4) == '\\057' then --todo: fix pdfrw
+	fn = '/' .. fn:sub(5)
+    end
     return (fn:gsub("\"(.-)\"", "%1"))
 end
 
@@ -566,7 +564,6 @@ local function main(args)
 	table.insert(logging.headers, script_name)
         local log_fn = find_out(file.replacesuffix(args.pdf, "mmz.log"))
         check_out_name(log_fn)
-        check_access_out(log_fn)
         logging:info("Logging to '%s'", log_fn)
 	logging:open(log_fn)
     end
@@ -576,26 +573,35 @@ local function main(args)
     local pdf_fn
     try(
 	function()
-	    --foto: actually, find_out, because we will open (even if for
-	    --reading) a file which was just produced by TeX
+	    --todo: "find_in" below should actually search the same directories
+	    --as "find_out", but of course check for an existing and
+	    --(in_accessible) files, because the file we want to open (even if
+	    --for reading) is a file which was just produced by TeX.
 	    pdf_fn = find_in(args.pdf)
 	    check_in_name(pdf_fn)
 	    check_access_in(pdf_fn)
 	end,
-	function(errmsg)
-	    logging:error("Cannot open file '%s'.\nThe underlying error: %s",
-			  args.pdf, errmsg)
+	function()
+	    logging:info(
+		"Cannot open file '%s', assuming there's nothing to do",
+		args.pdf
+	    )
+	    exit.succ()
 	end
     )
     if args.prune then
-	logging:try(
+	try(
 	    function()
 		check_out_name(pdf_fn)
 		check_access_out(pdf_fn)
 	    end,
-	    "Cannot open '%s' for writing. \z
-            (I would have to write to this file because option --prune/-p was given.)\n\z
-            The underlying error: %%s", pdf_fn
+	    function(errmsg)
+		logging:error(
+		    "Cannot open '%s' for writing. \z
+                     (I would have to write to this file because \z
+                     option --prune/-p was given.)\t%s",
+		     pdf_fn, errmsg)
+	    end
 	)
     end
 
@@ -608,11 +614,11 @@ local function main(args)
         end,
 	function(errmsg)
 	    logging:error(
-		"PDF file '%s' seems corrupted. Perhaps you have to load Memoize \z
-                earlier in the preamble\tIn particular, Memoize must be loaded before\z
-                TikZ library 'fadings' and any package deploying it, and in Beamer, \z
-                load Memoize by writing \\RequirePackage{memoize} before \z
-                \\documentclass{beamer}.\nThe underlying error: %s",
+		"PDF file '%s' seems corrupted.\tThe underlying error was: %s.\n\z
+                Perhaps you have to load Memoize earlier in the preamble. \z
+                In particular, Memoize must be loaded before TikZ library 'fadings' \z
+                and any package deploying it, and in Beamer, load Memoize by writing \z
+                \\RequirePackage{memoize} before \\documentclass{beamer}.",
 		pdf_fn, errmsg
 	    )
 	end
@@ -622,9 +628,10 @@ local function main(args)
 	function()
 	    return catalog.MMIZ_Record().Kids()
 	end,
-	function(errmsg) 
-	    logging:info("File '%s' does not contain a Memoize record\n%s",
-			 args.pdf, errmsg)
+	function(errmsg)
+	    logging:info("File '%s' does not contain a Memoize record, \z
+                          assuming there's nothing to do",
+			 args.pdf)
 	    exit.succ()
 	end
     )
@@ -679,15 +686,15 @@ local function main(args)
 		extern_path
 	    )
 
-	    logging:assert(pathlib.join(dir_prefix, name_prefix) == current_prefix,
+	    logging:assert(file.join(dir_prefix, name_prefix) == current_prefix,
 		   "Extern filename '%s' does not start with the expected prefix '%s'",
 		   extern_path, current_prefix)
 	    
 	    -- Check whether the c-memo and the cc-memo are accessible.
 	    for typ, memo_file in pairs(
-		{ c = pathlib.join(file.dirname(extern_path),
+		{ c = file.join(file.dirname(extern_path),
 				name_prefix .. code_md5sum .. ".memo"),
-		  cc = pathlib.join(file.dirname(extern_path),
+		  cc = file.join(file.dirname(extern_path),
 				 name_prefix .. code_md5sum
 				 .. "-" .. context_md5sum .. ".memo") }) do
 		if try(
@@ -717,7 +724,6 @@ local function main(args)
 
 	    local extern_file_out = find_out(extern_path)
 	    check_out_name(extern_file_out)
-	    check_access_out(extern_file_out)
 	    
 	    try(
 		function()
@@ -733,6 +739,7 @@ local function main(args)
 		    )
 		end
 	    )
+
 	    if args.prune then
 		try(
 		    function()
@@ -765,10 +772,8 @@ local function main(args)
 
 end
 
-if script_name == "memoize-extract" or script_name == "memoize-extract.lua" then
-    main(arg)
+if debug.getinfo(2) then
+    return { main = main }
 else
-    return main
+    main(arg)
 end
-
--- todo: mkdir for Prefix

@@ -89,6 +89,16 @@ local function parent(fn)
     return parent_fn == '' and '.' or parent_fn
 end
 
+local MMIZ_Record_Types = {
+    ['/NewExtern'] = true,
+    ['/Prefix'] = true,
+    ['/NewCMemo'] = true,
+    ['/NewCCMemo'] = true,
+    ['/UsedExtern'] = true,
+    ['/UsedCMemo'] = true,
+    ['/UsedCCMemo'] = true,
+}
+
 local function clean(args)
     -- We loop through the given .mmz files, adding prefixes to whatever
     -- manually specified by the user, and collecting the files to keep.
