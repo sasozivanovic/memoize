@@ -59,9 +59,40 @@ me.exit.error = function() error("exited with error") end
 me.exit.warn  = function() error("exited with warn") end
 me.exit.succ  = function() error("exited with succ") end
 
+local function set_env(a,b,c)
+  process.setenv("TEXMF_OUTPUT_DIRECTORY", a)
+  process.setenv("TEXMFOUTPUT", b)
+  process.setenv("openin_any", "a")
+  process.setenv("openout_any", c)
+  me.init_find()
+  --print(("TEXMFOUTPUT=%s"):format(kpse.var_value("TEXMFOUTPUT")))
+end
+local function reset_env()
+  set_env("","","p")  
+end
+reset_env()
+
+local function describe_env(a,b,c,f,desc)
+  desc = desc or ''
+  describe(
+    ("TEXMFOUTPUT=%s, TEXMF_OUTPUT_DIRECTORY=%s, openout_any=%s %s")
+    :format(a,b,c,desc),
+    function()
+      setup(function()set_env(a,b,c)end)
+      teardown(reset_env)
+      f()
+  end)
+end
+
+local on_windows = os.type == 'windows'
+local cwd = lfs.currentdir
+
 describe("memoize-extract.lua", function()
+    
     describe("unittests", function()
+        
         describe("split_extern_path", function()
+            
             it("should parse a valid path with all parts", function()
                 local path = "/dir/prefix/file1234567890abcdef1234567890abcdef-1234567890abcdef1234567890abcdef-42.pdf"
                 local dir_prefix, name_prefix, code_md5sum, context_md5sum = me.split_extern_path(path)
@@ -123,12 +154,10 @@ describe("memoize-extract.lua", function()
                 assert.are.equal(context_md5sum, "1234567890abcdef1234567890abcdef")
             end)
         end)
-        describe(
-          "pathlib",
-          function()
-            describe(
-              "parent",
-              function()
+        
+        describe("pathlib", function()
+            
+            describe("parent", function()
                 it("should return the parent", function()
                     assert.are.equal(
                       me.pathlib.parent('/tmp/subdir/foo.memo.dir'),
@@ -161,18 +190,189 @@ describe("memoize-extract.lua", function()
                 end)
             end)
         end)
-        describe(
-          "find",
-          function()
-            it("", function()
-                me.init_find()
-                print("tod empty", me.find_in('foo'))
-                process.setenv("TEXMF_OUTPUT_DIRECTORY", "test")
-                me.init_find()
-                print("tod=test", me.find_out('foo.txt'))
+        
+        describe("#permissions", function()
+            
+            describe("check_out_name", function()
+                
+                local function It(fn, assrt, win_assrt, pnding)
+                  it(fn, function()
+                      assrt = on_windows and (win_assrt and win_assrt or assrt) or assrt
+                      if pnding then pending(pnding) end
+                      assrt(function() me.check_out_name(fn) end)
+                  end)
+                end
+                local drive = on_windows and 'C:' or ''
+
+                describe_env(nil, nil, 'p', function()
+                    --relative
+                    It('foo.txt', assert.Not.errors)
+                    It('rel/foo/bar.txt', assert.Not.errors)
+                    It('../foo.txt', assert.errors)
+                    It('rel/../foo/bar.txt', assert.errors)
+                    --absolute
+                    It(drive..'/abs/foo/bar.txt', assert.errors)
+                    It(drive..'/abs/foo/../bar/baz.txt', assert.errors)
+                end)
+
+                describe_env(nil, '/tmp', 'p', function()
+                    --relative
+                    It('foo.txt', assert.Not.errors)
+                    It('rel/foo/bar.txt', assert.Not.errors)
+                    It('../foo.txt', assert.errors)
+                    It('rel/../foo/bar.txt', assert.errors)
+                    --absolute
+                    It(drive..'/abs/foo/bar.txt', assert.errors)
+                    It(drive..'/abs/foo/../bar/baz.txt', assert.errors)
+                    It(drive..'/tmp/foo.txt', assert.Not.errors)
+                    It(drive..'/tmp/foo/bar.txt', assert.Not.errors)
+                    It(drive..'/tmp/foo/../bar/baz.txt', assert.errors)
+                end)
+                
+                describe_env(nil, nil, 'a', function()
+                    --relative
+                    It('foo.txt', assert.Not.errors)
+                    It('rel/foo/bar.txt', assert.Not.errors)
+                    It('../foo.txt', assert.Not.errors)
+                    It('rel/../foo/bar.txt', assert.Not.errors)
+                    --absolute
+                    It(drive..'/abs/foo/bar.txt', assert.Not.errors)
+                    It(drive..'/abs/foo/../bar/baz.txt', assert.Not.errors)
+                    It(drive..'/tmp/foo.txt', assert.Not.errors)
+                    It(drive..'/tmp/foo/bar.txt', assert.Not.errors)
+                    It(drive..'/tmp/foo/../bar/baz.txt', assert.Not.errors)
+                end)
+
+                describe_env(drive..'/home/user/tex/od', drive..'/tmp', 'p', function()
+                    
+                    It(drive..'/foo/bar/baz.txt', assert.errors)
+                    It('foo/bar/baz.txt', assert.Not.errors)
+                    It('../baz.txt', assert.errors)
+                    It('baz.txt', assert.Not.errors)
+                    It(drive..'/foo/bar/.baz.txt', assert.errors)
+                    It('foo/bar/.baz.txt', assert.errors, assert.Not.errors)
+                    It('../.baz.txt', assert.errors)
+                    It('../.baz.txt', assert.errors)
+                    It('.baz.txt', assert.errors, assert.Not.errors)
+                    --It('.tex', assert.Not.errors)
+                    --It('foo/.tex', assert.Not.errors)
+                    It(drive..'/home/user/tex/od/foo/bar/baz.txt', assert.Not.errors)
+                    It(drive..'/home/user/tex/od/baz.txt', assert.Not.errors)
+                    It(drive..'/home/user/tex/odbaz.txt', assert.errors)
+                    It(drive..'/home/user/tex/baz.txt', assert.errors)
+                    It(drive..'/home/user/tex/od///./baz.txt', assert.Not.errors)
+                    It(drive..'/home/user/tex/od/foo/../baz.txt', assert.errors)
+                    It(drive..'/tmp/foo/bar/baz.txt', assert.Not.errors)
+                    It(drive..'/tmp/baz.txt', assert.Not.errors)
+                    It(drive..'/home/user/tex/odbaz.txt', assert.errors)
+                    It(drive..'/home/user/tex/baz.txt', assert.errors)
+                    It(drive..'/tmp///./baz.txt', assert.Not.errors)
+                    It(drive..'/tmp/foo/../baz.txt', assert.errors)
+                    It(drive..'/tmpbaz.txt', assert.errors)
+                    It(file.join(cwd(),'baz.txt'), assert.errors)
+                    It(file.join(cwd(),'foo/baz.txt'), assert.errors)
+                end)
+                
+                describe_env('od', 'tmp', 'r', function()
+                    
+                    It(drive..'/foo/bar/baz.txt', assert.Not.errors)
+                    It('foo/bar/baz.txt', assert.Not.errors)
+                    It('../baz.txt', assert.Not.errors)
+                    It('baz.txt', assert.Not.errors)
+                    
+                    --It(drive..'/foo/bar/.baz.txt', assert.errors, assert.Not.errors)
+                    It('foo/bar/.baz.txt', assert.errors, assert.Not.errors)
+                    It('../.baz.txt', assert.errors, assert.Not.errors)
+                    It('.baz.txt', assert.errors, assert.Not.errors)
+                    --It('.tex', assert.Not.errors)
+                    --It('foo/.tex', assert.Not.errors)
+
+                    It(drive..'/home/user/tex/od/foo/bar/baz.txt', assert.Not.errors)
+                    It(drive..'/home/user/tex/od/baz.txt', assert.Not.errors)
+                    It(drive..'/home/user/tex/odbaz.txt', assert.Not.errors)
+                    It(drive..'/home/user/tex/baz.txt', assert.Not.errors)
+                    It(drive..'/home/user/tex/od///./baz.txt', assert.Not.errors)
+                    It(drive..'/home/user/tex/od/foo/../baz.txt', assert.Not.errors)
+
+                    It(drive..'/tmp/foo/bar/baz.txt', assert.Not.errors)
+                    It(drive..'/tmp/baz.txt', assert.Not.errors)
+                    It(drive..'/home/user/tex/odbaz.txt', assert.Not.errors)
+                    It(drive..'/home/user/tex/baz.txt', assert.Not.errors)
+                    It(drive..'/tmp///./baz.txt', assert.Not.errors)
+                    It(drive..'/tmp/foo/../baz.txt', assert.Not.errors)
+
+                    It(file.join(cwd(),'baz.txt'), assert.Not.errors)
+                    It(file.join(cwd(),'foo/baz.txt'), assert.Not.errors)
+                end)
+                
+                describe_env('od', 'tmp', 'a', function()
+                    
+                    It(drive..'/foo/bar/baz.txt', assert.Not.errors)
+                    It('foo/bar/baz.txt', assert.Not.errors)
+                    It('../baz.txt', assert.Not.errors)
+                    It('../baz.txt', assert.Not.errors)
+                    It('baz.txt', assert.Not.errors)
+                    It(drive..'/foo/bar/.baz.txt', assert.Not.errors)
+                    It('foo/bar/.baz.txt', assert.Not.errors)
+                    It('../.baz.txt', assert.Not.errors)
+                    It('../.baz.txt', assert.Not.errors)
+                    It('.baz.txt', assert.Not.errors)
+                    --It('.tex', assert.Not.errors)
+                    --It('foo/.tex', assert.Not.errors)
+
+                    It(drive..'/home/user/tex/od/foo/bar/baz.txt', assert.Not.errors)
+                    It(drive..'/home/user/tex/od/baz.txt', assert.Not.errors)
+                    It(drive..'/home/user/tex/odbaz.txt', assert.Not.errors)
+                    It(drive..'/home/user/tex/baz.txt', assert.Not.errors)
+                    It(drive..'/home/user/tex/od///./baz.txt', assert.Not.errors)
+                    It(drive..'/home/user/tex/od/foo/../baz.txt', assert.Not.errors)
+
+                    It(drive..'/tmp/foo/bar/baz.txt', assert.Not.errors)
+                    It(drive..'/tmp/baz.txt', assert.Not.errors)
+                    It(drive..'/home/user/tex/odbaz.txt', assert.Not.errors)
+                    It(drive..'/home/user/tex/baz.txt', assert.Not.errors)
+                    It(drive..'/tmp///./baz.txt', assert.Not.errors)
+                    It(drive..'/tmp/foo/../baz.txt', assert.Not.errors)
+
+                    It(file.join(cwd(),'baz.txt'), assert.Not.errors)
+                    It(file.join(cwd(),'foo/baz.txt'), assert.Not.errors)
+                end)
+                
+                describe_env('od', '../tmp', 'p', function()
+                    
+                    It(drive..'/foo/bar/baz.txt', assert.errors)
+                    It('foo/bar/baz.txt', assert.Not.errors)
+                    It('../baz.txt', assert.errors)
+                    It('baz.txt', assert.Not.errors)
+                    
+                    It(drive..'/foo/bar/.baz.txt', assert.errors)
+                    It('foo/bar/.baz.txt', assert.errors, assert.Not.errors)
+                    It('../.baz.txt', assert.errors)
+                    It('../.baz.txt', assert.errors)
+                    It('.baz.txt', assert.errors, assert.Not.errors)
+                    --It('.tex', assert.Not.errors)
+                    --It('foo/.tex', assert.Not.errors)
+
+                    It('od/foo/bar/baz.txt', assert.Not.errors)
+                    It('od/baz.txt', assert.Not.errors)
+                    It('odbaz.txt', assert.Not.errors)
+                    It('.///./baz.txt', assert.Not.errors)
+                    It('foo/../baz.txt', assert.errors)
+
+                    It('../tmp/foo/bar/baz.txt', assert.errors)
+                    It('../tmp/baz.txt', assert.errors)
+                    It(drive..'/home/user/tex/odbaz.txt', assert.errors)
+                    It(drive..'/home/user/tex/baz.txt', assert.errors)
+                    It('../tmp///./baz.txt', assert.errors)
+                    It('../tmp/foo/../baz.txt', assert.errors)
+
+                    It(file.join(cwd(),'baz.txt'), assert.errors)
+                    It(file.join(cwd(),'foo/baz.txt'), assert.errors)
+                    --It(file.join(texmfoutput.resolve(),'baz.txt'), assert.errors)
+                    --It(file.join(texmf_output_directory.resolve(),'baz.txt'), assert.errors)
+                end)
             end)
-          end
-        )    
+        end)
     end)
 end)
 
