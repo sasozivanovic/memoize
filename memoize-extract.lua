@@ -248,17 +248,7 @@ end
 
 -- \paragraph{Permission-related functions}
 
--- check_in/out_name should work exactly as kpse_in/out_name_ok. In particular,
--- as of TeX Live 2026, kpse_in_name_ok always returns true, see texmf.cnf and
--- https://tug.org/pipermail/tex-live/2025-December/051965.html.
-
----@param fn string
-local function check_in_name(fn)
-    if not kpse.in_name_ok_silent_extended(fn) then
-        error(("I'm not allowed to read from '%s' (openin_any = {%s})")
-            :format(fn, kpse.var_value('openin_any')), 0)
-    end
-end
+-- check_out_name is but a wrapper around kpse.in_name_ok_silent_extended.
 
 ---@param fn string
 local function check_out_name(fn)
@@ -267,6 +257,11 @@ local function check_out_name(fn)
             :format(fn, kpse.var_value('openout_any')), 0)
     end
 end
+
+-- check_in_name is not implemented: as of TeX Live 2026, kpse_in_name_ok
+-- always returns true, see texmf.cnf and
+-- https://tug.org/pipermail/tex-live/2025-December/051965.html.
+
 
 local os_access
 do
@@ -581,7 +576,6 @@ local function main(args)
             --(in_accessible) files, because the file we want to open (even if
             --for reading) is a file which was just produced by TeX.
             pdf_fn = find_in(args.pdf)
-            check_in_name(pdf_fn)
             check_access_in(pdf_fn)
         end,
         function()
@@ -700,7 +694,6 @@ local function main(args)
                         .. "-" .. context_md5sum .. ".memo") }) do
                 if try(
                     function()
-                        check_in_name(memo_file)
                         check_access_in(memo_file)
                     end,
                     function(errmsg)
