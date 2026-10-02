@@ -423,188 +423,256 @@ describe("unittests", function()
             end)
         end)
         
-        describe("find_in & find_out", function()
+        describe("find_in/out", function()
             
-            before_each(create_test_dir)
-            
-            it('basics', function()
-                mkdir("tmp") mkdir("od")
-                setenv("p")
-                local none = 'none.txt'
-                local cur = create('cur.txt')
-                
-                assert.equal(cur, me.find_in(cur))
-                assert.equal(none, me.find_in(none))
-                assert.equal(cur, me.find_out(cur))
-                assert.equal(none, me.find_out(none))
-                
-                local od_cur = create('od/cur.txt')
-                local tmp_cur = create('tmp/cur.txt')
-                
-                assert.equal(cur, me.find_in(cur))
-                assert.equal(cur, me.find_out(cur))
-                chmod('-r', cur)
-                assert.equal(cur, me.find_in(cur))
-                assert.equal(cur, me.find_out(cur))
-                chmod('-w', cur)
-                assert.equal(cur, me.find_in(cur))
-                assert.equal(cur, me.find_out(cur))
-                chmod('+r', cur)
-                assert.equal(cur, me.find_in(cur))
-                assert.equal(cur, me.find_out(cur))
+            before_each(function()
+                create_test_dir()
+                fn = 'file.txt'
+                od_fn = 'od/file.txt'
+                tmp_fn = 'tmp/file.txt'
             end)
             
-            it('TEXMFOUTPUT_is_set', function()
-                mkdir("tmp")
-                setenv("p","tmp") 
-                local none = 'none.txt'
-                local tmp_none = 'tmp/none.txt'
-                local tmp = 'tmp.txt'
-                local tmp_tmp = create('tmp/tmp.txt')
+            describe('', function()
 
-                assert.equal(none, me.find_in(none))
-                assert.equal(tmp_tmp, me.find_in(tmp))
-                assert.equal(none, me.find_out(none))
-                assert.equal(tmp, me.find_out(tmp))
+                it('file does not exist', function()
+                    assert.equal(fn, me.find_in(fn))
+                    assert.equal(fn, me.find_out(fn))
+                end)
+
+                it('file exists', function()
+                    create(fn)
+                    assert.equal(fn, me.find_in(fn))
+                    assert.equal(fn, me.find_out(fn))
+                end)
+
+                it('same file in other directories is irrelevant', function()
+                    mkdir("tmp") mkdir("od")
+                    setenv("p")
+                    create(fn)
+                    
+                    assert.equal(fn, me.find_in(fn))
+                    assert.equal(fn, me.find_out(fn))
+                    chmod('-r', fn)
+                    assert.equal(fn, me.find_in(fn))
+                    assert.equal(fn, me.find_out(fn))
+                    chmod('-w', fn)
+                    assert.equal(fn, me.find_in(fn))
+                    assert.equal(fn, me.find_out(fn))
+                    chmod('+r', fn)
+                    assert.equal(fn, me.find_in(fn))
+                    assert.equal(fn, me.find_out(fn))
+                    
+                end)
+
                 
-                chmod('-w', '.')
-                assert.equal(none, me.find_in(none))
-                assert.equal(tmp_tmp, me.find_in(tmp))
-                if not on_windows then assert.equal(tmp_none, me.find_out(none)) end
-                if not on_windows then assert.equal(tmp_tmp, me.find_out(tmp)) end
+            end)
+            
+            describe('TEXMFOUTPUT_is_set', function()
+                before_each(function()
+                    mkdir("tmp")
+                    setenv("p","tmp") 
+                end)
+
+                it('file exists nowhere', function()
+                    assert.equal(fn, me.find_in(fn))
+                    assert.equal(fn, me.find_out(fn))
+                    chmod('-w', '.')
+                    assert.equal(fn, me.find_in(fn))
+                    if not on_windows then
+                      assert.equal(tmp_fn, me.find_out(fn))
+                    end
+                    chmod('-r', '.')
+                    assert.equal(me.find_in(fn), fn)
+                    if not on_windows then
+                      assert.equal(tmp_fn, me.find_out(fn))
+                    end
+                    chmod('+w', '.')
+                    assert.equal(fn, me.find_in(fn))
+                    assert.equal(fn, me.find_out(fn))
+                end)                
+
+                it('file exists in the temporary directory', function()
+                    create(tmp_fn)
+                    assert.equal(tmp_fn, me.find_in(fn))
+                    assert.equal(fn, me.find_out(fn))
+                    chmod('-w', '.')
+                    if not on_windows then
+                      assert.equal(tmp_fn, me.find_out(fn))
+                    end
+                    chmod('-r', '.')
+                    assert.equal(tmp_fn, me.find_in(fn))
+                    if not on_windows then
+                      assert.equal(tmp_fn, me.find_out(fn))
+                    end
+                    chmod('+w', '.')
+                    assert.equal(tmp_fn, me.find_in(fn))
+                    assert.equal(fn, me.find_out(fn))
+                end)
                 
-                chmod('-r', '.')
-                assert.equal(me.find_in(none), none)
-                assert.equal(me.find_in(tmp), tmp_tmp)
-                if not on_windows then assert.equal(tmp_none, me.find_out(none)) end
-                if not on_windows then assert.equal(tmp_tmp, me.find_out(tmp)) end
-                
-                chmod('+w', '.')
-                assert.equal(none, me.find_in(none))
-                assert.equal(tmp_tmp, me.find_in(tmp))
-                assert.equal(none, me.find_out(none))
-                assert.equal(tmp, me.find_out(tmp))
             end)
 
-            it('TEXMF_OUTPUT_DIRECTORY_is_set', function()
-                mkdir("od")
-                setenv("p",nil,"od")
+            describe('TEXMF_OUTPUT_DIRECTORY_is_set', function()
+                before_each(function()
+                    mkdir("od")
+                    setenv("p",nil,"od")
+                end)
+
+                it('file exists nowhere', function()
+                    assert.equal(fn, me.find_in(fn))
+                    assert.equal(od_fn, me.find_out(fn))
+                    if not on_windows then --no directory permissions on windows
+                      chmod('-w', 'od')
+                      assert.equal(fn, me.find_in(fn))
+                      assert.equal(od_fn, me.find_out(fn))
+                      chmod('+w', 'od')
+                    end
+                end)
+
+                it('file exists in the current directory', function()
+                    create(fn)
+                    assert.equal(fn, me.find_in(fn))
+                    assert.equal(od_fn, me.find_out(fn))
+                end)
+
+                it('file exists in the output directory', function()
+                    create(od_fn)
+                    assert.equal(od_fn, me.find_in(fn))
+                    assert.equal(od_fn, me.find_out(fn))
+                    chmod('-x', 'od')
+                    if not on_windows then --no directory permissions on windows
+                      assert.equal(fn, me.find_in(fn))
+                    end
+                    assert.equal(od_fn, me.find_out(fn))
+                    chmod('+x', 'od')
+                    if not on_windows then --no directory permissions on windows
+                      chmod('-r', od_fn)
+                      assert.equal(fn, me.find_in(fn))
+                      chmod('+r', od_fn)
+                    end
+                    chmod('-w', od_fn)
+                    assert.equal(od_fn, me.find_out(fn))
+                    chmod('+w', od_fn)
+                end)
+
+                it('file exists in both directories', function()
+                    create(fn)
+                    create(od_fn)
+                    assert.equal(od_fn, me.find_in(fn))
+                    assert.equal(od_fn, me.find_out(fn))
+                    chmod('-x', 'od')
+                    if not on_windows then --no directory permissions on windows
+                      assert.equal(fn, me.find_in(fn))
+                    end
+                    assert.equal(od_fn, me.find_out(fn))
+                    chmod('+x', 'od')
+                end)
                 
-                local none = 'none.txt'
-                local od_none = 'od/none.txt'
-                
-                local cur = create('cur.txt')
-                local od_cur = 'od/cur.txt'
-                
-                local od = 'od.txt'
-                local od_od = create('od/od.txt')
-                
-                local curod = create('curod.txt')
-                local od_curod = create('od/curod.txt')
-                
-                assert.equal(none, me.find_in(none))
-                assert.equal(od_none, me.find_out(none))
-                assert.equal(cur, me.find_in(cur))
-                assert.equal(od_cur, me.find_out(cur))
-                assert.equal(od_od, me.find_in(od))
-                assert.equal(od_od, me.find_out(od))
-                assert.equal(od_curod, me.find_in(curod))
-                assert.equal(od_curod, me.find_out(curod))
-                
-                chmod('-w', 'od')
-                assert.equal(none, me.find_in(none))
-                assert.equal(od_none, me.find_out(none))
-                chmod('+w', 'od')
-                chmod('-x', 'od')
-                assert.equal(uw(od, od_od), me.find_in(od)) -- fail on win --> od_od
-                assert.equal(od_od, me.find_out(od))
-                assert.equal(uw(curod,od_curod), me.find_in(curod)) -- fail on win --> od_curod
-                assert.equal(od_curod, me.find_out(curod))
-                chmod('+x', 'od')
-                
-                chmod('-r', od_od)
-                assert.equal(uw(od,od_od), me.find_in(od)) -- fail on win --> od_od
-                chmod('+r', od_od)
-                chmod('-w', od_od)
-                assert.equal(od_od, me.find_out(od))
-                chmod('+w', od_od)
             end)
 
-            it("TEXMFOUTPUT_is_set TEXMF_OUTPUT_DIRECTORY_is_set", function()
-                mkdir("tmp") mkdir("od")
-                setenv("p","tmp","od")
+            describe("TEXMFOUTPUT_is_set TEXMF_OUTPUT_DIRECTORY_is_set", function()
+                before_each(function() 
+                    mkdir("tmp")
+                    mkdir("od")
+                    setenv("p","tmp","od")
+                end)
 
-                local none = 'none.txt'
-                local od_none = 'od/none.txt'
-                local tmp_none = 'tmp/none.txt'
-                
-                local cur = create('cur.txt')
-                local od_cur = 'od/cur.txt'
-                local tmp_cur = 'tmp/cur.txt'
-                
-                local od = 'od.txt'
-                local od_od = create('od/od.txt')
-                local tmp_od = 'tmp/od.txt'
-                
-                local tmp = 'tmp.txt'
-                local od_tmp = 'od/tmp.txt'
-                local tmp_tmp = create('tmp/tmp.txt')
-                
-                curod = create('curod.txt')
-                od_curod = create('od/curod.txt')
-                tmp_curod = 'tmp/curod.txt'
-                
-                curtmp = create('curtmp.txt')
-                od_curtmp = 'od/curtmp.txt'
-                tmp_curtmp = create('tmp/curtmp.txt')
-                
-                odtmp = 'odtmp.txt'
-                od_odtmp = create('od/odtmp.txt')
-                tmp_odtmp = create('tmp/odtmp.txt')
-                
-                curodtmp = create('curodtmp.txt')
-                od_curodtmp = create('od/curodtmp.txt')
-                tmp_curodtmp = create('tmp/curodtmp.txt')
+                it('file exists nowhere', function()
+                    assert.equal(fn, me.find_in(fn))
+                    assert.equal(od_fn, me.find_out(fn))
+                    if not on_windows then --no directory permissions on windows
+                      chmod('-w', 'od')
+                      assert.equal(tmp_fn, me.find_out(fn))
+                    end
+                end)
 
-                assert.equal(none, me.find_in(none))
-                assert.equal(od_none, me.find_out(none))
-                assert.equal(cur, me.find_in(cur))
-                assert.equal(od_cur, me.find_out(cur))
-                assert.equal(od_od, me.find_in(od))
-                assert.equal(od_od, me.find_out(od))
-                assert.equal(tmp_tmp, me.find_in(tmp))
-                assert.equal(od_tmp, me.find_out(tmp))
-                assert.equal(od_curod, me.find_in(curod))
-                assert.equal(od_curod, me.find_out(curod))
-                assert.equal(curtmp, me.find_in(curtmp))
-                assert.equal(od_curtmp, me.find_out(curtmp))
-                assert.equal(od_odtmp, me.find_in(odtmp))
-                assert.equal(od_odtmp, me.find_out(odtmp))
-                assert.equal(od_curodtmp, me.find_in(curodtmp))
-                assert.equal(od_curodtmp, me.find_out(curodtmp))
+                it('file exists in the current directory', function()
+                    create(fn)
+                    assert.equal(fn, me.find_in(fn))
+                    assert.equal(od_fn, me.find_out(fn))
+                    if not on_windows then --no directory permissions on windows
+                      chmod('-w', 'od')
+                      assert.equal(tmp_fn, me.find_out(fn))
+                    end
+                end)
+
+                it('file exists in the output directory', function()
+                    create(od_fn)
+                    assert.equal(od_fn, me.find_in(fn))
+                    assert.equal(od_fn, me.find_out(fn))
+                    if not on_windows then --no directory permissions on windows
+                      chmod('-w', 'od')
+                      assert.equal(od_fn, me.find_out(fn))
+                      chmod('+w', 'od')
+                    end
+                    chmod('-w', od_fn)
+                    assert.equal(od_fn, me.find_in(fn))
+                    assert.equal(tmp_fn, me.find_out(fn))
+                    chmod('-r', od_fn)
+                    if not on_windows then
+                      assert.equal(fn, me.find_in(fn))
+                    end
+                    assert.equal(tmp_fn, me.find_out(fn))
+                    chmod('+w', od_fn)
+                    if not on_windows then
+                      assert.equal(fn, me.find_in(fn))
+                    end
+                    assert.equal(od_fn, me.find_out(fn))
+                end)
+
+                it('file exists in the temporary directory', function()
+                    create(tmp_fn)
+                    assert.equal(tmp_fn, me.find_in(fn))
+                    assert.equal(od_fn, me.find_out(fn))
+                    if not on_windows then --no directory permissions on windows
+                      chmod('-w', 'od')
+                      assert.equal(tmp_fn, me.find_out(fn))
+                    end
+                end)
+
+                it('file exists in the current and in the output directory', function()
+                    create(fn)
+                    create(od_fn)
+                    assert.equal(od_fn, me.find_in(fn))
+                    assert.equal(od_fn, me.find_out(fn))
+                    if not on_windows then --no directory permissions on windows
+                      chmod('-w', 'od')
+                      assert.equal(od_fn, me.find_out(fn))
+                    end
+                end)
+
+                it('file exists in the current and in the temporary directory', function()
+                    create(fn)
+                    create(tmp_fn)
+                    assert.equal(fn, me.find_in(fn))
+                    assert.equal(od_fn, me.find_out(fn))
+                    if not on_windows then --no directory permissions on windows
+                      chmod('-w', 'od')
+                      assert.equal(tmp_fn, me.find_out(fn))
+                    end
+                end)
+
+                it('file exists in the output and in the temporary directory', function()
+                    create(od_fn)
+                    create(tmp_fn)
+                    assert.equal(od_fn, me.find_in(fn))
+                    assert.equal(od_fn, me.find_out(fn))
+                    if not on_windows then --no directory permissions on windows
+                      chmod('-w', 'od')
+                      assert.equal(od_fn, me.find_out(fn))
+                    end
+                end)
                 
-                chmod('-w', 'od')
-                assert.equal(uw(tmp_none, od_none), me.find_out(none)) -- fail on win --> od_none
-                assert.equal(uw(tmp_cur, od_cur), me.find_out(cur)) -- fail on win --> od_cur
-                assert.equal(od_od, me.find_out(od))
-                assert.equal(uw(tmp_tmp,od_tmp), me.find_out(tmp)) --fail on win --> od_tmp
-                assert.equal(od_curod, me.find_out(curod))
-                assert.equal(uw(tmp_curtmp, od_curtmp), me.find_out(curtmp)) -- fail on win --> od_curtmp
-                assert.equal(od_odtmp, me.find_out(odtmp))
-                assert.equal(od_curodtmp, me.find_out(curodtmp))
-                chmod('+w', 'od')
-                
-                chmod('-w', od_od)
-                assert.equal(od_od, me.find_in(od))
-                assert.equal(tmp_od, me.find_out(od))
-                chmod('-r', od_od)
-                assert.equal(uw(od,od_od), me.find_in(od)) -- fail on win --> od_od
-                print()
-                assert.equal(tmp_od, me.find_out(od))
-                chmod('+w', od_od)
-                assert.equal(uw(od,od_od), me.find_in(od)) --fail on win --> od_od
-                assert.equal(od_od, me.find_out(od))
-                chmod('+r', od_od)
+                it('file exists in all three directories', function()
+                    create(fn)
+                    create(od_fn)
+                    create(tmp_fn)
+                    assert.equal(od_fn, me.find_in(fn))
+                    assert.equal(od_fn, me.find_out(fn))
+                    if not on_windows then --no directory permissions on windows
+                      chmod('-w', 'od')
+                      assert.equal(od_fn, me.find_out(fn))
+                    end
+                end)
             
             end)
         end)
