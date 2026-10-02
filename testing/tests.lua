@@ -45,7 +45,6 @@ package.cpath = table.concat(
 )
 
 local process = require "environ.process"
-
 require 'busted.runner'()
 
 kpse.set_program_name("luatex")
@@ -59,320 +58,557 @@ me.exit.error = function() error("exited with error") end
 me.exit.warn  = function() error("exited with warn") end
 me.exit.succ  = function() error("exited with succ") end
 
-local function set_env(a,b,c)
-  process.setenv("TEXMF_OUTPUT_DIRECTORY", a)
-  process.setenv("TEXMFOUTPUT", b)
-  process.setenv("openin_any", "a")
-  process.setenv("openout_any", c)
-  me.init_find()
-  --print(("TEXMFOUTPUT=%s"):format(kpse.var_value("TEXMFOUTPUT")))
-end
-local function reset_env()
-  set_env("","","p")  
-end
-reset_env()
-
-local function describe_env(a,b,c,f,desc)
-  desc = desc or ''
-  describe(
-    ("TEXMFOUTPUT=%s, TEXMF_OUTPUT_DIRECTORY=%s, openout_any=%s %s")
-    :format(a,b,c,desc),
-    function()
-      setup(function()set_env(a,b,c)end)
-      teardown(reset_env)
-      f()
-  end)
-end
-
-local on_windows = os.type == 'windows'
 local cwd = lfs.currentdir
+local on_windows = os.type == 'windows'
+local function uw(value,win_value)
+  return on_windows and win_value or value
+end
 
-describe("memoize-extract.lua", function()
+local function setenv(openout_any, TEXMFOUTPUT, TEXMF_OUTPUT_DIRECTORY)
+  process.setenv("openout_any", openout_any)
+  process.setenv("TEXMFOUTPUT", TEXMFOUTPUT)
+  process.setenv("TEXMF_OUTPUT_DIRECTORY", TEXMF_OUTPUT_DIRECTORY)
+end
+
+local function mkdir(fn)
+  assert(lfs.mkdir(fn), 'Cannot create directory ' .. fn)
+  return fn
+end
+
+local function rmtree(dn)
+  if on_windows then
+    assert(os.execute(('rmdir /s/q "%s"'):format(dn))==0)
+  else
+    os.execute(('chmod -R --quiet +rwx "%s"'):format(dn))
+    assert(os.execute(('rm -rf "%s"'):format(dn))==0)
+  end
+end  
+
+local original_cwd = cwd()
+local function create_test_dir()
+  lfs.chdir(original_cwd)
+  rmtree("test")
+  mkdir("test")
+  lfs.chdir("test")
+end
+
+local function create(fn, text)
+  local fh = io.open(fn, 'w')
+  assert(fh, "Cannot open " .. fn)
+  if text then
+    fh:write(text)
+  end
+  fh:close()
+  return fn
+end
+
+local function chmod(mode, fn)
+  if on_windows then
+    error("Not yet implemented!")
+  else
+    os.execute(("chmod %s '%s'"):format(mode, fn))
+  end
+end
+
+describe("unittests", function()
     
-    describe("unittests", function()
+    describe("split_extern_path", function()
+        it("should parse a valid path with all parts", function()
+            local path = "/dir/prefix/file1234567890abcdef1234567890abcdef-1234567890abcdef1234567890abcdef-42.pdf"
+            local dir_prefix, name_prefix, code_md5sum, context_md5sum = me.split_extern_path(path)
+            assert.are.equal(dir_prefix, "/dir/prefix/")
+            assert.are.equal(name_prefix, "file")
+            assert.are.equal(code_md5sum, "1234567890abcdef1234567890abcdef")
+            assert.are.equal(context_md5sum, "1234567890abcdef1234567890abcdef")
+        end)
+        it("should parse a valid path with no dir_prefix", function()
+            local path = "file1234567890abcdef1234567890abcdef-1234567890abcdef1234567890abcdef.pdf"
+            local dir_prefix, name_prefix, code_md5sum, context_md5sum = me.split_extern_path(path)
+            assert.are.equal(dir_prefix, "")
+            assert.are.equal(name_prefix, "file")
+            assert.are.equal(code_md5sum, "1234567890abcdef1234567890abcdef")
+            assert.are.equal(context_md5sum, "1234567890abcdef1234567890abcdef")
+        end)
+        it("should parse a valid path with a numeric suffix", function()
+            local path = "/dir/prefix/file1234567890abcdef1234567890abcdef-1234567890abcdef1234567890abcdef-99.pdf"
+            local dir_prefix, name_prefix, code_md5sum, context_md5sum = me.split_extern_path(path)
+            assert.are.equal(dir_prefix, "/dir/prefix/")
+            assert.are.equal(name_prefix, "file")
+            assert.are.equal(code_md5sum, "1234567890abcdef1234567890abcdef")
+            assert.are.equal(context_md5sum, "1234567890abcdef1234567890abcdef")
+        end)
+        -- Test invalid paths
+        it("should fail for invalid paths", function()
+            local path = "/dir/prefix/file1234567890abcdef1234567890abcdef-1234567890abcdef1234567890abcdef-invalid.pdf"
+            assert.has_error(function() local dir_prefix, name_prefix, code_md5sum, context_md5sum = me.split_extern_path(path) end)
+        end)
+        it("should fail for paths with missing code_md5sum", function()
+            local path = "/dir/prefix/file-no-md5sum-1234567890abcdef1234567890abcdef.pdf"
+            assert.has_error(function() local dir_prefix, name_prefix, code_md5sum, context_md5sum = me.split_extern_path(path) end)
+        end)
+        -- Test paths without suffix and multiple hyphens
+        it("should parse a valid path without a suffix", function()
+            local path = "/dir/prefix/file1234567890abcdef1234567890abcdef-1234567890abcdef1234567890abcdef.pdf"
+            local dir_prefix, name_prefix, code_md5sum, context_md5sum = me.split_extern_path(path)
+            assert.are.equal(dir_prefix, "/dir/prefix/")
+            assert.are.equal(name_prefix, "file")
+            assert.are.equal(code_md5sum, "1234567890abcdef1234567890abcdef")
+            assert.are.equal(context_md5sum, "1234567890abcdef1234567890abcdef")
+        end)
+        -- Test paths with no context_md5sum
+        it("should fail for paths missing context_md5sum", function()
+            local path = "/dir/prefix/file1234567890abcdef1234567890abcdef-.pdf"
+            assert.has_error(function() local dir_prefix, name_prefix, code_md5sum, context_md5sum = me.split_extern_path(path) end)
+        end)
+        -- Test edge cases
+        it("should fail for an empty path", function()
+            local path = ""
+            assert.has_error(function() local dir_prefix, name_prefix, code_md5sum, context_md5sum = me.split_extern_path(path) end)
+        end)
+        it("should return nil for path with only one part", function()
+            local path = "1234567890abcdef1234567890abcdef-1234567890abcdef1234567890abcdef.pdf"
+            local dir_prefix, name_prefix, code_md5sum, context_md5sum = me.split_extern_path(path)
+            assert.are.equal(dir_prefix, "")
+            assert.are.equal(name_prefix, "")
+            assert.are.equal(code_md5sum, "1234567890abcdef1234567890abcdef")
+            assert.are.equal(context_md5sum, "1234567890abcdef1234567890abcdef")
+        end)
+    end)
+    
+    describe("pathlib", function()
+       
+        describe("parent", function()
+            it("should return the parent", function()
+                assert.are.equal(
+                  me.pathlib.parent('/tmp/subdir/foo.memo.dir'),
+                  '/tmp/subdir'
+                )
+            end)
+            it("should ignore the trailing slashes", function()
+                assert.are.equal(
+                  me.pathlib.parent('/tmp/subdir/foo.memo.dir//'),
+                  '/tmp/subdir'
+                )
+            end)
+            it("should work for relative paths", function()
+                assert.are.equal(
+                  me.pathlib.parent('subdir/foo.memo.dir'),
+                  'subdir'
+                )
+            end)
+            it("should return the current directory if there is not dir part of the path", function()
+                assert.are.equal(
+                  me.pathlib.parent('foo'),
+                  '.'
+                )
+            end)
+            it("the parent of an empty string is the current directory", function()
+                assert.are.equal(
+                  me.pathlib.parent(''),
+                  '.'
+                )
+            end)
+        end)
+    end)
+    
+    describe("#permissions", function()
+
+        it("These tests should be run without TEXMFOUTPUT set in texmf.cnf", function()
+            assert(not kpse.var_value("TEXMFOUTPUT"))
+        end)
         
-        describe("split_extern_path", function()
+        strict_setup(function() drive = on_windows and 'C:' or '' end)
+        
+        describe("check_out_name", function()
+
+            describe("", function()
+                setup(function() setenv('p') end)
+                it('', function() assert.Not.errors(function() me.check_out_name('foo.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name('rel/foo/bar.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name('../foo.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name('rel/../foo/bar.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name(drive..'/abs/foo/bar.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name(drive..'/abs/foo/../bar/baz.txt') end) end)
+            end)
+
+            describe('TEXMFOUTPUT', function()
+                setup(function() setenv('p', "/tmp") end)
+                it('', function() assert.Not.errors(function() me.check_out_name('foo.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name('rel/foo/bar.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name('../foo.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name('rel/../foo/bar.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name(drive..'/abs/foo/bar.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name(drive..'/abs/foo/../bar/baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/tmp/foo.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/tmp/foo/bar.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name(drive..'/tmp/foo/../bar/baz.txt') end) end)
+            end)
             
-            it("should parse a valid path with all parts", function()
-                local path = "/dir/prefix/file1234567890abcdef1234567890abcdef-1234567890abcdef1234567890abcdef-42.pdf"
-                local dir_prefix, name_prefix, code_md5sum, context_md5sum = me.split_extern_path(path)
-                assert.are.equal(dir_prefix, "/dir/prefix/")
-                assert.are.equal(name_prefix, "file")
-                assert.are.equal(code_md5sum, "1234567890abcdef1234567890abcdef")
-                assert.are.equal(context_md5sum, "1234567890abcdef1234567890abcdef")
+            describe('relative TEXMFOUTPUT & TEXMF_OUTPUT_DIRECTORY', function()
+                setup(function() setenv('p', "../tmp", "od") end)
+                
+                it('', function() assert.errors(function() me.check_out_name(drive..'/foo/bar/baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name('foo/bar/baz.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name('../baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name('baz.txt') end) end)
+                
+                it('', function() assert.errors(function() me.check_out_name(drive..'/foo/bar/.baz.txt') end) end)
+                it('', function() uw(assert.errors, assert.Not.errors)(function() me.check_out_name('foo/bar/.baz.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name('../.baz.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name('../.baz.txt') end) end)
+                it('', function() uw(assert.errors, assert.Not.errors)(function() me.check_out_name('.baz.txt') end) end)
+                --it(function() assert.Not.errors(function() me.check_out_name('.tex') end) end) --since TeX Live 2026
+                --it(function() assert.Not.errors(function() me.check_out_name('foo/.tex') end) end) --since TeX Live 2026
+
+                it('', function() assert.Not.errors(function() me.check_out_name('od/foo/bar/baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name('od/baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name('odbaz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name('.///./baz.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name('foo/../baz.txt') end) end)
+
+                it('', function() assert.errors(function() me.check_out_name('../tmp/foo/bar/baz.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name('../tmp/baz.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name(drive..'/home/user/tex/odbaz.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name(drive..'/home/user/tex/baz.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name('../tmp///./baz.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name('../tmp/foo/../baz.txt') end) end)
+
+                it('', function() assert.errors(function() me.check_out_name(file.join(cwd(),'baz.txt')) end) end)
+                it('', function() assert.errors(function() me.check_out_name(file.join(cwd(),'foo/baz.txt')) end) end)
+                it(function() pending("") assert.errors(function() me.check_out_name(file.join(texmfoutput.resolve(),'baz.txt')) end) end)
+                it(function() pending("") assert.errors(function() me.check_out_name(file.join(texmf_output_directory.resolve(),'baz.txt')) end) end)
             end)
-            it("should parse a valid path with no dir_prefix", function()
-                local path = "file1234567890abcdef1234567890abcdef-1234567890abcdef1234567890abcdef.pdf"
-                local dir_prefix, name_prefix, code_md5sum, context_md5sum = me.split_extern_path(path)
-                assert.are.equal(dir_prefix, "")
-                assert.are.equal(name_prefix, "file")
-                assert.are.equal(code_md5sum, "1234567890abcdef1234567890abcdef")
-                assert.are.equal(context_md5sum, "1234567890abcdef1234567890abcdef")
+
+            describe('absolute TEXMFOUTPUT & TEXMF_OUTPUT_DIRECTORY', function()
+                setup(function() setenv('p', drive.."/tmp", drive..'/home/user/tex/od') end)
+                
+                it('', function() assert.errors(function() me.check_out_name(drive..'/foo/bar/baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name('foo/bar/baz.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name('../baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name('baz.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name(drive..'/foo/bar/.baz.txt') end) end)
+                it('', function() uw(assert.errors, assert.Not.errors)(function() me.check_out_name('foo/bar/.baz.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name('../.baz.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name('../.baz.txt') end) end)
+                it('', function() uw(assert.errors, assert.Not.errors)(function() me.check_out_name('.baz.txt') end) end)
+                --it(function() assert.Not.errors(function() me.check_out_name('.tex') end) end) --since TeX Live 2026
+                --it(function() assert.Not.errors(function() me.check_out_name('foo/.tex') end) end) --since TeX Live 2026
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/home/user/tex/od/foo/bar/baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/home/user/tex/od/baz.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name(drive..'/home/user/tex/odbaz.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name(drive..'/home/user/tex/baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/home/user/tex/od///./baz.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name(drive..'/home/user/tex/od/foo/../baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/tmp/foo/bar/baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/tmp/baz.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name(drive..'/home/user/tex/odbaz.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name(drive..'/home/user/tex/baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/tmp///./baz.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name(drive..'/tmp/foo/../baz.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name(drive..'/tmpbaz.txt') end) end)
+                it('', function() assert.errors(function() me.check_out_name(file.join(cwd(),'baz.txt')) end) end)
+                it('', function() assert.errors(function() me.check_out_name(file.join(cwd(),'foo/baz.txt')) end) end)
             end)
-            it("should parse a valid path with a numeric suffix", function()
-                local path = "/dir/prefix/file1234567890abcdef1234567890abcdef-1234567890abcdef1234567890abcdef-99.pdf"
-                local dir_prefix, name_prefix, code_md5sum, context_md5sum = me.split_extern_path(path)
-                assert.are.equal(dir_prefix, "/dir/prefix/")
-                assert.are.equal(name_prefix, "file")
-                assert.are.equal(code_md5sum, "1234567890abcdef1234567890abcdef")
-                assert.are.equal(context_md5sum, "1234567890abcdef1234567890abcdef")
+            
+            describe('openout_any=r, relative TEXMFOUTPUT & TEXMF_OUTPUT_DIRECTORY', function()
+                setup(function() setenv("r", "tmp", "od") end)
+                
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/foo/bar/baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name('foo/bar/baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name('../baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name('baz.txt') end) end)
+                
+                --it(function() uw(assert.errors, assert.Not.errors)(function() me.check_out_name(drive..'/foo/bar/.baz.txt') end) end) --since TeX Live 2026
+                it('', function() uw(assert.errors, assert.Not.errors)(function() me.check_out_name('foo/bar/.baz.txt') end) end)
+                it('', function() uw(assert.errors, assert.Not.errors)(function() me.check_out_name('../.baz.txt') end) end)
+                it('', function() uw(assert.errors, assert.Not.errors)(function() me.check_out_name('.baz.txt') end) end)
+                --it(function() assert.Not.errors(function() me.check_out_name('.tex') end) end) --since TeX Live 2026
+                --it(function() assert.Not.errors(function() me.check_out_name('foo/.tex') end) end) --since TeX Live 2026
+
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/home/user/tex/od/foo/bar/baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/home/user/tex/od/baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/home/user/tex/odbaz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/home/user/tex/baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/home/user/tex/od///./baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/home/user/tex/od/foo/../baz.txt') end) end)
+
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/tmp/foo/bar/baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/tmp/baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/home/user/tex/odbaz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/home/user/tex/baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/tmp///./baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/tmp/foo/../baz.txt') end) end)
+
+                it('', function() assert.Not.errors(function() me.check_out_name(file.join(cwd(),'baz.txt')) end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(file.join(cwd(),'foo/baz.txt')) end) end)
             end)
-            -- Test invalid paths
-            it("should fail for invalid paths", function()
-                local path = "/dir/prefix/file1234567890abcdef1234567890abcdef-1234567890abcdef1234567890abcdef-invalid.pdf"
-                assert.has_error(function() local dir_prefix, name_prefix, code_md5sum, context_md5sum = me.split_extern_path(path) end)
+            
+            describe('openout_any=a', function()
+                setup(function() setenv("a") end)
+                
+                it('', function() assert.Not.errors(function() me.check_out_name('foo.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name('rel/foo/bar.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name('../foo.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name('rel/../foo/bar.txt') end) end)
+                
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/abs/foo/bar.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/abs/foo/../bar/baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/tmp/foo.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/tmp/foo/bar.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/tmp/foo/../bar/baz.txt') end) end)
             end)
-            it("should fail for paths with missing code_md5sum", function()
-                local path = "/dir/prefix/file-no-md5sum-1234567890abcdef1234567890abcdef.pdf"
-                assert.has_error(function() local dir_prefix, name_prefix, code_md5sum, context_md5sum = me.split_extern_path(path) end)
+            
+            describe('openout_any=a, relative TEXMF_OUTPUT_DIRECTORY & TEXMFOUTPUT', function()
+                setup(function() setenv('a', 'tmp', 'od') end)
+                
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/foo/bar/baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name('foo/bar/baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name('../baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name('../baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name('baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/foo/bar/.baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name('foo/bar/.baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name('../.baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name('../.baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name('.baz.txt') end) end)
+                --it(function() assert.Not.errors(function() me.check_out_name('.tex') end) end) --since TeX Live 2026
+                --it(function() assert.Not.errors(function() me.check_out_name('foo/.tex') end) end) --since TeX Live 2026
+
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/home/user/tex/od/foo/bar/baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/home/user/tex/od/baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/home/user/tex/odbaz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/home/user/tex/baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/home/user/tex/od///./baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/home/user/tex/od/foo/../baz.txt') end) end)
+
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/tmp/foo/bar/baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/tmp/baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/home/user/tex/odbaz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/home/user/tex/baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/tmp///./baz.txt') end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(drive..'/tmp/foo/../baz.txt') end) end)
+
+                it('', function() assert.Not.errors(function() me.check_out_name(file.join(cwd(),'baz.txt')) end) end)
+                it('', function() assert.Not.errors(function() me.check_out_name(file.join(cwd(),'foo/baz.txt')) end) end)
             end)
-            -- Test paths without suffix and multiple hyphens
-            it("should parse a valid path without a suffix", function()
-                local path = "/dir/prefix/file1234567890abcdef1234567890abcdef-1234567890abcdef1234567890abcdef.pdf"
-                local dir_prefix, name_prefix, code_md5sum, context_md5sum = me.split_extern_path(path)
-                assert.are.equal(dir_prefix, "/dir/prefix/")
-                assert.are.equal(name_prefix, "file")
-                assert.are.equal(code_md5sum, "1234567890abcdef1234567890abcdef")
-                assert.are.equal(context_md5sum, "1234567890abcdef1234567890abcdef")
+            
+        end)
+
+        describe('check_access_in', function()
+            before_each(function() create_test_dir() end)
+            it('', function()
+                local fn = 'file.txt'
+                assert.errors(function() me.check_access_in(fn) end)
+                create(fn)
+                assert.Not.errors(function() me.check_access_in(fn) end)
+                chmod('-w', fn)
+                assert.Not.errors(function() me.check_access_in(fn) end)
+                chmod('-r', fn)
+                assert.errors(function() me.check_access_in(fn) end)
             end)
-            -- Test paths with no context_md5sum
-            it("should fail for paths missing context_md5sum", function()
-                local path = "/dir/prefix/file1234567890abcdef1234567890abcdef-.pdf"
-                assert.has_error(function() local dir_prefix, name_prefix, code_md5sum, context_md5sum = me.split_extern_path(path) end)
-            end)
-            -- Test edge cases
-            it("should fail for an empty path", function()
-                local path = ""
-                assert.has_error(function() local dir_prefix, name_prefix, code_md5sum, context_md5sum = me.split_extern_path(path) end)
-            end)
-            it("should return nil for path with only one part", function()
-                local path = "1234567890abcdef1234567890abcdef-1234567890abcdef1234567890abcdef.pdf"
-                local dir_prefix, name_prefix, code_md5sum, context_md5sum = me.split_extern_path(path)
-                assert.are.equal(dir_prefix, "")
-                assert.are.equal(name_prefix, "")
-                assert.are.equal(code_md5sum, "1234567890abcdef1234567890abcdef")
-                assert.are.equal(context_md5sum, "1234567890abcdef1234567890abcdef")
+            it('', function()
+                local dn = 'foo'
+                local fn = file.join(dn, 'file.txt')
+                assert.errors(function() me.check_access_in(fn) end)
+                mkdir(dn)
+                assert.errors(function() me.check_access_in(fn) end)
+                create(fn)
+                assert.Not.errors(function() me.check_access_in(fn) end)
+                chmod('-w', dn)
+                assert.Not.errors(function() me.check_access_in(fn) end)
+                chmod('-r', dn)
+                assert.Not.errors(function() me.check_access_in(fn) end)
+                chmod('-x', dn)
+                assert.errors(function() me.check_access_in(fn) end)
             end)
         end)
         
-        describe("pathlib", function()
+        describe("find_in & find_out", function()
             
-            describe("parent", function()
-                it("should return the parent", function()
-                    assert.are.equal(
-                      me.pathlib.parent('/tmp/subdir/foo.memo.dir'),
-                      '/tmp/subdir'
-                    )
-                end)
-                it("should ignore the trailing slashes", function()
-                    assert.are.equal(
-                      me.pathlib.parent('/tmp/subdir/foo.memo.dir//'),
-                      '/tmp/subdir'
-                    )
-                end)
-                it("should work for relative paths", function()
-                    assert.are.equal(
-                      me.pathlib.parent('subdir/foo.memo.dir'),
-                      'subdir'
-                    )
-                end)
-                it("should return the current directory if there is not dir part of the path", function()
-                    assert.are.equal(
-                      me.pathlib.parent('foo'),
-                      '.'
-                    )
-                end)
-                it("the parent of an empty string is the current directory", function()
-                    assert.are.equal(
-                      me.pathlib.parent(''),
-                      '.'
-                    )
-                end)
+            before_each(create_test_dir)
+            
+            it('basics', function()
+                mkdir("tmp") mkdir("od")
+                setenv("p")
+                local none = 'none.txt'
+                local cur = create('cur.txt')
+                
+                assert.equal(cur, me.find_in(cur))
+                assert.equal(none, me.find_in(none))
+                assert.equal(cur, me.find_out(cur))
+                assert.equal(none, me.find_out(none))
+                
+                local od_cur = create('od/cur.txt')
+                local tmp_cur = create('tmp/cur.txt')
+                
+                assert.equal(cur, me.find_in(cur))
+                assert.equal(cur, me.find_out(cur))
+                chmod('-r', cur)
+                assert.equal(cur, me.find_in(cur))
+                assert.equal(cur, me.find_out(cur))
+                chmod('-w', cur)
+                assert.equal(cur, me.find_in(cur))
+                assert.equal(cur, me.find_out(cur))
+                chmod('+r', cur)
+                assert.equal(cur, me.find_in(cur))
+                assert.equal(cur, me.find_out(cur))
+            end)
+            
+            it('TEXMFOUTPUT_is_set', function()
+                mkdir("tmp")
+                setenv("p","tmp") 
+                local none = 'none.txt'
+                local tmp_none = 'tmp/none.txt'
+                local tmp = 'tmp.txt'
+                local tmp_tmp = create('tmp/tmp.txt')
+
+                assert.equal(none, me.find_in(none))
+                assert.equal(tmp_tmp, me.find_in(tmp))
+                assert.equal(none, me.find_out(none))
+                assert.equal(tmp, me.find_out(tmp))
+                
+                chmod('-w', '.')
+                assert.equal(none, me.find_in(none))
+                assert.equal(tmp_tmp, me.find_in(tmp))
+                if not on_windows then assert.equal(tmp_none, me.find_out(none)) end
+                if not on_windows then assert.equal(tmp_tmp, me.find_out(tmp)) end
+                
+                chmod('-r', '.')
+                assert.equal(me.find_in(none), none)
+                assert.equal(me.find_in(tmp), tmp_tmp)
+                if not on_windows then assert.equal(tmp_none, me.find_out(none)) end
+                if not on_windows then assert.equal(tmp_tmp, me.find_out(tmp)) end
+                
+                chmod('+w', '.')
+                assert.equal(none, me.find_in(none))
+                assert.equal(tmp_tmp, me.find_in(tmp))
+                assert.equal(none, me.find_out(none))
+                assert.equal(tmp, me.find_out(tmp))
+            end)
+
+            it('TEXMF_OUTPUT_DIRECTORY_is_set', function()
+                mkdir("od")
+                setenv("p",nil,"od")
+                
+                local none = 'none.txt'
+                local od_none = 'od/none.txt'
+                
+                local cur = create('cur.txt')
+                local od_cur = 'od/cur.txt'
+                
+                local od = 'od.txt'
+                local od_od = create('od/od.txt')
+                
+                local curod = create('curod.txt')
+                local od_curod = create('od/curod.txt')
+                
+                assert.equal(none, me.find_in(none))
+                assert.equal(od_none, me.find_out(none))
+                assert.equal(cur, me.find_in(cur))
+                assert.equal(od_cur, me.find_out(cur))
+                assert.equal(od_od, me.find_in(od))
+                assert.equal(od_od, me.find_out(od))
+                assert.equal(od_curod, me.find_in(curod))
+                assert.equal(od_curod, me.find_out(curod))
+                
+                chmod('-w', 'od')
+                assert.equal(none, me.find_in(none))
+                assert.equal(od_none, me.find_out(none))
+                chmod('+w', 'od')
+                chmod('-x', 'od')
+                assert.equal(uw(od, od_od), me.find_in(od)) -- fail on win --> od_od
+                assert.equal(od_od, me.find_out(od))
+                assert.equal(uw(curod,od_curod), me.find_in(curod)) -- fail on win --> od_curod
+                assert.equal(od_curod, me.find_out(curod))
+                chmod('+x', 'od')
+                
+                chmod('-r', od_od)
+                assert.equal(uw(od,od_od), me.find_in(od)) -- fail on win --> od_od
+                chmod('+r', od_od)
+                chmod('-w', od_od)
+                assert.equal(od_od, me.find_out(od))
+                chmod('+w', od_od)
+            end)
+
+            it("TEXMFOUTPUT_is_set TEXMF_OUTPUT_DIRECTORY_is_set", function()
+                mkdir("tmp") mkdir("od")
+                setenv("p","tmp","od")
+
+                local none = 'none.txt'
+                local od_none = 'od/none.txt'
+                local tmp_none = 'tmp/none.txt'
+                
+                local cur = create('cur.txt')
+                local od_cur = 'od/cur.txt'
+                local tmp_cur = 'tmp/cur.txt'
+                
+                local od = 'od.txt'
+                local od_od = create('od/od.txt')
+                local tmp_od = 'tmp/od.txt'
+                
+                local tmp = 'tmp.txt'
+                local od_tmp = 'od/tmp.txt'
+                local tmp_tmp = create('tmp/tmp.txt')
+                
+                curod = create('curod.txt')
+                od_curod = create('od/curod.txt')
+                tmp_curod = 'tmp/curod.txt'
+                
+                curtmp = create('curtmp.txt')
+                od_curtmp = 'od/curtmp.txt'
+                tmp_curtmp = create('tmp/curtmp.txt')
+                
+                odtmp = 'odtmp.txt'
+                od_odtmp = create('od/odtmp.txt')
+                tmp_odtmp = create('tmp/odtmp.txt')
+                
+                curodtmp = create('curodtmp.txt')
+                od_curodtmp = create('od/curodtmp.txt')
+                tmp_curodtmp = create('tmp/curodtmp.txt')
+
+                assert.equal(none, me.find_in(none))
+                assert.equal(od_none, me.find_out(none))
+                assert.equal(cur, me.find_in(cur))
+                assert.equal(od_cur, me.find_out(cur))
+                assert.equal(od_od, me.find_in(od))
+                assert.equal(od_od, me.find_out(od))
+                assert.equal(tmp_tmp, me.find_in(tmp))
+                assert.equal(od_tmp, me.find_out(tmp))
+                assert.equal(od_curod, me.find_in(curod))
+                assert.equal(od_curod, me.find_out(curod))
+                assert.equal(curtmp, me.find_in(curtmp))
+                assert.equal(od_curtmp, me.find_out(curtmp))
+                assert.equal(od_odtmp, me.find_in(odtmp))
+                assert.equal(od_odtmp, me.find_out(odtmp))
+                assert.equal(od_curodtmp, me.find_in(curodtmp))
+                assert.equal(od_curodtmp, me.find_out(curodtmp))
+                
+                chmod('-w', 'od')
+                assert.equal(uw(tmp_none, od_none), me.find_out(none)) -- fail on win --> od_none
+                assert.equal(uw(tmp_cur, od_cur), me.find_out(cur)) -- fail on win --> od_cur
+                assert.equal(od_od, me.find_out(od))
+                assert.equal(uw(tmp_tmp,od_tmp), me.find_out(tmp)) --fail on win --> od_tmp
+                assert.equal(od_curod, me.find_out(curod))
+                assert.equal(uw(tmp_curtmp, od_curtmp), me.find_out(curtmp)) -- fail on win --> od_curtmp
+                assert.equal(od_odtmp, me.find_out(odtmp))
+                assert.equal(od_curodtmp, me.find_out(curodtmp))
+                chmod('+w', 'od')
+                
+                chmod('-w', od_od)
+                assert.equal(od_od, me.find_in(od))
+                assert.equal(tmp_od, me.find_out(od))
+                chmod('-r', od_od)
+                assert.equal(uw(od,od_od), me.find_in(od)) -- fail on win --> od_od
+                print()
+                assert.equal(tmp_od, me.find_out(od))
+                chmod('+w', od_od)
+                assert.equal(uw(od,od_od), me.find_in(od)) --fail on win --> od_od
+                assert.equal(od_od, me.find_out(od))
+                chmod('+r', od_od)
+            
             end)
         end)
         
-        describe("#permissions", function()
-            
-            describe("check_out_name", function()
-                
-                local function It(fn, assrt, win_assrt, pnding)
-                  it(fn, function()
-                      assrt = on_windows and (win_assrt and win_assrt or assrt) or assrt
-                      if pnding then pending(pnding) end
-                      assrt(function() me.check_out_name(fn) end)
-                  end)
-                end
-                local drive = on_windows and 'C:' or ''
-
-                describe_env(nil, nil, 'p', function()
-                    --relative
-                    It('foo.txt', assert.Not.errors)
-                    It('rel/foo/bar.txt', assert.Not.errors)
-                    It('../foo.txt', assert.errors)
-                    It('rel/../foo/bar.txt', assert.errors)
-                    --absolute
-                    It(drive..'/abs/foo/bar.txt', assert.errors)
-                    It(drive..'/abs/foo/../bar/baz.txt', assert.errors)
-                end)
-
-                describe_env(nil, '/tmp', 'p', function()
-                    --relative
-                    It('foo.txt', assert.Not.errors)
-                    It('rel/foo/bar.txt', assert.Not.errors)
-                    It('../foo.txt', assert.errors)
-                    It('rel/../foo/bar.txt', assert.errors)
-                    --absolute
-                    It(drive..'/abs/foo/bar.txt', assert.errors)
-                    It(drive..'/abs/foo/../bar/baz.txt', assert.errors)
-                    It(drive..'/tmp/foo.txt', assert.Not.errors)
-                    It(drive..'/tmp/foo/bar.txt', assert.Not.errors)
-                    It(drive..'/tmp/foo/../bar/baz.txt', assert.errors)
-                end)
-                
-                describe_env(nil, nil, 'a', function()
-                    --relative
-                    It('foo.txt', assert.Not.errors)
-                    It('rel/foo/bar.txt', assert.Not.errors)
-                    It('../foo.txt', assert.Not.errors)
-                    It('rel/../foo/bar.txt', assert.Not.errors)
-                    --absolute
-                    It(drive..'/abs/foo/bar.txt', assert.Not.errors)
-                    It(drive..'/abs/foo/../bar/baz.txt', assert.Not.errors)
-                    It(drive..'/tmp/foo.txt', assert.Not.errors)
-                    It(drive..'/tmp/foo/bar.txt', assert.Not.errors)
-                    It(drive..'/tmp/foo/../bar/baz.txt', assert.Not.errors)
-                end)
-
-                describe_env(drive..'/home/user/tex/od', drive..'/tmp', 'p', function()
-                    
-                    It(drive..'/foo/bar/baz.txt', assert.errors)
-                    It('foo/bar/baz.txt', assert.Not.errors)
-                    It('../baz.txt', assert.errors)
-                    It('baz.txt', assert.Not.errors)
-                    It(drive..'/foo/bar/.baz.txt', assert.errors)
-                    It('foo/bar/.baz.txt', assert.errors, assert.Not.errors)
-                    It('../.baz.txt', assert.errors)
-                    It('../.baz.txt', assert.errors)
-                    It('.baz.txt', assert.errors, assert.Not.errors)
-                    --It('.tex', assert.Not.errors)
-                    --It('foo/.tex', assert.Not.errors)
-                    It(drive..'/home/user/tex/od/foo/bar/baz.txt', assert.Not.errors)
-                    It(drive..'/home/user/tex/od/baz.txt', assert.Not.errors)
-                    It(drive..'/home/user/tex/odbaz.txt', assert.errors)
-                    It(drive..'/home/user/tex/baz.txt', assert.errors)
-                    It(drive..'/home/user/tex/od///./baz.txt', assert.Not.errors)
-                    It(drive..'/home/user/tex/od/foo/../baz.txt', assert.errors)
-                    It(drive..'/tmp/foo/bar/baz.txt', assert.Not.errors)
-                    It(drive..'/tmp/baz.txt', assert.Not.errors)
-                    It(drive..'/home/user/tex/odbaz.txt', assert.errors)
-                    It(drive..'/home/user/tex/baz.txt', assert.errors)
-                    It(drive..'/tmp///./baz.txt', assert.Not.errors)
-                    It(drive..'/tmp/foo/../baz.txt', assert.errors)
-                    It(drive..'/tmpbaz.txt', assert.errors)
-                    It(file.join(cwd(),'baz.txt'), assert.errors)
-                    It(file.join(cwd(),'foo/baz.txt'), assert.errors)
-                end)
-                
-                describe_env('od', 'tmp', 'r', function()
-                    
-                    It(drive..'/foo/bar/baz.txt', assert.Not.errors)
-                    It('foo/bar/baz.txt', assert.Not.errors)
-                    It('../baz.txt', assert.Not.errors)
-                    It('baz.txt', assert.Not.errors)
-                    
-                    --It(drive..'/foo/bar/.baz.txt', assert.errors, assert.Not.errors)
-                    It('foo/bar/.baz.txt', assert.errors, assert.Not.errors)
-                    It('../.baz.txt', assert.errors, assert.Not.errors)
-                    It('.baz.txt', assert.errors, assert.Not.errors)
-                    --It('.tex', assert.Not.errors)
-                    --It('foo/.tex', assert.Not.errors)
-
-                    It(drive..'/home/user/tex/od/foo/bar/baz.txt', assert.Not.errors)
-                    It(drive..'/home/user/tex/od/baz.txt', assert.Not.errors)
-                    It(drive..'/home/user/tex/odbaz.txt', assert.Not.errors)
-                    It(drive..'/home/user/tex/baz.txt', assert.Not.errors)
-                    It(drive..'/home/user/tex/od///./baz.txt', assert.Not.errors)
-                    It(drive..'/home/user/tex/od/foo/../baz.txt', assert.Not.errors)
-
-                    It(drive..'/tmp/foo/bar/baz.txt', assert.Not.errors)
-                    It(drive..'/tmp/baz.txt', assert.Not.errors)
-                    It(drive..'/home/user/tex/odbaz.txt', assert.Not.errors)
-                    It(drive..'/home/user/tex/baz.txt', assert.Not.errors)
-                    It(drive..'/tmp///./baz.txt', assert.Not.errors)
-                    It(drive..'/tmp/foo/../baz.txt', assert.Not.errors)
-
-                    It(file.join(cwd(),'baz.txt'), assert.Not.errors)
-                    It(file.join(cwd(),'foo/baz.txt'), assert.Not.errors)
-                end)
-                
-                describe_env('od', 'tmp', 'a', function()
-                    
-                    It(drive..'/foo/bar/baz.txt', assert.Not.errors)
-                    It('foo/bar/baz.txt', assert.Not.errors)
-                    It('../baz.txt', assert.Not.errors)
-                    It('../baz.txt', assert.Not.errors)
-                    It('baz.txt', assert.Not.errors)
-                    It(drive..'/foo/bar/.baz.txt', assert.Not.errors)
-                    It('foo/bar/.baz.txt', assert.Not.errors)
-                    It('../.baz.txt', assert.Not.errors)
-                    It('../.baz.txt', assert.Not.errors)
-                    It('.baz.txt', assert.Not.errors)
-                    --It('.tex', assert.Not.errors)
-                    --It('foo/.tex', assert.Not.errors)
-
-                    It(drive..'/home/user/tex/od/foo/bar/baz.txt', assert.Not.errors)
-                    It(drive..'/home/user/tex/od/baz.txt', assert.Not.errors)
-                    It(drive..'/home/user/tex/odbaz.txt', assert.Not.errors)
-                    It(drive..'/home/user/tex/baz.txt', assert.Not.errors)
-                    It(drive..'/home/user/tex/od///./baz.txt', assert.Not.errors)
-                    It(drive..'/home/user/tex/od/foo/../baz.txt', assert.Not.errors)
-
-                    It(drive..'/tmp/foo/bar/baz.txt', assert.Not.errors)
-                    It(drive..'/tmp/baz.txt', assert.Not.errors)
-                    It(drive..'/home/user/tex/odbaz.txt', assert.Not.errors)
-                    It(drive..'/home/user/tex/baz.txt', assert.Not.errors)
-                    It(drive..'/tmp///./baz.txt', assert.Not.errors)
-                    It(drive..'/tmp/foo/../baz.txt', assert.Not.errors)
-
-                    It(file.join(cwd(),'baz.txt'), assert.Not.errors)
-                    It(file.join(cwd(),'foo/baz.txt'), assert.Not.errors)
-                end)
-                
-                describe_env('od', '../tmp', 'p', function()
-                    
-                    It(drive..'/foo/bar/baz.txt', assert.errors)
-                    It('foo/bar/baz.txt', assert.Not.errors)
-                    It('../baz.txt', assert.errors)
-                    It('baz.txt', assert.Not.errors)
-                    
-                    It(drive..'/foo/bar/.baz.txt', assert.errors)
-                    It('foo/bar/.baz.txt', assert.errors, assert.Not.errors)
-                    It('../.baz.txt', assert.errors)
-                    It('../.baz.txt', assert.errors)
-                    It('.baz.txt', assert.errors, assert.Not.errors)
-                    --It('.tex', assert.Not.errors)
-                    --It('foo/.tex', assert.Not.errors)
-
-                    It('od/foo/bar/baz.txt', assert.Not.errors)
-                    It('od/baz.txt', assert.Not.errors)
-                    It('odbaz.txt', assert.Not.errors)
-                    It('.///./baz.txt', assert.Not.errors)
-                    It('foo/../baz.txt', assert.errors)
-
-                    It('../tmp/foo/bar/baz.txt', assert.errors)
-                    It('../tmp/baz.txt', assert.errors)
-                    It(drive..'/home/user/tex/odbaz.txt', assert.errors)
-                    It(drive..'/home/user/tex/baz.txt', assert.errors)
-                    It('../tmp///./baz.txt', assert.errors)
-                    It('../tmp/foo/../baz.txt', assert.errors)
-
-                    It(file.join(cwd(),'baz.txt'), assert.errors)
-                    It(file.join(cwd(),'foo/baz.txt'), assert.errors)
-                    --It(file.join(texmfoutput.resolve(),'baz.txt'), assert.errors)
-                    --It(file.join(texmf_output_directory.resolve(),'baz.txt'), assert.errors)
-                end)
-            end)
-        end)
     end)
 end)
 

@@ -263,6 +263,10 @@ end
 -- https://tug.org/pipermail/tex-live/2025-December/051965.html.
 
 
+local function io_exists(fn)
+    return (lfs.attributes(fn, "mode"))
+end
+
 local os_access
 do
     local rwx_offsets = { r=0, w=1, x=2 }
@@ -307,7 +311,8 @@ do
         ---@return boolean
         function os_access(fn, mode)
             local attrs = lfs.attributes(fn)
-            if not attrs then return false end
+            assert(attrs, ("File '%s' does not exist"):format(fn))
+            --if not attrs then return false end
             local ugo_offset = my_euid == attrs.uid and 1
                 or (my_egid == attrs.gid and 4 or 7)
             local rwx_offset = rwx_offsets[mode]
@@ -320,7 +325,7 @@ end
 ---@param fn string
 ---@param mode string?
 local function check_access_in(fn)
-    assert(io.exists(fn), ("File '%s' does not exist"):format(fn))
+    assert(io_exists(fn), ("File '%s' does not exist"):format(fn))
     assert(os_access(fn, 'r'), ("File '%s' is not readable"):format(fn))
 end
 
@@ -331,7 +336,7 @@ end
 
 ---@param fn string
 local function check_access_out(fn)
-    if io.exists(fn) then
+    if io_exists(fn) then --todo: if not readable lua thinks it doesn't exist, and check_access_out fails
         --An existing file should be writable, and if it's a directory, it
         --should also be executable.
         assert(os_access(fn, 'w'),
@@ -375,7 +380,7 @@ local function sanitize_output_dir(d)
         and sanitize_filename(d)
         and pathlib.is_dir(d)
         and not pathlib.is_root(d)
-        and d
+        and d or nil
 end
 
 local texmf_output_directory, texmfoutput
@@ -390,26 +395,28 @@ local texmf_output_directory, texmfoutput
 --first readable file found is returned; if no readable file is found, the
 --file in the current directory is returned.
 
-local function init_find()
-    texmf_output_directory
-        = sanitize_output_dir(kpse.var_value("TEXMF_OUTPUT_DIRECTORY"))
-    texmfoutput
-        = sanitize_output_dir(kpse.var_value("TEXMFOUTPUT"))
-end
 ---@param fn string
 ---@return string
 local function find_in(fn)
-    print(texmf_output_directory, texmfoutput)
     sanitize_filename(path)
     if pathlib.is_absolute(fn) then return fn end
-    for _, df in pairs(
-        {
-            texmf_output_directory and file.join(texmf_output_directory, fn),
-            fn,
-            texmfoutput and file.join(texmfoutput, fn),
-        }
-    ) do
-        if df and pcall(check_access_in, df) then return df end
+    local candidates = {}
+    local texmf_output_directory
+        = sanitize_output_dir(kpse.var_value("TEXMF_OUTPUT_DIRECTORY"))
+    local texmfoutput = sanitize_output_dir(kpse.var_value("TEXMFOUTPUT"))
+    if texmf_output_directory then
+        table.insert(candidates, file.join(texmf_output_directory, fn))
+    end
+    table.insert(candidates, fn)
+    if texmfoutput then
+        table.insert(candidates, file.join(texmfoutput, fn))
+    end
+    table.insert(candidates,
+        texmf_output_directory and file.join(texmf_output_directory, fn) or nil)
+    table.insert(candidates, fn)
+    table.insert(candidates, texmfoutput and file.join(texmfoutput, fn) or nil)
+    for _, df in ipairs(candidates) do
+        if pcall(check_access_in, df) then return df end
     end
     return fn
 end
@@ -428,14 +435,20 @@ end
 local function find_out(fn)
     sanitize_filename(path)
     if pathlib.is_absolute(fn) then return fn end
-    for _, df in pairs(
-        {
-            texmf_output_directory and file.join(texmf_output_directory, fn),
-                not texmf_output_directory and fn,
-            texmfoutput and file.join(texmfoutput, fn),
-        }
-    ) do
-        if df and pcall(check_access_out, df) then return df end
+    local candidates = {}
+    local texmf_output_directory
+        = sanitize_output_dir(kpse.var_value("TEXMF_OUTPUT_DIRECTORY"))
+    local texmfoutput = sanitize_output_dir(kpse.var_value("TEXMFOUTPUT"))
+    if texmf_output_directory then
+        table.insert(candidates, file.join(texmf_output_directory, fn))
+    else
+        table.insert(candidates, fn)
+    end
+    if texmfoutput then
+        table.insert(candidates, file.join(texmfoutput, fn))
+    end
+    for _, df in ipairs(candidates) do
+        if pcall(check_access_out, df) then return df end
     end
     return texmf_output_directory and file.join(texmf_output_directory, fn) or fn
 end
@@ -448,7 +461,7 @@ local function mkdir(folder)
     check_out_name(folder)
     -- We don't call "check_access_out(folder)" because it would fail if
     -- multiple subdirectories need to be created.
-    if not io.exists(folder) then
+    if not io_exists(folder) then
         dir.makedirs(folder)
         logging:info("Created directory %s", folder)
     end
@@ -534,8 +547,6 @@ local function main(args)
 
     -- \paragraph{Initialization}
 
-    init_find()
-    
     -- With |--mkdir|, argument |pdf| is interpreted as the directory to create.
     if args.mkdir then
         mkdir(args.pdf)
