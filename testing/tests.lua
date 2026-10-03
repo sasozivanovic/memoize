@@ -134,6 +134,20 @@ say:set("assertion.access_out_ok.positive", "Expected %s to be inaccessible for 
 say:set("assertion.access_out_ok.negative", "Expected %s to be accessible for writing")
 assert:register("assertion", "access_out_ok", access_out_ok, "assertion.access_out_ok.positive", "assertion.access_out_ok.negative")
 
+local function find_in(state, args)
+  args[3] = me.find_in(args[1])
+  return args[3] == args[2]
+end
+say:set("assertion.find_in.positive", "Expected find_in(%s) --> %s, got %s")
+assert:register("assertion", "find_in", find_in, "assertion.find_in.positive")
+
+local function find_out(state, args)
+  args[3] = me.find_out(args[1])
+  return args[3] == args[2]
+end
+say:set("assertion.find_out.positive", "Expected find_out(%s) --> %s, got %s")
+assert:register("assertion", "find_out", find_out, "assertion.find_out.positive")
+
 describe("unittests", function()
     
     describe("split_extern_path", function()
@@ -419,7 +433,7 @@ describe("unittests", function()
             
         end)
 
-        describe('#this check_access', function()
+        describe('check_access', function()
             before_each(function() create_test_dir() end)
             it('various file permissions', function()
                 local fn = 'file.txt' --no file yet
@@ -480,7 +494,7 @@ describe("unittests", function()
             end)
         end)
         
-        describe("find_in/out", function()
+        describe("#this find_in/out", function()
             
             before_each(function()
                 create_test_dir()
@@ -492,14 +506,14 @@ describe("unittests", function()
             describe('', function()
 
                 it('file does not exist', function()
-                    assert.equal(fn, me.find_in(fn))
-                    assert.equal(fn, me.find_out(fn))
+                    assert.find_in(fn, fn)
+                    assert.find_out(fn, fn)
                 end)
 
                 it('file exists', function()
                     create(fn)
-                    assert.equal(fn, me.find_in(fn))
-                    assert.equal(fn, me.find_out(fn))
+                    assert.find_in(fn, fn)
+                    assert.find_out(fn, fn)
                 end)
 
                 it('same file in other directories is irrelevant', function()
@@ -507,17 +521,17 @@ describe("unittests", function()
                     setenv("p")
                     create(fn)
                     
-                    assert.equal(fn, me.find_in(fn))
-                    assert.equal(fn, me.find_out(fn))
+                    assert.find_in(fn, fn)
+                    assert.find_out(fn, fn)
                     chmod('-r', fn)
-                    assert.equal(fn, me.find_in(fn))
-                    assert.equal(fn, me.find_out(fn))
+                    assert.find_in(fn, fn)
+                    assert.find_out(fn, fn)
                     chmod('-w', fn)
-                    assert.equal(fn, me.find_in(fn))
-                    assert.equal(fn, me.find_out(fn))
+                    assert.find_in(fn, fn)
+                    assert.find_out(fn, fn)
                     chmod('+r', fn)
-                    assert.equal(fn, me.find_in(fn))
-                    assert.equal(fn, me.find_out(fn))
+                    assert.find_in(fn, fn)
+                    assert.find_out(fn, fn)
                     
                 end)
 
@@ -531,39 +545,39 @@ describe("unittests", function()
                 end)
 
                 it('file exists nowhere', function()
-                    assert.equal(fn, me.find_in(fn))
-                    assert.equal(fn, me.find_out(fn))
+                    assert.find_in(fn, fn)
+                    assert.find_out(fn, fn)
                     chmod('-w', '.')
-                    assert.equal(fn, me.find_in(fn))
+                    assert.find_in(fn, fn)
                     if not on_windows then
-                      assert.equal(tmp_fn, me.find_out(fn))
+                      assert.find_out(fn, tmp_fn)
                     end
                     chmod('-r', '.')
                     assert.equal(me.find_in(fn), fn)
                     if not on_windows then
-                      assert.equal(tmp_fn, me.find_out(fn))
+                      assert.find_out(fn, tmp_fn)
                     end
                     chmod('+w', '.')
-                    assert.equal(fn, me.find_in(fn))
-                    assert.equal(fn, me.find_out(fn))
+                    assert.find_in(fn, fn)
+                    assert.find_out(fn, fn)
                 end)                
 
                 it('file exists in the temporary directory', function()
                     create(tmp_fn)
-                    assert.equal(tmp_fn, me.find_in(fn))
-                    assert.equal(fn, me.find_out(fn))
+                    assert.find_in(fn, tmp_fn)
+                    assert.find_out(fn, fn)
                     chmod('-w', '.')
                     if not on_windows then
-                      assert.equal(tmp_fn, me.find_out(fn))
+                      assert.find_out(fn, tmp_fn)
                     end
                     chmod('-r', '.')
-                    assert.equal(tmp_fn, me.find_in(fn))
+                    assert.find_in(fn, tmp_fn)
                     if not on_windows then
-                      assert.equal(tmp_fn, me.find_out(fn))
+                      assert.find_out(fn, tmp_fn)
                     end
                     chmod('+w', '.')
-                    assert.equal(tmp_fn, me.find_in(fn))
-                    assert.equal(fn, me.find_out(fn))
+                    assert.find_in(fn, tmp_fn)
+                    assert.find_out(fn, fn)
                 end)
                 
             end)
@@ -575,52 +589,52 @@ describe("unittests", function()
                 end)
 
                 it('file exists nowhere', function()
-                    assert.equal(fn, me.find_in(fn))
-                    assert.equal(od_fn, me.find_out(fn))
+                    assert.find_in(fn, fn)
+                    assert.find_out(fn, od_fn)
                     if not on_windows then --no directory permissions on windows
                       chmod('-w', 'od')
-                      assert.equal(fn, me.find_in(fn))
-                      assert.equal(od_fn, me.find_out(fn))
+                      assert.find_in(fn, fn)
+                      assert.find_out(fn, od_fn)
                       chmod('+w', 'od')
                     end
                 end)
 
                 it('file exists in the current directory', function()
                     create(fn)
-                    assert.equal(fn, me.find_in(fn))
-                    assert.equal(od_fn, me.find_out(fn))
+                    assert.find_in(fn, fn)
+                    assert.find_out(fn, od_fn)
                 end)
 
                 it('file exists in the output directory', function()
                     create(od_fn)
-                    assert.equal(od_fn, me.find_in(fn))
-                    assert.equal(od_fn, me.find_out(fn))
+                    assert.find_in(fn, od_fn)
+                    assert.find_out(fn, od_fn)
                     chmod('-x', 'od')
                     if not on_windows then --no directory permissions on windows
-                      assert.equal(fn, me.find_in(fn))
+                      assert.find_in(fn, fn)
                     end
-                    assert.equal(od_fn, me.find_out(fn))
+                    assert.find_out(fn, od_fn)
                     chmod('+x', 'od')
                     if not on_windows then --no directory permissions on windows
                       chmod('-r', od_fn)
-                      assert.equal(fn, me.find_in(fn))
+                      assert.find_in(fn, fn)
                       chmod('+r', od_fn)
                     end
                     chmod('-w', od_fn)
-                    assert.equal(od_fn, me.find_out(fn))
+                    assert.find_out(fn, od_fn)
                     chmod('+w', od_fn)
                 end)
 
                 it('file exists in both directories', function()
                     create(fn)
                     create(od_fn)
-                    assert.equal(od_fn, me.find_in(fn))
-                    assert.equal(od_fn, me.find_out(fn))
+                    assert.find_in(fn, od_fn)
+                    assert.find_out(fn, od_fn)
                     chmod('-x', 'od')
                     if not on_windows then --no directory permissions on windows
-                      assert.equal(fn, me.find_in(fn))
+                      assert.find_in(fn, fn)
                     end
-                    assert.equal(od_fn, me.find_out(fn))
+                    assert.find_out(fn, od_fn)
                     chmod('+x', 'od')
                 end)
                 
@@ -634,88 +648,88 @@ describe("unittests", function()
                 end)
 
                 it('file exists nowhere', function()
-                    assert.equal(fn, me.find_in(fn))
-                    assert.equal(od_fn, me.find_out(fn))
+                    assert.find_in(fn, fn)
+                    assert.find_out(fn, od_fn)
                     if not on_windows then --no directory permissions on windows
                       chmod('-w', 'od')
-                      assert.equal(tmp_fn, me.find_out(fn))
+                      assert.find_out(fn, tmp_fn)
                     end
                 end)
 
                 it('file exists in the current directory', function()
                     create(fn)
-                    assert.equal(fn, me.find_in(fn))
-                    assert.equal(od_fn, me.find_out(fn))
+                    assert.find_in(fn, fn)
+                    assert.find_out(fn, od_fn)
                     if not on_windows then --no directory permissions on windows
                       chmod('-w', 'od')
-                      assert.equal(tmp_fn, me.find_out(fn))
+                      assert.find_out(fn, tmp_fn)
                     end
                 end)
 
                 it('file exists in the output directory', function()
                     create(od_fn)
-                    assert.equal(od_fn, me.find_in(fn))
-                    assert.equal(od_fn, me.find_out(fn))
+                    assert.find_in(fn, od_fn)
+                    assert.find_out(fn, od_fn)
                     if not on_windows then --no directory permissions on windows
                       chmod('-w', 'od')
-                      assert.equal(od_fn, me.find_out(fn))
+                      assert.find_out(fn, od_fn)
                       chmod('+w', 'od')
                     end
                     chmod('-w', od_fn)
-                    assert.equal(od_fn, me.find_in(fn))
-                    assert.equal(tmp_fn, me.find_out(fn))
+                    assert.find_in(fn, od_fn)
+                    assert.find_out(fn, tmp_fn)
                     chmod('-r', od_fn)
                     if not on_windows then
-                      assert.equal(fn, me.find_in(fn))
+                      assert.find_in(fn, fn)
                     end
-                    assert.equal(tmp_fn, me.find_out(fn))
+                    assert.find_out(fn, tmp_fn)
                     chmod('+w', od_fn)
                     if not on_windows then
-                      assert.equal(fn, me.find_in(fn))
+                      assert.find_in(fn, fn)
                     end
-                    assert.equal(od_fn, me.find_out(fn))
+                    assert.find_out(fn, od_fn)
                 end)
 
                 it('file exists in the temporary directory', function()
                     create(tmp_fn)
-                    assert.equal(tmp_fn, me.find_in(fn))
-                    assert.equal(od_fn, me.find_out(fn))
+                    assert.find_in(fn, tmp_fn)
+                    assert.find_out(fn, od_fn)
                     if not on_windows then --no directory permissions on windows
                       chmod('-w', 'od')
-                      assert.equal(tmp_fn, me.find_out(fn))
+                      assert.find_out(fn, tmp_fn)
                     end
                 end)
 
                 it('file exists in the current and in the output directory', function()
                     create(fn)
                     create(od_fn)
-                    assert.equal(od_fn, me.find_in(fn))
-                    assert.equal(od_fn, me.find_out(fn))
+                    assert.find_in(fn, od_fn)
+                    assert.find_out(fn, od_fn)
                     if not on_windows then --no directory permissions on windows
                       chmod('-w', 'od')
-                      assert.equal(od_fn, me.find_out(fn))
+                      assert.find_out(fn, od_fn)
                     end
                 end)
 
                 it('file exists in the current and in the temporary directory', function()
                     create(fn)
                     create(tmp_fn)
-                    assert.equal(fn, me.find_in(fn))
-                    assert.equal(od_fn, me.find_out(fn))
+                    assert.find_in(fn, fn)
+                    assert.find_out(fn, od_fn)
                     if not on_windows then --no directory permissions on windows
                       chmod('-w', 'od')
-                      assert.equal(tmp_fn, me.find_out(fn))
+                      assert.find_out(fn, tmp_fn)
                     end
                 end)
 
                 it('file exists in the output and in the temporary directory', function()
                     create(od_fn)
                     create(tmp_fn)
-                    assert.equal(od_fn, me.find_in(fn))
-                    assert.equal(od_fn, me.find_out(fn))
+                    assert.find_in(fn, od_fn)
+                    assert.find_out(fn, od_fn)
                     if not on_windows then --no directory permissions on windows
                       chmod('-w', 'od')
-                      assert.equal(od_fn, me.find_out(fn))
+                      assert.find_out(fn, od_fn)
                     end
                 end)
                 
@@ -723,11 +737,11 @@ describe("unittests", function()
                     create(fn)
                     create(od_fn)
                     create(tmp_fn)
-                    assert.equal(od_fn, me.find_in(fn))
-                    assert.equal(od_fn, me.find_out(fn))
+                    assert.find_in(fn, od_fn)
+                    assert.find_out(fn, od_fn)
                     if not on_windows then --no directory permissions on windows
                       chmod('-w', 'od')
-                      assert.equal(od_fn, me.find_out(fn))
+                      assert.find_out(fn, od_fn)
                     end
                 end)
             
