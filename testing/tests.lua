@@ -800,7 +800,7 @@ describe('memoize-extract', function()
       local doc_content = doc_template:format(table.unpack(opt.content_params))
       local target = opt.target or 'doc'
       io.savedata(('%s.tex'):format(target), doc_content)
-      os.execute(("%s -interaction batchmode '%s'"):format(opt.engine, target))
+      execute(("%s -interaction batchmode '%s'"):format(opt.engine, target))
       local expected_ls = {
         [('./%s.tex'):format(target)] = true,
         [('./%s.pdf'):format(target)] = true,
@@ -813,7 +813,7 @@ describe('memoize-extract', function()
         [('./%s%s-%s.memo'):format(opt.prefix, md5.HEX("another extern"),md5.HEX(""))] = true,
       }
       assert.same(expected_ls, ls(".", true), "Compilation did not produce the expected files")
-      os.execute(('memoize-extract.lua "%s.pdf"'):format(target))
+      execute(('memoize-extract.lua "%s.pdf"'):format(target))
       expected_ls[('./%s%s-%s.pdf'):format(opt.prefix, md5.HEX("extern"),md5.HEX(""))] = true
       expected_ls[('./%s%s-%s.pdf'):format(opt.prefix, md5.HEX("another extern"),md5.HEX(""))] = true
       assert.same(expected_ls, ls(".", true), "Extraction did not produce the expected files")      
@@ -826,23 +826,23 @@ describe('memoize-extract', function()
 
     describe('extraction with no memo dir, all engines and formats', function()
         
-        it('', function() compile_and_extract({
+        it('pdftex', function() compile_and_extract({
                 src = 'doc_plain.tex', content_params = { 'no memo dir' }, engine = 'pdftex', prefix = 'doc.'
         }) end)
-        it('', function() compile_and_extract({
+        it('xetex', function() compile_and_extract({
                 src = 'doc_plain.tex', content_params = { 'no memo dir' }, engine = 'xetex', prefix = 'doc.'
         }) end)
-        it('', function() compile_and_extract({
+        it('luatex', function() compile_and_extract({
                 src = 'doc_plain.tex', content_params = { 'no memo dir' }, engine = 'luatex', prefix = 'doc.'
         }) end)
 
-        it('', function() compile_and_extract({
+        it('pdflatex', function() compile_and_extract({
                 src = 'doc_latex.tex', content_params = { 'no memo dir' }, engine = 'pdflatex', ls_aux = true, prefix = 'doc.',
         }) end)
-        it('', function() compile_and_extract({
+        it('xelatex', function() compile_and_extract({
                 src = 'doc_latex.tex', content_params = { 'no memo dir' }, engine = 'xelatex', ls_aux = true, prefix = 'doc.',
         }) end)
-        it('', function() compile_and_extract({
+        it('lualatex', function() compile_and_extract({
                 src = 'doc_latex.tex', content_params = { 'no memo dir' }, engine = 'lualatex', ls_aux = true, prefix = 'doc.',
         }) end)
 
@@ -850,23 +850,23 @@ describe('memoize-extract', function()
     
     describe('extraction with memo dir, all engines and formats', function()
         
-        it('', function() compile_and_extract({
+        it('pdftex', function() compile_and_extract({
                 src = 'doc_plain.tex', content_params = { 'memo dir' }, engine = 'pdftex', prefix = 'doc.memo.dir/',
         }) end)
-        it('', function() compile_and_extract({
+        it('xetex', function() compile_and_extract({
                 src = 'doc_plain.tex', content_params = { 'memo dir' }, engine = 'xetex', prefix = 'doc.memo.dir/',
         }) end)
-        it('', function() compile_and_extract({
+        it('luatex', function() compile_and_extract({
                 src = 'doc_plain.tex', content_params = { 'memo dir' }, engine = 'luatex', prefix = 'doc.memo.dir/',
         }) end)
         
-        it('', function() compile_and_extract({
+        it('pdflatex', function() compile_and_extract({
                 src = 'doc_latex.tex', content_params = { 'memo dir' }, engine = 'pdflatex', ls_aux = true, prefix = 'doc.memo.dir/',
         }) end)
-        it('', function() compile_and_extract({
+        it('xelatex', function() compile_and_extract({
                 src = 'doc_latex.tex', content_params = { 'memo dir' }, engine = 'xelatex', ls_aux = true, prefix = 'doc.memo.dir/',
         }) end)
-        it('', function() compile_and_extract({
+        it('lualatex', function() compile_and_extract({
                 src = 'doc_latex.tex', content_params = { 'memo dir' }, engine = 'lualatex', ls_aux = true, prefix = 'doc.memo.dir/',
         }) end)
 
@@ -874,13 +874,13 @@ describe('memoize-extract', function()
 
     describe('spaces in file names', function()
         
-        it('', function()
+        it('luatex', function()
             compile_and_extract({
                 src = 'doc_plain.tex', target = 'doc with spaces', content_params = { 'prefix=doc with spaces.memo.dir/prefix with spaces.' },
                 engine = 'pdftex', prefix = 'doc with spaces.memo.dir/prefix with spaces.',
         }) end)
 
-        it('', function()
+        it('lualatex', function()
             compile_and_extract({
                 src = 'doc_latex.tex', target = 'doc with spaces', content_params = { 'prefix=doc with spaces.memo.dir/prefix with spaces.' },
                 engine = 'pdflatex', ls_aux = true, prefix = 'doc with spaces.memo.dir/prefix with spaces.',

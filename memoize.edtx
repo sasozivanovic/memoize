@@ -2782,8 +2782,8 @@
   },
   record/pdf/end/.code={%
     \ifdef\XeTeXversion{%
-      \special{pdf:obj @mmzrecord \mmz@mmiz@record}%
-      \def\mmz@record@pdfobjref{@mmzrecord}%
+      \special{pdf:obj @mmizrecord \mmz@mmiz@record}%
+      \def\mmz@record@pdfobjref{@mmizrecord}%
     }{%
       \immediate\pdfobj{\mmz@mmiz@record}%
       \edef\mmz@record@pdfobjref{\number\pdflastobj\space 0 R}%
@@ -4198,7 +4198,7 @@
 %<*plain,context>
 \mmzset{
   begin document/.style={begindocument/before, begindocument, begindocument/end},
-  end document/.style={enddocument/afterlastpage},
+  end document/.style={enddocument,enddocument/afterlastpage},
 }
 %</plain,context>
 % We clear the hooks after executing the last of them.
