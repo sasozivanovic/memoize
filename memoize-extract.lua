@@ -457,11 +457,11 @@ end
 
 ---@param folder string
 local function mkdir(folder)
-    folder = find_out(folder)
-    check_out_name(folder)
-    -- We don't call "check_access_out(folder)" because it would fail if
-    -- multiple subdirectories need to be created.
     if not io_exists(folder) then
+        folder = find_out(folder)
+        check_out_name(folder)
+        -- We don't call "check_access_out(folder)" because it would fail if
+        -- multiple subdirectories need to be created.
         dir.makedirs(folder)
         logging:info("Created directory %s", folder)
     end
