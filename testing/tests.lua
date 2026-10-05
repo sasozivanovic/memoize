@@ -85,6 +85,7 @@ local function rmtree(dn)
 end  
 
 local original_cwd = cwd()
+local src_dir = file.join(original_cwd, 'src')
 local function create_test_dir()
   lfs.chdir(original_cwd)
   rmtree("test")
@@ -110,43 +111,44 @@ local function chmod(mode, fn)
   end
 end
 
+local function execute(cmd)
+  local proc = io.popen(cmd)
+  while proc:read() do end
+  proc:close()  
+end
+
+local ls
+do
+  function ls(dn, recursive, result_table)
+    local result_table = result_table or {}
+    local prefix
+    if recursive then
+      prefix = (type(recursive) == 'string' and recursive or '') .. dn .. '/'
+    else
+      prefix = ''
+    end
+    for fn in lfs.dir(dn) do
+      if fn ~= '.' and fn ~= '..' then
+        local is_dir = lfs.attributes(fn, "mode") == "directory"
+        if is_dir and recursive then
+          ls(fn, prefix, result_table)
+        elseif not is_dir then
+          result_table[prefix .. fn] = true
+        end
+      end
+    end
+    return result_table
+  end
+end
+
+local md5 = require 'md5'
+function md5.HEX(str)
+  return md5.sumhexa(str):upper()
+end
+
+
 local say = require "say"
 say:set_namespace("en")
-
-local function out_name_ok(state, args)
-  return (pcall(me.check_out_name, args[1]))
-end
-say:set("assertion.out_name_ok.positive", "Expected out_name %s to be bad")
-say:set("assertion.out_name_ok.negative", "Expected out_name %s to be ok")
-assert:register("assertion", "out_name_ok", out_name_ok, "assertion.out_name_ok.positive", "assertion.out_name_ok.negative")
-
-local function access_in_ok(state, args)
-  return (pcall(me.check_access_in, args[1]))
-end
-say:set("assertion.access_in_ok.positive", "Expected %s to be inaccessible for writing")
-say:set("assertion.access_in_ok.negative", "Expected %s to be accessible for writing")
-assert:register("assertion", "access_in_ok", access_in_ok, "assertion.access_in_ok.positive", "assertion.access_in_ok.negative")
-
-local function access_out_ok(state, args)
-  return (pcall(me.check_access_out, args[1]))
-end
-say:set("assertion.access_out_ok.positive", "Expected %s to be inaccessible for writing")
-say:set("assertion.access_out_ok.negative", "Expected %s to be accessible for writing")
-assert:register("assertion", "access_out_ok", access_out_ok, "assertion.access_out_ok.positive", "assertion.access_out_ok.negative")
-
-local function find_in(state, args)
-  args[3] = me.find_in(args[1])
-  return args[3] == args[2]
-end
-say:set("assertion.find_in.positive", "Expected find_in(%s) --> %s, got %s")
-assert:register("assertion", "find_in", find_in, "assertion.find_in.positive")
-
-local function find_out(state, args)
-  args[3] = me.find_out(args[1])
-  return args[3] == args[2]
-end
-say:set("assertion.find_out.positive", "Expected find_out(%s) --> %s, got %s")
-assert:register("assertion", "find_out", find_out, "assertion.find_out.positive")
 
 describe("unittests", function()
     
@@ -259,6 +261,13 @@ describe("unittests", function()
         
         describe("check_out_name", function()
 
+            local function out_name_ok(state, args)
+              return (pcall(me.check_out_name, args[1]))
+            end
+            say:set("assertion.out_name_ok.positive", "Expected out_name %s to be bad")
+            say:set("assertion.out_name_ok.negative", "Expected out_name %s to be ok")
+            assert:register("assertion", "out_name_ok", out_name_ok, "assertion.out_name_ok.positive", "assertion.out_name_ok.negative")
+            
             describe("", function()
                 setup(function() setenv('p') end)
                 it('', function() assert.out_name_ok('foo.txt') end)
@@ -434,7 +443,23 @@ describe("unittests", function()
         end)
 
         describe('check_access', function()
+
+            local function access_in_ok(state, args)
+              return (pcall(me.check_access_in, args[1]))
+            end
+            say:set("assertion.access_in_ok.positive", "Expected %s to be inaccessible for writing")
+            say:set("assertion.access_in_ok.negative", "Expected %s to be accessible for writing")
+            assert:register("assertion", "access_in_ok", access_in_ok, "assertion.access_in_ok.positive", "assertion.access_in_ok.negative")
+
+            local function access_out_ok(state, args)
+              return (pcall(me.check_access_out, args[1]))
+            end
+            say:set("assertion.access_out_ok.positive", "Expected %s to be inaccessible for writing")
+            say:set("assertion.access_out_ok.negative", "Expected %s to be accessible for writing")
+            assert:register("assertion", "access_out_ok", access_out_ok, "assertion.access_out_ok.positive", "assertion.access_out_ok.negative")
+            
             before_each(function() create_test_dir() end)
+
             it('various file permissions', function()
                 local fn = 'file.txt' --no file yet
                 assert.Not.access_in_ok(fn)
@@ -494,8 +519,22 @@ describe("unittests", function()
             end)
         end)
         
-        describe("#this find_in/out", function()
+        describe("find_in/out", function()
             
+            local function find_in(state, args)
+              args[3] = me.find_in(args[1])
+              return args[3] == args[2]
+            end
+            say:set("assertion.find_in.positive", "Expected find_in(%s) --> %s, got %s")
+            assert:register("assertion", "find_in", find_in, "assertion.find_in.positive")
+
+            local function find_out(state, args)
+              args[3] = me.find_out(args[1])
+              return args[3] == args[2]
+            end
+            say:set("assertion.find_out.positive", "Expected find_out(%s) --> %s, got %s")
+            assert:register("assertion", "find_out", find_out, "assertion.find_out.positive")
+
             before_each(function()
                 create_test_dir()
                 fn = 'file.txt'
@@ -747,8 +786,108 @@ describe("unittests", function()
             
             end)
         end)
+    end)
+end)
+
+describe('memoize-extract', function()
+
+    setup(function()
+        require 'lualibs-io'
+    end)
+    
+    local function compile_and_extract(opt)
+      local doc_template = assert(io.loaddata("../src/" .. opt.src), "Cannot load " .. tostring(opt.src))
+      local doc_content = doc_template:format(table.unpack(opt.content_params))
+      local target = opt.target or 'doc'
+      io.savedata(('%s.tex'):format(target), doc_content)
+      os.execute(("%s -interaction batchmode '%s'"):format(opt.engine, target))
+      local expected_ls = {
+        [('./%s.tex'):format(target)] = true,
+        [('./%s.pdf'):format(target)] = true,
+        [('./%s.log'):format(target)] = true,
+        [('./%s.aux'):format(target)] = opt.ls_aux,
+        --[opt.prefix and './' .. opt.prefix:sub(1,-2) or ''] = opt.prefix:sub(-1) == '/' or nil,
+        [('./%s%s.memo'):format(opt.prefix, md5.HEX("extern"))] = true,          
+        [('./%s%s-%s.memo'):format(opt.prefix, md5.HEX("extern"),md5.HEX(""))] = true,
+        [('./%s%s.memo'):format(opt.prefix, md5.HEX("another extern"))] = true,          
+        [('./%s%s-%s.memo'):format(opt.prefix, md5.HEX("another extern"),md5.HEX(""))] = true,
+      }
+      assert.same(expected_ls, ls(".", true), "Compilation did not produce the expected files")
+      os.execute(('memoize-extract.lua "%s.pdf"'):format(target))
+      expected_ls[('./%s%s-%s.pdf'):format(opt.prefix, md5.HEX("extern"),md5.HEX(""))] = true
+      expected_ls[('./%s%s-%s.pdf'):format(opt.prefix, md5.HEX("another extern"),md5.HEX(""))] = true
+      assert.same(expected_ls, ls(".", true), "Extraction did not produce the expected files")      
+    end
+
+    before_each(function()
+        create_test_dir()
+        setenv('p')
+    end)
+
+    describe('extraction with no memo dir, all engines and formats', function()
+        
+        it('', function() compile_and_extract({
+                src = 'doc_plain.tex', content_params = { 'no memo dir' }, engine = 'pdftex', prefix = 'doc.'
+        }) end)
+        it('', function() compile_and_extract({
+                src = 'doc_plain.tex', content_params = { 'no memo dir' }, engine = 'xetex', prefix = 'doc.'
+        }) end)
+        it('', function() compile_and_extract({
+                src = 'doc_plain.tex', content_params = { 'no memo dir' }, engine = 'luatex', prefix = 'doc.'
+        }) end)
+
+        it('', function() compile_and_extract({
+                src = 'doc_latex.tex', content_params = { 'no memo dir' }, engine = 'pdflatex', ls_aux = true, prefix = 'doc.',
+        }) end)
+        it('', function() compile_and_extract({
+                src = 'doc_latex.tex', content_params = { 'no memo dir' }, engine = 'xelatex', ls_aux = true, prefix = 'doc.',
+        }) end)
+        it('', function() compile_and_extract({
+                src = 'doc_latex.tex', content_params = { 'no memo dir' }, engine = 'lualatex', ls_aux = true, prefix = 'doc.',
+        }) end)
+
+    end)
+    
+    describe('extraction with memo dir, all engines and formats', function()
+        
+        it('', function() compile_and_extract({
+                src = 'doc_plain.tex', content_params = { 'memo dir' }, engine = 'pdftex', prefix = 'doc.memo.dir/',
+        }) end)
+        it('', function() compile_and_extract({
+                src = 'doc_plain.tex', content_params = { 'memo dir' }, engine = 'xetex', prefix = 'doc.memo.dir/',
+        }) end)
+        it('', function() compile_and_extract({
+                src = 'doc_plain.tex', content_params = { 'memo dir' }, engine = 'luatex', prefix = 'doc.memo.dir/',
+        }) end)
+        
+        it('', function() compile_and_extract({
+                src = 'doc_latex.tex', content_params = { 'memo dir' }, engine = 'pdflatex', ls_aux = true, prefix = 'doc.memo.dir/',
+        }) end)
+        it('', function() compile_and_extract({
+                src = 'doc_latex.tex', content_params = { 'memo dir' }, engine = 'xelatex', ls_aux = true, prefix = 'doc.memo.dir/',
+        }) end)
+        it('', function() compile_and_extract({
+                src = 'doc_latex.tex', content_params = { 'memo dir' }, engine = 'lualatex', ls_aux = true, prefix = 'doc.memo.dir/',
+        }) end)
+
+    end)
+
+    describe('spaces in file names', function()
+        
+        it('', function()
+            compile_and_extract({
+                src = 'doc_plain.tex', target = 'doc with spaces', content_params = { 'prefix=doc with spaces.memo.dir/prefix with spaces.' },
+                engine = 'pdftex', prefix = 'doc with spaces.memo.dir/prefix with spaces.',
+        }) end)
+
+        it('', function()
+            compile_and_extract({
+                src = 'doc_latex.tex', target = 'doc with spaces', content_params = { 'prefix=doc with spaces.memo.dir/prefix with spaces.' },
+                engine = 'pdflatex', ls_aux = true, prefix = 'doc with spaces.memo.dir/prefix with spaces.',
+        }) end)
         
     end)
+    
     
 end)
 
