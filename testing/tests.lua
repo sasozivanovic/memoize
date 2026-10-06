@@ -128,6 +128,8 @@ say:set("assertion.execute.positive", "Expected successful execution of %s")
 say:set("assertion.execute.negative", "Expected unsuccessful execution of %s")
 assert:register("assertion", "execute", assert_execute, "assertion.execute.positive", "assertion.execute.negative")
 
+
+
 local ls
 do
   function ls(dn, recursive, result_table)
@@ -159,6 +161,13 @@ local function cp(from, to)
     os.execute(('cp -r "%s" "%s"'):format(from, to))
   end
 end
+
+local function exists(state, args)
+  return (lfs.attributes(args[1], "mode"))
+end
+say:set("assertion.exists.positive", "Expected file %s to exist")
+say:set("assertion.exists.negative", "Expected file %s to not exist")
+assert:register("assertion", "exists", exists, "assertion.exists.positive", "assertion.exists.negative")
 
 local md5 = require 'md5'
 function md5.HEX(str)
@@ -804,64 +813,78 @@ describe("unittests", function()
     end)
 end)
 
+
+local function compile(opt)
+  --opt: .src .content_params .target .cmd
+  --prepare sources
+  local doc_template = assert(io.loaddata(file.join(src_dir, opt.src)), "Cannot load " .. tostring(opt.src))
+  local doc_content = doc_template:format(table.unpack(opt.content_params))
+  local target_path = opt.target or 'doc.tex'
+  local target = file.nameonly(target_path)
+  io.savedata(('%s.tex'):format(target), doc_content)
+  --compile
+  execute(("%s -interaction batchmode '%s'"):format(opt.cmd, target))
+  --check compilation results
+  assert.exists(('%s.pdf'):format(target))
+  assert.exists(('%s.log'):format(target))
+  if opt.cmd:find("la") then --latex also produces an .aux file
+    assert.exists(('%s.aux'):format(target))
+  end
+  return ('%s.pdf'):format(target)
+end
+
+local function check_memos(prefix, externalized_code, context, extern)
+  assert.exists(('%s%s.memo'):format(prefix, md5.HEX(externalized_code)))
+  assert.exists(('%s%s-%s.memo'):format(prefix, md5.HEX(externalized_code), md5.HEX(context)))
+  if extern then
+    assert.exists(('%s%s-%s.pdf'):format(prefix, md5.HEX(externalized_code), md5.HEX(context)))
+  end
+end
+
+
 describe('memoize-extract', function()
 
     setup(function()
         require 'lualibs-io'
     end)
     
-    local function compile_and_extract(opt)
-      local doc_template = assert(io.loaddata(file.join(src_dir, opt.src)), "Cannot load " .. tostring(opt.src))
-      local doc_content = doc_template:format(table.unpack(opt.content_params))
-      local target = opt.target or 'doc'
-      io.savedata(('%s.tex'):format(target), doc_content)
-      execute(("%s -interaction batchmode '%s'"):format(opt.engine, target))
-      local expected_ls = {
-        [('./%s.tex'):format(target)] = true,
-        [('./%s.pdf'):format(target)] = true,
-        [('./%s.log'):format(target)] = true,
-        [('./%s.aux'):format(target)] = opt.ls_aux,
-        [('./%s%s.memo'):format(opt.prefix, md5.HEX("extern"))] = true,          
-        [('./%s%s-%s.memo'):format(opt.prefix, md5.HEX("extern"),md5.HEX(""))] = true,
-        [('./%s%s.memo'):format(opt.prefix, md5.HEX("another extern"))] = true,          
-        [('./%s%s-%s.memo'):format(opt.prefix, md5.HEX("another extern"),md5.HEX(""))] = true,
-      }
-      assert.same(expected_ls, ls(".", true), "Compilation did not produce the expected files")
-      if opt.extract == nil or opt.extract then
-        execute(('memoize-extract.lua "%s.pdf"'):format(target))
-        expected_ls[('./%s%s-%s.pdf'):format(opt.prefix, md5.HEX("extern"),md5.HEX(""))] = true
-        expected_ls[('./%s%s-%s.pdf'):format(opt.prefix, md5.HEX("another extern"),md5.HEX(""))] = true
-        assert.same(expected_ls, ls(".", true), "Extraction did not produce the expected files")
-      end
-    end
+    describe('', function()
 
-    before_each(function()
-        create_test_dir()
-        setenv('p')
-    end)
+        before_each(function()
+            create_test_dir()
+            setenv('p')
+        end)
 
-    describe("#build", function()
+        local function compile_and_extract(opt)
+          local pdf_fn = compile(opt)
+          check_memos(opt.prefix, "extern", "", false)
+          check_memos(opt.prefix, "another extern", "", false)
+          assert.execute(('memoize-extract.lua %s "%s"'):format(opt.opts or '', pdf_fn))
+          check_memos(opt.prefix, "extern", "", true)
+          check_memos(opt.prefix, "another extern", "", true)
+          return pdf_fn
+        end
         
         describe('extraction with no memo dir, all engines and formats', function()
             
             it('pdftex', function() compile_and_extract({
-                    src = 'doc_plain.tex', content_params = { 'no memo dir' }, engine = 'pdftex', prefix = 'doc.'
+                    src = 'doc_plain.tex', content_params = { 'no memo dir' }, cmd = 'pdftex', prefix = 'doc.'
             }) end)
             it('xetex', function() compile_and_extract({
-                    src = 'doc_plain.tex', content_params = { 'no memo dir' }, engine = 'xetex', prefix = 'doc.'
+                    src = 'doc_plain.tex', content_params = { 'no memo dir' }, cmd = 'xetex', prefix = 'doc.'
             }) end)
             it('luatex', function() compile_and_extract({
-                    src = 'doc_plain.tex', content_params = { 'no memo dir' }, engine = 'luatex', prefix = 'doc.'
+                    src = 'doc_plain.tex', content_params = { 'no memo dir' }, cmd = 'luatex', prefix = 'doc.'
             }) end)
 
             it('pdflatex', function() compile_and_extract({
-                    src = 'doc_latex.tex', content_params = { 'no memo dir' }, engine = 'pdflatex', ls_aux = true, prefix = 'doc.',
+                    src = 'doc_latex.tex', content_params = { 'no memo dir' }, cmd = 'pdflatex', prefix = 'doc.',
             }) end)
             it('xelatex', function() compile_and_extract({
-                    src = 'doc_latex.tex', content_params = { 'no memo dir' }, engine = 'xelatex', ls_aux = true, prefix = 'doc.',
+                    src = 'doc_latex.tex', content_params = { 'no memo dir' }, cmd = 'xelatex', prefix = 'doc.',
             }) end)
             it('lualatex', function() compile_and_extract({
-                    src = 'doc_latex.tex', content_params = { 'no memo dir' }, engine = 'lualatex', ls_aux = true, prefix = 'doc.',
+                    src = 'doc_latex.tex', content_params = { 'no memo dir' }, cmd = 'lualatex', prefix = 'doc.',
             }) end)
 
         end)
@@ -869,67 +892,114 @@ describe('memoize-extract', function()
         describe('extraction with memo dir, all engines and formats', function()
             
             it('pdftex', function() compile_and_extract({
-                    src = 'doc_plain.tex', content_params = { 'memo dir' }, engine = 'pdftex', prefix = 'doc.memo.dir/',
+                    src = 'doc_plain.tex', content_params = { 'memo dir' }, cmd = 'pdftex', prefix = 'doc.memo.dir/',
             }) end)
             it('xetex', function() compile_and_extract({
-                    src = 'doc_plain.tex', content_params = { 'memo dir' }, engine = 'xetex', prefix = 'doc.memo.dir/',
+                    src = 'doc_plain.tex', content_params = { 'memo dir' }, cmd = 'xetex', prefix = 'doc.memo.dir/',
             }) end)
             it('luatex', function() compile_and_extract({
-                    src = 'doc_plain.tex', content_params = { 'memo dir' }, engine = 'luatex', prefix = 'doc.memo.dir/',
+                    src = 'doc_plain.tex', content_params = { 'memo dir' }, cmd = 'luatex', prefix = 'doc.memo.dir/',
             }) end)
             
             it('pdflatex', function() compile_and_extract({
-                    src = 'doc_latex.tex', content_params = { 'memo dir' }, engine = 'pdflatex', ls_aux = true, prefix = 'doc.memo.dir/',
+                    src = 'doc_latex.tex', content_params = { 'memo dir' }, cmd = 'pdflatex', prefix = 'doc.memo.dir/',
             }) end)
             it('xelatex', function() compile_and_extract({
-                    src = 'doc_latex.tex', content_params = { 'memo dir' }, engine = 'xelatex', ls_aux = true, prefix = 'doc.memo.dir/',
+                    src = 'doc_latex.tex', content_params = { 'memo dir' }, cmd = 'xelatex', prefix = 'doc.memo.dir/',
             }) end)
             it('lualatex', function() compile_and_extract({
-                    src = 'doc_latex.tex', content_params = { 'memo dir' }, engine = 'lualatex', ls_aux = true, prefix = 'doc.memo.dir/',
+                    src = 'doc_latex.tex', content_params = { 'memo dir' }, cmd = 'lualatex', prefix = 'doc.memo.dir/',
             }) end)
 
         end)
-    end)
 
-    describe('spaces in file names', function()
+        describe('spaces in file names', function()
+            
+            it('pdftex', function()
+                compile_and_extract({
+                    src = 'doc_plain.tex', target = 'doc with spaces.tex', content_params = { 'prefix=doc with spaces.memo.dir/prefix with spaces.' },
+                    cmd = 'pdftex', prefix = 'doc with spaces.memo.dir/prefix with spaces.',
+            }) end)
+
+            it('pdflatex', function()
+                compile_and_extract({
+                    src = 'doc_latex.tex', target = 'doc with spaces.tex', content_params = { 'prefix=doc with spaces.memo.dir/prefix with spaces.' },
+                    cmd = 'pdflatex', prefix = 'doc with spaces.memo.dir/prefix with spaces.',
+            }) end)
+            
+        end)
+
+        describe("#prune", function()
+            
+            it("should remove extern pages from the pdf", function()
+                local pdf_fn = compile({src = 'doc_latex.tex', content_params = { 'no memo dir' }, cmd = 'pdflatex'})
+                check_memos('doc.', "extern", "", false)
+                check_memos('doc.', "another extern", "", false)
+                local pdf = pdfe.open(pdf_fn)
+                assert(pdfe.getnofpages(pdf) == 3)
+                pdfe.close(pdf)
+                
+                execute('memoize-extract.lua -p doc.pdf')
+                check_memos('doc.', "extern", "", true)
+                check_memos('doc.', "another extern", "", true)
+                local pdf = pdfe.open(pdf_fn)
+                assert(pdfe.getnofpages(pdf) == 1)
+                pdfe.close(pdf)
+            end)
+
+            it("another extraction after pruning is ok", function()
+                compile_and_extract({src = 'doc_latex.tex', content_params = { 'no memo dir' }, cmd = 'pdflatex', prefix = 'doc.', opts = '-p'})
+                os.remove(('%s%s-%s.pdf'):format(prefix, md5.HEX("extern"), md5.HEX("")))
+                os.remove(('%s%s-%s.pdf'):format(prefix, md5.HEX("another extern"), md5.HEX("")))
+                local pdf = pdfe.open('doc.pdf')
+                assert(pdfe.getnofpages(pdf) == 1)
+                pdfe.close(pdf)
+                assert.execute('memoize-extract.lua doc.pdf')
+                check_memos('doc.', "extern", "", true)
+                check_memos('doc.', "another extern", "", true)
+            end)
+            
+        end)
         
-        it('luatex', function()
-            compile_and_extract({
-                src = 'doc_plain.tex', target = 'doc with spaces', content_params = { 'prefix=doc with spaces.memo.dir/prefix with spaces.' },
-                engine = 'pdftex', prefix = 'doc with spaces.memo.dir/prefix with spaces.',
-        }) end)
+    end)
 
-        it('lualatex', function()
-            compile_and_extract({
-                src = 'doc_latex.tex', target = 'doc with spaces', content_params = { 'prefix=doc with spaces.memo.dir/prefix with spaces.' },
-                engine = 'pdflatex', ls_aux = true, prefix = 'doc with spaces.memo.dir/prefix with spaces.',
-        }) end)
+    describe('Extraction from a PDF in a subdirectory is ok, as long as memos are present or -f is given', function()
+        
+        lazy_setup(function()
+            create_test_dir()
+            setenv("p")
+            mkdir("foo")
+            lfs.chdir("foo")
+            compile({src = 'doc_plain.tex', content_params = { 'no memo dir' }, cmd = 'pdftex'})
+            lfs.chdir("..")
+        end)
+
+        it('fail because no memos', function()
+            assert.Not.execute('memoize-extract.lua foo/doc.pdf')
+        end)
+
+        it('ok because forced', function()
+            assert.execute('memoize-extract.lua -f foo/doc.pdf')
+        end)
+
+        it('ok because we have memos now', function()
+            cp(('foo/doc.%s.memo'):format(md5.HEX("extern")), ".")
+            cp(('foo/doc.%s-%s.memo'):format(md5.HEX("extern"),md5.HEX("")), ".")
+            cp(('foo/doc.%s.memo'):format(md5.HEX("another extern")), ".")
+            cp(('foo/doc.%s-%s.memo'):format(md5.HEX("another extern"),md5.HEX("")), ".")
+            assert.execute('memoize-extract.lua foo/doc.pdf')
+        end)
+        
+        it('pruning is fine', function()
+            assert.execute('memoize-extract.lua -pf foo/doc.pdf')
+        end)
         
     end)
 
-    it('#this Extraction from a PDF in a subdirectory is ok, as long as memos are present or -f is given', function()
-        mkdir("foo")
-        lfs.chdir("foo")
-        compile_and_extract({
-            src = 'doc_plain.tex',
-            content_params = { 'no memo dir' }, engine = 'pdftex', prefix = 'doc.',
-            extract = false
-        })
-        lfs.chdir("..")
-        --fail, because no memos
-        assert.Not.execute('memoize-extract.lua foo/doc.pdf')
-        --ok, because forced
-        assert.execute('memoize-extract.lua -f foo/doc.pdf')
-        file.copy(('foo/doc.%s.memo'):format(md5.HEX("extern")), ('doc.%s.memo'):format(md5.HEX("extern")))
-        file.copy(('foo/doc.%s-%s.memo'):format(md5.HEX("extern"),md5.HEX("")), ('doc.%s-%s.memo'):format(md5.HEX("extern"),md5.HEX("")))
-        file.copy(('foo/doc.%s.memo'):format(md5.HEX("another extern")), ('doc.%s.memo'):format(md5.HEX("another extern")))
-        file.copy(('foo/doc.%s-%s.memo'):format(md5.HEX("another extern"),md5.HEX("")), ('doc.%s-%s.memo'):format(md5.HEX("another extern"),md5.HEX("")))
-        --ok, because we have memos now
-        assert.execute('memoize-extract.lua foo/doc.pdf')
-        --pruning is fine
-        assert.execute('memoize-extract.lua -p foo/doc.pdf')
+    it("#dev", function()
+        print(file.nameonly('foo/bar.txt.pdf'))
     end)
-    
+
 end)
 
 -- Local Variables:
