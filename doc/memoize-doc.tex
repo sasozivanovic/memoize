@@ -5374,6 +5374,10 @@ to the author to execute \refcmd{mmzset}\bracestt{\refmmz{begin document}} and
 \refcmd{mmzset}\bracestt{\refmmz{end document}} manually, and hope for advice
 on how to handle this properly.
 
+\begin{tcolorbox}[warning,title=Out of order]
+  Memoize currently does not load under \hologo{ConTeXt}.  Help from
+  a \hologo{ConTeXt} expert is appreciated!
+\end{tcolorbox}
 
 \paragraph{Auxiliary packages}
 
@@ -7010,12 +7014,6 @@ therefore be installed automatically.
   \docref{pdfobj:MMIZ_Record} entry of the PDF catalog.  This is achieved by
   \code{\refmmz{record}=\refmmz{record=pdf}}, which is in effect by default.
 
-  Argument \meta{filename} may be given either in full (e.g.\ |doc.pdf|), or
-  merely as the stem (|doc|).  In the latter case, |.pdf| is appended to the
-  given argument even if it already contains a suffix (e.g.\ |my.doc| will
-  result in |my.doc.pdf|); the exception is suffix |.tex|, which is replaced by
-  |.pdf|.
-  
   The script inspects (the \docref{mmiz:Kids} array in) the
   \docref{pdfobj:MMIZ_Record} object in the PDF catalog for
   \docref{mmiz:NewExtern} entries, which contain subkeys

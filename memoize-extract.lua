@@ -553,18 +553,6 @@ local function main(args)
         exit.succ()
     end
 
-    -- Normalize the |pdf| argument into a |.pdf| filename.  This normalization
-    -- will be removed in the release of the package which will drop the
-    -- non-lua externalization scripts.
-    do
-        local suffix = file.suffix(args.pdf)
-        if suffix == "tex" or suffix == "mmz" then
-            args.pdf = file.replacesuffix(args.pdf, "pdf")
-        elseif suffix ~= 'pdf' then
-            args.pdf = file.addsuffix(args.pdf, "pdf")
-        end
-    end
-
     -- Once we have the |.pdf| filename, we can open the log.
     logging.package_name = 'memoize (lua-based extraction)'
     logging.quiet = args.quiet
