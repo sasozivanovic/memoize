@@ -697,15 +697,17 @@ local function main(args)
                     end,
                     function(errmsg)
                         if args.force then
+                            local exit_succ = exit.succ
                             logging:warn(
-                                "The associated %s-memo '%s' is not accessible: %s",
+                                "The associated %s-memo '%s' is not accessible: %s. Extracting anyway",
                                 typ, extern_path, errmsg
                             )
+                            exit.succ = exit_succ
                         else      
                             logging:warn(
                                 "I refuse to extract this page into extern '%s', \z
                                     because the associated %s-memo is not accessible: %s",
-                                    typ, extern_path, errmsg
+                                    extern_path, typ, errmsg
                             )
                             return true
                         end
