@@ -567,7 +567,7 @@ function pdfw_doc.save(doc, filename)
    doc.object_ids = {}
    doc.max_id = 0
    doc.xref = {}
-   doc.fh = io.open(filename, 'wb')
+   doc.fh = assert(io.open(filename, 'wb'), ('Cannot save %s'):format(filename))
 
    doc.fh:write(string.format("%%PDF-%d.%d\n", doc.major, doc.minor))
 
