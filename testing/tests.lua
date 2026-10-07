@@ -155,6 +155,35 @@ function md5.HEX(str)
   return md5.sumhexa(str):upper()
 end
 
+local function assert_content(state, args)
+  local fn, expected_lines = table.unpack(args)
+  local fh = io.open(fn)
+  lines = fh:lines()
+  for n, eline in ipairs(expected_lines) do
+    line = lines()
+    if line then
+      if not lpeg.match(eline, line) then
+        args[2] = n
+        args[3] = line
+        return false
+      end
+    else
+      args[2] = 'missing'
+      args[3] = ''
+      return false
+    end
+  end
+  line = lines()
+  if line then
+    args[2] = 'at the end'
+    args[3] = line
+    return false
+  end
+  return true
+end
+say:set("assertion.content.positive", "File %s, unexpected line %s:\n%s")
+assert:register("assertion", "content", assert_content, "assertion.content.positive")
+
 describe("unittests", function()
     
     describe("split_extern_path", function()
@@ -818,6 +847,16 @@ local function compile(opt)
   return ('%s.pdf'):format(target)
 end
 
+local function compile_and_extract(opt)
+  local pdf_fn = compile(opt)
+  assert.memos_exist(opt.prefix, "extern", "")
+  assert.memos_exist(opt.prefix, "another extern", "")
+  assert.execute(('memoize-extract.lua %s "%s"'):format(opt.opts or '', pdf_fn))
+  assert.extern_exists(opt.prefix, "extern", "")
+  assert.extern_exists(opt.prefix, "another extern", "")
+  return pdf_fn
+end
+
 local function memos_exist(state, args)
   local prefix, externalized_code, context = table.unpack(args)
   local cmemo = ('%s%s.memo'):format(prefix, md5.HEX(externalized_code))
@@ -895,16 +934,6 @@ describe('memoize-extract', function()
             setenv('p')
         end)
 
-        local function compile_and_extract(opt)
-          local pdf_fn = compile(opt)
-          assert.memos_exist(opt.prefix, "extern", "")
-          assert.memos_exist(opt.prefix, "another extern", "")
-          assert.execute(('memoize-extract.lua %s "%s"'):format(opt.opts or '', pdf_fn))
-          assert.extern_exists(opt.prefix, "extern", "")
-          assert.extern_exists(opt.prefix, "another extern", "")
-          return pdf_fn
-        end
-        
         describe('extraction with no memo dir, all engines and formats', function()
             
             it('pdftex', function() compile_and_extract({
@@ -1066,7 +1095,7 @@ describe('memoize-extract', function()
             lfs.chdir("../bar")
         end)
 
-        it("#this fail with pruning", function()
+        it("fail with pruning", function()
             assert.Not.execute('memoize-extract.lua -pf ../foo/doc.pdf')
             assert.Not.extern_exists("../foo/doc.", "extern", "")
             assert.Not.extern_exists("../foo/doc.", "another extern", "")
@@ -1160,7 +1189,59 @@ describe('memoize-extract', function()
             assert.Not.extern_exists("od/doc.", "another extern", "")
         end)
         
-    end)    
+    end)
+
+    describe('#this output format', function()
+
+        before_each(function()
+            create_test_dir()
+            setenv("p")
+            P = lpeg.P
+        end)
+        
+        it("all good", function()
+            compile_and_extract({src = 'doc_latex.tex', content_params = { 'no memo dir' }, cmd = 'pdflatex', prefix = 'doc.', opts = '-F latex'})
+            assert.content("doc.mmz.log", {
+                P"\\PackageInfo",
+                P"\\PackageInfo",
+                P"\\PackageInfo",
+                P"\\PackageInfo",
+                P"\\endinput",
+            })
+        end)
+
+        it("no doc", function()
+            execute("memoize-extract.lua -F latex nodoc.pdf")
+            assert.content("nodoc.mmz.log", {
+                P"\\PackageInfo",
+                P"\\endinput",
+            })
+        end)
+
+        it("no memos", function()
+            compile({src = 'doc_latex.tex', content_params = { 'no memo dir' }, cmd = 'pdflatex'})
+            os.remove(('doc.%s.memo'):format(md5.HEX("extern")))
+            os.remove(('doc.%s-%s.memo'):format(md5.HEX("extern"),md5.HEX("")))
+            execute("memoize-extract.lua -F latex doc.pdf")
+            assert.content("doc.mmz.log", {
+                P"\\PackageInfo",
+                P"\\PackageWarning",
+                P"\\PackageInfo",
+                P"\\PackageInfo",
+                P"\\endinput",
+            })
+        end)
+        
+        it("non-writable pdf", function()
+            compile({src = 'doc_latex.tex', content_params = { 'no memo dir' }, cmd = 'pdflatex'})
+            chmod('-w', 'doc.pdf')
+            execute("memoize-extract.lua -F latex --prune doc.pdf")
+            assert.content("doc.mmz.log", {
+                P"\\PackageError",
+                P"\\endinput",
+            })
+        end)
+    end)
     
 end)
 
