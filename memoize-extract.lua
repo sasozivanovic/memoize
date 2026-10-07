@@ -685,29 +685,28 @@ local function main(args)
                 extern_path, current_prefix)
             
             -- Check whether the c-memo and the cc-memo are accessible.
-            for typ, memo_file in pairs(
-                { c = file.join(file.dirname(extern_path),
-                        name_prefix .. code_md5sum .. ".memo"),
-                    cc = file.join(file.dirname(extern_path),
-                        name_prefix .. code_md5sum
-                        .. "-" .. context_md5sum .. ".memo") }) do
+            for typ, memo_file in pairs({
+                    c = name_prefix .. code_md5sum .. ".memo",
+                    cc = name_prefix .. code_md5sum .. "-" .. context_md5sum .. ".memo"
+            }) do
                 if try(
                     function()
+                        memo_file = find_in(file.join(file.dirname(extern_path), memo_file))
                         check_access_in(memo_file)
                     end,
                     function(errmsg)
                         if args.force then
                             local exit_succ = exit.succ
                             logging:warn(
-                                "The associated %s-memo '%s' is not accessible: %s. Extracting anyway",
-                                typ, extern_path, errmsg
+                                "The associated %s-memo '%s' is not accessible, forced extraction",
+                                typ, memo_file, errmsg
                             )
                             exit.succ = exit_succ
                         else      
                             logging:warn(
-                                "I refuse to extract this page into extern '%s', \z
-                                    because the associated %s-memo is not accessible: %s",
-                                    extern_path, typ, errmsg
+                                "I refuse to extract page %s into extern '%s', \z
+                                    because the associated %s-memo '%s' is not accessible",
+                                    page_number, extern_path, typ, memo_file
                             )
                             return true
                         end
@@ -725,12 +724,12 @@ local function main(args)
                     local extern = pdfrw.new()
                     extern:insert_page(page)
                     extern:save(extern_file_out)
-                    logging:info("Page %s --> '%s'", page_number, extern_path)
+                    logging:info("Page %s --> '%s'", page_number, extern_file_out)
                 end,
                 function(errmsg)
                     logging:warn(
                         "I failed to extract this page into '%s'\t%s",
-                        extern_path, errmsg
+                        extern_file_out, errmsg
                     )
                 end
             )
