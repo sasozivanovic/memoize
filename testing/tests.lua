@@ -52,7 +52,6 @@ local process = require "environ.process"
 require 'busted.runner'()
 
 local say = require "say"
-say:set_namespace("en")
 
 kpse.set_program_name("luatex")
 local utils = require "unittest-utils"
@@ -263,8 +262,10 @@ describe("unittests", function()
             assert(not kpse.var_value("TEXMFOUTPUT"))
         end)
         
-        strict_setup(function() setenv('p') end)
-        strict_setup(function() drive = on_windows and 'C:' or '' end)
+        strict_setup(function()
+            setenv('p')
+            drive = on_windows and 'C:' or ''
+        end)
         
         describe("check_out_name", function()
 
@@ -817,24 +818,44 @@ local function compile(opt)
   return ('%s.pdf'):format(target)
 end
 
-local function check_memos(prefix, externalized_code, context)
-  assert.exists(('%s%s.memo'):format(prefix, md5.HEX(externalized_code)))
-  assert.exists(('%s%s-%s.memo'):format(prefix, md5.HEX(externalized_code), md5.HEX(context)))
+local function memos_exist(state, args)
+  local prefix, externalized_code, context = table.unpack(args)
+  local cmemo = ('%s%s.memo'):format(prefix, md5.HEX(externalized_code))
+  local ccmemo = ('%s%s-%s.memo'):format(prefix, md5.HEX(externalized_code), md5.HEX(context))
+  args[1] = ('%s%s(-%s).memo'):format(prefix, md5.HEX(externalized_code), md5.HEX(context))
+  return (lfs.attributes(cmemo, "mode")) and (lfs.attributes(ccmemo, "mode"))
 end
-local function check_extern(prefix, externalized_code, context)
-  assert.exists(('%s%s-%s.pdf'):format(prefix, md5.HEX(externalized_code), md5.HEX(context)))
+say:set("assertion.memos_exist.positive", "Expected memos to exist: %s")
+say:set("assertion.memos_exist.negative", "Expected memos to not exist: %s")
+assert:register("assertion", "memos_exist", memos_exist, "assertion.memos_exist.positive", "assertion.memos_exist.negative")
+
+local function extern_exists(state, args)
+  local prefix, externalized_code, context = table.unpack(args)
+  local extern = ('%s%s-%s.pdf'):format(prefix, md5.HEX(externalized_code), md5.HEX(context))
+  args[1] = extern
+  return (lfs.attributes(extern, "mode"))
 end
-local function check_memos_extern(prefix, externalized_code, context)
-  check_memos(prefix, externalized_code, context)
-  check_extern(prefix, externalized_code, context)
-end  
+say:set("assertion.extern_exists.positive", "Expected extern to exist: %s")
+say:set("assertion.extern_exists.negative", "Expected extern to not exist: %s")
+assert:register("assertion", "extern_exists", extern_exists, "assertion.extern_exists.positive", "assertion.extern_exists.negative")
+
+local function npages(state, args)
+  local fn, expected_n = table.unpack(args)
+  local pdf = pdfe.open(fn)
+  if not pdf then error("Cannot open " .. fn) end
+  local n = pdfe.getnofpages(pdf)
+  pdfe.close(pdf)
+  args[3] = n
+  return n == expected_n
+end
+say:set("assertion.npages.positive", "Expected file %s to have to %s pages, but it has %s")
+assert:register("assertion", "npages", npages, "assertion.npages.positive")
 
 describe('memoize-extract', function()
 
-    strict_setup(function() setenv('p') end)
-
     setup(function()
         require 'lualibs-io'
+        setenv('p')
     end)
 
     describe("#mkdir", function()
@@ -876,11 +897,11 @@ describe('memoize-extract', function()
 
         local function compile_and_extract(opt)
           local pdf_fn = compile(opt)
-          check_memos(opt.prefix, "extern", "")
-          check_memos(opt.prefix, "another extern", "")
+          assert.memos_exist(opt.prefix, "extern", "")
+          assert.memos_exist(opt.prefix, "another extern", "")
           assert.execute(('memoize-extract.lua %s "%s"'):format(opt.opts or '', pdf_fn))
-          check_extern(opt.prefix, "extern", "")
-          check_extern(opt.prefix, "another extern", "")
+          assert.extern_exists(opt.prefix, "extern", "")
+          assert.extern_exists(opt.prefix, "another extern", "")
           return pdf_fn
         end
         
@@ -960,15 +981,14 @@ describe('memoize-extract', function()
             
             it('refuse extraction', function()
                 assert.Not.execute('memoize-extract.lua doc.pdf')
-                assert.Not.exists(('doc.%s-%s.pdf'):format(md5.HEX("extern"), md5.HEX("")))
-                assert.Not.exists(('doc.%s-%s.pdf'):format(md5.HEX("another extern"), md5.HEX("")))
-                --todo: nicer check
+                assert.Not.extern_exists("doc.", "extern", "")
+                assert.Not.extern_exists("doc.", "another extern", "")
             end)
             
             it('forced extraction', function()
                 assert.execute('memoize-extract.lua -f doc.pdf')
-                check_extern("doc.", "extern", "")
-                check_extern("doc.", "another extern", "")
+                assert.extern_exists("doc.", "extern", "")
+                assert.extern_exists("doc.", "another extern", "")
             end)
         end)
 
@@ -976,30 +996,24 @@ describe('memoize-extract', function()
             
             it("should remove extern pages from the pdf", function()
                 local pdf_fn = compile({src = 'doc_latex.tex', content_params = { 'no memo dir' }, cmd = 'pdflatex'})
-                check_memos('doc.', "extern", "")
-                check_memos('doc.', "another extern", "")
-                local pdf = pdfe.open(pdf_fn)
-                assert(pdfe.getnofpages(pdf) == 3)
-                pdfe.close(pdf)
+                assert.memos_exist('doc.', "extern", "")
+                assert.memos_exist('doc.', "another extern", "")
+                assert.npages(pdf_fn, 3)
                 
                 assert.execute('memoize-extract.lua -p doc.pdf')
-                check_extern('doc.', "extern", "", true)
-                check_extern('doc.', "another extern", "", true)
-                local pdf = pdfe.open(pdf_fn)
-                assert(pdfe.getnofpages(pdf) == 1)
-                pdfe.close(pdf)
+                assert.extern_exists('doc.', "extern", "", true)
+                assert.extern_exists('doc.', "another extern", "", true)
+                assert.npages(pdf_fn, 1)
             end)
 
             it("another extraction after pruning is ok", function()
                 compile_and_extract({src = 'doc_latex.tex', content_params = { 'no memo dir' }, cmd = 'pdflatex', prefix = 'doc.', opts = '-p'})
                 os.remove(('%s%s-%s.pdf'):format(prefix, md5.HEX("extern"), md5.HEX("")))
                 os.remove(('%s%s-%s.pdf'):format(prefix, md5.HEX("another extern"), md5.HEX("")))
-                local pdf = pdfe.open('doc.pdf')
-                assert(pdfe.getnofpages(pdf) == 1)
-                pdfe.close(pdf)
+                assert.npages("doc.pdf", 1)
                 assert.execute('memoize-extract.lua doc.pdf')
-                check_extern('doc.', "extern", "")
-                check_extern('doc.', "another extern", "")
+                assert.extern_exists('doc.', "extern", "")
+                assert.extern_exists('doc.', "another extern", "")
             end)
             
         end)
@@ -1019,7 +1033,8 @@ describe('memoize-extract', function()
 
         it('fail because no memos', function()
             assert.Not.execute('memoize-extract.lua foo/doc.pdf')
-            --todo: not extern exists
+            assert.Not.extern_exists("foo/doc.", "extern", "")
+            assert.Not.extern_exists("foo/doc.", "another extern", "")
         end)
 
         it('ok because forced', function()
@@ -1051,14 +1066,17 @@ describe('memoize-extract', function()
             lfs.chdir("../bar")
         end)
 
-        it("fail with pruning", function()
+        it("#this fail with pruning", function()
             assert.Not.execute('memoize-extract.lua -pf ../foo/doc.pdf')
-            --todo: not extern exists, no change in pdf
+            assert.Not.extern_exists("../foo/doc.", "extern", "")
+            assert.Not.extern_exists("../foo/doc.", "another extern", "")
+            assert.npages("../foo/doc.pdf", 3)
         end)
 
         it("fail without -f", function()
             assert.Not.execute('memoize-extract.lua ../foo/doc.pdf')
-            --todo: not extern exists
+            assert.Not.extern_exists("../foo/doc.", "extern", "")
+            assert.Not.extern_exists("../foo/doc.", "another extern", "")
         end)
         
         it("succeed with -f", function()
@@ -1080,8 +1098,8 @@ describe('memoize-extract', function()
             assert.exists("tmp/doc.pdf")
             assert.exists("tmp/doc.log")
             assert.execute('memoize-extract.lua doc.pdf')
-            check_extern('tmp/doc.', 'extern', '')
-            check_extern('tmp/doc.', 'another extern', '')
+            assert.extern_exists('tmp/doc.', 'extern', '')
+            assert.extern_exists('tmp/doc.', 'another extern', '')
         end)
 
         it("current dir not writable, non-existing temp dir", function()
@@ -1090,7 +1108,8 @@ describe('memoize-extract', function()
             compile({src = 'doc_plain.tex', content_params = { 'no memo dir' }, cmd = 'pdftex'})
             chmod("-w", ".")
             assert.Not.execute('memoize-extract.lua doc.pdf')
-            --todo: not extern exists
+            assert.Not.extern_exists("doc.", "extern", "")
+            assert.Not.extern_exists("doc.", "another extern", "")
         end)
 
         it("current dir not writable, temp dir outside .", function()
@@ -1101,7 +1120,8 @@ describe('memoize-extract', function()
             setenv("p", "../tmp")
             chmod("-w", ".")
             assert.Not.execute('memoize-extract.lua doc.pdf')
-            --todo: not extern exists
+            assert.Not.extern_exists("doc.", "extern", "")
+            assert.Not.extern_exists("doc.", "another extern", "")
         end)
         
     end)
@@ -1121,10 +1141,11 @@ describe('memoize-extract', function()
             assert.exists("od/doc.log")
             assert.exists("od/doc.aux")
             assert.execute('memoize-extract.lua doc.pdf')
-            check_extern('od/doc.', 'extern', '')
-            check_extern('od/doc.', 'another extern', '')
+            assert.extern_exists('od/doc.', 'extern', '')
+            assert.extern_exists('od/doc.', 'another extern', '')
             --pruning works too
             assert.execute('memoize-extract.lua -p doc.pdf')
+            assert.npages("od/doc.pdf", 1)
         end)
 
         it("", function()
@@ -1135,7 +1156,8 @@ describe('memoize-extract', function()
             assert.exists("od/doc.aux")
             chmod("-w", "od")
             assert.Not.execute('memoize-extract.lua doc.pdf')
-            --todo: not extern exists
+            assert.Not.extern_exists("od/doc.", "extern", "")
+            assert.Not.extern_exists("od/doc.", "another extern", "")
         end)
         
     end)    
