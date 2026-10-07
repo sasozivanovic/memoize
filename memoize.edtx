@@ -2611,7 +2611,7 @@
     %<latex>-F latex
     %<plain>-F plain
     %<context>-F context
-    \jobname\space
+    \jobname.pdf\space
   },
 }
 \def\mmz@preamble@only@error{%
