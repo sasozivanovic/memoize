@@ -44,6 +44,10 @@ package.cpath = table.concat(
   ';'
 )
 
+cfg = {
+  quiet = true,
+}
+
 local process = require "environ.process"
 require 'busted.runner'()
 
@@ -115,44 +119,22 @@ local function chmod(mode, fn)
 end
 
 local function execute(cmd)
-  local proc = io.popen(cmd)
-  while proc:read() do end
-  return proc:close()
+  if cfg.quiet then
+    local proc = io.popen(cmd)
+    while proc:read() do end
+    return proc:close()
+  else
+    return os.execute(cmd)
+  end
 end
 
 local function assert_execute(state, args)
-  local res = os.execute(args[1])
+  local res = execute(args[1])
   return res == 0 or res == true
 end
 say:set("assertion.execute.positive", "Expected successful execution of %s")
 say:set("assertion.execute.negative", "Expected unsuccessful execution of %s")
 assert:register("assertion", "execute", assert_execute, "assertion.execute.positive", "assertion.execute.negative")
-
-
-
-local ls
-do
-  function ls(dn, recursive, result_table)
-    local result_table = result_table or {}
-    local prefix
-    if recursive then
-      prefix = (type(recursive) == 'string' and recursive or '') .. dn .. '/'
-    else
-      prefix = ''
-    end
-    for fn in lfs.dir(dn) do
-      if fn ~= '.' and fn ~= '..' then
-        local is_dir = lfs.attributes(fn, "mode") == "directory"
-        if is_dir and recursive then
-          ls(fn, prefix, result_table)
-        elseif not is_dir then
-          result_table[prefix .. fn] = true
-        end
-      end
-    end
-    return result_table
-  end
-end
 
 local function cp(from, to)
   if on_windows then
@@ -281,6 +263,7 @@ describe("unittests", function()
             assert(not kpse.var_value("TEXMFOUTPUT"))
         end)
         
+        strict_setup(function() setenv('p') end)
         strict_setup(function() drive = on_windows and 'C:' or '' end)
         
         describe("check_out_name", function()
@@ -293,7 +276,6 @@ describe("unittests", function()
             assert:register("assertion", "out_name_ok", out_name_ok, "assertion.out_name_ok.positive", "assertion.out_name_ok.negative")
             
             describe("", function()
-                setup(function() setenv('p') end)
                 it('', function() assert.out_name_ok('foo.txt') end)
                 it('', function() assert.out_name_ok('rel/foo/bar.txt') end)
                 it('', function() assert.Not.out_name_ok('../foo.txt') end)
@@ -561,6 +543,7 @@ describe("unittests", function()
 
             before_each(function()
                 create_test_dir()
+                setenv("p")
                 fn = 'file.txt'
                 od_fn = 'od/file.txt'
                 tmp_fn = 'tmp/file.txt'
@@ -581,7 +564,6 @@ describe("unittests", function()
 
                 it('same file in other directories is irrelevant', function()
                     mkdir("tmp") mkdir("od")
-                    setenv("p")
                     create(fn)
                     
                     assert.find_in(fn, fn)
@@ -813,16 +795,18 @@ describe("unittests", function()
     end)
 end)
 
-
-local function compile(opt)
-  --opt: .src .content_params .target .cmd
-  --prepare sources
+local function prepare_sources(opt)
   local doc_template = assert(io.loaddata(file.join(src_dir, opt.src)), "Cannot load " .. tostring(opt.src))
   local doc_content = doc_template:format(table.unpack(opt.content_params))
   local target_path = opt.target or 'doc.tex'
   local target = file.nameonly(target_path)
   io.savedata(('%s.tex'):format(target), doc_content)
-  --compile
+  return target
+end
+
+local function compile(opt)
+  --opt: .src .content_params .target .cmd
+  local target = prepare_sources(opt)
   execute(("%s -interaction batchmode '%s'"):format(opt.cmd, target))
   --check compilation results
   assert.exists(('%s.pdf'):format(target))
@@ -833,19 +817,54 @@ local function compile(opt)
   return ('%s.pdf'):format(target)
 end
 
-local function check_memos(prefix, externalized_code, context, extern)
+local function check_memos(prefix, externalized_code, context)
   assert.exists(('%s%s.memo'):format(prefix, md5.HEX(externalized_code)))
   assert.exists(('%s%s-%s.memo'):format(prefix, md5.HEX(externalized_code), md5.HEX(context)))
-  if extern then
-    assert.exists(('%s%s-%s.pdf'):format(prefix, md5.HEX(externalized_code), md5.HEX(context)))
-  end
 end
-
+local function check_extern(prefix, externalized_code, context)
+  assert.exists(('%s%s-%s.pdf'):format(prefix, md5.HEX(externalized_code), md5.HEX(context)))
+end
+local function check_memos_extern(prefix, externalized_code, context)
+  check_memos(prefix, externalized_code, context)
+  check_extern(prefix, externalized_code, context)
+end  
 
 describe('memoize-extract', function()
 
+    strict_setup(function() setenv('p') end)
+
     setup(function()
         require 'lualibs-io'
+    end)
+
+    describe("#mkdir", function()
+        
+        before_each(function()
+            create_test_dir()
+            setenv("p")
+        end)
+
+        it('create a subdir', function()
+            assert.execute("memoize-extract.lua --mkdir foo")
+            assert.exists("foo")
+        end)
+        
+        it("don't create a parallel dir", function()
+            mkdir("foo") lfs.chdir("foo")
+            assert.Not.execute("memoize-extract.lua --mkdir ../bar")
+            assert.Not.exists("bar")
+        end)
+        
+        it('create a subsubdir', function()
+            assert.execute("memoize-extract.lua --mkdir foo/bar")
+            assert.exists("foo/bar")
+        end)
+        
+        it("don't create a subdir containing ..", function()
+            assert.Not.execute("memoize-extract.lua --mkdir foo/bar/../baz")
+            assert.Not.exists("foo/baz")
+        end)
+        
     end)
     
     describe('', function()
@@ -857,11 +876,11 @@ describe('memoize-extract', function()
 
         local function compile_and_extract(opt)
           local pdf_fn = compile(opt)
-          check_memos(opt.prefix, "extern", "", false)
-          check_memos(opt.prefix, "another extern", "", false)
+          check_memos(opt.prefix, "extern", "")
+          check_memos(opt.prefix, "another extern", "")
           assert.execute(('memoize-extract.lua %s "%s"'):format(opt.opts or '', pdf_fn))
-          check_memos(opt.prefix, "extern", "", true)
-          check_memos(opt.prefix, "another extern", "", true)
+          check_extern(opt.prefix, "extern", "")
+          check_extern(opt.prefix, "another extern", "")
           return pdf_fn
         end
         
@@ -929,19 +948,43 @@ describe('memoize-extract', function()
             
         end)
 
-        describe("#prune", function()
+        describe("removed memo files", function()
+
+            before_each(function()
+                compile({src = 'doc_latex.tex', content_params = { 'no memo dir' }, cmd = 'pdflatex'})
+                os.remove(('doc.%s.memo'):format(md5.HEX("extern")))
+                os.remove(('doc.%s.memo'):format(md5.HEX("another extern")))
+                os.remove(('doc.%s-%s.memo'):format(md5.HEX("extern"), md5.HEX("")))
+                os.remove(('doc.%s-%s.memo'):format(md5.HEX("another extern"), md5.HEX("")))
+            end)
+            
+            it('refuse extraction', function()
+                assert.Not.execute('memoize-extract.lua doc.pdf')
+                assert.Not.exists(('doc.%s-%s.pdf'):format(md5.HEX("extern"), md5.HEX("")))
+                assert.Not.exists(('doc.%s-%s.pdf'):format(md5.HEX("another extern"), md5.HEX("")))
+                --todo: nicer check
+            end)
+            
+            it('forced extraction', function()
+                assert.execute('memoize-extract.lua -f doc.pdf')
+                check_extern("doc.", "extern", "")
+                check_extern("doc.", "another extern", "")
+            end)
+        end)
+
+        describe("prune", function()
             
             it("should remove extern pages from the pdf", function()
                 local pdf_fn = compile({src = 'doc_latex.tex', content_params = { 'no memo dir' }, cmd = 'pdflatex'})
-                check_memos('doc.', "extern", "", false)
-                check_memos('doc.', "another extern", "", false)
+                check_memos('doc.', "extern", "")
+                check_memos('doc.', "another extern", "")
                 local pdf = pdfe.open(pdf_fn)
                 assert(pdfe.getnofpages(pdf) == 3)
                 pdfe.close(pdf)
                 
-                execute('memoize-extract.lua -p doc.pdf')
-                check_memos('doc.', "extern", "", true)
-                check_memos('doc.', "another extern", "", true)
+                assert.execute('memoize-extract.lua -p doc.pdf')
+                check_extern('doc.', "extern", "", true)
+                check_extern('doc.', "another extern", "", true)
                 local pdf = pdfe.open(pdf_fn)
                 assert(pdfe.getnofpages(pdf) == 1)
                 pdfe.close(pdf)
@@ -955,15 +998,15 @@ describe('memoize-extract', function()
                 assert(pdfe.getnofpages(pdf) == 1)
                 pdfe.close(pdf)
                 assert.execute('memoize-extract.lua doc.pdf')
-                check_memos('doc.', "extern", "", true)
-                check_memos('doc.', "another extern", "", true)
+                check_extern('doc.', "extern", "")
+                check_extern('doc.', "another extern", "")
             end)
             
         end)
         
     end)
 
-    describe('Extraction from a PDF in a subdirectory is ok, as long as memos are present or -f is given', function()
+    describe('Extraction from a PDF in a subdirectory', function()
         
         lazy_setup(function()
             create_test_dir()
@@ -976,6 +1019,7 @@ describe('memoize-extract', function()
 
         it('fail because no memos', function()
             assert.Not.execute('memoize-extract.lua foo/doc.pdf')
+            --todo: not extern exists
         end)
 
         it('ok because forced', function()
@@ -996,10 +1040,106 @@ describe('memoize-extract', function()
         
     end)
 
-    it("#dev", function()
-        print(file.nameonly('foo/bar.txt.pdf'))
+    describe('Extraction from a PDF in a parallel directory', function()
+
+        lazy_setup(function()
+            create_test_dir()
+            setenv("p")
+            mkdir("foo") mkdir("bar")
+            lfs.chdir("foo")
+            compile({src = 'doc_plain.tex', content_params = { 'memo dir' }, cmd = 'pdftex'})
+            lfs.chdir("../bar")
+        end)
+
+        it("fail with pruning", function()
+            assert.Not.execute('memoize-extract.lua -pf ../foo/doc.pdf')
+            --todo: not extern exists, no change in pdf
+        end)
+
+        it("fail without -f", function()
+            assert.Not.execute('memoize-extract.lua ../foo/doc.pdf')
+            --todo: not extern exists
+        end)
+        
+        it("succeed with -f", function()
+            assert.execute('memoize-extract.lua -f ../foo/doc.pdf')
+        end)
+        
     end)
 
+    describe('TEXMFOUTPUT', function()
+
+        --This test would fail with latex, because compilation couldn't open .aux
+        it("current dir not writable, extract into temp dir", function()
+            create_test_dir()
+            mkdir("tmp")
+            setenv("p", "tmp")
+            prepare_sources({src = 'doc_plain.tex', content_params = { 'no memo dir' }})
+            chmod("-w", ".")
+            assert.execute('pdftex doc')
+            assert.exists("tmp/doc.pdf")
+            assert.exists("tmp/doc.log")
+            assert.execute('memoize-extract.lua doc.pdf')
+            check_extern('tmp/doc.', 'extern', '')
+            check_extern('tmp/doc.', 'another extern', '')
+        end)
+
+        it("current dir not writable, non-existing temp dir", function()
+            create_test_dir()
+            setenv("p", "bad_tmp")
+            compile({src = 'doc_plain.tex', content_params = { 'no memo dir' }, cmd = 'pdftex'})
+            chmod("-w", ".")
+            assert.Not.execute('memoize-extract.lua doc.pdf')
+            --todo: not extern exists
+        end)
+
+        it("current dir not writable, temp dir outside .", function()
+            create_test_dir()
+            mkdir("foo") mkdir("tmp") lfs.chdir("foo")
+            setenv("p")
+            compile({src = 'doc_plain.tex', content_params = { 'no memo dir' }, cmd = 'pdftex'})
+            setenv("p", "../tmp")
+            chmod("-w", ".")
+            assert.Not.execute('memoize-extract.lua doc.pdf')
+            --todo: not extern exists
+        end)
+        
+    end)
+
+    describe('TEXMF_OUTPUT_DIRECTORY', function()
+
+        before_each(function()
+            create_test_dir()
+            mkdir("od")
+            setenv("p", nil, "od")
+        end)
+        
+        it("", function()
+            prepare_sources({src = 'doc_latex.tex', content_params = { 'no memo dir' }})
+            assert.execute('pdflatex doc')
+            assert.exists("od/doc.pdf")
+            assert.exists("od/doc.log")
+            assert.exists("od/doc.aux")
+            assert.execute('memoize-extract.lua doc.pdf')
+            check_extern('od/doc.', 'extern', '')
+            check_extern('od/doc.', 'another extern', '')
+            --pruning works too
+            assert.execute('memoize-extract.lua -p doc.pdf')
+        end)
+
+        it("", function()
+            prepare_sources({src = 'doc_latex.tex', content_params = { 'no memo dir' }})
+            assert.execute('pdflatex doc')
+            assert.exists("od/doc.pdf")
+            assert.exists("od/doc.log")
+            assert.exists("od/doc.aux")
+            chmod("-w", "od")
+            assert.Not.execute('memoize-extract.lua doc.pdf')
+            --todo: not extern exists
+        end)
+        
+    end)    
+    
 end)
 
 -- Local Variables:
