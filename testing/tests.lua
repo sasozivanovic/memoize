@@ -296,277 +296,27 @@ describe("unittests", function()
             drive = on_windows and 'C:' or ''
         end)
         
-        describe("check_out_name", function()
-
-            local function out_name_ok(state, args)
-              return (pcall(me.check_out_name, args[1]))
-            end
-            say:set("assertion.out_name_ok.positive", "Expected out_name %s to be bad")
-            say:set("assertion.out_name_ok.negative", "Expected out_name %s to be ok")
-            assert:register("assertion", "out_name_ok", out_name_ok, "assertion.out_name_ok.positive", "assertion.out_name_ok.negative")
-            
-            describe("", function()
-                it('', function() assert.out_name_ok('foo.txt') end)
-                it('', function() assert.out_name_ok('rel/foo/bar.txt') end)
-                it('', function() assert.Not.out_name_ok('../foo.txt') end)
-                --
-                it('', function() assert.Not.out_name_ok('rel/../foo/bar.txt') end)
-                it('', function() assert.Not.out_name_ok(drive..'/abs/foo/bar.txt') end)
-                it('', function() assert.Not.out_name_ok(drive..'/abs/foo/../bar/baz.txt') end)
-            end)
-
-            describe('TEXMFOUTPUT', function()
-                setup(function() setenv('p', "/tmp") end)
-                it('', function() assert.out_name_ok('foo.txt') end)
-                it('', function() assert.out_name_ok('rel/foo/bar.txt') end)
-                it('', function() assert.Not.out_name_ok('../foo.txt') end)
-                it('', function() assert.Not.out_name_ok('rel/../foo/bar.txt') end)
-                it('', function() assert.Not.out_name_ok(drive..'/abs/foo/bar.txt') end)
-                it('', function() assert.Not.out_name_ok(drive..'/abs/foo/../bar/baz.txt') end)
-                it('', function() assert.out_name_ok(drive..'/tmp/foo.txt') end)
-                it('', function() assert.out_name_ok(drive..'/tmp/foo/bar.txt') end)
-                it('', function() assert.Not.out_name_ok(drive..'/tmp/foo/../bar/baz.txt') end)
-            end)
-            
-            describe('relative TEXMFOUTPUT & TEXMF_OUTPUT_DIRECTORY', function()
-                setup(function() setenv('p', "../tmp", "od") end)
-                
-                it('', function() assert.Not.out_name_ok(drive..'/foo/bar/baz.txt') end)
-                it('', function() assert.out_name_ok('foo/bar/baz.txt') end)
-                it('', function() assert.Not.out_name_ok('../baz.txt') end)
-                it('', function() assert.out_name_ok('baz.txt') end)
-                
-                it('', function() assert.Not.out_name_ok(drive..'/foo/bar/.baz.txt') end)
-                it('', function() uw(assert.Not,assert).out_name_ok('foo/bar/.baz.txt') end)
-                it('', function() assert.Not.out_name_ok('../.baz.txt') end)
-                it('', function() assert.Not.out_name_ok('../.baz.txt') end)
-                it('', function() uw(assert.Not,assert).out_name_ok('.baz.txt') end)
-                --it('', function() assert.out_name_ok('.tex') end)
-                --it('', function() assert.out_name_ok('foo/.tex') end)
-
-                it('', function() assert.out_name_ok('od/foo/bar/baz.txt') end)
-                it('', function() assert.out_name_ok('od/baz.txt') end)
-                it('', function() assert.out_name_ok('odbaz.txt') end)
-                it('', function() assert.out_name_ok('.///./baz.txt') end)
-                it('', function() assert.Not.out_name_ok('foo/../baz.txt') end)
-
-                it('', function() assert.Not.out_name_ok('../tmp/foo/bar/baz.txt') end)
-                it('', function() assert.Not.out_name_ok('../tmp/baz.txt') end)
-                it('', function() assert.Not.out_name_ok(drive..'/home/user/tex/odbaz.txt') end)
-                it('', function() assert.Not.out_name_ok(drive..'/home/user/tex/baz.txt') end)
-                it('', function() assert.Not.out_name_ok('../tmp///./baz.txt') end)
-                it('', function() assert.Not.out_name_ok('../tmp/foo/../baz.txt') end)
-
-                it('', function() assert.Not.out_name_ok(file.join(cwd(),'baz.txt')) end)
-                it('', function() assert.Not.out_name_ok(file.join(cwd(),'foo/baz.txt')) end)
-                it('', function() pending("") assert.Not.out_name_ok(file.join(texmfoutput.resolve(),'baz.txt')) end)
-                it('', function() pending("") assert.Not.out_name_ok(file.join(texmf_output_directory.resolve(),'baz.txt')) end)
-            end)
-
-            describe('absolute TEXMFOUTPUT & TEXMF_OUTPUT_DIRECTORY', function()
-                setup(function() setenv('p', drive.."/tmp", drive..'/home/user/tex/od') end)
-                
-                it('', function() assert.Not.out_name_ok(drive..'/foo/bar/baz.txt') end)
-                it('', function() assert.out_name_ok('foo/bar/baz.txt') end)
-                it('', function() assert.Not.out_name_ok('../baz.txt') end)
-                it('', function() assert.out_name_ok('baz.txt') end)
-                it('', function() assert.Not.out_name_ok(drive..'/foo/bar/.baz.txt') end)
-                it('', function() uw(assert.Not,assert).out_name_ok('foo/bar/.baz.txt') end)
-                it('', function() assert.Not.out_name_ok('../.baz.txt') end)
-                it('', function() assert.Not.out_name_ok('../.baz.txt') end)
-                it('', function() uw(assert.Not,assert).out_name_ok('.baz.txt') end)
-                --it('', function() assert.out_name_ok('.tex') end)
-                --it('', function() assert.out_name_ok('foo/.tex') end)
-                it('', function() assert.out_name_ok(drive..'/home/user/tex/od/foo/bar/baz.txt') end)
-                it('', function() assert.out_name_ok(drive..'/home/user/tex/od/baz.txt') end)
-                it('', function() assert.Not.out_name_ok(drive..'/home/user/tex/odbaz.txt') end)
-                it('', function() assert.Not.out_name_ok(drive..'/home/user/tex/baz.txt') end)
-                it('', function() assert.out_name_ok(drive..'/home/user/tex/od///./baz.txt') end)
-                it('', function() assert.Not.out_name_ok(drive..'/home/user/tex/od/foo/../baz.txt') end)
-                it('', function() assert.out_name_ok(drive..'/tmp/foo/bar/baz.txt') end)
-                it('', function() assert.out_name_ok(drive..'/tmp/baz.txt') end)
-                it('', function() assert.Not.out_name_ok(drive..'/home/user/tex/odbaz.txt') end)
-                it('', function() assert.Not.out_name_ok(drive..'/home/user/tex/baz.txt') end)
-                it('', function() assert.out_name_ok(drive..'/tmp///./baz.txt') end)
-                it('', function() assert.Not.out_name_ok(drive..'/tmp/foo/../baz.txt') end)
-                it('', function() assert.Not.out_name_ok(drive..'/tmpbaz.txt') end)
-                it('', function() assert.Not.out_name_ok(file.join(cwd(),'baz.txt')) end)
-                it('', function() assert.Not.out_name_ok(file.join(cwd(),'foo/baz.txt')) end)
-            end)
-            
-            describe('openout_any=r, relative TEXMFOUTPUT & TEXMF_OUTPUT_DIRECTORY', function()
-                setup(function() setenv("r", "tmp", "od") end)
-                
-                it('', function() assert.out_name_ok(drive..'/foo/bar/baz.txt') end)
-                it('', function() assert.out_name_ok('foo/bar/baz.txt') end)
-                it('', function() assert.out_name_ok('../baz.txt') end)
-                it('', function() assert.out_name_ok('baz.txt') end)
-                
-                --it('', function() uw(assert.Not,assert).out_name_ok(drive..'/foo/bar/.baz.txt') end)
-                it('', function() uw(assert.Not,assert).out_name_ok('foo/bar/.baz.txt') end)
-                it('', function() uw(assert.Not,assert).out_name_ok('../.baz.txt') end)
-                it('', function() uw(assert.Not,assert).out_name_ok('.baz.txt') end)
-                --it('', function() assert.out_name_ok('.tex') end)
-                --it('', function() assert.out_name_ok('foo/.tex') end)
-
-                it('', function() assert.out_name_ok(drive..'/home/user/tex/od/foo/bar/baz.txt') end)
-                it('', function() assert.out_name_ok(drive..'/home/user/tex/od/baz.txt') end)
-                it('', function() assert.out_name_ok(drive..'/home/user/tex/odbaz.txt') end)
-                it('', function() assert.out_name_ok(drive..'/home/user/tex/baz.txt') end)
-                it('', function() assert.out_name_ok(drive..'/home/user/tex/od///./baz.txt') end)
-                it('', function() assert.out_name_ok(drive..'/home/user/tex/od/foo/../baz.txt') end)
-
-                it('', function() assert.out_name_ok(drive..'/tmp/foo/bar/baz.txt') end)
-                it('', function() assert.out_name_ok(drive..'/tmp/baz.txt') end)
-                it('', function() assert.out_name_ok(drive..'/home/user/tex/odbaz.txt') end)
-                it('', function() assert.out_name_ok(drive..'/home/user/tex/baz.txt') end)
-                it('', function() assert.out_name_ok(drive..'/tmp///./baz.txt') end)
-                it('', function() assert.out_name_ok(drive..'/tmp/foo/../baz.txt') end)
-
-                it('', function() assert.out_name_ok(file.join(cwd(),'baz.txt')) end)
-                it('', function() assert.out_name_ok(file.join(cwd(),'foo/baz.txt')) end)
-            end)
-            
-            describe('openout_any=a', function()
-                setup(function() setenv("a") end)
-                
-                it('', function() assert.out_name_ok('foo.txt') end)
-                it('', function() assert.out_name_ok('rel/foo/bar.txt') end)
-                it('', function() assert.out_name_ok('../foo.txt') end)
-                it('', function() assert.out_name_ok('rel/../foo/bar.txt') end)
-                
-                it('', function() assert.out_name_ok(drive..'/abs/foo/bar.txt') end)
-                it('', function() assert.out_name_ok(drive..'/abs/foo/../bar/baz.txt') end)
-                it('', function() assert.out_name_ok(drive..'/tmp/foo.txt') end)
-                it('', function() assert.out_name_ok(drive..'/tmp/foo/bar.txt') end)
-                it('', function() assert.out_name_ok(drive..'/tmp/foo/../bar/baz.txt') end)
-            end)
-            
-            describe('openout_any=a, relative TEXMF_OUTPUT_DIRECTORY & TEXMFOUTPUT', function()
-                setup(function() setenv('a', 'tmp', 'od') end)
-                
-                it('', function() assert.out_name_ok(drive..'/foo/bar/baz.txt') end)
-                it('', function() assert.out_name_ok('foo/bar/baz.txt') end)
-                it('', function() assert.out_name_ok('../baz.txt') end)
-                it('', function() assert.out_name_ok('../baz.txt') end)
-                it('', function() assert.out_name_ok('baz.txt') end)
-                it('', function() assert.out_name_ok(drive..'/foo/bar/.baz.txt') end)
-                it('', function() assert.out_name_ok('foo/bar/.baz.txt') end)
-                it('', function() assert.out_name_ok('../.baz.txt') end)
-                it('', function() assert.out_name_ok('../.baz.txt') end)
-                it('', function() assert.out_name_ok('.baz.txt') end)
-                --it('', function() assert.out_name_ok('.tex') end)
-                --it('', function() assert.out_name_ok('foo/.tex') end)
-
-                it('', function() assert.out_name_ok(drive..'/home/user/tex/od/foo/bar/baz.txt') end)
-                it('', function() assert.out_name_ok(drive..'/home/user/tex/od/baz.txt') end)
-                it('', function() assert.out_name_ok(drive..'/home/user/tex/odbaz.txt') end)
-                it('', function() assert.out_name_ok(drive..'/home/user/tex/baz.txt') end)
-                it('', function() assert.out_name_ok(drive..'/home/user/tex/od///./baz.txt') end)
-                it('', function() assert.out_name_ok(drive..'/home/user/tex/od/foo/../baz.txt') end)
-
-                it('', function() assert.out_name_ok(drive..'/tmp/foo/bar/baz.txt') end)
-                it('', function() assert.out_name_ok(drive..'/tmp/baz.txt') end)
-                it('', function() assert.out_name_ok(drive..'/home/user/tex/odbaz.txt') end)
-                it('', function() assert.out_name_ok(drive..'/home/user/tex/baz.txt') end)
-                it('', function() assert.out_name_ok(drive..'/tmp///./baz.txt') end)
-                it('', function() assert.out_name_ok(drive..'/tmp/foo/../baz.txt') end)
-
-                it('', function() assert.out_name_ok(file.join(cwd(),'baz.txt')) end)
-                it('', function() assert.out_name_ok(file.join(cwd(),'foo/baz.txt')) end)
-            end)
-            
-        end)
-
-        describe('check_access', function()
-
-            local function access_in_ok(state, args)
-              return (pcall(me.check_access_in, args[1]))
-            end
-            say:set("assertion.access_in_ok.positive", "Expected %s to be inaccessible for writing")
-            say:set("assertion.access_in_ok.negative", "Expected %s to be accessible for writing")
-            assert:register("assertion", "access_in_ok", access_in_ok, "assertion.access_in_ok.positive", "assertion.access_in_ok.negative")
-
-            local function access_out_ok(state, args)
-              return (pcall(me.check_access_out, args[1]))
-            end
-            say:set("assertion.access_out_ok.positive", "Expected %s to be inaccessible for writing")
-            say:set("assertion.access_out_ok.negative", "Expected %s to be accessible for writing")
-            assert:register("assertion", "access_out_ok", access_out_ok, "assertion.access_out_ok.positive", "assertion.access_out_ok.negative")
-            
-            before_each(function() create_test_dir() end)
-
-            it('various file permissions', function()
-                local fn = 'file.txt' --no file yet
-                assert.Not.access_in_ok(fn)
-                assert.access_out_ok(fn)
-                create(fn) -- +rw
-                assert.access_in_ok(fn)
-                assert.access_out_ok(fn)
-                chmod('+r-w', fn)
-                assert.access_in_ok(fn)
-                assert.Not.access_out_ok(fn)
-                chmod('-r+w', fn)
-                assert.Not.access_in_ok(fn)
-                assert.access_out_ok(fn)
-                chmod('-r-w', fn)
-                assert.Not.access_in_ok(fn)
-                assert.Not.access_out_ok(fn)
-            end)
-            it('no file, various folder permissions', function()
-                local dn = 'foo'
-                local fn = 'foo/file.txt'  --no file or dir yet
-                assert.Not.access_in_ok(fn)
-                assert.Not.access_out_ok(fn)
-                mkdir(dn) --+rwx dir, no file yet
-                assert.Not.access_in_ok(fn)
-                assert.access_out_ok(fn)
-                chmod('-w+rx', dn)
-                assert.Not.access_in_ok(fn)
-                assert.Not.access_out_ok(fn)
-                chmod('-r+wx', dn)
-                assert.Not.access_in_ok(fn)
-                assert.access_out_ok(fn)
-                chmod('-x+rw', dn)
-                assert.Not.access_in_ok(fn)
-                assert.access_out_ok(fn)
-            end)
-            it('existing file, various folder and file permissions', function()
-                local dn = 'foo'
-                local fn = 'foo/file.txt'  --no file or dir yet
-                assert.Not.access_in_ok(fn)
-                assert.Not.access_out_ok(fn)
-                mkdir(dn) --+rwx dir, no file yet
-                assert.Not.access_in_ok(fn)
-                assert.access_out_ok(fn)
-                create(fn) -- +rw
-                assert.access_in_ok(fn)
-                assert.access_out_ok(fn)
-                chmod('-w+rx', dn)
-                assert.access_in_ok(fn)
-                assert.access_out_ok(fn)
-                chmod('-r+wx', dn)
-                assert.access_in_ok(fn)
-                assert.access_out_ok(fn)
-                chmod('-x+rw', dn)
-                assert.Not.access_in_ok(fn)
-                assert.access_out_ok(fn)
-                
-            end)
-        end)
-        
         describe("find_in/out", function()
             
             local function find_in(state, args)
-              args[3] = me.find_in(args[1])
-              return args[3] == args[2]
+              local result = me.find_in(args[1], 'r')
+              local success = result == args[2]
+              args[1] = tostring(args[1])
+              args[2] = tostring(args[2])
+              args[3] = tostring(result)
+              return success
             end
             say:set("assertion.find_in.positive", "Expected find_in(%s) --> %s, got %s")
             assert:register("assertion", "find_in", find_in, "assertion.find_in.positive")
-
+            
+            --find_out must be the last test in every "it", because it might create a file
             local function find_out(state, args)
-              args[3] = me.find_out(args[1])
-              return args[3] == args[2]
+              local result = me.find_out(args[1], 'w')
+              local success = result == args[2]
+              args[1] = tostring(args[1])
+              args[2] = tostring(args[2])
+              args[3] = tostring(result)
+              return success
             end
             say:set("assertion.find_out.positive", "Expected find_out(%s) --> %s, got %s")
             assert:register("assertion", "find_out", find_out, "assertion.find_out.positive")
@@ -582,7 +332,7 @@ describe("unittests", function()
             describe('', function()
 
                 it('file does not exist', function()
-                    assert.find_in(fn, fn)
+                    assert.find_in(fn, nil)
                     assert.find_out(fn, fn)
                 end)
 
@@ -592,22 +342,33 @@ describe("unittests", function()
                     assert.find_out(fn, fn)
                 end)
 
-                it('same file in other directories is irrelevant', function()
-                    mkdir("tmp") mkdir("od")
-                    create(fn)
-                    
-                    assert.find_in(fn, fn)
-                    assert.find_out(fn, fn)
-                    chmod('-r', fn)
-                    assert.find_in(fn, fn)
-                    assert.find_out(fn, fn)
-                    chmod('-w', fn)
-                    assert.find_in(fn, fn)
-                    assert.find_out(fn, fn)
-                    chmod('+r', fn)
-                    assert.find_in(fn, fn)
-                    assert.find_out(fn, fn)
-                    
+                describe('same file in other directories is irrelevant', function()
+                    before_each(function()
+                        mkdir("tmp")
+                        mkdir("od")
+                        create(fn)
+                        create(od_fn)
+                        create(tmp_fn)
+                    end)
+                    it('fn=+rw', function()
+                        assert.find_in(fn, fn)
+                        assert.find_out(fn, fn)
+                    end)
+                    it('fn=-r+w', function()
+                        chmod('-r+w', fn)
+                        assert.find_in(fn, nil)
+                        assert.find_out(fn, fn)
+                    end)
+                    it('fn=-rw', function()
+                        chmod('-rw', fn)
+                        assert.find_in(fn, nil)
+                        assert.find_out(fn, nil)
+                    end)
+                    it('fn=+r-w', function()
+                        chmod('+r-w', fn)
+                        assert.find_in(fn, fn)
+                        assert.find_out(fn, nil)
+                    end)
                 end)
 
                 
@@ -618,41 +379,60 @@ describe("unittests", function()
                     mkdir("tmp")
                     setenv("p","tmp") 
                 end)
+                
+                describe('file exists nowhere', function()
+                    it('+rw', function()
+                        assert.find_in(fn, nil)
+                        assert.find_out(fn, fn)
+                    end)
+                    it('+r-w', function()
+                        if not on_windows then
+                          chmod('+r-w', '.')
+                          assert.find_in(fn, nil)
+                          assert.find_out(fn, tmp_fn)
+                        end
+                    end)
+                    it('-r-w', function()
+                        if not on_windows then
+                          chmod('-rw', '.')
+                          assert.find_in(fn, nil)
+                          assert.find_out(fn, tmp_fn)
+                        end
+                    end)
+                    it('-r+w', function()
+                        chmod('-r+w', '.')
+                        assert.find_in(fn, nil)
+                        assert.find_out(fn, fn)
+                    end)
+                end)               
 
-                it('file exists nowhere', function()
-                    assert.find_in(fn, fn)
-                    assert.find_out(fn, fn)
-                    chmod('-w', '.')
-                    assert.find_in(fn, fn)
-                    if not on_windows then
-                      assert.find_out(fn, tmp_fn)
-                    end
-                    chmod('-r', '.')
-                    assert.equal(me.find_in(fn), fn)
-                    if not on_windows then
-                      assert.find_out(fn, tmp_fn)
-                    end
-                    chmod('+w', '.')
-                    assert.find_in(fn, fn)
-                    assert.find_out(fn, fn)
-                end)                
-
-                it('file exists in the temporary directory', function()
-                    create(tmp_fn)
-                    assert.find_in(fn, tmp_fn)
-                    assert.find_out(fn, fn)
-                    chmod('-w', '.')
-                    if not on_windows then
-                      assert.find_out(fn, tmp_fn)
-                    end
-                    chmod('-r', '.')
-                    assert.find_in(fn, tmp_fn)
-                    if not on_windows then
-                      assert.find_out(fn, tmp_fn)
-                    end
-                    chmod('+w', '.')
-                    assert.find_in(fn, tmp_fn)
-                    assert.find_out(fn, fn)
+                describe('file exists in the temporary directory', function()
+                    before_each(function()
+                        create(tmp_fn)
+                    end)
+                    it('+rw', function()
+                        assert.find_in(fn, tmp_fn)
+                        assert.find_out(fn, fn)
+                    end)
+                    it('+r-w', function()
+                        if not on_windows then
+                          chmod('+r-w', '.')
+                          assert.find_in(fn, tmp_fn)
+                          assert.find_out(fn, tmp_fn)
+                        end
+                    end)
+                    it('-rw', function()
+                        if not on_windows then
+                          chmod('-rw', '.')
+                          assert.find_in(fn, tmp_fn)
+                          assert.find_out(fn, tmp_fn)
+                        end
+                    end)
+                    it('-r+w', function()
+                        chmod('+w', '.')
+                        assert.find_in(fn, tmp_fn)
+                        assert.find_out(fn, fn)
+                    end)
                 end)
                 
             end)
@@ -663,15 +443,18 @@ describe("unittests", function()
                     setenv("p",nil,"od")
                 end)
 
-                it('file exists nowhere', function()
-                    assert.find_in(fn, fn)
-                    assert.find_out(fn, od_fn)
-                    if not on_windows then --no directory permissions on windows
-                      chmod('-w', 'od')
-                      assert.find_in(fn, fn)
-                      assert.find_out(fn, od_fn)
-                      chmod('+w', 'od')
-                    end
+                describe('file exists nowhere', function()
+                    it('od=+rw', function()
+                        assert.find_in(fn, nil)
+                        assert.find_out(fn, od_fn)
+                    end)
+                    it('od=+r-w', function()
+                        if not on_windows then --no directory permissions on windows
+                          chmod('-w', 'od')
+                          assert.find_in(fn, nil)
+                          assert.find_out(fn, nil)
+                        end
+                    end)
                 end)
 
                 it('file exists in the current directory', function()
@@ -680,37 +463,49 @@ describe("unittests", function()
                     assert.find_out(fn, od_fn)
                 end)
 
-                it('file exists in the output directory', function()
-                    create(od_fn)
-                    assert.find_in(fn, od_fn)
-                    assert.find_out(fn, od_fn)
-                    chmod('-x', 'od')
-                    if not on_windows then --no directory permissions on windows
-                      assert.find_in(fn, fn)
-                    end
-                    assert.find_out(fn, od_fn)
-                    chmod('+x', 'od')
-                    if not on_windows then --no directory permissions on windows
-                      chmod('-r', od_fn)
-                      assert.find_in(fn, fn)
-                      chmod('+r', od_fn)
-                    end
-                    chmod('-w', od_fn)
-                    assert.find_out(fn, od_fn)
-                    chmod('+w', od_fn)
+                describe('file exists in the output directory', function()
+                    before_each(function()
+                        create(od_fn)
+                    end)
+                    it('', function()
+                        assert.find_in(fn, od_fn)
+                        assert.find_out(fn, od_fn)
+                    end)
+                    it('od=-x', function()
+                        if not on_windows then --no directory permissions on windows
+                          chmod('-x', 'od')
+                          assert.find_in(fn, nil)
+                          assert.find_out(fn, nil)
+                        end
+                    end)
+                    it('od=-r', function()
+                        if not on_windows then --no directory permissions on windows
+                          chmod('-r', od_fn)
+                          assert.find_in(fn, nil)
+                        end
+                    end)
+                    it('od_fn=-w', function()
+                        chmod('-w', od_fn)
+                        assert.find_out(fn, nil)
+                    end)
                 end)
 
-                it('file exists in both directories', function()
-                    create(fn)
-                    create(od_fn)
-                    assert.find_in(fn, od_fn)
-                    assert.find_out(fn, od_fn)
-                    chmod('-x', 'od')
-                    if not on_windows then --no directory permissions on windows
-                      assert.find_in(fn, fn)
-                    end
-                    assert.find_out(fn, od_fn)
-                    chmod('+x', 'od')
+                describe('file exists in both directories', function()
+                    before_each(function()
+                        create(fn)
+                        create(od_fn)
+                    end)
+                    it('', function()
+                        assert.find_in(fn, od_fn)
+                        assert.find_out(fn, od_fn)
+                    end)
+                    it('od=-x', function()
+                        if not on_windows then --no directory permissions on windows
+                          chmod('-x', 'od')
+                          assert.find_in(fn, fn)
+                          assert.find_out(fn, nil)
+                        end
+                    end)
                 end)
                 
             end)
@@ -722,102 +517,171 @@ describe("unittests", function()
                     setenv("p","tmp","od")
                 end)
 
-                it('file exists nowhere', function()
-                    assert.find_in(fn, fn)
-                    assert.find_out(fn, od_fn)
-                    if not on_windows then --no directory permissions on windows
-                      chmod('-w', 'od')
-                      assert.find_out(fn, tmp_fn)
-                    end
+                describe('file exists nowhere', function()
+                    it('', function()
+                        assert.find_in(fn, nil)
+                        assert.find_out(fn, od_fn)
+                    end)
+                    it('od=-w', function()
+                        if not on_windows then --no directory permissions on windows
+                          chmod('-w', 'od')
+                          assert.find_out(fn, tmp_fn)
+                        end
+                    end)
                 end)
 
-                it('file exists in the current directory', function()
-                    create(fn)
-                    assert.find_in(fn, fn)
-                    assert.find_out(fn, od_fn)
-                    if not on_windows then --no directory permissions on windows
-                      chmod('-w', 'od')
-                      assert.find_out(fn, tmp_fn)
-                    end
+                describe('file exists in the current directory', function()
+                    before_each(function() 
+                        create(fn)
+                    end)
+                    it('', function()
+                        assert.find_in(fn, fn)
+                        assert.find_out(fn, od_fn)
+                    end)
+                    it('od=-w', function()
+                        if not on_windows then --no directory permissions on windows
+                          chmod('-w', 'od')
+                          assert.find_out(fn, tmp_fn)
+                        end
+                    end)
                 end)
 
-                it('file exists in the output directory', function()
-                    create(od_fn)
-                    assert.find_in(fn, od_fn)
-                    assert.find_out(fn, od_fn)
-                    if not on_windows then --no directory permissions on windows
-                      chmod('-w', 'od')
-                      assert.find_out(fn, od_fn)
-                      chmod('+w', 'od')
-                    end
-                    chmod('-w', od_fn)
-                    assert.find_in(fn, od_fn)
-                    assert.find_out(fn, tmp_fn)
-                    chmod('-r', od_fn)
-                    if not on_windows then
-                      assert.find_in(fn, fn)
-                    end
-                    assert.find_out(fn, tmp_fn)
-                    chmod('+w', od_fn)
-                    if not on_windows then
-                      assert.find_in(fn, fn)
-                    end
-                    assert.find_out(fn, od_fn)
+                describe('file exists in the output directory', function()
+                    before_each(function()
+                        create(od_fn)
+                    end)
+                    it('', function()
+                        assert.find_in(fn, od_fn)
+                        assert.find_out(fn, od_fn)
+                    end)
+                    it('od=-w', function()
+                        if not on_windows then --no directory permissions on windows
+                          chmod('-w', 'od')
+                          assert.find_out(fn, od_fn)
+                        end
+                    end)
+                    it('od_fn=+r-w', function()
+                        chmod('-w', od_fn)
+                        assert.find_in(fn, od_fn)
+                        assert.find_out(fn, tmp_fn)
+                    end)
+                    it('od_fn=-rw', function()
+                        if not on_windows then
+                          chmod('-rw', od_fn)
+                          assert.find_in(fn, nil)
+                          assert.find_out(fn, tmp_fn)
+                        end
+                    end)
+                    it('od_fn=-r+w', function()
+                        if not on_windows then
+                          chmod('-r+w', od_fn)
+                          assert.find_in(fn, nil)
+                          assert.find_out(fn, od_fn)
+                        end
+                    end)
                 end)
 
-                it('file exists in the temporary directory', function()
-                    create(tmp_fn)
-                    assert.find_in(fn, tmp_fn)
-                    assert.find_out(fn, od_fn)
-                    if not on_windows then --no directory permissions on windows
-                      chmod('-w', 'od')
-                      assert.find_out(fn, tmp_fn)
-                    end
+                describe('file exists in the temporary directory', function()
+                    before_each(function()
+                        create(tmp_fn)
+                    end)
+                    it('', function()
+                        assert.find_in(fn, tmp_fn)
+                        assert.find_out(fn, od_fn)
+                    end)
+                    it('od=-w', function()
+                        if not on_windows then --no directory permissions on windows
+                          chmod('-w', 'od')
+                          assert.find_out(fn, tmp_fn)
+                        end
+                    end)
                 end)
 
-                it('file exists in the current and in the output directory', function()
-                    create(fn)
-                    create(od_fn)
-                    assert.find_in(fn, od_fn)
-                    assert.find_out(fn, od_fn)
-                    if not on_windows then --no directory permissions on windows
-                      chmod('-w', 'od')
-                      assert.find_out(fn, od_fn)
-                    end
+                describe('file exists in the current and in the output directory', function()
+                    before_each(function()
+                        create(fn)
+                        create(od_fn)
+                    end)
+                    it('', function()
+                        assert.find_in(fn, od_fn)
+                        assert.find_out(fn, od_fn)
+                    end)
+                    it('od=-w', function()
+                        if not on_windows then --no directory permissions on windows
+                          chmod('-w', 'od')
+                          assert.find_out(fn, od_fn)
+                        end
+                    end)
+                    it('od_fn=-w', function()
+                        if not on_windows then --no directory permissions on windows
+                          chmod('-w', od_fn)
+                          assert.find_out(fn, tmp_fn)
+                        end
+                    end)
                 end)
 
-                it('file exists in the current and in the temporary directory', function()
-                    create(fn)
-                    create(tmp_fn)
-                    assert.find_in(fn, fn)
-                    assert.find_out(fn, od_fn)
-                    if not on_windows then --no directory permissions on windows
-                      chmod('-w', 'od')
-                      assert.find_out(fn, tmp_fn)
-                    end
+                describe('file exists in the current and in the temporary directory', function()
+                    before_each(function()
+                        create(fn)
+                        create(tmp_fn)
+                    end)
+                    it('', function()
+                        assert.find_in(fn, fn)
+                        assert.find_out(fn, od_fn)
+                    end)
+                    it('od=-w', function()
+                        if not on_windows then --no directory permissions on windows
+                          chmod('-w', 'od')
+                          assert.find_out(fn, tmp_fn)
+                        end
+                    end)
                 end)
 
-                it('file exists in the output and in the temporary directory', function()
-                    create(od_fn)
-                    create(tmp_fn)
-                    assert.find_in(fn, od_fn)
-                    assert.find_out(fn, od_fn)
-                    if not on_windows then --no directory permissions on windows
-                      chmod('-w', 'od')
-                      assert.find_out(fn, od_fn)
-                    end
+                describe('file exists in the output and in the temporary directory', function()
+                    before_each(function() 
+                        create(od_fn)
+                        create(tmp_fn)
+                    end)
+                    it('', function()
+                        assert.find_in(fn, od_fn)
+                        assert.find_out(fn, od_fn)
+                    end)
+                    it('od=-w', function()
+                        if not on_windows then --no directory permissions on windows
+                          chmod('-w', 'od')
+                          assert.find_out(fn, od_fn)
+                        end
+                    end)
+                    it('od_fn=-w', function()
+                        if not on_windows then --no directory permissions on windows
+                          chmod('-w', od_fn)
+                          assert.find_out(fn, tmp_fn)
+                        end
+                    end)
                 end)
                 
-                it('file exists in all three directories', function()
-                    create(fn)
-                    create(od_fn)
-                    create(tmp_fn)
-                    assert.find_in(fn, od_fn)
-                    assert.find_out(fn, od_fn)
-                    if not on_windows then --no directory permissions on windows
-                      chmod('-w', 'od')
-                      assert.find_out(fn, od_fn)
-                    end
+                describe('file exists in all three directories', function()
+                    before_each(function() 
+                        create(fn)
+                        create(od_fn)
+                        create(tmp_fn)
+                    end)
+                    it('', function()
+                        assert.find_in(fn, od_fn)
+                        assert.find_out(fn, od_fn)
+                    end)
+                    it('od=-w', function()
+                        if not on_windows then --no directory permissions on windows
+                          chmod('-w', 'od')
+                          assert.find_out(fn, od_fn)
+                        end
+                    end)
+                    it('od_fn=-w', function()
+                        if not on_windows then --no directory permissions on windows
+                          chmod('-w', od_fn)
+                          assert.find_out(fn, tmp_fn)
+                        end
+                    end)
                 end)
             
             end)
@@ -924,6 +788,8 @@ describe('memoize-extract', function()
             assert.Not.execute("memoize-extract.lua --mkdir foo/bar/../baz")
             assert.Not.exists("foo/baz")
         end)
+
+        --todo: TEXMF_*
         
     end)
     
@@ -1021,7 +887,7 @@ describe('memoize-extract', function()
             end)
         end)
 
-        describe("prune", function()
+        describe("#prune", function()
             
             it("should remove extern pages from the pdf", function()
                 local pdf_fn = compile({src = 'doc_latex.tex', content_params = { 'no memo dir' }, cmd = 'pdflatex'})
@@ -1191,7 +1057,7 @@ describe('memoize-extract', function()
         
     end)
 
-    describe('#this output format', function()
+    describe('output format', function()
 
         before_each(function()
             create_test_dir()

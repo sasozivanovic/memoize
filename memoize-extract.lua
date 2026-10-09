@@ -48,7 +48,241 @@ local function try(f, error_handler)
     return wrapper(pcall(f))
 end
 
-local script_name = file.basename(arg[0])
+---Remove pairs of quotes from the filename, which might contain a quoted jobname.
+
+---@param fn string
+---@return string
+local function unquote(fn)
+    if fn:sub(1,4) == '\\057' then --todo: fix pdfrw
+        fn = '/' .. fn:sub(5)
+    end
+    return (fn:gsub("\"(.-)\"", "%1"))
+end
+
+-- \paragraph{Additions to lualibs-file and lualibs-dir}
+
+local pathlib = {}
+
+---@param path string
+---@return boolean
+function pathlib.is_dir(path)
+    return lfs.attributes(path, 'mode') == 'directory'
+end
+
+do
+    local absolute, semi_absolute, root, sep
+    local P, S, R = lpeg.P, lpeg.S, lpeg.R
+    if os.type == 'windows' then
+        local drive = R("az","AZ") * P(":")
+        sep = S("/\\")
+        absolute = drive * sep
+        semi_absolute = drive * -sep + sep
+        root = false
+    else
+        sep = P'/'
+        absolute = sep
+        semi_absolute = false
+        root = sep^1 * -1
+    end
+    function pathlib.is_absolute(path)
+        return lpeg.match(absolute, path)
+    end
+    function pathlib.is_semi_absolute(path)
+        return lpeg.match(semi_absolute, path)
+    end
+    function pathlib.is_root(path)
+        return lpeg.match(root, path)
+    end
+    function pathlib.parent(fn)
+        local i = fn:len()
+        while i > 0 and lpeg.match(sep, fn, i) do
+            i = i - 1
+        end
+        local dn = file.dirname(fn:sub(1,i))
+        return dn == '' and '.' or dn
+    end
+end
+
+
+-- \paragraph{Permission-related functions}
+
+local function io_exists(fn)
+    return (lfs.attributes(fn, "mode"))
+end
+
+-- On Windows, we disallow ``semi-absolute'' paths, i.e.\ paths starting with
+-- the |\| but lacking the drive, or the reverse.
+
+local function sanitize_filename(path)
+    if path and pathlib.is_semi_absolute(path) then
+        error(("\"Semi-absolute\" paths are disallowed: '%s'\t\z
+            The path must either contain both the drive letter and \z
+            start with '\\', or none of these; paths like \z
+            'C:foo' and '\\foo' are disallowed"):format(path), 0)
+    end
+    return path
+end
+
+-- An output directory should exist, and may not point to the root on Linux
+-- (Karl Berry, p.c.). On Windows, it may point to the root of a drive,
+-- because we only allow absolute filenames containing the drive, e.g.\
+-- |F:\|; see |sanitize_filename|.
+
+---@param f function
+---@param var string
+---@return string?
+local function sanitize_output_dir(d)
+    return d
+        and sanitize_filename(d)
+        and pathlib.is_dir(d)
+        and not pathlib.is_root(d)
+        and d or nil
+end
+
+local wanna_read_pattern = lpeg.P{lpeg.S"r+" + 1 * lpeg.V(1)}
+local wanna_write_pattern = lpeg.P{lpeg.S"wa+" + 1 * lpeg.V(1)}
+
+--If the filename fn is absolute, check whether it is allowed and open it if it
+--is.  If fn is relative, first try to open it under TEXMF_OUTPUT_DIRECTORY (if
+--it is set) or under the current directory (if TEXMF_OUTPUT_DIRECTORY is not
+--set). If this fails, try to open it under TEXMFOUTPUT.
+local function find_and_open(fn, in_out, mode)
+
+    sanitize_filename(fn)
+    
+    assert(in_out == "in" or in_out == 'out')
+    assert(type(mode) == "string")
+    local wanna_read = lpeg.match(wanna_read_pattern, mode)
+    local wanna_write = lpeg.match(wanna_write_pattern, mode)
+    assert(wanna_read or wanna_write)
+    assert(not (wanna_write and in_out == 'in'))
+
+    local function check_name(path)
+        return
+            (not wanna_read or kpse.in_name_ok_silent_extended(path))
+            and
+            (not wanna_write or kpse.out_name_ok_silent_extended(path))
+    end
+    
+    local path, fh
+    
+    if pathlib.is_absolute(fn) then
+        path = fn
+        if check_name(path) then
+            fh = io.open(path, mode)
+        end
+    else
+        --try TEXMF_OUTPUT_DIRECTORY
+        local texmf_output_directory = sanitize_output_dir(
+            kpse.var_value("TEXMF_OUTPUT_DIRECTORY"))
+        if texmf_output_directory then
+            path = file.join(texmf_output_directory, fn)
+            if check_name(path) then
+                fh = io.open(path, mode)
+            end
+        end
+        --try the current directory
+        if not fh and (in_out == 'in' or not texmf_output_directory) then
+            path = fn
+            if check_name(path) then
+                fh = io.open(path, mode)
+            end
+        end
+        --try TEXMFOUTPUT
+        if not fh then
+            local texmfoutput = sanitize_output_dir(
+                kpse.var_value("TEXMFOUTPUT"))
+            if texmfoutput then
+                path = file.join(texmfoutput, fn)
+                if check_name(path) then
+                    fh = io.open(path, mode)
+                end
+            end
+        end
+    end
+    if fh then
+        return fh, path
+    end
+end
+
+local function find_and_open_in(fn, mode)
+    return find_and_open(fn, 'in', mode)
+end
+
+local function find_and_open_out(fn, mode)
+    return find_and_open(fn, 'out', mode)
+end
+
+--This function finds the location for an input file, respecting
+--|TEXMF_OUTPUT_DIRECTORY| and |TEXMFOUTPUT|, and the permissions in the
+--filesystem.  It returns an absolute file as-is.  For a relative file, it
+--tries |TEXMF_OUTPUT_DIRECTORY| (if defined), the current directory
+--(always), and |TEXMFOUTPUT| directory (if defined), in this order.  The
+--first readable file found is returned; if no readable file is found, the
+--file in the current directory is returned.
+
+local function find_in(fn, mode)
+    local fh, path = find_and_open(fn, 'in', mode)
+    if fh then
+        fh:close()
+        return path
+    end
+end
+
+--This function finds the location for an output file, respecting
+--|TEXMF_OUTPUT_DIRECTORY| and |TEXMFOUTPUT|, and the permissions in the
+--filesystem.  It returns an absolute file as-is.  For a relative file, it
+--tries |TEXMF_OUTPUT_DIRECTORY| (if defined), the current directory
+--(unless |TEXMF_OUTPUT_DIRECTORY| is defined), and |TEXMFOUTPUT| directory
+--(if defined), in this order.  The first writable file found is returned;
+--if no writable file is found, the file in either the current or the
+--output directory is returned.
+
+local function find_out(fn, mode)
+    local fh, path = find_and_open(fn, 'out', mode)
+    if fh then
+        fh:close()
+        return path
+    end
+end
+
+--A paranoid |dir.makedirs|.
+
+---@param folder string
+local function mkdir(folder)
+    if folder == '.' then
+        return true
+    end
+    local texmf_output_directory = sanitize_output_dir(
+        kpse.var_value("TEXMF_OUTPUT_DIRECTORY"))
+    local path = texmf_output_directory
+        and file.join(texmf_output_directory, folder)
+        or folder
+    if lfs.attributes(path, "mode") == 'directory' then
+        return true
+    end
+    local _path, success
+    if kpse.out_name_ok_silent_extended(path) then
+        _path, success = dir.makedirs(path)
+    end
+    if not success then
+        local texmfoutput = sanitize_output_dir(
+            kpse.var_value("TEXMFOUTPUT"))
+        if texmfoutput then
+            path = file.join(texmfoutput, folder)
+            if lfs.attributes(path, "mode") == 'directory' then
+                return true
+            end
+            if kpse.out_name_ok_silent_extended(path) then
+                _path, success = dir.makedirs(path)
+            end
+        end
+    end
+    return success, path
+end
+
+
+
 
 --\paragraph{Messages}
 
@@ -138,7 +372,9 @@ do
 
     ---@param fn string
     function logging:open(fn)
-        self.fh = logging:assert(io.open(fn, "w"), "Cannot open log file '%s'", fn)
+        local path
+        self.fh, path = find_and_open_out(fn, "w")
+        return path
     end
 
     ---Closes the file after marking the log as complete.
@@ -200,278 +436,7 @@ do
 
 end
 
--- \paragraph{Additions to lualibs-file and lualibs-dir}
 
-local pathlib = {}
-
----@param path string
----@return boolean
-function pathlib.is_dir(path)
-    return lfs.attributes(path, 'mode') == 'directory'
-end
-
-do
-    local absolute, semi_absolute, root, sep
-    local P, S, R = lpeg.P, lpeg.S, lpeg.R
-    if os.type == 'windows' then
-        local drive = R("az","AZ") * P(":")
-        sep = S("/\\")
-        absolute = drive * sep
-        semi_absolute = drive * -sep + sep
-        root = false
-    else
-        sep = P'/'
-        absolute = sep
-        semi_absolute = false
-        root = sep^1 * -1
-    end
-    function pathlib.is_absolute(path)
-        return lpeg.match(absolute, path)
-    end
-    function pathlib.is_semi_absolute(path)
-        return lpeg.match(semi_absolute, path)
-    end
-    function pathlib.is_root(path)
-        return lpeg.match(root, path)
-    end
-    function pathlib.parent(fn)
-        local i = fn:len()
-        while i > 0 and lpeg.match(sep, fn, i) do
-            i = i - 1
-        end
-        local dn = file.dirname(fn:sub(1,i))
-        return dn == '' and '.' or dn
-    end
-end
-
-
--- \paragraph{Permission-related functions}
-
--- check_out_name is but a wrapper around kpse.in_name_ok_silent_extended.
-
----@param fn string
-local function check_out_name(fn)
-    if not kpse.out_name_ok_silent_extended(fn) then
-        error(("I'm not allowed to write to '%s' (openout_any = {%s})")
-            :format(fn, kpse.var_value('openout_any')), 0)
-    end
-end
-
--- check_in_name is not implemented: as of TeX Live 2026, kpse_in_name_ok
--- always returns true, see texmf.cnf and
--- https://tug.org/pipermail/tex-live/2025-December/051965.html.
-
-
-local function io_exists(fn)
-    return (lfs.attributes(fn, "mode"))
-end
-
-local os_access
-do
-    local rwx_offsets = { r=0, w=1, x=2 }
-
-    if os.type == 'windows' then  --todo: test rwx_offsets
-
-        ---@param fn string
-        ---@param mode string
-        ---|"'r'" # readable?
-        ---|"'w'" # writable?
-        ---|"'x'" # executable?
-        ---@return boolean
-        function os_access(fn, mode)
-            local permissions = lfs.attributes(fn, "permissions")
-            local offset = rwx_offsets[mode]
-            return permissions:sub(offset, offset) == mode
-        end
-
-    else
-
-        local my_euid, my_egid
-        local status, err = io.open("/proc/self/status")
-        assert(status, err, 1)
-        local lines = status:lines()
-        for line in lines do
-            my_euid = line:match("^Uid:\t%d+\t(%d+)\t%d+\t%d+$")
-            if my_euid then
-                my_euid = tonumber(my_euid)
-                my_egid = tonumber(lines():match("^Gid:\t%d+\t(%d+)\t%d+\t%d+$"))
-                assert(my_egid, "Internal error\tthe Gid line does not follow \z
-                    the Uid line in /proc/self/status", 1)
-                break
-            end
-        end
-        status:close()
-
-        ---@param fn string
-        ---@param mode string
-        ---|"'r'" # readable?
-        ---|"'w'" # writable?
-        ---|"'x'" # executable?
-        ---@return boolean
-        function os_access(fn, mode)
-            local attrs = lfs.attributes(fn)
-            assert(attrs, ("File '%s' does not exist"):format(fn))
-            --if not attrs then return false end
-            local ugo_offset = my_euid == attrs.uid and 1
-                or (my_egid == attrs.gid and 4 or 7)
-            local rwx_offset = rwx_offsets[mode]
-            local offset = ugo_offset + rwx_offset
-            return attrs.permissions:sub(offset, offset) == mode
-        end
-    end
-end
-
----@param fn string
----@param mode string?
-local function check_access_in(fn)
-    assert(io_exists(fn), ("File '%s' does not exist"):format(fn))
-    assert(os_access(fn, 'r'), ("File '%s' is not readable"):format(fn))
-end
-
---This function can fail on Windows, reporting a non-writable file or dir as
---writable, because |os.access| does not work with Windows' |icacls|
---permissions.  Consequence: we might try to write to a read-only current or
---output directory instead of switching to the temporary directory.
-
----@param fn string
-local function check_access_out(fn)
-    if io_exists(fn) then --todo: if not readable lua thinks it doesn't exist, and check_access_out fails
-        --An existing file should be writable, and if it's a directory, it
-        --should also be executable.
-        assert(os_access(fn, 'w'),
-            ("File '%s' is not writable"):format(fn))
-        assert(not pathlib.is_dir(fn) or os_access(fn, 'x'),
-            ("Directory '%s' is not executable"):format(fn))
-    else
-        --For a non-existing file, the parent directory should be writable.
-        --(This is the only place where function |pathlib.parent| is used,
-        --so it's ok that it returns the logical parent.)
-        local dn = pathlib.parent(fn)
-        assert(os_access(dn, 'w'),
-            ("Cannot create '%s' in a non-writable directory '%s'"):format(fn, dn))
-    end
-end
-
-
--- On Windows, we disallow ``semi-absolute'' paths, i.e.\ paths starting with
--- the |\| but lacking the drive, or the reverse.
-
-local function sanitize_filename(path)
-    if path and pathlib.is_semi_absolute(path) then
-        error(("\"Semi-absolute\" paths are disallowed: '%s'\t\z
-            The path must either contain both the drive letter and \z
-            start with '\\', or none of these; paths like \z
-            'C:foo' and '\\foo' are disallowed"):format(path), 0)
-    end
-    return path
-end
-
--- An output directory should exist, and may not point to the root on Linux
--- (Karl Berry, p.c.). On Windows, it may point to the root of a drive,
--- because we only allow absolute filenames containing the drive, e.g.\
--- |F:\|; see |sanitize_filename|.
-
----@param f function
----@param var string
----@return string?
-local function sanitize_output_dir(d)
-    return d
-        and sanitize_filename(d)
-        and pathlib.is_dir(d)
-        and not pathlib.is_root(d)
-        and d or nil
-end
-
---This function finds the location for an input file, respecting
---|TEXMF_OUTPUT_DIRECTORY| and |TEXMFOUTPUT|, and the permissions in the
---filesystem.  It returns an absolute file as-is.  For a relative file, it
---tries |TEXMF_OUTPUT_DIRECTORY| (if defined), the current directory
---(always), and |TEXMFOUTPUT| directory (if defined), in this order.  The
---first readable file found is returned; if no readable file is found, the
---file in the current directory is returned.
-
----@param fn string
----@return string
-local function find_in(fn)
-    sanitize_filename(fn)
-    if pathlib.is_absolute(fn) then return fn end
-    local candidates = {}
-    local texmf_output_directory
-        = sanitize_output_dir(kpse.var_value("TEXMF_OUTPUT_DIRECTORY"))
-    local texmfoutput = sanitize_output_dir(kpse.var_value("TEXMFOUTPUT"))
-    if texmf_output_directory then
-        table.insert(candidates, file.join(texmf_output_directory, fn))
-    end
-    table.insert(candidates, fn)
-    if texmfoutput then
-        table.insert(candidates, file.join(texmfoutput, fn))
-    end
-    table.insert(candidates,
-        texmf_output_directory and file.join(texmf_output_directory, fn) or nil)
-    table.insert(candidates, fn)
-    table.insert(candidates, texmfoutput and file.join(texmfoutput, fn) or nil)
-    for _, df in ipairs(candidates) do
-        if pcall(check_access_in, df) then return df end
-    end
-    return fn
-end
-
---This function finds the location for an output file, respecting
---|TEXMF_OUTPUT_DIRECTORY| and |TEXMFOUTPUT|, and the permissions in the
---filesystem.  It returns an absolute file as-is.  For a relative file, it
---tries |TEXMF_OUTPUT_DIRECTORY| (if defined), the current directory
---(unless |TEXMF_OUTPUT_DIRECTORY| is defined), and |TEXMFOUTPUT| directory
---(if defined), in this order.  The first writable file found is returned;
---if no writable file is found, the file in either the current or the
---output directory is returned.
-
----@param fn string
----@return string
-local function find_out(fn)
-    sanitize_filename(fn)
-    if pathlib.is_absolute(fn) then return fn end
-    local candidates = {}
-    local texmf_output_directory
-        = sanitize_output_dir(kpse.var_value("TEXMF_OUTPUT_DIRECTORY"))
-    local texmfoutput = sanitize_output_dir(kpse.var_value("TEXMFOUTPUT"))
-    if texmf_output_directory then
-        table.insert(candidates, file.join(texmf_output_directory, fn))
-    else
-        table.insert(candidates, fn)
-    end
-    if texmfoutput then
-        table.insert(candidates, file.join(texmfoutput, fn))
-    end
-    for _, df in ipairs(candidates) do
-        if pcall(check_access_out, df) then return df end
-    end
-    return texmf_output_directory and file.join(texmf_output_directory, fn) or fn
-end
-
---A paranoid |dir.makedirs|.  The given folder is preprocessed by |find_out|.
-
----@param folder string
-local function mkdir(folder)
-    if not io_exists(folder) then
-        folder = find_out(folder)
-        check_out_name(folder)
-        -- We don't call "check_access_out(folder)" because it would fail if
-        -- multiple subdirectories need to be created.
-        dir.makedirs(folder)
-        logging:info("Created directory %s", folder)
-    end
-end
-
----Remove pairs of quotes from the filename, which might contain a quoted jobname.
-
----@param fn string
----@return string
-local function unquote(fn)
-    if fn:sub(1,4) == '\\057' then --todo: fix pdfrw
-        fn = '/' .. fn:sub(5)
-    end
-    return (fn:gsub("\"(.-)\"", "%1"))
-end
 
 local md5pat = ("%x"):rep(32)
 ---@param path string
@@ -498,6 +463,8 @@ local MMIZ_Record_Types = {
     ['/UsedCMemo'] = true,
     ['/UsedCCMemo'] = true,
 }
+
+local script_name = file.basename(arg[0])
 
 local function parse_args(args)
     local argparse = require 'argparse'
@@ -544,8 +511,15 @@ local function extract(args)
 
     -- With |--mkdir|, argument |pdf| is interpreted as the directory to create.
     if args.mkdir then
-        mkdir(args.pdf)
-        exit.succ()
+        local success, path = mkdir(args.pdf)
+        if success then
+            if path then
+                logging:info("Created directory '%s'", path)
+            end
+            exit.succ()
+        else
+            logging:error("Cannot create directory '%s'", args.pdf)
+        end
     end
 
     -- Once we have the |.pdf| filename, we can open the log.
@@ -554,50 +528,43 @@ local function extract(args)
     logging.format = args.format
     if args.format then
         table.insert(logging.headers, script_name)
-        local log_fn = find_out(file.replacesuffix(args.pdf, "mmz.log"))
-        check_out_name(log_fn)
+        local log_fn = file.replacesuffix(args.pdf, "mmz.log")
         logging:info("Logging to '%s'", log_fn)
-        logging:open(log_fn)
+        local log_path = logging:open(log_fn)
+        if not log_path then
+            logging:info("Cannot open log file '%s'", log_fn)
+        end
     end
 
     --Find the PDF file and check whether (a) we may read from it, and (b) we
     --may write to it, if --prune was given.
-    local pdf_fn
-    try(
-        function()
-            --todo: "find_in" below should actually search the same directories
-            --as "find_out", but of course check for an existing and
-            --(in_accessible) files, because the file we want to open (even if
-            --for reading) is a file which was just produced by TeX.
-            pdf_fn = find_in(args.pdf)
-            check_access_in(pdf_fn)
-        end,
-        function()
-            logging:info(
-                "Cannot open file '%s', assuming there's nothing to do",
-                args.pdf
-            )
-            exit.succ()
-        end
-    )
-    if args.prune then
-        try(function()
-                check_out_name(pdf_fn)
-                check_access_out(pdf_fn)
-        end, function(errmsg)
-                logging:error(
-                    "Cannot open '%s' for writing. \z
-                        (I would have to write to this file because \z
-                        option --prune/-p was given.)\t%s",
-                        pdf_fn, errmsg)
-        end
+    local pdf_path = find_out(args.pdf, 'r')
+    if not pdf_path then
+        logging:info(
+            "Cannot open file '%s', assuming there's nothing to do",
+            args.pdf
         )
+        exit.succ()
     end
-
+    if args.prune then
+        local fh
+        if kpse.out_name_ok_silent_extended(pdf_path) then
+            fh = io.open(pdf_path, 'r+')
+        end
+        if fh then
+            fh:close()
+        else
+            logging:error(
+                "Cannot open '%s' for writing.\tI would have to write to this \z
+                    file because option --prune/-p was given",
+                    pdf_path)
+        end
+    end
+    
     --Open the PDF.
     local doc, catalog = try(
         function()
-            local doc = pdfrw.open(pdf_fn)
+            local doc = pdfrw.open(pdf_path)
             local catalog = doc.trailer.Root()
             return doc, catalog
         end,
@@ -608,7 +575,7 @@ local function extract(args)
                     In particular, Memoize must be loaded before TikZ library 'fadings' \z
                     and any package deploying it, and in Beamer, load Memoize by writing \z
                     \\RequirePackage{memoize} before \\documentclass{beamer}.",
-                    pdf_fn, errmsg
+                    pdf_path, errmsg
             )
         end
     )
@@ -631,7 +598,7 @@ local function extract(args)
     end
 
     local current_prefix
-    logging:info("Extracting new externs from '%s'", pdf_fn)
+    logging:info("Extracting new externs from '%s'", pdf_path)
     local done_message = 'Done (there was nothing to extract)'
 
     logging.indent = '  '
@@ -678,31 +645,21 @@ local function extract(args)
                     c = name_prefix .. code_md5sum .. ".memo",
                     cc = name_prefix .. code_md5sum .. "-" .. context_md5sum .. ".memo"
             }) do
-                if try(
-                    function()
-                        memo_file = find_in(file.join(file.dirname(extern_path), memo_file))
-                        check_access_in(memo_file)
-                    end,
-                    function(errmsg)
-                        if args.force then
-                            forced = ' (forced)'
-                        else
-                            logging:warn(
-                                "Page %s will not be extracted \z
-                                    because the associated %s-memo '%s' is not accessible",
-                                    page_desc, typ, memo_file
-                            )
-                            return true
-                        end
+                if not find_in(file.join(file.dirname(extern_path), memo_file), 'r') then
+                    if args.force then
+                        forced = ' (forced)'
+                    else
+                        logging:warn(
+                            "Page %s will not be extracted \z
+                                because the associated %s-memo '%s' is not accessible",
+                                page_desc, typ, memo_file
+                        )
+                        goto next_item
                     end
-                ) then
-                    goto next_item
                 end
             end
 
-            local extern_file_out = find_out(extern_path)
-            check_out_name(extern_file_out)
-            --check_access_out(extern_file_out)
+            local extern_file_out = find_out(extern_path, 'w')
 
             try(
                 function()
