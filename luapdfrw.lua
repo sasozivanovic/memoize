@@ -15,6 +15,15 @@ local function indent(s)
 	 return "  " .. s:gsub("\n", "\n  ")
 end
 
+local function Assert(test, errmsg, level)
+    if test then
+        return test
+    else
+        level = level or 0
+        error(errmsg, level)
+    end
+end
+
 --\section{Types}
 
 --Table |pdfw| holds the public functions, except the functions of the document
@@ -521,7 +530,7 @@ end
 ---@param filename string
 ---@return table
 function pdfw.open(filename)
-   local pdfe_doc = pdfe.open(filename)
+   local pdfe_doc = Assert(pdfe.open(filename), ("pdfe: cannot open '%s'"):format(filename))
    if not pdfe_doc then return end
    local trailer = pdfw.from_pdfe_dictionary(pdfe_doc, nil, pdfe.gettrailer(pdfe_doc))
    local catalog = trailer.Root()
@@ -567,7 +576,7 @@ function pdfw_doc.save(doc, filename)
    doc.object_ids = {}
    doc.max_id = 0
    doc.xref = {}
-   doc.fh = assert(io.open(filename, 'wb'), ('Cannot save %s'):format(filename))
+   doc.fh = Assert(io.open(filename, 'wb'), ('Cannot save %s'):format(filename))
 
    doc.fh:write(string.format("%%PDF-%d.%d\n", doc.major, doc.minor))
 
