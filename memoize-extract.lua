@@ -135,10 +135,10 @@ do
         end
         return result
     end
-    
+
     ---@param fn string
     function logging:open(fn)
-        self.fh = io.open(fn, "w")
+        self.fh = logging:assert(io.open(fn, "w"), "Cannot open log file '%s'", fn)
     end
 
     ---Closes the file after marking the log as complete.
@@ -194,7 +194,7 @@ do
         if v then
             return v
         else
-            logging:error(errmsg_formatstring, ...)
+            self:error(errmsg_formatstring, ...)
         end
     end
 
@@ -210,9 +210,9 @@ function pathlib.is_dir(path)
     return lfs.attributes(path, 'mode') == 'directory'
 end
 
-do 
+do
     local absolute, semi_absolute, root, sep
-    local P, S, R, C = lpeg.P, lpeg.S, lpeg.R, lpeg.C
+    local P, S, R = lpeg.P, lpeg.S, lpeg.R
     if os.type == 'windows' then
         local drive = R("az","AZ") * P(":")
         sep = S("/\\")
@@ -225,7 +225,6 @@ do
         semi_absolute = false
         root = sep^1 * -1
     end
-    local nosep = 1 - sep
     function pathlib.is_absolute(path)
         return lpeg.match(absolute, path)
     end
@@ -383,10 +382,6 @@ local function sanitize_output_dir(d)
         and d or nil
 end
 
-local texmf_output_directory, texmfoutput
-
---First, get the values of |TEXMFOUTPUT| and |TEXMF_OUTPUT_DIRECTORY|.
-
 --This function finds the location for an input file, respecting
 --|TEXMF_OUTPUT_DIRECTORY| and |TEXMFOUTPUT|, and the permissions in the
 --filesystem.  It returns an absolute file as-is.  For a relative file, it
@@ -398,7 +393,7 @@ local texmf_output_directory, texmfoutput
 ---@param fn string
 ---@return string
 local function find_in(fn)
-    sanitize_filename(path)
+    sanitize_filename(fn)
     if pathlib.is_absolute(fn) then return fn end
     local candidates = {}
     local texmf_output_directory
@@ -433,7 +428,7 @@ end
 ---@param fn string
 ---@return string
 local function find_out(fn)
-    sanitize_filename(path)
+    sanitize_filename(fn)
     if pathlib.is_absolute(fn) then return fn end
     local candidates = {}
     local texmf_output_directory
@@ -504,6 +499,37 @@ local MMIZ_Record_Types = {
     ['/UsedCCMemo'] = true,
 }
 
+local function parse_args(args)
+    local argparse = require 'argparse'
+    local parser = argparse()
+        :name(script_name)
+        :description "Extract extern pages produced by package Memoize \z
+            out of the document PDF."
+                :epilog "For details, see the man page or the Memoize documentation."
+            parser:flag "--version -V"
+                :description "show program's version number and exit"
+                :action(function()
+                        print(script_name .. " of Memoize " .. VERSION)
+                        exit.succ()
+                       end)
+            parser:argument "pdf"
+                :description "the PDF file (doc.pdf when compiling doc.tex)"
+            parser:flag "--quiet -q"
+                :description "don't describe what's happening"
+            parser:flag "--prune -p"
+                :description "remove the extern pages after extraction"
+            parser:option "--format -F"
+                :description "the format of the TeX document invoking extraction"
+                :choices {"latex", "plain", "context"}
+            parser:flag "--force -f"
+                :description "ignore warnings and extract problematic pages"
+            parser:flag "--mkdir -m"
+                :description "create the directory and exit\n\z
+                    (the positional argument pdf is interpreted as directory name)"
+                    
+                    return parser:parse(args)
+end
+
 ---@class extraction_parameters
 ---@field quiet boolean?
 ---@field prune boolean?
@@ -512,39 +538,8 @@ local MMIZ_Record_Types = {
 ---@field mkdir boolean?
 ---@field pdf string
 
----@param args string[] | extraction_parameters
-local function main(args)
-    -- Convert command line arguments to extraction_parameters if necessary.
-    if not args.pdf then
-        local argparse = require 'argparse'
-        local parser = argparse()
-            :name(script_name)
-            :description "Extract extern pages produced by package Memoize \z
-                out of the document PDF."
-                    :epilog "For details, see the man page or the Memoize documentation."
-                parser:flag "--version -V"
-                    :description "show program's version number and exit"
-                    :action(function()
-                            print(script_name .. " of Memoize " .. VERSION)
-                            exit.succ()
-                           end)
-                parser:argument "pdf"
-                    :description "the PDF file (doc.pdf when compiling doc.tex)"
-                parser:flag "--quiet -q"
-                    :description "don't describe what's happening"
-                parser:flag "--prune -p"
-                    :description "remove the extern pages after extraction"
-                parser:option "--format -F"
-                    :description "the format of the TeX document invoking extraction"
-                    :choices {"latex", "plain", "context"}
-                parser:flag "--force -f"
-                    :description "ignore warnings and extract problematic pages"
-                parser:flag "--mkdir -m"
-                    :description "create the directory and exit\n\z
-                        (the positional argument pdf is interpreted as directory name)"
-                        args = parser:parse(args)
-    end
-
+---@param args extraction_parameters
+local function extract(args)
     -- \paragraph{Initialization}
 
     -- With |--mkdir|, argument |pdf| is interpreted as the directory to create.
@@ -608,7 +603,7 @@ local function main(args)
         end,
         function(errmsg)
             logging:error(
-                "PDF file '%s' seems corrupted.\tThe underlying error was: %s.\n\z
+                "PDF file '%s' seems corrupted\tThe underlying error was: %s. \z
                     Perhaps you have to load Memoize earlier in the preamble. \z
                     In particular, Memoize must be loaded before TikZ library 'fadings' \z
                     and any package deploying it, and in Beamer, load Memoize by writing \z
@@ -617,12 +612,12 @@ local function main(args)
             )
         end
     )
-    
+
     local mmiz_record = try(
         function()
             return catalog.MMIZ_Record().Kids()
         end,
-        function(errmsg)
+        function()
             logging:info("File '%s' does not contain a Memoize record, \z
                 assuming there's nothing to do",
                 args.pdf)
@@ -634,7 +629,7 @@ local function main(args)
     for i, page in ipairs(pages) do
         pages[page] = i
     end
-    
+
     local current_prefix
     logging:info("Extracting new externs from '%s'", pdf_fn)
     local done_message = 'Done (there was nothing to extract)'
@@ -644,12 +639,11 @@ local function main(args)
 
     for item_n, item in pairs(mmiz_record) do
 
-        local err_prefix = ('/MMIZ_Record/Kids[%d]: '):format(item_n)
-        logging:assert(item.Type, "%sUndefined item type", err_prefix)
+        local item_desc = ('/MMIZ_Record/Kids[%d]'):format(item_n)
+        logging:assert(item.Type, "%s: Undefined item type", item_desc)
         logging:assert(MMIZ_Record_Types[item.Type],
-            "%sUnknown record type %s", err_prefix, item.Type)
-        err_prefix = ('/MMIZ_Record/Kids[%d] of type %s: '):format(item_n, item.Type)
-        logging:assert(item.Filename, "Missing /Filename key")
+            "%s: Unknown record type %s", item_desc, item.Type)
+        logging:assert(item.Filename, "%s: Missing /Filename key", item_desc)
 
         if item.Type == "/Prefix" then
             current_prefix = unquote(item.Filename)
@@ -659,32 +653,27 @@ local function main(args)
 
         elseif item.Type == "/NewExtern" then
             done_message = 'Done'
-            
+
             local extern_path = unquote(item.Filename)
-            
-            local page_ref = logging:assert(item.Page, "Missing /Page key")
-            local page = logging:assert(page_ref(), "Invalid page reference")
-            local page_number = pages[page]
-            if page_number then
-                err_prefix = ("Page %s: "):format(page_number)
-            end
+
+            local page_ref = logging:assert(item.Page, "%s: Missing /Page key", item_desc)
+            local page = logging:assert(page_ref(), "%s: Invalid page reference", item_desc)
+            local page_desc = pages[page] or page_ref
 
             local dir_prefix, name_prefix, code_md5sum, context_md5sum = try(
                 function() return split_extern_path(extern_path) end,
                 function() logging:error("Illicit extern filename '%s'", extern_path) end
             )
 
-            logging:assert(
-                current_prefix,
-                "No /Prefix item was encountered before this record item.",
-                extern_path
-            )
+            logging:assert(current_prefix,
+                "%s: No /Prefix item was encountered before this record item", item_desc)
 
             logging:assert(file.join(dir_prefix, name_prefix) == current_prefix,
-                "Extern filename '%s' does not start with the expected prefix '%s'",
-                extern_path, current_prefix)
-            
+                "%s: Extern filename '%s' does not start with the expected prefix '%s'",
+                item_desc, extern_path, current_prefix)
+
             -- Check whether the c-memo and the cc-memo are accessible.
+            local forced = ''
             for typ, memo_file in pairs({
                     c = name_prefix .. code_md5sum .. ".memo",
                     cc = name_prefix .. code_md5sum .. "-" .. context_md5sum .. ".memo"
@@ -696,17 +685,12 @@ local function main(args)
                     end,
                     function(errmsg)
                         if args.force then
-                            local exit_succ = exit.succ
+                            forced = ' (forced)'
+                        else
                             logging:warn(
-                                "The associated %s-memo '%s' is not accessible, forced extraction",
-                                typ, memo_file, errmsg
-                            )
-                            exit.succ = exit_succ
-                        else      
-                            logging:warn(
-                                "I refuse to extract page %s into extern '%s', \z
+                                "Page %s will not be extracted \z
                                     because the associated %s-memo '%s' is not accessible",
-                                    page_number, extern_path, typ, memo_file
+                                    page_desc, typ, memo_file
                             )
                             return true
                         end
@@ -718,18 +702,19 @@ local function main(args)
 
             local extern_file_out = find_out(extern_path)
             check_out_name(extern_file_out)
-            
+            --check_access_out(extern_file_out)
+
             try(
                 function()
                     local extern = pdfrw.new()
                     extern:insert_page(page)
                     extern:save(extern_file_out)
-                    logging:info("Page %s --> '%s'", page_number, extern_file_out)
+                    logging:info("Page %s --> '%s'%s", page_desc, extern_file_out, forced)
                 end,
-                function(errmsg)
+                function()
                     logging:warn(
-                        "I failed to extract this page into '%s'\t%s",
-                        extern_file_out, errmsg
+                        "Page %s could not be extracted into '%s'",
+                        page_desc, extern_file_out
                     )
                 end
             )
@@ -741,13 +726,13 @@ local function main(args)
                     end,
                     function(errmsg)
                         logging:error(
-                            'I failed to remove this page\t%s',
-                            errmsg
+                            'Pruning failed to remove page %s\t%s',
+                            page_desc, errmsg
                         )
                     end
                 )
             end
-            
+
         end --/NewExtern
         ::next_item::
     end -- end for loop
@@ -766,8 +751,12 @@ local function main(args)
 
 end
 
+local function main(args)
+    extract(parse_args(args))
+end
+
 if debug.getinfo(2) then
-    return { main = main }
+    return { main = main, extract = extract }
 else
     main(arg)
 end
