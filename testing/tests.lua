@@ -54,6 +54,11 @@ require 'busted.runner'()
 local say = require "say"
 
 kpse.set_program_name("luatex")
+require 'lualibs-io'   --extends global io
+require 'lualibs-lpeg' --extends global lpeg, required by lualibs-file
+require 'lualibs-file' --defines global file
+require 'lualibs-dir'  --defines global dir
+
 local utils = require "unittest-utils"
 local me = {}
 package.path = package.path .. ';../?.lua'

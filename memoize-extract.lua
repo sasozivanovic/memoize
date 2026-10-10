@@ -23,14 +23,14 @@ local VERSION = '2026/XX/YY v1.5.0'
 
 -- luacheck: std lua53+texlua+lualibs
 
---Search for the libraries within the tex tree (see LuaTeX manual 10.7.1).
-kpse.set_program_name("luatex")
---todo: if program name is not yet set
-
-require 'lualibs-io'   --extends global io
-require 'lualibs-lpeg' --extends global lpeg, required by lualibs-file
-require 'lualibs-file' --defines global file
-require 'lualibs-dir'  --defines global dir
+if not debug.getinfo(2) then --executed as a script
+    --Search for the libraries within the tex tree (see LuaTeX manual 10.7.1).
+    kpse.set_program_name("luatex")
+    require 'lualibs-io'   --extends global io
+    require 'lualibs-lpeg' --extends global lpeg, required by lualibs-file
+    require 'lualibs-file' --defines global file
+    require 'lualibs-dir'  --defines global dir
+end
 
 -- Load "our own" PDF writer.
 local pdfrw = require 'luapdfrw'
@@ -712,9 +712,9 @@ local function main(args)
     extract(parse_args(args))
 end
 
-if debug.getinfo(2) then
+if debug.getinfo(2) then --required as a module
     return { main = main, extract = extract }
-else
+else --executed as a script
     main(arg)
 end
 
