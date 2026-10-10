@@ -60,20 +60,29 @@ require 'lualibs-file' --defines global file
 require 'lualibs-dir'  --defines global dir
 
 local utils = require "unittest-utils"
-local me = {}
 package.path = package.path .. ';../?.lua'
-me_module = utils.require("memoize-extract", me, 17)
-utils.getupvalues(me.find_in, me)
+
+local real_os_type = os.type
+local on_windows = os.type == 'windows'
+os.type = 'unix'
+local unixme = {}
+local unixme_module = utils.require("memoize-extract", unixme, 17)
+package.loaded["memoize-extract"] = nil
+os.type = 'windows'
+local winme = {}
+local winme_module = utils.require("memoize-extract", winme, 17)
+os.type = real_os_type
+local me = on_windows and winme or unixme
+local me_module = on_windows and winme_module or unixme_module
+
+local cwd = lfs.currentdir
+local function uw(value,win_value)
+  return on_windows and win_value or value
+end
 
 me.exit.error = function() error("exited with error") end
 me.exit.warn  = function() error("exited with warn") end
 me.exit.succ  = function() error("exited with succ") end
-
-local cwd = lfs.currentdir
-local on_windows = os.type == 'windows'
-local function uw(value,win_value)
-  return on_windows and win_value or value
-end
 
 local function setenv(openout_any, TEXMFOUTPUT, TEXMF_OUTPUT_DIRECTORY)
   process.setenv("openout_any", openout_any)
@@ -216,6 +225,14 @@ describe("unittests", function()
             assert.are.equal(code_md5sum, "1234567890abcdef1234567890abcdef")
             assert.are.equal(context_md5sum, "1234567890abcdef1234567890abcdef")
         end)
+        it("should parse a valid path with no name_prefix", function()
+            local path = "/dir/prefix/1234567890abcdef1234567890abcdef-1234567890abcdef1234567890abcdef-42.pdf"
+            local dir_prefix, name_prefix, code_md5sum, context_md5sum = me.split_extern_path(path)
+            assert.are.equal(dir_prefix, "/dir/prefix/")
+            assert.are.equal(name_prefix, "")
+            assert.are.equal(code_md5sum, "1234567890abcdef1234567890abcdef")
+            assert.are.equal(context_md5sum, "1234567890abcdef1234567890abcdef")
+        end)
         -- Test invalid paths
         it("should fail for invalid paths", function()
             local path = "/dir/prefix/file1234567890abcdef1234567890abcdef-1234567890abcdef1234567890abcdef-invalid.pdf"
@@ -256,36 +273,88 @@ describe("unittests", function()
     
     describe("pathlib", function()
        
-        describe("parent", function()
-            it("should return the parent", function()
-                assert.are.equal(
-                  me.pathlib.parent('/tmp/subdir/foo.memo.dir'),
-                  '/tmp/subdir'
-                )
+        describe("split", function()
+
+            local function unixsplit(fn, expected)
+              local res = table.pack(unixme.pathlib.split(fn))
+              res.n = nil
+              assert.same(expected, res)
+            end
+            local function winsplit(fn, expected)
+              local res = table.pack(winme.pathlib.split(fn))
+              res.n = nil
+              assert.same(expected, res)
+            end
+            
+            describe("#unix", function()
+                it("basic", function()
+                    unixsplit('/tmp/subdir/foo.memo.dir',
+                      {'','/tmp/subdir/','foo.memo.dir'})
+                end)
+                it("trailing slash implies an empty filename", function()
+                    unixsplit('/tmp/subdir/foo.memo.dir/',
+                      {'','/tmp/subdir/foo.memo.dir/',''})
+                end)
+                it("trailing slash*es* imply an empty filename", function()
+                    unixsplit('/tmp/subdir/foo.memo.dir//',
+                      {'','/tmp/subdir/foo.memo.dir//',''})
+                end)
+                it("should correctly return the root directory as the dirname", function()
+                    unixsplit('/foo', {'','/','foo'})
+                end)
+                it("should work for relative paths", function()
+                    unixsplit('subdir/foo.memo.dir', {'','subdir/','foo.memo.dir'})
+                end)
+                it("no dir part of the path --> empty dirname", function()
+                    unixsplit('foo', {'','','foo'})
+                end)
+                it("empty path --> all parts empty", function()
+                    unixsplit('',{'','',''})
+                end)
+                it("parent converts empty dirname into .", function()
+                    assert.equal('.', unixme.pathlib.parent('foo'))
+                end)
+                it("empty path --> parent is .", function()
+                    assert.equal('.', unixme.pathlib.parent(''))
+                end)
+                it("parent strips trailing /", function()
+                    assert.equal('/foo', unixme.pathlib.parent('/foo/bar'))
+                end)                
+                it("parent strips trailing /s", function()
+                    assert.equal('/foo', unixme.pathlib.parent('/foo//bar'))
+                end)                
             end)
-            it("should ignore the trailing slashes", function()
-                assert.are.equal(
-                  me.pathlib.parent('/tmp/subdir/foo.memo.dir//'),
-                  '/tmp/subdir'
-                )
-            end)
-            it("should work for relative paths", function()
-                assert.are.equal(
-                  me.pathlib.parent('subdir/foo.memo.dir'),
-                  'subdir'
-                )
-            end)
-            it("should return the current directory if there is not dir part of the path", function()
-                assert.are.equal(
-                  me.pathlib.parent('foo'),
-                  '.'
-                )
-            end)
-            it("the parent of an empty string is the current directory", function()
-                assert.are.equal(
-                  me.pathlib.parent(''),
-                  '.'
-                )
+            describe("windows", function()
+                it("", function()
+                    winsplit('C:\\foo\\bar', {'C:', '\\foo\\', 'bar'})
+                end)
+                it("", function()
+                    winsplit('C:/foo/bar', {'C:', '/foo/', 'bar'})
+                end)
+                it("", function()
+                    winsplit('C:foo\\bar', {'C:','foo\\','bar'})
+                end)
+                it("", function()
+                    winsplit('C:foo', {'C:','','foo'})
+                end)
+                it("", function()
+                    winsplit('\\foo\\bar', {'','\\foo\\','bar'})
+                end)
+                it("", function()
+                    winsplit('\\foo\\', {'','\\foo\\',''})
+                end)
+                it("", function()
+                    winsplit('\\foo', {'','\\','foo'})
+                end)
+                it("", function()
+                    winsplit('C:\\foo', {'C:','\\','foo'})
+                end)
+                it("", function()
+                    assert.equal('C:.', winme.pathlib.parent('C:foo'))
+                end)
+                it("", function()
+                    assert.equal('C:\\foo', winme.pathlib.parent('C:\\foo\\bar'))
+                end)
             end)
         end)
     end)
@@ -831,7 +900,7 @@ describe('memoize-extract', function()
         
         describe('extraction with memo dir, all engines and formats', function()
             
-            it('pdftex', function() compile_and_extract({
+            it('#this pdftex', function() compile_and_extract({
                     src = 'doc_plain.tex', content_params = { 'memo dir' }, cmd = 'pdftex', prefix = 'doc.memo.dir/',
             }) end)
             it('xetex', function() compile_and_extract({

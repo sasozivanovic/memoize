@@ -70,20 +70,22 @@ function pathlib.is_dir(path)
 end
 
 do
-    local absolute, semi_absolute, root, sep
-    local P, S, R = lpeg.P, lpeg.S, lpeg.R
+    local absolute, semi_absolute, root, sep, drive
+    local P, S, R, C = lpeg.P, lpeg.S, lpeg.R, lpeg.C
     if os.type == 'windows' then
-        local drive = R("az","AZ") * P(":")
+        drive = R("az","AZ") * P(":")
         sep = S("/\\")
         absolute = drive * sep
         semi_absolute = drive * -sep + sep
-        root = false
+        root = P(false)
     else
+        drive = P(false)
         sep = P'/'
         absolute = sep
-        semi_absolute = false
+        semi_absolute = P(false)
         root = sep^1 * -1
     end
+    local nosep = 1 - sep
     function pathlib.is_absolute(path)
         return lpeg.match(absolute, path)
     end
@@ -93,22 +95,30 @@ do
     function pathlib.is_root(path)
         return lpeg.match(root, path)
     end
-    function pathlib.parent(fn)
-        local i = fn:len()
-        while i > 0 and lpeg.match(sep, fn, i) do
+    function pathlib.split(path)
+        local drive_str = lpeg.match(C(drive), path) or ''
+        local start = drive_str:len() + 1
+        --filename is everything behind the last /
+        local i = path:len()
+        while i >= start and lpeg.match(nosep, path, i) do
             i = i - 1
         end
-        local dn = file.dirname(fn:sub(1,i))
-        return dn == '' and '.' or dn
+        local filename = path:sub(i+1)
+        local dirname = path:sub(start,i)
+        return drive_str, dirname, filename
+    end
+    function pathlib.parent(path)
+        local drive_str, dirname = pathlib.split(path)
+        dirname = dirname == '' and '.' or dirname
+        local i = dirname:len()
+        while i > 0 and lpeg.match(sep, dirname, i) do
+            i = i - 1
+        end
+        return drive_str .. dirname:sub(1,i)
     end
 end
 
-
 -- \paragraph{Permission-related functions}
-
-local function io_exists(fn)
-    return (lfs.attributes(fn, "mode"))
-end
 
 -- On Windows, we disallow ``semi-absolute'' paths, i.e.\ paths starting with
 -- the |\| but lacking the drive, or the reverse.
@@ -149,7 +159,7 @@ local wanna_write_pattern = lpeg.P{lpeg.S"wa+" + 1 * lpeg.V(1)}
 local function find_and_open(fn, in_out, mode)
 
     sanitize_filename(fn)
-    
+
     assert(in_out == "in" or in_out == 'out')
     assert(type(mode) == "string")
     local wanna_read = lpeg.match(wanna_read_pattern, mode)
@@ -163,9 +173,9 @@ local function find_and_open(fn, in_out, mode)
             and
             (not wanna_write or kpse.out_name_ok_silent_extended(path))
     end
-    
+
     local path, fh
-    
+
     if pathlib.is_absolute(fn) then
         path = fn
         if check_name(path) then
@@ -205,9 +215,9 @@ local function find_and_open(fn, in_out, mode)
     end
 end
 
-local function find_and_open_in(fn, mode)
-    return find_and_open(fn, 'in', mode)
-end
+--local function find_and_open_in(fn, mode)
+--    return find_and_open(fn, 'in', mode)
+--end
 
 local function find_and_open_out(fn, mode)
     return find_and_open(fn, 'out', mode)
@@ -438,7 +448,9 @@ end
 
 
 
-local md5pat = ("%x"):rep(32)
+local name_code_context_seq_pattern =
+    "^(.-)(" .. ("%x"):rep(32) .. ")%-(" .. ("%x"):rep(32) .. ")(.-).pdf$"
+
 ---@param path string
 ---@return string dir_prefix
 ---@return string name_prefix
@@ -446,11 +458,11 @@ local md5pat = ("%x"):rep(32)
 ---@return string context_md5sum
 ---@return string seq
 local function split_extern_path(path)
-    local dir_prefix, rest = path:match("^(.*/)(.*)$")
-    if not dir_prefix then dir_prefix, rest = '', path end
+    local drive, dir_prefix, rest = pathlib.split(path)
+    dir_prefix = drive .. dir_prefix
     local name_prefix, code_md5sum, context_md5sum, seq
-        = rest:match("^(.-)(" .. md5pat .. ")%-(" .. md5pat .. ")(.-).pdf$")
-    assert(name_prefix and (seq == '' or seq:match("^%-%d+$")))
+        = rest:match(name_code_context_seq_pattern)
+    assert(seq == '' or seq:match("^%-%d+$"))
     return dir_prefix, name_prefix, code_md5sum, context_md5sum, seq
 end
 
@@ -466,7 +478,7 @@ local MMIZ_Record_Types = {
 
 local function parse_args(args)
     local argparse = require 'argparse'
-    local script_name = file.basename(arg[0])    
+    local script_name = file.basename(arg[0])
     local parser = argparse()
         :name(script_name)
         :description "Extract extern pages produced by package Memoize \z
@@ -492,7 +504,7 @@ local function parse_args(args)
             parser:flag "--mkdir -m"
                 :description "create the directory and exit\n\z
                     (the positional argument pdf is interpreted as directory name)"
-                    
+
                     local parsed_args = parser:parse(args)
                     parsed_args.script_name = script_name
                     return parsed_args
@@ -563,7 +575,7 @@ local function extract(args)
                     pdf_path)
         end
     end
-    
+
     --Open the PDF.
     local doc, catalog = try(
         function()
@@ -617,8 +629,7 @@ local function extract(args)
 
         if item.Type == "/Prefix" then
             current_prefix = unquote(item.Filename)
-            local dir_prefix = current_prefix:sub(-1) == '/'
-                and current_prefix or pathlib.parent(current_prefix)
+            local dir_prefix = pathlib.parent(current_prefix)
             mkdir(dir_prefix)
 
         elseif item.Type == "/NewExtern" then
@@ -648,7 +659,7 @@ local function extract(args)
                     c = name_prefix .. code_md5sum .. ".memo",
                     cc = name_prefix .. code_md5sum .. "-" .. context_md5sum .. ".memo"
             }) do
-                if not find_in(file.join(file.dirname(extern_path), memo_file), 'r') then
+                if not find_in(file.join(pathlib.parent(extern_path), memo_file), 'r') then
                     if args.force then
                         forced = ' (forced)'
                     else
