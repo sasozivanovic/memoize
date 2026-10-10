@@ -464,10 +464,9 @@ local MMIZ_Record_Types = {
     ['/UsedCCMemo'] = true,
 }
 
-local script_name = file.basename(arg[0])
-
 local function parse_args(args)
     local argparse = require 'argparse'
+    local script_name = file.basename(arg[0])    
     local parser = argparse()
         :name(script_name)
         :description "Extract extern pages produced by package Memoize \z
@@ -494,7 +493,9 @@ local function parse_args(args)
                 :description "create the directory and exit\n\z
                     (the positional argument pdf is interpreted as directory name)"
                     
-                    return parser:parse(args)
+                    local parsed_args = parser:parse(args)
+                    parsed_args.script_name = script_name
+                    return parsed_args
 end
 
 ---@class extraction_parameters
@@ -522,12 +523,14 @@ local function extract(args)
         end
     end
 
-    -- Once we have the |.pdf| filename, we can open the log.
+    -- Open the log.
     logging.package_name = 'memoize (lua-based extraction)'
     logging.quiet = args.quiet
     logging.format = args.format
     if args.format then
-        table.insert(logging.headers, script_name)
+        if args.script_name then
+            table.insert(logging.headers, args.script_name)
+        end
         local log_fn = file.replacesuffix(args.pdf, "mmz.log")
         logging:info("Logging to '%s'", log_fn)
         local log_path = logging:open(log_fn)
@@ -697,11 +700,11 @@ local function extract(args)
     logging.indent = ''
     logging.texindent = ''
 
-    logging:info(done_message)
     if args.prune then
         doc:update()
         logging:info("The extracted extern pages were removed from the PDF")
     end
+    logging:info(done_message)
 
     logging:close()
     exit.succ()
