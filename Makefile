@@ -80,6 +80,10 @@ ctan/$(PACKAGE).zip:
 	edtx2dtx -s -c '#' -B '^my \$$PROG' -E '^# Local Variables:' $< \
 		| sed -e '/^% Local Variables:/Q' > $@
 
+%.lua.dtx: %.lua
+	edtx2dtx -s -c '---' -B '^local VERSION' -E '^--- Local Variables:' $< \
+		| sed -e '/^%%% Local Variables:/Q' > $@
+
 doc/memoize-code.pdf: $(codedoc-source) \
                       $(PACKAGES.dtx) $(PACKAGES.ins) $(SCRIPTS:%=%.dtx)
 

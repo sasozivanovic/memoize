@@ -5,7 +5,7 @@
 -- https://ctan.org/pkg/memoize and https://github.com/sasozivanovic/memoize.
 --
 -- Copyright (c) 2025  Lukas ?? (atticus-sullivan @ github.com)
---               2025- Saso Zivanovic <saso.zivanovic@guest.arnes.si>
+--               2026- Saso Zivanovic <saso.zivanovic@guest.arnes.si>
 --
 -- This work may be distributed and/or modified under the conditions of the
 -- LaTeX Project Public License, either version 1.3c of this license or (at
@@ -14,7 +14,7 @@
 -- all distributions of LaTeX version 2008 or later.
 --
 -- This work has the LPPL maintenance status `maintained'.
--- The Current Maintainer of this work is . TODO(all)
+-- The Current Maintainer of this work is Saso Zivanovic.
 --
 -- The files belonging to this work and covered by LPPL are listed in
 -- <texmf>/doc/generic/memoize/FILES.
@@ -23,8 +23,9 @@ local VERSION = '2026/XX/YY v1.5.0'
 
 -- luacheck: std lua53+texlua+lualibs
 
-if not debug.getinfo(2) then --executed as a script
-    --Search for the libraries within the tex tree (see LuaTeX manual 10.7.1).
+--- Initialize kpathsea and load some standard LuaTeX libraries when executed
+--- as a script.
+if not debug.getinfo(2) then
     kpse.set_program_name("luatex")
     require 'lualibs-io'   --extends global io
     require 'lualibs-lpeg' --extends global lpeg, required by lualibs-file
@@ -32,9 +33,14 @@ if not debug.getinfo(2) then --executed as a script
     require 'lualibs-dir'  --defines global dir
 end
 
--- Load "our own" PDF writer.
+--- Load ``our own'' PDF writer.
 local pdfrw = require 'luapdfrw'
 
+--- \paragraph{Utilities}
+
+--- Try to execute function |f|. If it succeeds, return what it returned.  It
+--- if fails, execute function |error_handler|.  The error handler receives the
+--- error message.
 local function try(f, error_handler)
     local function wrapper(success, ...)
         if success then
@@ -48,23 +54,12 @@ local function try(f, error_handler)
     return wrapper(pcall(f))
 end
 
----Remove pairs of quotes from the filename, which might contain a quoted jobname.
-
----@param fn string
----@return string
-local function unquote(fn)
-    if fn:sub(1,4) == '\\057' then --todo: fix pdfrw
-        fn = '/' .. fn:sub(5)
-    end
-    return (fn:gsub("\"(.-)\"", "%1"))
-end
-
--- \paragraph{Additions to lualibs-file and lualibs-dir}
+--- \paragraph{Additions to lualibs-file and lualibs-dir}
+--- are collected in table |pathlib|.
 
 local pathlib = {}
 
----@param path string
----@return boolean
+--- Is the given |path| a directory?
 function pathlib.is_dir(path)
     return lfs.attributes(path, 'mode') == 'directory'
 end
@@ -74,9 +69,14 @@ do
     local P, S, R, C = lpeg.P, lpeg.S, lpeg.R, lpeg.C
     if os.type == 'windows' then
         drive = R("az","AZ") * P(":")
+        --- On Windows, we accept both |/| and |\| as path separators.
         sep = S("/\\")
+        --- On Windows, an absolute path must start with the drive.
         absolute = drive * sep
+        --- A ``semi-absolute'' path is a drive with a relative directory, or
+        --- an absolute directory without a drive.
         semi_absolute = drive * -sep + sep
+        --- There is no concept of an absolute filesystem root on Windows.
         root = P(false)
     else
         drive = P(false)
@@ -95,6 +95,10 @@ do
     function pathlib.is_root(path)
         return lpeg.match(root, path)
     end
+    --- Split the given string |path| into drive (complete with a colon),
+    --- directory name (it will end in a separator) and filename (everything
+    --- behind the final separator).  Joining these parts back (as strings)
+    --- yields the original path.
     function pathlib.split(path)
         local drive_str = lpeg.match(C(drive), path) or ''
         local start = drive_str:len() + 1
@@ -107,6 +111,9 @@ do
         local dirname = path:sub(start,i)
         return drive_str, dirname, filename
     end
+    --- Returns the |drive|+|dirname| part of the split, but with the trailing
+    --- separator(s) removed.  It also replaced an empty |dirname| by a |.|
+    --- (the current directory).
     function pathlib.parent(path)
         local drive_str, dirname = pathlib.split(path)
         dirname = dirname == '' and '.' or dirname
@@ -118,11 +125,16 @@ do
     end
 end
 
--- \paragraph{Permission-related functions}
+--- \paragraph{Permission-related functions}
 
--- On Windows, we disallow ``semi-absolute'' paths, i.e.\ paths starting with
--- the |\| but lacking the drive, or the reverse.
+--- In a discussion with Karl Berry, it was decided to impose some further
+--- restrictions on file and directory names.  On Windows, we disallow
+--- ``semi-absolute'' paths, i.e.\ paths starting with the |\| but lacking the
+--- drive, or the reverse.  On Unix, we disallow the root directory as
+--- |TEXMF_OUTPUT_DIRECTORY| or |TEXMFOUTPUT|.
 
+--- This functions either returns the given |path|, or raises an error it this
+--- path is illicit (semi-absolute).
 local function sanitize_filename(path)
     if path and pathlib.is_semi_absolute(path) then
         error(("\"Semi-absolute\" paths are disallowed: '%s'\t\z
@@ -133,14 +145,9 @@ local function sanitize_filename(path)
     return path
 end
 
--- An output directory should exist, and may not point to the root on Linux
--- (Karl Berry, p.c.). On Windows, it may point to the root of a drive,
--- because we only allow absolute filenames containing the drive, e.g.\
--- |F:\|; see |sanitize_filename|.
-
----@param f function
----@param var string
----@return string?
+--- This function returns either the given directory |d|, or |nil| if the
+--- directory does not fulfill the requirements: it should not be
+--- semi-absolute, it should exist, and it should not be the root.
 local function sanitize_output_dir(d)
     return d
         and sanitize_filename(d)
@@ -152,10 +159,11 @@ end
 local wanna_read_pattern = lpeg.P{lpeg.S"r+" + 1 * lpeg.V(1)}
 local wanna_write_pattern = lpeg.P{lpeg.S"wa+" + 1 * lpeg.V(1)}
 
---If the filename fn is absolute, check whether it is allowed and open it if it
---is.  If fn is relative, first try to open it under TEXMF_OUTPUT_DIRECTORY (if
---it is set) or under the current directory (if TEXMF_OUTPUT_DIRECTORY is not
---set). If this fails, try to open it under TEXMFOUTPUT.
+--- If filename |fn| is absolute, check whether it is allowed and open it if it
+--- is.  If |fn| is relative, first try to open it under
+--- |TEXMF_OUTPUT_DIRECTORY| (if it is set) or under the current directory (if
+--- |TEXMF_OUTPUT_DIRECTORY| is not set). If this fails, try to open it under
+--- |TEXMFOUTPUT|.
 local function find_and_open(fn, in_out, mode)
 
     sanitize_filename(fn)
@@ -223,13 +231,13 @@ local function find_and_open_out(fn, mode)
     return find_and_open(fn, 'out', mode)
 end
 
---This function finds the location for an input file, respecting
---|TEXMF_OUTPUT_DIRECTORY| and |TEXMFOUTPUT|, and the permissions in the
---filesystem.  It returns an absolute file as-is.  For a relative file, it
---tries |TEXMF_OUTPUT_DIRECTORY| (if defined), the current directory
---(always), and |TEXMFOUTPUT| directory (if defined), in this order.  The
---first readable file found is returned; if no readable file is found, the
---file in the current directory is returned.
+--- This function finds the location for an input file, respecting
+--- |TEXMF_OUTPUT_DIRECTORY| and |TEXMFOUTPUT|, and the permissions in the
+--- filesystem.  It returns an absolute file as-is.  For a relative file, it
+--- tries |TEXMF_OUTPUT_DIRECTORY| (if defined), the current directory
+--- (always), and |TEXMFOUTPUT| directory (if defined), in this order.  The
+--- first readable file found is returned; if no readable file is found, the
+--- file in the current directory is returned.
 
 local function find_in(fn, mode)
     local fh, path = find_and_open(fn, 'in', mode)
@@ -239,14 +247,14 @@ local function find_in(fn, mode)
     end
 end
 
---This function finds the location for an output file, respecting
---|TEXMF_OUTPUT_DIRECTORY| and |TEXMFOUTPUT|, and the permissions in the
---filesystem.  It returns an absolute file as-is.  For a relative file, it
---tries |TEXMF_OUTPUT_DIRECTORY| (if defined), the current directory
---(unless |TEXMF_OUTPUT_DIRECTORY| is defined), and |TEXMFOUTPUT| directory
---(if defined), in this order.  The first writable file found is returned;
---if no writable file is found, the file in either the current or the
---output directory is returned.
+--- This function finds the location for an output file, respecting
+--- |TEXMF_OUTPUT_DIRECTORY| and |TEXMFOUTPUT|, and the permissions in the
+--- filesystem.  It returns an absolute file as-is.  For a relative file, it
+--- tries |TEXMF_OUTPUT_DIRECTORY| (if defined), the current directory (unless
+--- |TEXMF_OUTPUT_DIRECTORY| is defined), and |TEXMFOUTPUT| directory (if
+--- defined), in this order.  The first writable file found is returned; if no
+--- writable file is found, the file in either the current or the output
+--- directory is returned.
 
 local function find_out(fn, mode)
     local fh, path = find_and_open(fn, 'out', mode)
@@ -256,9 +264,8 @@ local function find_out(fn, mode)
     end
 end
 
---A paranoid |dir.makedirs|.
+--- A paranoid |dir.makedirs|.
 
----@param folder string
 local function mkdir(folder)
     if folder == '.' then
         return true
@@ -268,7 +275,7 @@ local function mkdir(folder)
     local path = texmf_output_directory
         and file.join(texmf_output_directory, folder)
         or folder
-    if lfs.attributes(path, "mode") == 'directory' then
+    if pathlib.is_dir(path) then
         return true
     end
     local _path, success
@@ -280,7 +287,7 @@ local function mkdir(folder)
             kpse.var_value("TEXMFOUTPUT"))
         if texmfoutput then
             path = file.join(texmfoutput, folder)
-            if lfs.attributes(path, "mode") == 'directory' then
+            if pathlib.is_dir(path) then
                 return true
             end
             if kpse.out_name_ok_silent_extended(path) then
@@ -292,17 +299,12 @@ local function mkdir(folder)
 end
 
 
+--- \paragraph{Messages}
 
-
---\paragraph{Messages}
-
---The messages are written both to the extraction log and the terminal (we
---output to stdout rather than stderr so that messages on the TeX terminal and
---document |.log| appear in chronological order).  Messages are automatically
---adapted to the TeX |--format|.
-
---The format of the messages.  It depends on the given |--format|; the last
---entry is for t the terminal output.
+--- The messages are written both to the extraction log and the terminal (we
+--- output to |stdout| rather than |stderr| so that messages on the TeX
+--- terminal and document |.log| appear in chronological order).  Messages are
+--- automatically adapted to the TeX |--format|.
 
 local exit, logging
 do
@@ -316,7 +318,7 @@ end
 
 logging = {
     file = nil,
-    headers = {},
+    headers = {}, -- todo: back to a simple header.
     footer = '',
     indent = "",
     texindent = "",
@@ -326,6 +328,9 @@ logging = {
 }
 
 do
+
+    --- The format of the messages.  It depends on the given |--format|; the
+    --- last entry (|None|) is for the terminal output.
 
     local ERROR = {
         latex = function(self, short, long) return
@@ -380,14 +385,14 @@ do
         return result
     end
 
-    ---@param fn string
+    --- Open the log, respecting TeX rules for opening output files.
     function logging:open(fn)
         local path
         self.fh, path = find_and_open_out(fn, "w")
         return path
     end
 
-    ---Closes the file after marking the log as complete.
+    --- Closes the file after marking the log as complete.
     function logging:close()
         if self.fh then
             self.fh:write("\\endinput\n")
@@ -396,7 +401,12 @@ do
         end
     end
 
-    ---@param text string
+    --- Outputs the given error message to the log (if it is open) and to the
+    --- terminal (unless |.quiet|), and exits the script with the appropriate
+    --- exit code.  The message is given as a format string followed by
+    --- parameters, to avoid a gazillion |("..."):format(...)|.  The message is
+    --- split into the short and long error message at a tab (|\t|).
+    -- todo: check error codes
     function logging:error(formatstring, ...)
         local text = formatstring:format(...)
         text = text:gsub("\\", "\\string\\")
@@ -408,11 +418,13 @@ do
         if self.fh then
             self.fh:write(ERROR[self.format](self, short, long), "\n")
         end
-        --Exit immediately.
         exit.error()
     end
 
-    ---@param text string
+    --- Outputs the given warning message to the log (if it is open) and to the
+    --- terminal (unless |.quiet|), and sets the exit code to a warning code
+    --- --- but does not exit immediately.  As for error messages, the message
+    --- is given as a format string followed by parameters.
     function logging:warn(formatstring, ...)
         local text = formatstring:format(...)
         if not self.quiet then
@@ -425,7 +437,9 @@ do
         exit.succ = exit.warn
     end
 
-    ---@param text string
+    --- Outputs the given informational message to the log (if it is open) and
+    --- to the terminal (unless |.quiet|).  As for error messages, the message
+    --- is given as a format string followed by parameters.
     function logging:info(formatstring, ...)
         local text = formatstring:format(...)
         if not self.quiet then
@@ -436,6 +450,8 @@ do
         end
     end
 
+    --- If assertion |v| fails, raise an error through the logging system.  The
+    --- arguments behind |v| are the same as for |logging:error|.
     function logging:assert(v, errmsg_formatstring, ...)
         if v then
             return v
@@ -447,16 +463,23 @@ do
 end
 
 
+--- \paragraph{Extraction}
 
+--- Two utilities first. Function |unquote| removes pairs of quotes from the
+--- filename, which might contain a quoted jobname.
+local function unquote(fn)
+    if fn:sub(1,4) == '\\057' then --todo: fix pdfrw
+        fn = '/' .. fn:sub(5)
+    end
+    return (fn:gsub("\"(.-)\"", "%1"))
+end
+
+--- This function parses an extern path (from /NewExtern) into the directory
+--- prefix, filename prefix, code MD5 sum, context MD5 sum, and the local
+--- sequential number of the extern.
 local name_code_context_seq_pattern =
     "^(.-)(" .. ("%x"):rep(32) .. ")%-(" .. ("%x"):rep(32) .. ")(.-).pdf$"
 
----@param path string
----@return string dir_prefix
----@return string name_prefix
----@return string code_md5sum
----@return string context_md5sum
----@return string seq
 local function split_extern_path(path)
     local drive, dir_prefix, rest = pathlib.split(path)
     dir_prefix = drive .. dir_prefix
@@ -466,6 +489,7 @@ local function split_extern_path(path)
     return dir_prefix, name_prefix, code_md5sum, context_md5sum, seq
 end
 
+--- A list of all PDF object types allowed within |/MMIZ_Record/Kids|.
 local MMIZ_Record_Types = {
     ['/NewExtern'] = true,
     ['/Prefix'] = true,
@@ -476,6 +500,9 @@ local MMIZ_Record_Types = {
     ['/UsedCCMemo'] = true,
 }
 
+--- Parse the arguments given on the command line into a form used by
+--- |extract|.  It uses module |argparse|,
+--- \url{https://github.com/mpeterv/argparse}.
 local function parse_args(args)
     local argparse = require 'argparse'
     local script_name = file.basename(arg[0])
@@ -504,25 +531,16 @@ local function parse_args(args)
             parser:flag "--mkdir -m"
                 :description "create the directory and exit\n\z
                     (the positional argument pdf is interpreted as directory name)"
-
-                    local parsed_args = parser:parse(args)
-                    parsed_args.script_name = script_name
-                    return parsed_args
+    local parsed_args = parser:parse(args)
+    parsed_args.script_name = script_name
+    return parsed_args
 end
 
----@class extraction_parameters
----@field quiet boolean?
----@field prune boolean?
----@field format 'latex'|'plain'|'context'?
----@field force boolean?
----@field mkdir boolean?
----@field pdf string
-
----@param args extraction_parameters
+--- This function performs the actual extraction.  |args| should be a table
+--- with the fields as produced by |parse_args|.
 local function extract(args)
-    -- \paragraph{Initialization}
-
-    -- With |--mkdir|, argument |pdf| is interpreted as the directory to create.
+    --- With |--mkdir|, argument |pdf| is interpreted as the directory to
+    --- create.
     if args.mkdir then
         local success, path = mkdir(args.pdf)
         if success then
@@ -535,7 +553,7 @@ local function extract(args)
         end
     end
 
-    -- Open the log.
+    --- Open the log (if |--format| is given).
     logging.package_name = 'memoize (lua-based extraction)'
     logging.quiet = args.quiet
     logging.format = args.format
@@ -551,8 +569,12 @@ local function extract(args)
         end
     end
 
-    --Find the PDF file and check whether (a) we may read from it, and (b) we
-    --may write to it, if --prune was given.
+    --- Find the PDF file.  We only search the \emph{output} directories (thus
+    --- |find_out|) because the file was presumably just produced by TeX under
+    --- the same texmf configuration, but we check whether the file is
+    --- \emph{readable}.  We don't raise an error if we cannot find the file,
+    --- because we don't want to get an error in TeX every time we compile
+    --- without a pre-existing PDF.
     local pdf_path = find_out(args.pdf, 'r')
     if not pdf_path then
         logging:info(
@@ -561,6 +583,11 @@ local function extract(args)
         )
         exit.succ()
     end
+    --- If we are asked to prune the input PDF, we also have to write to it.
+    --- We first ask |kpathsea| whether the file we found conforms to TeX's
+    --- output requirements, and then try to open it in read-write mode.  Note
+    --- that we use |io.open| rather than |find_and_open_out|, because we have
+    --- already found the file.
     if args.prune then
         local fh
         if kpse.out_name_ok_silent_extended(pdf_path) then
@@ -576,7 +603,8 @@ local function extract(args)
         end
     end
 
-    --Open the PDF.
+    --Ask |pdfrw| to open the PDF.  Here, we do complain if anything goes
+    --wrong.
     local doc, catalog = try(
         function()
             local doc = pdfrw.open(pdf_path)
@@ -595,6 +623,8 @@ local function extract(args)
         end
     )
 
+    --- We try to open the |/MMIZ_Record|. Not finding it is ok, because the
+    --- user might have just added Memoize to the document (or similar).
     local mmiz_record = try(
         function()
             return catalog.MMIZ_Record().Kids()
@@ -607,6 +637,12 @@ local function extract(args)
         end
     )
 
+    --- Build a table of pages.  A |/NewExtern| object contains only a
+    --- reference to the page-to-be-extracted, as this suffices for extraction
+    --- and is more robust than a page number (for example, it allows us to
+    --- extract externs even from a pruned document).  However, info messages
+    --- are prettier with page numbers than page references, and we will
+    --- convert the latter into the former using the table constructed below.
     local pages = doc:get_pages()
     for i, page in ipairs(pages) do
         pages[page] = i
@@ -621,12 +657,19 @@ local function extract(args)
 
     for item_n, item in pairs(mmiz_record) do
 
+        --- As a general policy, we complain if anything seems amiss within the
+        --- |/MMIZ_Record|.  For starters, it we find a |/Kids| entry without a
+        --- |/Type| or with an unknown |/Type|, or an entry without a
+        --- |/Filename| key (all allowed record entries need one).
         local item_desc = ('/MMIZ_Record/Kids[%d]'):format(item_n)
         logging:assert(item.Type, "%s: Undefined item type", item_desc)
         logging:assert(MMIZ_Record_Types[item.Type],
             "%s: Unknown record type %s", item_desc, item.Type)
         logging:assert(item.Filename, "%s: Missing /Filename key", item_desc)
 
+        --- We could have simply ignored |/Prefix| entries, but we use them for
+        --- a sanity check: the prefix part of a |/Filename| of a |/NewExtern|
+        --- must match the |/Filename| of the final preceding |/Prefix|.
         if item.Type == "/Prefix" then
             current_prefix = unquote(item.Filename)
             local dir_prefix = pathlib.parent(current_prefix)
@@ -635,25 +678,38 @@ local function extract(args)
         elseif item.Type == "/NewExtern" then
             done_message = 'Done'
 
+            --- The given |/Filename| might contain double quotes produced by
+            --- TeX.  We need to remove them.
             local extern_path = unquote(item.Filename)
 
+            --- Having a valid page reference (|/Page|) is a must.
             local page_ref = logging:assert(item.Page, "%s: Missing /Page key", item_desc)
             local page = logging:assert(page_ref(), "%s: Invalid page reference", item_desc)
+            --- If |page| is visible, we'll refer to it by its page number,
+            --- otherwise by the object number.  |page_desc| is only used in
+            --- messages.
             local page_desc = pages[page] or page_ref
 
+            --- Extract the directory prefix, filename prefix, code MD5 sum and
+            --- the context MD5 sum from the extern path given in |/Filename|.
+            --- (We don't need the sequential number.)
             local dir_prefix, name_prefix, code_md5sum, context_md5sum = try(
                 function() return split_extern_path(extern_path) end,
                 function() logging:error("Illicit extern filename '%s'", extern_path) end
             )
 
+            --- Sanity check: does the prefix part of the extern name equal the
+            --- last seen |/Prefix|?
             logging:assert(current_prefix,
                 "%s: No /Prefix item was encountered before this record item", item_desc)
-
             logging:assert(file.join(dir_prefix, name_prefix) == current_prefix,
                 "%s: Extern filename '%s' does not start with the expected prefix '%s'",
                 item_desc, extern_path, current_prefix)
 
-            -- Check whether the c-memo and the cc-memo are accessible.
+            -- Check whether the c-memo and the cc-memo are accessible.  Raise
+            -- a warning and skip extraction if they are not, unless |--force|
+            -- is in effect.  In that case, don't raise the warning, but merely
+            -- note (in the info message) that the extraction was forced.
             local forced = ''
             for typ, memo_file in pairs({
                     c = name_prefix .. code_md5sum .. ".memo",
@@ -673,8 +729,13 @@ local function extract(args)
                 end
             end
 
+            --- Find the output file for the extern, conforming to TeX's output
+            --- requirements.
             local extern_file_out = find_out(extern_path, 'w')
+            -- todo: mkdir
 
+            --- Try to extract the extern.  Produce a warning if we don't
+            --- succeed.
             try(
                 function()
                     local extern = pdfrw.new()
@@ -690,6 +751,9 @@ local function extract(args)
                 end
             )
 
+            --- Remove the extern page from the original PDF if |--prune| was
+            --- given.  This is an in-memory operation, nothing is saved to
+            --- disk until later.
             if args.prune then
                 try(
                     function()
@@ -711,6 +775,11 @@ local function extract(args)
     logging.indent = ''
     logging.texindent = ''
 
+    --- Save the pruned original document.  |:update| merely appends to the
+    --- original file, producing a new version; this is why pruning with this
+    --- script is practically instantaneous.  As a consequence, the extracted
+    --- extern pages remain in the file, but are not visible, as they have been
+    --- removed from the page tree.
     if args.prune then
         doc:update()
         logging:info("The extracted extern pages were removed from the PDF")
@@ -722,6 +791,9 @@ local function extract(args)
 
 end
 
+--- When this file is run as a script, we execute main.  When it is |require|d
+--- as a module, we export functions |main| and |extract|, so that the caller
+--- can provide the arguments in either command-line or parsed form.
 local function main(args)
     extract(parse_args(args))
 end
@@ -732,7 +804,7 @@ else --executed as a script
     main(arg)
 end
 
--- Local Variables:
--- lua-indent-level: 4
--- tab-width: 4
--- End:
+--- Local Variables:
+--- lua-indent-level: 4
+--- tab-width: 4
+--- End:
