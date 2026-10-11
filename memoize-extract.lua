@@ -36,11 +36,11 @@ end
 --- Load ``our own'' PDF writer.
 local pdfrw = require 'luapdfrw'
 
---- \paragraph{Utilities}
+--- \subsubsection{Utilities}
 
---- Try to execute function |f|. If it succeeds, return what it returned.  It
---- if fails, execute function |error_handler|.  The error handler receives the
---- error message.
+--- \function{try} Try to execute function |f|. If it succeeds,
+--- return what it returned.  It if fails, execute function |error_handler|.
+--- The error handler receives the error message.
 local function try(f, error_handler)
     local function wrapper(success, ...)
         if success then
@@ -54,8 +54,8 @@ local function try(f, error_handler)
     return wrapper(pcall(f))
 end
 
---- \paragraph{Additions to lualibs-file and lualibs-dir}
---- are collected in table |pathlib|.
+--- \function{pathlib} This table contains additions to lualibs-file and
+--- lualibs-dir.
 
 local pathlib = {}
 
@@ -125,13 +125,13 @@ do
     end
 end
 
---- \paragraph{Permission-related functions}
+--- \subsubsection{Permission-related functions}
 
---- In a discussion with Karl Berry, it was decided to impose some further
---- restrictions on file and directory names.  On Windows, we disallow
---- ``semi-absolute'' paths, i.e.\ paths starting with the |\| but lacking the
---- drive, or the reverse.  On Unix, we disallow the root directory as
---- |TEXMF_OUTPUT_DIRECTORY| or |TEXMFOUTPUT|.
+--- \function{sanitize_filename} In a discussion with Karl Berry, it was
+--- decided to impose some further restrictions on file and directory names.
+--- On Windows, we disallow ``semi-absolute'' paths, i.e.\ paths starting with
+--- the |\| but lacking the drive, or the reverse.  On Unix, we disallow the
+--- root directory as |TEXMF_OUTPUT_DIRECTORY| or |TEXMFOUTPUT|.
 
 --- This functions either returns the given |path|, or raises an error it this
 --- path is illicit (semi-absolute).
@@ -145,9 +145,10 @@ local function sanitize_filename(path)
     return path
 end
 
---- This function returns either the given directory |d|, or |nil| if the
---- directory does not fulfill the requirements: it should not be
---- semi-absolute, it should exist, and it should not be the root.
+--- \function{sanitize_output_dir} This function returns either the given
+--- directory |d|, or |nil| if the directory does not fulfill the requirements:
+--- it should not be semi-absolute, it should exist, and it should not be the
+--- root.
 local function sanitize_output_dir(d)
     return d
         and sanitize_filename(d)
@@ -156,150 +157,198 @@ local function sanitize_output_dir(d)
         and d or nil
 end
 
-local wanna_read_pattern = lpeg.P{lpeg.S"r+" + 1 * lpeg.V(1)}
-local wanna_write_pattern = lpeg.P{lpeg.S"wa+" + 1 * lpeg.V(1)}
+--- \function{iter_candidates} is a utility function used by |find_and_open|
+--- and |mkdir|. Given filename |fn|, this function attempts to find a |path|
+--- where |fn| can be found or created while respecting TeX's input/output
+--- restrictions.  More precisely, it returns an iterator which produces all
+--- appropriate candidates.  (Note that the iterator does not check e.g.\
+--- whether files are accessible.  It merely produces the appropriate
+--- candidates, as described below, and performs |kpathsea|'s |in/out_name_ok|
+--- checks as well as additional |sanitize_| checks defined in this script.)
+---
+--- The function consideres the following candidates:
+--- 
+--- \begin{itemize}
+--- 
+--- \item If |fn| is absolute, it is the only candidate.
+--- 
+--- \item If |fn| is relative and |search_mode=in|, the function produces
+--- candidates under |TEXMF_OUTPUT_DIRECTORY| (if defined), the current
+--- directory (always), and |TEXMFOUTPUT| directory (if defined), in this
+--- order.
+---
+--- \item If |fn| is relative and |search_mode=out|, the function produces
+--- candidates under |TEXMF_OUTPUT_DIRECTORY| (if defined), the current
+--- directory (unless |TEXMF_OUTPUT_DIRECTORY| is defined), and |TEXMFOUTPUT|
+--- directory (if defined), in this order.
+---
+--- \end{itemize}
+---
+--- While |search_mode| determines which candidates are considered, boolean
+--- |check_in| and |check_out| determine whether to check a considered
+--- candidate using |in_name_ok| or |out_name_ok| (or both).  Normally (when
+--- given as |nil|), |check_in| and |check_out| are determined by
+--- |search_mode|: if |search_mode=in|, |check_in=true| and |check_out=false|,
+--- and if |search_mode=out|, |check_in=false| and |check_out=true|.  However,
+--- we allow certain mismatches, because in the script (assuming it is called
+--- without |--prune|), we want to search for the input PDF only in output
+--- directories (as it was just created by TeX, presumably under the same
+--- settings) but we only want to open it for reading.  |check_in| and
+--- |check_out| may therefore be given explicitly. Combination of
+--- |search_mode=in| and |check_out=true| is disallowed, as it might result in
+--- writing to a file in the current directory even when
+--- |TEXMF_OUTPUT_DIRECTORY| is set.
+--- 
+--- Note that |check_mode=in| is vacuous since TeX Live 2026, see |texmf.cnf|
+--- and \url{https://tug.org/pipermail/tex-live/2025-December/051965.html}, but
+--- we retain it for backwards compatibility.
 
---- If filename |fn| is absolute, check whether it is allowed and open it if it
---- is.  If |fn| is relative, first try to open it under
---- |TEXMF_OUTPUT_DIRECTORY| (if it is set) or under the current directory (if
---- |TEXMF_OUTPUT_DIRECTORY| is not set). If this fails, try to open it under
---- |TEXMFOUTPUT|.
-local function find_and_open(fn, in_out, mode)
-
-    sanitize_filename(fn)
-
-    assert(in_out == "in" or in_out == 'out')
-    assert(type(mode) == "string")
-    local wanna_read = lpeg.match(wanna_read_pattern, mode)
-    local wanna_write = lpeg.match(wanna_write_pattern, mode)
-    assert(wanna_read or wanna_write)
-    assert(not (wanna_write and in_out == 'in'))
-
+local function iter_candidates(fn, search_mode, check_in, check_out)
+    assert(type(fn) == 'string')
+    assert(search_mode == 'in' or search_mode == 'out')
+    check_in = check_in == nil and search_mode == 'in' or check_in
+    check_out = check_out == nil and search_mode == 'out' or check_out
+    assert(not (search_mode == 'in' and check_out))
     local function check_name(path)
-        return
-            (not wanna_read or kpse.in_name_ok_silent_extended(path))
-            and
-            (not wanna_write or kpse.out_name_ok_silent_extended(path))
+        sanitize_filename(path)
+        return (not check_in or kpse.in_name_ok_silent_extended(path))
+            and (not check_out or kpse.out_name_ok_silent_extended(path))
     end
-
-    local path, fh
-
+    local n = 1
     if pathlib.is_absolute(fn) then
-        path = fn
-        if check_name(path) then
-            fh = io.open(path, mode)
+        return function()
+            if n == 1 then
+                n = 0
+                if check_name(fn) then
+                    return fn
+                end
+            end
         end
     else
-        --try TEXMF_OUTPUT_DIRECTORY
-        local texmf_output_directory = sanitize_output_dir(
-            kpse.var_value("TEXMF_OUTPUT_DIRECTORY"))
-        if texmf_output_directory then
-            path = file.join(texmf_output_directory, fn)
-            if check_name(path) then
-                fh = io.open(path, mode)
+        return function()
+            if n == 1 then --try TEXMF_OUTPUT_DIRECTORY
+                local texmf_output_directory = sanitize_output_dir(
+                    kpse.var_value("TEXMF_OUTPUT_DIRECTORY"))
+                if texmf_output_directory then
+                    local path = file.join(texmf_output_directory, fn)
+                    if check_name(path) then
+                        n = search_mode == "in" and 2 or 3
+                        return path
+                    end
+                else
+                    n = 2
+                end
             end
-        end
-        --try the current directory
-        if not fh and (in_out == 'in' or not texmf_output_directory) then
-            path = fn
-            if check_name(path) then
-                fh = io.open(path, mode)
+            if n == 2 then --try the current directory
+                n = 3
+                if check_name(fn) then
+                    return fn
+                end
             end
-        end
-        --try TEXMFOUTPUT
-        if not fh then
-            local texmfoutput = sanitize_output_dir(
-                kpse.var_value("TEXMFOUTPUT"))
-            if texmfoutput then
-                path = file.join(texmfoutput, fn)
-                if check_name(path) then
-                    fh = io.open(path, mode)
+            if n == 3 then --try TEXMFOUTPUT
+                n = 0
+                local texmfoutput = sanitize_output_dir(
+                    kpse.var_value("TEXMFOUTPUT"))
+                if texmfoutput then
+                    path = file.join(texmfoutput, fn)
+                    if check_name(path) then
+                        return path
+                    end
                 end
             end
         end
     end
-    if fh then
-        return fh, path
+end
+
+--- \function{find_and_open} This function iterates through the candidates for
+--- the |path| of filename |fn|, and attempts to open the file at each |path|
+--- until successful.  Upon success, the function returns both the file handle
+--- |fh| and the |path| where the file was opened; if the path cannot be found,
+--- |nil| is returned.
+---
+--- The meaning of |search_mode| (|in| or |out|) is as for |iter_candidates|
+--- above.  |open_mode| is the |io.open| mode used when attempting to open the
+--- file, e.g.\ |r| or |w| (it must be given explicitly).  If a candidate can't
+--- be opened, the next one is tried.
+---
+--- |open_mode| also determines |iter_candidates|'s |check_in/out|, so certain
+--- combinations of |search_mode| and |open_mode| are disallowed: one may not
+--- open the file for writing if searching for it in the input directories.
+
+local wanna_read_pattern = lpeg.P{lpeg.S"r+" + 1 * lpeg.V(1)}
+local wanna_write_pattern = lpeg.P{lpeg.S"wa+" + 1 * lpeg.V(1)}
+
+local function find_and_open(fn, search_mode, open_mode)
+    assert(search_mode == "in" or search_mode == 'out')
+    assert(type(open_mode) == "string")
+    --- Convert |nil| to |false|, because for |check_in/out| of
+    --- |iter_candidates|, |nil| is interpreted as the |search_mode|-dependent
+    --- default.
+    local wanna_read = lpeg.match(wanna_read_pattern, open_mode) or false
+    local wanna_write = lpeg.match(wanna_write_pattern, open_mode) or false
+    assert(wanna_read or wanna_write)
+
+    for path in iter_candidates(fn, search_mode, wanna_read, wanna_write) do
+        local fh = io.open(path, open_mode)
+        if fh then
+            return fh, path
+        end
     end
 end
 
---local function find_and_open_in(fn, mode)
---    return find_and_open(fn, 'in', mode)
---end
+--- \function{find_in/out} search the directories as described in
+--- |iter_candidates| to locate (but in contrast to |find_and_open|, not open)
+--- a path to filename |fn| respecting TeX's input/output requirements.  They
+--- return the path to the file if successful and |nil| otherwise.
+---
+--- Warning: as these function test (via |find_and_open|) whether the file can
+--- be opened in the given |open_mode| by actually opening it (though the file
+--- is then immediately closed), |find_out| may create a new (empty) file in
+--- the filesystem (this will happen in modes |w|, |w+|, |a| and |a+|), or even
+--- worse, destroy the file contents of an existing file (in modes |w| and
+--- |w+|).  Only use these functions if you actually intend to open (and write
+--- to) the returned path!
 
-local function find_and_open_out(fn, mode)
-    return find_and_open(fn, 'out', mode)
-end
-
---- This function finds the location for an input file, respecting
---- |TEXMF_OUTPUT_DIRECTORY| and |TEXMFOUTPUT|, and the permissions in the
---- filesystem.  It returns an absolute file as-is.  For a relative file, it
---- tries |TEXMF_OUTPUT_DIRECTORY| (if defined), the current directory
---- (always), and |TEXMFOUTPUT| directory (if defined), in this order.  The
---- first readable file found is returned; if no readable file is found, the
---- file in the current directory is returned.
-
-local function find_in(fn, mode)
-    local fh, path = find_and_open(fn, 'in', mode)
+local function find_in(fn, open_mode)
+    local fh, path = find_and_open(fn, 'in', open_mode)
     if fh then
         fh:close()
         return path
     end
 end
 
---- This function finds the location for an output file, respecting
---- |TEXMF_OUTPUT_DIRECTORY| and |TEXMFOUTPUT|, and the permissions in the
---- filesystem.  It returns an absolute file as-is.  For a relative file, it
---- tries |TEXMF_OUTPUT_DIRECTORY| (if defined), the current directory (unless
---- |TEXMF_OUTPUT_DIRECTORY| is defined), and |TEXMFOUTPUT| directory (if
---- defined), in this order.  The first writable file found is returned; if no
---- writable file is found, the file in either the current or the output
---- directory is returned.
-
-local function find_out(fn, mode)
-    local fh, path = find_and_open(fn, 'out', mode)
+local function find_out(fn, open_mode)
+    local fh, path = find_and_open(fn, 'out', open_mode)
     if fh then
         fh:close()
         return path
     end
 end
 
---- A paranoid |dir.makedirs|.
+--- \function{mkdir} A variant of |dir.makedirs| which conforms to TeX's output
+--- requirements.  Argument |folder| is transformed into an output |path| in
+--- accord to TeX's output rules.  The function returns |(true, path)| if it
+--- successfully created the directory, |true| if the directory already
+--- existed, and |nil| if it cannot be created.
 
 local function mkdir(folder)
     if folder == '.' then
         return true
     end
-    local texmf_output_directory = sanitize_output_dir(
-        kpse.var_value("TEXMF_OUTPUT_DIRECTORY"))
-    local path = texmf_output_directory
-        and file.join(texmf_output_directory, folder)
-        or folder
-    if pathlib.is_dir(path) then
-        return true
-    end
-    local _path, success
-    if kpse.out_name_ok_silent_extended(path) then
-        _path, success = dir.makedirs(path)
-    end
-    if not success then
-        local texmfoutput = sanitize_output_dir(
-            kpse.var_value("TEXMFOUTPUT"))
-        if texmfoutput then
-            path = file.join(texmfoutput, folder)
-            if pathlib.is_dir(path) then
-                return true
-            end
-            if kpse.out_name_ok_silent_extended(path) then
-                _path, success = dir.makedirs(path)
+    for path in iter_candidates(folder, "out") do
+        if pathlib.is_dir(path) then
+            return true
+        else
+            local _path, success = dir.makedirs(path)
+            if success then
+                return success, path
             end
         end
     end
-    return success, path
 end
 
 
---- \paragraph{Messages}
+--- \subsubsection{Messages}
 
 --- The messages are written both to the extraction log and the terminal (we
 --- output to |stdout| rather than |stderr| so that messages on the TeX
@@ -385,14 +434,16 @@ do
         return result
     end
 
-    --- Open the log, respecting TeX rules for opening output files.
+    --- \function{logging:open} Open the log, respecting TeX rules for opening
+    --- output files.
     function logging:open(fn)
         local path
-        self.fh, path = find_and_open_out(fn, "w")
+        self.fh, path = find_and_open(fn, "out", "w")
         return path
     end
 
-    --- Closes the file after marking the log as complete.
+    --- \function{logging:close} Closes the file after marking the log as
+    --- complete.
     function logging:close()
         if self.fh then
             self.fh:write("\\endinput\n")
@@ -401,11 +452,12 @@ do
         end
     end
 
-    --- Outputs the given error message to the log (if it is open) and to the
-    --- terminal (unless |.quiet|), and exits the script with the appropriate
-    --- exit code.  The message is given as a format string followed by
-    --- parameters, to avoid a gazillion |("..."):format(...)|.  The message is
-    --- split into the short and long error message at a tab (|\t|).
+    --- \function{logging:error} Outputs the given error message to the log (if
+    --- it is open) and to the terminal (unless |.quiet|), and exits the script
+    --- with the appropriate exit code.  The message is given as a format
+    --- string followed by parameters, to avoid a gazillion
+    --- |("..."):format(...)|.  The message is split into the short and long
+    --- error message at a tab (|\t|).
     -- todo: check error codes
     function logging:error(formatstring, ...)
         local text = formatstring:format(...)
@@ -421,10 +473,11 @@ do
         exit.error()
     end
 
-    --- Outputs the given warning message to the log (if it is open) and to the
-    --- terminal (unless |.quiet|), and sets the exit code to a warning code
-    --- --- but does not exit immediately.  As for error messages, the message
-    --- is given as a format string followed by parameters.
+    --- \function{logging:warn} Outputs the given warning message to the log
+    --- (if it is open) and to the terminal (unless |.quiet|), and sets the
+    --- exit code to a warning code --- but does not exit immediately.  As for
+    --- error messages, the message is given as a format string followed by
+    --- parameters.
     function logging:warn(formatstring, ...)
         local text = formatstring:format(...)
         if not self.quiet then
@@ -437,9 +490,10 @@ do
         exit.succ = exit.warn
     end
 
-    --- Outputs the given informational message to the log (if it is open) and
-    --- to the terminal (unless |.quiet|).  As for error messages, the message
-    --- is given as a format string followed by parameters.
+    --- \function{logging:info} Outputs the given informational message to the
+    --- log (if it is open) and to the terminal (unless |.quiet|).  As for
+    --- error messages, the message is given as a format string followed by
+    --- parameters.
     function logging:info(formatstring, ...)
         local text = formatstring:format(...)
         if not self.quiet then
@@ -450,8 +504,9 @@ do
         end
     end
 
-    --- If assertion |v| fails, raise an error through the logging system.  The
-    --- arguments behind |v| are the same as for |logging:error|.
+    --- \function{logging:assert} If assertion |v| fails, raise an error
+    --- through the logging system.  The arguments behind |v| are the same as
+    --- for |logging:error|.
     function logging:assert(v, errmsg_formatstring, ...)
         if v then
             return v
@@ -463,9 +518,9 @@ do
 end
 
 
---- \paragraph{Extraction}
+--- \subsubsection{Extraction}
 
---- Two utilities first. Function |unquote| removes pairs of quotes from the
+--- \function{unquote} This utility function removes pairs of quotes from the
 --- filename, which might contain a quoted jobname.
 local function unquote(fn)
     if fn:sub(1,4) == '\\057' then --todo: fix pdfrw
@@ -474,9 +529,9 @@ local function unquote(fn)
     return (fn:gsub("\"(.-)\"", "%1"))
 end
 
---- This function parses an extern path (from /NewExtern) into the directory
---- prefix, filename prefix, code MD5 sum, context MD5 sum, and the local
---- sequential number of the extern.
+--- \function{split_extern_path} This utility function parses an extern path
+--- (from /NewExtern) into the directory prefix, filename prefix, code MD5 sum,
+--- context MD5 sum, and the local sequential number of the extern.
 local name_code_context_seq_pattern =
     "^(.-)(" .. ("%x"):rep(32) .. ")%-(" .. ("%x"):rep(32) .. ")(.-).pdf$"
 
@@ -489,7 +544,8 @@ local function split_extern_path(path)
     return dir_prefix, name_prefix, code_md5sum, context_md5sum, seq
 end
 
---- A list of all PDF object types allowed within |/MMIZ_Record/Kids|.
+--- \function{MMIZ_Record_Types} A list of all PDF object types allowed within
+--- |/MMIZ_Record/Kids|.
 local MMIZ_Record_Types = {
     ['/NewExtern'] = true,
     ['/Prefix'] = true,
@@ -500,10 +556,10 @@ local MMIZ_Record_Types = {
     ['/UsedCCMemo'] = true,
 }
 
---- Parse the arguments given on the command line into a form used by
---- |extract|.  It uses module |argparse|,
---- \url{https://github.com/mpeterv/argparse}.
-local function parse_args(args)
+--- \function{parse_args} This function parses a command-line-like argument
+--- table (such as the global |arg|) into a form used by function |extract|.
+--- It uses module |argparse|, \url{https://github.com/mpeterv/argparse}.
+local function parse_args(cmdline_args)
     local argparse = require 'argparse'
     local script_name = file.basename(arg[0])
     local parser = argparse()
@@ -531,13 +587,13 @@ local function parse_args(args)
             parser:flag "--mkdir -m"
                 :description "create the directory and exit\n\z
                     (the positional argument pdf is interpreted as directory name)"
-    local parsed_args = parser:parse(args)
+    local parsed_args = parser:parse(cmdline_args)
     parsed_args.script_name = script_name
     return parsed_args
 end
 
---- This function performs the actual extraction.  |args| should be a table
---- with the fields as produced by |parse_args|.
+--- \function{extract} This function performs the actual extraction.  |args|
+--- should be a table with the fields as produced by |parse_args|.
 local function extract(args)
     --- With |--mkdir|, argument |pdf| is interpreted as the directory to
     --- create.
@@ -586,12 +642,12 @@ local function extract(args)
     --- If we are asked to prune the input PDF, we also have to write to it.
     --- We first ask |kpathsea| whether the file we found conforms to TeX's
     --- output requirements, and then try to open it in read-write mode.  Note
-    --- that we use |io.open| rather than |find_and_open_out|, because we have
+    --- that we use |io.open| rather than |find_and_open|, because we have
     --- already found the file.
     if args.prune then
         local fh
         if kpse.out_name_ok_silent_extended(pdf_path) then
-            fh = io.open(pdf_path, 'r+')
+            fh = io.open(pdf_path, 'a+') -- todo: explain "a"
         end
         if fh then
             fh:close()
@@ -732,6 +788,7 @@ local function extract(args)
             --- Find the output file for the extern, conforming to TeX's output
             --- requirements.
             local extern_file_out = find_out(extern_path, 'w')
+            -- todo: if nil
             -- todo: mkdir
 
             --- Try to extract the extern.  Produce a warning if we don't
@@ -791,9 +848,11 @@ local function extract(args)
 
 end
 
---- When this file is run as a script, we execute main.  When it is |require|d
---- as a module, we export functions |main| and |extract|, so that the caller
---- can provide the arguments in either command-line or parsed form.
+--- \paragraph{Execute, or return the module}
+
+--- When this file is run as a script, we execute function |main|.  When it is
+--- |require|d as a module, we export functions |main| and |extract|, so that
+--- the caller can provide the arguments in either command-line or parsed form.
 local function main(args)
     extract(parse_args(args))
 end
