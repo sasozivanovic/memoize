@@ -77,8 +77,8 @@ push @generated_exts, "listing";
 
 # Which program and extra options to use for memoize-extract and memoize-clean.
 # Note that these are arrays, not simple strings.
-our @memoize_extract = ( 'memoize-extract.py' );
-our @memoize_clean = ( 'memoize-clean.py' );
+our @memoize_extract = ( 'memoize-extract' );
+our @memoize_clean = ( 'memoize-utils', 'clean' );
 
 # Specification of the basic memoize files to delete in a clean-up
 # operation. The generated .memo and .pdf files have more specifications,

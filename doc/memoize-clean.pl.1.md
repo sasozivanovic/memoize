@@ -2,8 +2,8 @@
 title: memoize-clean
 section: 1
 header: User Manual
-footer: memoize-clean of Memoize v1.4.1
-date: December 02, 2024
+footer: memoize-clean.pl of Memoize v1.5.0-rc1
+date: October 11, 2026
 hyphenate: false
 ---
 
@@ -59,4 +59,4 @@ delete and asks for confirmation.
 
 # SEE ALSO
 
-[Memoize manual](https://ctan.org/pkg/memoize), section 6.6.3.
+[Memoize manual](https://ctan.org/pkg/memoize), section 5.5.4.

@@ -19,7 +19,7 @@
 -- The files belonging to this work and covered by LPPL are listed in
 -- <texmf>/doc/generic/memoize/FILES.
 
-local VERSION = '2026/XX/YY v1.5.0'
+local VERSION = '2026/10/11 v1.5.0-rc1'
 
 -- luacheck: std lua53+texlua+lualibs
 

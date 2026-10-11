@@ -2,19 +2,17 @@
 title: memoize-extract
 section: 1
 header: User Manual
-footer: memoize-extract of Memoize v1.4.1
-date: December 02, 2024
+footer: memoize-extract of Memoize v1.5.0-rc1
+date: October 11, 2026
 hyphenate: false
 ---
 
 # NAME
-memoize-extract.pl, memoize-extract.py - Extract extern pages out of the PDF
+memoize-extract - Extract extern pages out of the PDF
 
 
 # SYNOPSIS
-**memoize-extract.pl** [*OPTIONS*] *document.mmz*
-
-**memoize-extract.py** [*OPTIONS*] *document.mmz*
+**memoize-extract** [*OPTIONS*] *document.pdf*
 
 
 # DESCRIPTION
@@ -29,40 +27,28 @@ reused) onto their own pages in the produced PDF file.  It is the job of
 subsequent compilations, Memoize will include those extern files into the
 document, without compiling their source again.
 
-Memoize communicates with **memoize-extract** through file *document.mmz*. When
-*document.tex* is compiled to produce *document.pdf*, Memoize produces
-*document.mmz*, which records which pages in the produced document are extern
-pages and to which extern files they should be extracted. Therefore, after
-compiling *document.tex*, the externs should be extracted by
-**memoize-extract** *document.mmz*.  
+When environment variable *TEXMF_OUTPUT_DIRECTORY* is set, *document.pdf* is
+relative to the output directory specified by this variable; otherwise, this
+filename is relative to the current directory.  If *document.pdf* cannot be
+found *TEXMF_OUTPUT_DIRECTORY* or the current directory, the script tries to
+find it in *TEXMFOUTPUT* directory, if this directory is set in *texmf.cnf* or
+as an environment variable.
 
-*document.mmz* may also be given as document* or *document.tex*.  When
-environment variable *TEXMF_OUTPUT_DIRECTORY* is set, this filename is relative
-to the output directory specified by this variable.
+Memoize communicates with **memoize-extract** through the */MMIZ_Record* entry
+in the PDF catalog, produced with package option *record=pdf*.  This entry
+records which pages in the produced document are extern pages and to which
+extern files they should be extracted.
 
-*document.mmz* also records the expected width and height of each extern. In
-case of a mismatch, **memoize-extract** refuses to extract the page and removes
-the extern file if it already exist, and prints a warning message to the
-standard error.  The script also refuses to extract the page if a (c)c-memo
-associated to the extern does not exist.  See also section SECURITY.
-
-The Perl (.pl) and the Python (.py) version of the script are functionally
-equivalent.  The Perl script requires library
-[PDF::API2](https://metacpan.org/pod/PDF::API2), and the Python script requires
-library [pdfrw2](https://pypi.org/project/pdfrw2).
+At the moment, this script is considered experimental.  If you encounter
+problems, please file a bug report at https://github.com/sasozivanovic/memoize.
+As a workaround, you may use the Perl (memoize-extract.pl) or the Python
+(memoize-extract.py) version of the script, but note that these will eventually
+become deprecated and then removed from the package.
 
 # OPTIONS
 
-**-P, \--pdf** *filename.pdf*
-: The externs will be extracted from *filename.pdf*.  By default,
-  they are extracted from *document.pdf*.
-
 **-p, \--prune**
 : Remove the extern pages from the PDF after extraction.
-
-**-k, \--keep**
-: Do not modify the *document.mmz* to mark the externs as extracted.  By
-  default, they are commented out to prevent double extraction.
 
 **-F, \--format** *latex*|*plain*|*context*
 : When this option is given, the script assumes that it was called from within
@@ -71,13 +57,15 @@ library [pdfrw2](https://pypi.org/project/pdfrw2).
   any extraction-related warnings and errors.
 
 **-f, \--force**
-: Extract the extern even if the size-check fails.
+: Normally, the script refuses to extract an extern page if the c-memo or the
+  cc-memo associated to the extern does not exist.  This option forces the
+  extraction even if the memos do not exist.  See also section SECURITY.
 
 **-q, \--quiet**
 : Don't describe what's happening.
 
 **-m, \--mkdir**
-: A paranoid *mkdir -p*. (No extraction occurs, *document.mmz* is interpreted as a directory name, which may end in any suffix; no suffix mangling is performed.)
+: A paranoid *mkdir -p*. (No extraction occurs, *document.pdf* is interpreted as a directory name, which may end in any suffix; no suffix mangling is performed.)
 
 **-V, \--version**
 : Show the Memoize version number and exit.
@@ -107,26 +95,28 @@ values of these variables by executing `kpsewhich -var-value=openin_any` and
   variable. *TEXMF_OUTPUT_DIRECTORY* may only be set as an environment
   variables; it is automatically set by TeX when called by *-output-directory*
   option (starting in TeXLive 2024).
+  
+Note that as of TeX Live 2026, *openin_any* is obsolete.  The system behaves as
+if it was set to *a*.
 
 # EXIT STATUS
 
 **0**
 : The externs were successfully extracted.  This exit code is returned even if
-  no externs need to be extracted, or if *document.mmz* does not exist.
+  no externs need to be extracted, if *document.pdf* does not exist, or if it
+  contains no */MMIZ_Record*.
   
 **10**
-: A warning also reported back to the compilation when given option
-  **\--format**.  Currently, either: (i) size-mismatch; (ii) a non-existing
-  associated (c)c-memo file; or (iii) unavailable *kpsewhich*.
+: Signals that some extern page(s) could not be extracted. (This is also
+  reported, as a package warning, back to the compilation when given option
+  **\--format**).
 
 **11**
-: An error also reported back to the compilation when given option
-  **\--format**. Currently, either: (i) a corrupted document PDF, or (ii)
-  a kpathsea permission error.
+: Signals that a fatal error has occurred. (This error is also reported back to
+  the compilation when given option **\--format**).
 
-Other exit codes are as produced by the underlying scripting language (Perl of
-Python).
+Other exit codes are as produced by Lua, the underlying scripting language.
 
 # SEE ALSO
 
-[Memoize manual](https://ctan.org/pkg/memoize), section 6.6.1.
+[Memoize manual](https://ctan.org/pkg/memoize), section 5.5.2.

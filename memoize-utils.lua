@@ -1,6 +1,6 @@
 #!/usr/bin/env texlua
 
-local VERSION = '2025/01/17 v1.4.1'
+local VERSION = '2026/10/11 v1.5.0-rc1'
 
 -- luacheck: std lua53+texlua+lualibs
 
@@ -232,3 +232,8 @@ cmd_clean:flag "--quiet -q"
     :description "don't describe what's happening"
 
 parser:parse()
+
+--- Local Variables:
+--- lua-indent-level: 4
+--- tab-width: 4
+--- End:

@@ -73,11 +73,6 @@ define CTAN-END
 	cp ctan/$(PACKAGE).zip ctan/$(PACKAGE)-$(YEAR)-$(MONTH)-$(DAY)-v$(VERSION).zip
 endef
 
-define MAKE-TDS
-	$(TDS-BEGIN)
-	$(TDS-END)
-endef
-
 define TDS-BEGIN
 	rm -rf $(TDS-DIR)
 	$(TDS-MKDIR)
@@ -122,6 +117,16 @@ define TDS-PRUNE
 	rmdir -p --ignore-fail-on-non-empty `find $(TDS-DIR) -type d`
 endef
 
+define LINK_INTO_LOCAL_BIN
+	$(foreach fn,$(BIN),ln -sf $(BIN.$(fn)) $(BIN-DIR)/$(fn)
+)
+endef
+
+define REMOVE_FROM_LOCAL_BIN
+	$(foreach fn,$(BIN),rm -f $(BIN-DIR)/$(fn)
+)
+endef
+
 %.1: %.1.md
 	pandoc $< -s -t man -o $@
 %.2: %.2.md
@@ -157,6 +162,7 @@ link-runtimes:
 	$(TDS-CP)
 	$(TDS-PRUNE)
 	texconfig rehash
+	$(LINK_INTO_LOCAL_BIN)
 
 install-runtimes:
 	$(eval TDS-DIR=$(TEXMFHOME))
@@ -164,6 +170,7 @@ install-runtimes:
 	$(TDS-CP)
 	$(TDS-PRUNE)
 	texconfig rehash
+	$(LINK_INTO_LOCAL_BIN)
 
 uninstall-runtimes:
 	$(eval TDS-DIR=$(TEXMFHOME))
@@ -174,6 +181,7 @@ uninstall-runtimes:
 	$(TDS-CP)
 	$(TDS-PRUNE)
 	texconfig rehash
+	$(REMOVE_FROM_LOCAL_BIN)
 
 
 # $1 = source file, $2 = package name
@@ -188,6 +196,12 @@ VERSION-CONTEXT = $(VERSION)
 DATE-CONTEXT = $(YEAR)-$(MONTH)-$(DAY)
 define EDIT-VERSION-CONTEXT
 	sed -Ei 's!(%D *version=)[-0-9.a-z]*,!\1$(VERSION-CONTEXT),!;s!(%D *date=)[-0-9]*,!\1$(DATE-CONTEXT),!' $(1)
+endef
+
+# $1 = source .lua file, $2 = version
+VERSION-LUA = $(YEAR)/$(MONTH)/$(DAY) v$(VERSION)
+define EDIT-VERSION-LUA
+	sed -i "s!^local VERSION = .*!local VERSION = '$(VERSION-LUA)'!" $(1)
 endef
 
 # $1 = source .pl file, $2 = version

@@ -3,7 +3,7 @@
 For the development history, see [Memoize's GitHub
 repository](https://github.com/sasozivanovic/memoize).
 
-## 2026/??/?? v1.5.0
+## 2026/10/11 v1.5.0
 
 * The major change: implemented a Lua-based extraction script (`extract=lua`). 
   

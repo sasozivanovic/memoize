@@ -1,7 +1,6 @@
 \documentclass[a4paper,11pt]{article}
 \usepackage[margin=2cm,top=1cm,bottom=1cm,nohead,includefoot]{geometry}
 
-% The perl-based extraction chokes on some externs.
 \usepackage[extract=lua]{memoize}
 \usepackage{memoize-doc}
 \mmzset{
@@ -18,7 +17,7 @@
 
 \title{\pkg[white]{Memoize}}
 \ParseProvidesPackage
-\ProvidesPackage{memoize}[2024/12/02 v1.4.1 Fast and flexible externalization]
+\ProvidesPackage{memoize}[2026/10/11 v1.5.0-rc1 Fast and flexible externalization]
 \packageversion{v\packagever\\\csuse{@date}}
 \author{Sašo Živanović\\[2mm]
   \emailsymbol~\url(mailto:){saso.zivanovic@guest.arnes.si}\\
@@ -252,10 +251,10 @@
   \mmzUnmemoizable
   This manual also documents packages Advice
   ({\ParseProvidesPackage
-    \ProvidesPackage{advice}[2024/03/15 v1.1.1 Extend commands and environments]
+    \ProvidesPackage{advice}[2026/10/11 v1.1.2-rc1 Extend commands and environments]
     v\packagever}) and CollArgs
   ({\ParseProvidesPackage
-    \ProvidesPackage{collargs}[2024/03/15 v1.2.0 Collect arguments of any command]
+    \ProvidesPackage{collargs}[2026/10/11 v1.2.1-rc1 Collect arguments of any command]
     v\packagever}).  These are auxiliary
   packages which were developed alongside Memoize, but are distributed as
   independent packages as they might be useful outside the context of Memoize,
@@ -461,7 +460,7 @@ section~\ref{sec:tut:test} to test if the setup was successful.
 
 \begin{tcolorbox}[warning,title=Experimental Lua-based extraction]
   Memoize v1.5.0 ships with an experimental Lua-based extraction script,
-  \refscript{memoize-extract.lua}, which does not require installation of any
+  \refscript{memoize-extract}, which does not require installation of any
   additional software, and is faster than other extraction methods.  The
   Lua-based extraction can be selected using package option
   \code{\refmmz{extract}=\refmmz{extract=lua}}. At the moment, you need to
@@ -470,6 +469,8 @@ section~\ref{sec:tut:test} to test if the setup was successful.
   section~\ref{sec:extraction} for instructions.  In v2.0.0, the Lua-based
   extraction will become the default extraction method.  The other methods will
   be marked as deprecated and will be eventually removed from the package.
+  (This is also why the Lua-based extraction script is called simply
+  \refscript{memoize-extract} rather than |memoize-extract|.)
 \end{tcolorbox}
 
 \paragraph{Installing Perl}
@@ -2051,12 +2052,13 @@ extern extraction.  It ships with three \emph{extraction methods}:
   (loading the entire document PDF) has to be invoked for each extern, and this
   takes time (although the entire process is still much faster than the
   venerable \TikZ externalization library).
-\item[\refmmz{extract=lua}] A Lua script, \refscript{memoize-extract.lua}.
+\item[\refmmz{extract=lua}] A Lua script, \refscript{memoize-extract}.
   This method is the fastest, especially when pruning the document PDF.  It
   also does not require installation of any additional software.  In Memoize
   v2.0.0, this method will become the default extraction method.  The other
   methods will be marked as deprecated and will be eventually removed from the
-  package.
+  package. (This is also why the Lua-based extraction script is called simply
+  \refscript{memoize-extract} rather than |memoize-extract|.)
 \end{description}
 
 Memoize is also flexible in terms of how extern extraction is triggered,
@@ -2098,7 +2100,7 @@ loaded.
     \midrule
              &\refmmz{extract=perl}&\code{\refmmz{extract}=\refmmz{extract=perl}}, or none&\refscript{memoize-extract.pl}\\
     internal &\refmmz{extract=python}&\code{\refmmz{extract}=\refmmz{extract=python}}&\refscript{memoize-extract.py}\\
-             &\refmmz{extract=lua}&\code{\refmmz{extract}=\refmmz{extract=lua}}&\refscript{memoize-extract.lua}\\
+             &\refmmz{extract=lua}&\code{\refmmz{extract}=\refmmz{extract=lua}}&\refscript{memoize-extract}\\
              &\refmmz{extract=tex}&\code{\refmmz{extract}=\refmmz{extract=tex}}&|pdftex|\\
     \midrule
     external &any&(\code{\refmmz{extract}=\refmmz{extract=no}})&any\\
@@ -2131,7 +2133,7 @@ be already set up to allow the execution of Memoize's extraction scripts
 \refscript{memoize-extract.pl} and \refscript{memoize-extract.py}, so
 \code{\refmmz{extract}=\refmmz{extract=perl}} and
 \code{\refmmz{extract}=\refmmz{extract=python}} should work out of the box.
-However, \refscript{memoize-extract.lua}, which is considered experimental at
+However, \refscript{memoize-extract}, which is considered experimental at
 the moment (before Memoize~v2.0.0), cannot be executed by \hologo{TeX} out of
 the box. Here are your options:\footnote{If you want to use the Perl or Python
   extraction script but your \hologo{TeX} installation cannot execute
@@ -2150,7 +2152,7 @@ the box. Here are your options:\footnote{If you want to use the Perl or Python
     on \href{https://tex.stackexchange.com}{\hologo{TeX} StackExchange} will
     tell you how you can ask your editor to do this for you.} or
 \item\label{item:fallback-restricted} set up the restricted shell escape mode
-  to allow for the execution of \refscript{memoize-extract.lua}.
+  to allow for the execution of \refscript{memoize-extract}.
   
   On \TeXLive:
   \begin{enumerate}[1.]
@@ -2161,9 +2163,9 @@ the box. Here are your options:\footnote{If you want to use the Perl or Python
     restricted shell escape mode.
   \item Execute |tlmgr conf texmf shell_escape_commands| to get the
     \meta{current} list of allowed commands.
-  \item To add (e.g.) \refscript{memoize-extract.lua} to the list of allowed
+  \item To add (e.g.) \refscript{memoize-extract} to the list of allowed
     commands, execute \code{tlmgr conf texmf shell\_escape\_commands
-      \meta{current},memoize-extract.lua}.
+      \meta{current},memoize-extract}.
   \end{enumerate}
 
   On \MiKTeX:
@@ -2176,9 +2178,9 @@ the box. Here are your options:\footnote{If you want to use the Perl or Python
   \item Execute \code{initexmf
       --show-config-value=[Core]AllowedShellCommands[]} to get the
     \meta{current} list of allowed commands.
-  \item To add (e.g.) \refscript{memoize-extract.lua} to the list of allowed
+  \item To add (e.g.) \refscript{memoize-extract} to the list of allowed
     commands, execute \code{initexmf
-      --set-config-value=[Core]AllowedShellCommands[]=\meta{current};memoize-extract.lua}
+      --set-config-value=[Core]AllowedShellCommands[]=\meta{current};memoize-extract}
   \end{enumerate}
 \end{enumerate}
 
@@ -2203,7 +2205,7 @@ Memoize,\footnote{The Lua script does not use the \dmmz file. It works directly
   the Perl script)
 \item \refscript{memoize-extract.py} \meta{document name}\dmmz \hfill (for
   the Python script)
-\item \refscript{memoize-extract.lua} \meta{document name}|.pdf| \hfill (for
+\item \refscript{memoize-extract} \meta{document name}|.pdf| \hfill (for
   the Lua script)
 \end{enumerate}
 
@@ -3912,19 +3914,19 @@ When \code{\refmmz{record}=\refmmz{record=pdf}} is in effect (out of the box,
 it is), Memoize records the information needed for the extraction of extern
 pages out of \code{\meta{document name}.pdf} in the PDF itself, specifically,
 in entry \docref{pdfobj:MMIZ_Record} of the PDF catalog.  This entry is used by the Lua
-extraction script \refscript{memoize-extract.lua}.
+extraction script \refscript{memoize-extract}.
 
 In fact, this entry contains more than information on externs created during
 the last compilation: it records which memos and externs were either used or
 created during the compilation.  The full information contained in the
 \docref{pdfobj:MMIZ_Record} file is used by the Lua clean-up script
-\refscript{memoize-utils.lua:clean} to safely remove stale memos and externs.
+\refscript{memoize-utils:clean} to safely remove stale memos and externs.
 Let us take a look at the \docref{pdfobj:MMIZ_Record} entry produced by the
 titlepage illustration.  In fact, we have two versions of this record, as it
 changes upon the second compilation: they are shown in boxes
 \texttt{titlepage.mmiz-pre} and \texttt{titlepage.mmiz-post} below.  (The
 printouts shown in these boxes were produced by script
-\refscript{memoize-utils.lua:info}.)
+\refscript{memoize-utils:info}.)
 
 \tcbinputexample{titlepage}[.mmiz-pre]{
   listing only, no .listing, no attachment, float,
@@ -3966,15 +3968,15 @@ of the document, but an additional \docref{mmiz:Prefix} item will occur for ever
 invocation of \refmmz{prefix} in the document body.
 
 As mentioned above, the full contingent of \docref{pdfobj:MMIZ_Record} item
-types is only used by the clean-up script \refscript{memoize-utils.lua:clean}.
+types is only used by the clean-up script \refscript{memoize-utils:clean}.
 By default, this script removes all memos and externs with the prefix given by
 \docref{mmiz:Prefix} (relative to the directory hosting the PDF file) but those
 listed by any of \docref{mmiz:NewCMemo}, \docref{mmiz:NewCCMemo},
 \docref{mmiz:NewExtern}, \docref{mmiz:UsedCMemo}, \docref{mmiz:UsedCCMemo} and
 \docref{mmiz:UsedExtern}.  If given option
-\refscript{memoize-utils.lua:clean--all}, the clean-up script removes even the
+\refscript{memoize-utils:clean--all}, the clean-up script removes even the
 memos and externs mentioned in the \docref{pdfobj:MMIZ_Record} entry.
-Incidentally, the \refscript{memoize-utils.lua:clean--all} mode is also the
+Incidentally, the \refscript{memoize-utils:clean--all} mode is also the
 raison d'être for \docref{mmiz:Prefix}: while the prefix is usually
 recognizable from \docref{mmiz:NewCMemo} and friends, these items might not
 make it into the \docref{pdfobj:MMIZ_Record} in a fatally failed compilation,
@@ -6957,7 +6959,9 @@ intended, however, to eventually supersede all other extraction methods.
 Please provide feedback on your experience on Github. % todo: links
 Once the Lua-based extraction method is considered stable enough, it will be
 made the default.  The other extraction methods will be first marked as
-deprecated and eventually removed from the package.
+deprecated and eventually removed from the package.  (This is also why the
+Lua-based extraction script is called simply \refscript{memoize-extract} rather
+than |memoize-extract|.)
 
 There are two reasons for preferring this extraction method to other methods in
 the long run.  First, it is much faster, especially when pruning the PDF.
@@ -6969,23 +6973,23 @@ therefore be installed automatically.
 
 \begin{doc}{
     key={name=lua extraction command, par=\meta{system command}, desc={no
-        default, initially \refscript{memoize-extract.lua}}},
+        default, initially \refscript{memoize-extract}}},
     key={name=lua extraction options, par=\meta{options}, desc={no default,
-        initially: \code{\refscript[short]{memoize-extract.lua--format}
+        initially: \code{\refscript[short]{memoize-extract--format}
           \meta{format} \string\jobname}}} }
   
   These keys determine the system calls used for invoking the extraction
-  script \refscript{memoize-extract.lua}.
+  script \refscript{memoize-extract}.
 
   Use |lua extraction command| to set the name of the extraction script.  If
   necessary, include the full path to the script, or |texlua| plus the path to
   the script.  Whatever you set here must be allowed by the shell escape mode
   --- note that currently, with the Lua-based script considered experimental,
-  \refscript{memoize-extract.lua} is not listed among the commands allowed to
+  \refscript{memoize-extract} is not listed among the commands allowed to
   executed in the restricted shell escape mode out of the box.
 
   Use |lua extraction options| to set the options that the script will receive;
-  consult the documentation of \refscript{memoize-extract.lua} for their
+  consult the documentation of \refscript{memoize-extract} for their
   meaning.  The initial value asks the script to process \meta{document
     name}|.pdf|, and informs it that it is executed from within a \hologo{TeX}
   compilation of a document in the given \meta{format} (|latex| for
@@ -6999,12 +7003,12 @@ therefore be installed automatically.
   |.append|, etc.  The initial value of the extraction options contains a space
   on both sides, so that these handlers are easy to use.  For example, write
   \code{\refmmz{lua extraction
-      options}/.append=\refscript{memoize-extract.lua--quiet}} to ask
+      options}/.append=\refscript{memoize-extract--quiet}} to ask
   for less output.
 \end{doc}
 
 \begin{doc}{
-    script={name=memoize-extract.lua, par=[\meta{options}] \meta{filename}},
+    script={name=memoize-extract, par=[\meta{options}] \meta{filename}},
   }
   This script extracts the externs produced by the previous compilation from
   PDF file \meta{filename}.  Memoize invokes it when loaded with package option
@@ -7046,12 +7050,12 @@ therefore be installed automatically.
   extraction warning, 11 = extraction error.
   
   \yadocset{
-    of=script:memoize-extract.lua,
+    of=script:memoize-extract,
     override/.style={
       index annotation={option of
         {%
           \hypercolor{link}{gray}%
-          \hyperref[script:memoize-extract.lua]{\texttt{memoize-extract}}%
+          \hyperref[script:memoize-extract]{\texttt{memoize-extract}}%
         }%
       },
     },
@@ -7121,7 +7125,7 @@ therefore be installed automatically.
     \code{\refscript{memoize-extract.pl}
       \refscript{memoize-extract.pl--mkdir}}.  Applying
     \code{\refmmz{extract}=\refmmz{extract=lua}} changes the value to
-    \code{\refscript{memoize-extract.lua} \refscript{memoize-extract.lua--mkdir}}.
+    \code{\refscript{memoize-extract} \refscript{memoize-extract--mkdir}}.
   \end{doc}
   \begin{doc}{
       option={name=version, short name=V}
@@ -7494,19 +7498,10 @@ therefore be installed automatically.
   \end{doc}
   \begin{doc}{value={name=pdf}}
     This record type produces a \docref{pdfobj:MMIZ_Record} entry in the PDF
-    catalog.  The structure of the entry is shown in the box below.\footnote{In
-      the current version of the package, where \refscript{memoize-extract.lua}
-      is considered experimental, a PDF dictionary of type
-      \docref{mmiz:NewExtern} also contains the following fields in addition to
-      those listed in the box: /PageNumber, /PageWidth and /PageHeight.  These
-      correspond to the final three arguments of \refcmd{mmzNewExtern}.  They
-      are included for testing purposes, specifically so that the Lua
-      extraction script can be tested with the same testing system as the other
-      extraction scripts.  This roundabout testing is transitory, and these
-      additional \docref{mmiz:NewExtern} fields will be dropped once the
-      package transitions to a Lua testing system.} The information is used by
-    the Lua-based extraction script \refscript{memoize-extract.lua} and the
-    Lua-based clean-up script \refscript{memoize-utils.lua:clean}.
+    catalog.  The structure of the entry is shown in the box below. The
+    information is used by the Lua-based extraction script
+    \refscript{memoize-extract} and the Lua-based clean-up script
+    \refscript{memoize-utils:clean}.
 
     \begin{tcolorbox}[
         title=The structure of \hypercolor{link}{white}\docref{pdfobj:MMIZ_Record},
@@ -7663,7 +7658,7 @@ therefore be installed automatically.
 
 \begin{doc}{
     script={
-      name=memoize-utils.lua,
+      name=memoize-utils,
       par=[\meta{options}] \meta{command} \meta{command options and arguments}
     },
   }
@@ -7671,11 +7666,11 @@ therefore be installed automatically.
   \meta{command}s.  The available commands are documented below.
   
   \yadocset{
-    of=script:memoize-utils.lua,
+    of=script:memoize-utils,
     override/.style={
       index annotation={option of {%
           \hypercolor{link}{gray}%
-         \hyperref[script:memoize-utils.lua]{\texttt{memoize-utils}}%
+         \hyperref[script:memoize-utils]{\texttt{memoize-utils}}%
         }},
     },
   }  
@@ -7694,7 +7689,7 @@ therefore be installed automatically.
 \begin{doc}{
     subcommand={
       name=clean,
-      of=script:memoize-utils.lua,
+      of=script:memoize-utils,
       par={[\meta{options}] [\meta{pdf}]*},
     }
   }
@@ -7708,12 +7703,12 @@ therefore be installed automatically.
   \meta{prefix}\meta{md5sum}(|-|\meta{md5sum})(|.memo|\alt(|-|$N$)|.pdf|\alt|.log|),%
   \footnote{The |.log| files are produced by the \hologo{TeX}-based extraction
     script.} where the \meta{prefix} is either an explicit prefix given by
-  option \refscript{memoize-utils.lua:clean--prefix} or (more commonly)
+  option \refscript{memoize-utils:clean--prefix} or (more commonly)
   \refmmz{record}ed in one of the given \meta{pdf} files (as the value of
   \docref{mmiz:Filename} subkey in a \docref{mmiz:Prefix} key listed in the
   \docref{pdfobj:MMIZ_Record}).
 
-  If option \refscript{memoize-utils.lua:clean--all} is given, all the
+  If option \refscript{memoize-utils:clean--all} is given, all the
   candidates are removed.  Otherwise, the script refrains from deleting the
   files listed in the \docref{pdfobj:MMIZ_Record} (as the value of
   \docref{mmiz:Filename} subkey of keys \docref{mmiz:UsedCMemo},
@@ -7721,11 +7716,11 @@ therefore be installed automatically.
   \docref{mmiz:NewCCMemo} and \docref{mmiz:NewExtern}).
 
   \yadocset{
-    of=script:memoize-utils.lua:clean,
+    of=script:memoize-utils:clean,
     override/.style={
       index annotation={option of {%
           \hypercolor{link}{gray}%
-         \hyperref[script:memoize-utils.lua:clean]{\texttt{memoize-utils clean}}%
+         \hyperref[script:memoize-utils:clean]{\texttt{memoize-utils clean}}%
         }},
     },
   }
@@ -7762,28 +7757,21 @@ therefore be installed automatically.
 \begin{doc}{
     subcommand={
       name=info,
-      of=script:memoize-utils.lua,
+      of=script:memoize-utils,
       par={[\meta{options}] \meta{pdf}},
     }
   }
   This script writes the information contained in \docref{pdfobj:MMIZ_Record}
   in human-readable form.
   \yadocset{
-    of=script:memoize-utils.lua:info,
+    of=script:memoize-utils:info,
     override/.style={
       index annotation={option of {%
           \hypercolor{link}{gray}%
-         \hyperref[script:memoize-utils.lua:info]{\texttt{memoize-utils info}}%
+         \hyperref[script:memoize-utils:info]{\texttt{memoize-utils info}}%
         }},
     },
   }
-  \begin{doc}{
-      option={name=mmz, short name=m}
-    }
-    Produce the output in the format of a \dmmz file.  This option is
-    transitory; it will be removed once the tests for the Lua-based extraction
-    script are rewritten in a Lua testing framework.
-  \end{doc}  
 \end{doc}
 
 
@@ -10564,3 +10552,4 @@ Thank you all!
 % TeX-engine: luatex
 % TeX-master: t
 % End:
+

@@ -2,6 +2,10 @@
 
 PACKAGES = memoize advice collargs
 
+.PHONY: all force clean versions-show \
+	all-runtimes link-all-runtimes install-all-runtimes unlink-all-runtimes \
+	test examples
+
 all: ctan/memoize.zip
 	$(MAKE) -f Makefile.advice ctan/advice.zip
 	$(MAKE) -f Makefile.collargs ctan/collargs.zip
@@ -10,10 +14,10 @@ all: ctan/memoize.zip
 # Prepare the CTAN submission.
 
 PACKAGE = memoize
-VERSION = 1.4.1
-YEAR = 2024
-MONTH = 12
-DAY = 02
+VERSION = 1.5.0-rc1
+YEAR = 2026
+MONTH = 10
+DAY = 11
 
 FORMAT = generic
 
@@ -23,16 +27,17 @@ GENERIC = memoizable.code.tex
 LATEX = memoize-biblatex.code.tex memoize-beamer.code.tex
 SOURCE = memoize.edtx memoize.ins
 
-SCRIPTS := memoize-extract memoize-clean
-man-src := $(SCRIPTS:%=doc/%.1.md)
-MAN := $(SCRIPTS:%=%.1) $(SCRIPTS:%=%.pl.1) $(SCRIPTS:%=%.py.1)
-MAN := $(MAN:%=doc/%)
-SCRIPTS := $(SCRIPTS:%=%.pl) $(SCRIPTS:%=%.py) $(SCRIPTS:%=%.lua)
+LUA_SCRIPTS := memoize-extract.lua memoize-utils.lua
+OTHER_SCRIPTS := memoize-extract.py memoize-clean.py memoize-extract.pl memoize-clean.pl
+SCRIPTS := $(LUA_SCRIPTS) $(OTHER_SCRIPTS)
 
-%.pl.1: %.1
-	echo .so man1/$*.1 > $@     # link to .1 man page
-%.py.1: %.1
-	echo .so man1/$*.1 > $@     # link to .1 man page
+MAN := memoize-extract memoize-utils memoize-utils-clean memoize-utils-info \
+	memoize-extract.pl memoize-clean.pl
+man-src := $(MAN:%=doc/%.1.md)
+MAN := $(MAN:%=doc/%.1) doc/memoize-extract.py.1 doc/memoize-clean.py.1
+
+%.py.1: %.pl.1
+	echo .so man1/$*.1 > $@     # link to .pl.1 man page
 
 README = doc/README.memoize.md
 INSTALL = INSTALL.md
@@ -60,11 +65,21 @@ pdf := $(PDF:%=doc/%)
 DOC = $(codedoc-source) $(manual-source) $(pdf) $(man-src) \
       doc/examples-src.zip doc/examples.zip
 
+# For local binaries (install/link-runtimes):
+BIN-DIR = ~/texmf/bin
+BIN = $(basename $(LUA_SCRIPTS)) $(OTHER_SCRIPTS)
+BIN.memoize-extract = $(TDS-SCRIPTS-DIR)/memoize-extract.lua
+BIN.memoize-utils = $(TDS-SCRIPTS-DIR)/memoize-utils.lua
+BIN.memoize-extract.py = $(TDS-SCRIPTS-DIR)/memoize-extract.py
+BIN.memoize-extract.pl = $(TDS-SCRIPTS-DIR)/memoize-extract.pl
+BIN.memoize-clean.py = $(TDS-SCRIPTS-DIR)/memoize-clean.py
+BIN.memoize-clean.pl = $(TDS-SCRIPTS-DIR)/memoize-clean.pl
+
 doc/examples-src.zip: $(examples-src)
-	$(MAKE) -C doc/examples examples-src.zip
+	$(MAKE) -C doc/examples ../examples-src.zip
 
 doc/examples.zip: $(examples-src)
-	$(MAKE) -C doc/examples examples.zip
+	$(MAKE) -C doc/examples ../examples.zip
 
 ctan/$(PACKAGE).zip:
 	$(TDS-BEGIN)
@@ -98,8 +113,6 @@ doc/memoize-doc.pdf: $(manual-source) $(PACKAGES.edtx) doc/examples.zip
 
 test.tex = $(wildcard test*.tex)
 
-.PHONY: all force clean versions-show
-
 .PRECIOUS: %.1
 
 clean: # clean this directory
@@ -120,8 +133,14 @@ version:
 	$(call EDIT-VERSION-PERL,memoize-clean.pl)
 	$(call EDIT-VERSION-PYTHON,memoize-extract.py)
 	$(call EDIT-VERSION-PYTHON,memoize-clean.py)
+	$(call EDIT-VERSION-LUA,memoize-extract.lua)
+	$(call EDIT-VERSION-LUA,memoize-utils.lua)
+	$(call EDIT-VERSION-MAN,doc/memoize-extract.pl.1.md)
+	$(call EDIT-VERSION-MAN,doc/memoize-clean.pl.1.md)
 	$(call EDIT-VERSION-MAN,doc/memoize-extract.1.md)
-	$(call EDIT-VERSION-MAN,doc/memoize-clean.1.md)
+	$(call EDIT-VERSION-MAN,doc/memoize-utils.1.md)
+	$(call EDIT-VERSION-MAN,doc/memoize-utils-clean.1.md)
+	$(call EDIT-VERSION-MAN,doc/memoize-utils-info.1.md)
 	$(call EDIT-DATE-CHANGELOG,CHANGELOG.md)
 	$(call EDIT-VERSION-LATEX,doc/memoize-doc.tex,memoize)
 	$(call EDIT-VERSION-LATEX,doc/memoize-code.tex,memoize)
@@ -132,7 +151,7 @@ endef
 versions-show:
 	@grep -E '\\ProvidesPackage|^%<context>%D\s*(version|date)=' $(PACKAGES.edtx) $(pdf:%.pdf=%.tex) | ${COLOR_VERSION}
 	@grep __version__ *.py | ${COLOR_VERSION}
-	@grep VERSION *.pl | ${COLOR_VERSION}
+	@grep VERSION *.lua *.pl | ${COLOR_VERSION}
 	@grep -E '^(footer|date):' doc/memoize-*.md | ${COLOR_VERSION}
 	@${COLOR_VERSION} CHANGELOG.md doc/CHANGELOG.advice.md doc/CHANGELOG.collargs.md
 
@@ -140,8 +159,6 @@ include Makefile.package
 include Makefile.runtimes
 
 VERSION-MAN = of Memoize v$(VERSION)
-
-.PHONY: all-runtimes link-all-runtimes install-all-runtimes unlink-all-runtimes test examples
 
 all-runtimes: runtimes
 	$(MAKE) -f Makefile.advice runtimes

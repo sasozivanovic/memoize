@@ -43,3 +43,4 @@ test.*
 /oldtemp
 *.py.dtx
 *.pl.dtx
+*.lua.dtx

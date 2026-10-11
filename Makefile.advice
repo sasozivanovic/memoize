@@ -4,10 +4,10 @@
 # should also contain the files assigned below to SOURCE.
 
 PACKAGE = advice
-VERSION = 1.1.1
-YEAR = 2024
-MONTH = 03
-DAY = 15
+VERSION = 1.1.2-rc1
+YEAR = 2026
+MONTH = 10
+DAY = 11
 
 FORMAT = generic
 

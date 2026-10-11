@@ -198,7 +198,7 @@ end
 say:set("assertion.content.positive", "File %s, unexpected line %s:\n%s")
 assert:register("assertion", "content", assert_content, "assertion.content.positive")
 
-describe("unittests", function()
+describe("unit tests", function()
     
     describe("split_extern_path", function()
         it("should parse a valid path with all parts", function()
@@ -900,7 +900,7 @@ describe('memoize-extract', function()
         
         describe('extraction with memo dir, all engines and formats', function()
             
-            it('#this pdftex', function() compile_and_extract({
+            it('pdftex', function() compile_and_extract({
                     src = 'doc_plain.tex', content_params = { 'memo dir' }, cmd = 'pdftex', prefix = 'doc.memo.dir/',
             }) end)
             it('xetex', function() compile_and_extract({

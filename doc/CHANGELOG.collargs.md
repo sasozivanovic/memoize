@@ -14,7 +14,7 @@ those cases, please see [Memoize's GitHub
 repository](https://github.com/sasozivanovic/memoize) for the recent
 development history.
 
-## 2026/??/?? v1.2.1
+## 2026/10/11 v1.2.1
 
 * Implement keys `no spaces` and `smuggle`.
 

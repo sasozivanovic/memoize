@@ -14,7 +14,7 @@ those cases, please see [Memoize's GitHub
 repository](https://github.com/sasozivanovic/memoize) for the recent
 development history.
 
-## 2026/??/?? v1.1.2
+## 2026/10/11 v1.1.2
 
 * Fix a bug in the automatic retrieval of argument specification of LaTeX3
   commands.
