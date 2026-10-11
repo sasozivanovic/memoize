@@ -1241,6 +1241,8 @@
 %</tikz>
 %    \end{macrocode}
 %
+% \endinput
+% 
 % Local Variables:
 % TeX-engine: luatex
 % TeX-master: "doc/memoize-code.tex"

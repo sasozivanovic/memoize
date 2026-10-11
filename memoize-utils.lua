@@ -233,6 +233,7 @@ cmd_clean:flag "--quiet -q"
 
 parser:parse()
 
+--- \endinput
 --- Local Variables:
 --- lua-indent-level: 4
 --- tab-width: 4

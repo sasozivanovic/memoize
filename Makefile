@@ -88,16 +88,13 @@ ctan/$(PACKAGE).zip:
 	$(CTAN-END)
 
 %.py.dtx: %.py
-	edtx2dtx -s -c '#' -B '^__version__' -E '^# Local Variables:' $< \
-		| sed -e '/^% Local Variables:/Q' > $@
+	edtx2dtx -s -c '#' -B '^__version__' -E '^# Local Variables:' $< > $@
 
 %.pl.dtx: %.pl
-	edtx2dtx -s -c '#' -B '^my \$$PROG' -E '^# Local Variables:' $< \
-		| sed -e '/^% Local Variables:/Q' > $@
+	edtx2dtx -s -c '#' -B '^my \$$PROG' -E '^# Local Variables:' $< > $@
 
 %.lua.dtx: %.lua
-	edtx2dtx -s -c '---' -B '^local VERSION' -E '^--- Local Variables:' $< \
-		| sed -e '/^%%% Local Variables:/Q' > $@
+	edtx2dtx -s -c '---' -B '^local VERSION' -E '^--- Local Variables:' $< > $@
 
 doc/memoize-code.pdf: $(codedoc-source) \
                       $(PACKAGES.dtx) $(PACKAGES.ins) $(SCRIPTS:%=%.dtx)

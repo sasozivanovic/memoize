@@ -566,6 +566,7 @@ if __name__ == '__main__':
     except Exception as err:
         error(f'Python error: {err}', traceback.format_exc())
         
+# \endinput
 # Local Variables:
 # fill-column: 79
 # after-save-hook: py2dtx

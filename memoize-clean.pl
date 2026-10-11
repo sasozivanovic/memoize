@@ -167,6 +167,7 @@ if (scalar(@tbdeleted) != 0) {
     print "Nothing to do, the directory seems clean.\n";
 }
 
+# \endinput
 # Local Variables:
 # after-save-hook: pl2dtx
 # End:

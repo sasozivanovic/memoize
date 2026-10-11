@@ -771,6 +771,7 @@ if ($prune and keys(%extern_pages) != 0) {
 
 endinput();
 
+# \endinput
 # Local Variables:
 # fill-column: 79
 # after-save-hook: pl2dtx

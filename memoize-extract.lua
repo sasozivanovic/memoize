@@ -863,6 +863,7 @@ else --executed as a script
     main(arg)
 end
 
+--- \endinput
 --- Local Variables:
 --- lua-indent-level: 4
 --- tab-width: 4

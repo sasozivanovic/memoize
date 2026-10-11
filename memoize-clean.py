@@ -161,6 +161,7 @@ if tbdeleted:
 elif not args.quiet:
     print('Nothing to do, the directory seems clean.')
 
+# \endinput
 # Local Variables:
 # fill-column: 79
 # after-save-hook: py2dtx
