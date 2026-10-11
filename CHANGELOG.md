@@ -17,11 +17,9 @@ repository](https://github.com/sasozivanovic/memoize).
   `MMIZ` record is created by a new package option `record=pdf`, which is in
   effect by default.
   
-  Two utilities were developed in service of the Lua-based extraction script.  
-  Both are available as separate packages.
-  
-  * `luapdfrw`: a (raw) PDF writer (the reading part is outsourced to `pdfe`).
-  * `pm-argparse`: a simple argument parser.
+  The script is considered experimental because it relies on `luapdfrw`, a
+  brand new PDF writer module for Lua, which, being brand new, has not yet been
+  tested in the wild.  The module is available as a separate CTAN package.
 
 * Minor changes:
   * Implemented keys `memoized code prefix/suffix`.
