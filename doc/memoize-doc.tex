@@ -9537,6 +9537,15 @@ grab the environment body in the verbatim mode.)
     \tcbinputexample{collargs-nodelimiters}{comment=\small\input{\examplepath.tex}}
 \end{doc}
 
+\begin{doc}[
+    pi=\docaux{cmd}{ifcollargsNoSpaces}
+  ]{
+    key={name=no spaces, conditional=false},
+  }
+  When this key is in effect, any spaces encountered between the arguments are
+  discarded.
+\end{doc}
+
 \begin{doc}[%
     pi=\docaux{cmd}{collargsReturn}
   ]{
@@ -9595,6 +9604,20 @@ grab the environment body in the verbatim mode.)
     
     \tcbinputexample{collargs-return-no}{comment=\small\input{\examplepath.tex}}
   \end{itemize}
+\end{doc}
+
+\begin{doc}[%
+    pi=\docaux{cmd}{collargsSmuggle}
+  ]{
+    key={name=smuggle, par=\meta{code}, desc={style, no default}},
+  }
+  This key appends the given \meta{code} to a global macro
+  \refcmd{collargsSmuggle}, which is emptied at each invocation of
+  \refcmd{CollectArguments} and \refcmd{CollectArgumentsRaw}, and executed at
+  the end of argument collection, just before the next-command, outside of
+  \hologo{TeX} groups introduced by CollArgs. The idea is that argument
+  processors can globally modify this macro to achieve some local effect in the
+  group which argument collection was called from.
 \end{doc}
 
 \begin{doc}{
