@@ -15,15 +15,17 @@ ctan/$(PACKAGE).zip: $(ALL)
 
 CTAN-DIR = ctan/$(PACKAGE)
 CTAN-DOC-DIR = ctan/$(PACKAGE)/doc
+CTAN-EXAMPLES-DIR = ctan/$(PACKAGE)/examples
 
 format-dir = $(subst context,context/third,$(FORMAT))
 
 TDS-DIR = texmf/$(PACKAGE).tds
 TDS-SCRIPTS-DIR = $(TDS-DIR)/scripts/$(PACKAGE)
 TDS-DOC-DIR = $(TDS-DIR)/doc/$(format-dir)/$(PACKAGE)
+TDS-EXAMPLES-DIR = $(TDS-DIR)/doc/$(format-dir)/$(PACKAGE)/examples
 TDS-SOURCE-DIR = $(TDS-DIR)/source/$(format-dir)/$(PACKAGE)
 TDS-MAN-DIR = $(TDS-DIR)/doc/man/man
-TDS-ALL-DIRS = $(TDS-SCRIPTS-DIR) $(TDS-SOURCE-DIR) $(TDS-DOC-DIR) \
+TDS-ALL-DIRS = $(TDS-SCRIPTS-DIR) $(TDS-SOURCE-DIR) $(TDS-DOC-DIR) $(TDS-EXAMPLES-DIR) \
 		$(TDS-DIR)/tex/{latex,plain,generic}/$(PACKAGE) \
 		$(TDS-DIR)/tex/context/third/$(PACKAGE) \
 		$(TDS-MAN-DIR){1,2,3,4,5,6,7,8,9}
@@ -50,7 +52,7 @@ endef
 
 define CTAN-BEGIN
 	rm -rf $(CTAN-DIR) ctan/$(PACKAGE).zip
-	mkdir -p $(CTAN-DIR) $(CTAN-DOC-DIR)
+	mkdir -p $(CTAN-DIR) $(CTAN-DOC-DIR) $(CTAN-EXAMPLES-DIR)
 	$(call cp,$(SOURCE) $(SCRIPTS) $(CTAN),$(CTAN-DIR))
 	$(call cp,$(README),$(CTAN-DIR)/$(readme?md))
 	$(call cp,$(INSTALL),$(CTAN-DIR)/$(install?md))
@@ -58,6 +60,7 @@ define CTAN-BEGIN
 	$(call cp,$(LICENCE),$(CTAN-DIR)/$(licence?md))
 	$(call cp,$(MAKEFILE),$(CTAN-DIR))
 	$(call cp,$(DOC),$(CTAN-DOC-DIR))
+	$(call cp,$(EXAMPLES),$(CTAN-EXAMPLES-DIR))
 endef
 
 define CTAN-END
@@ -90,6 +93,7 @@ define TDS-CP
 	$(call cp,$(SOURCE),$(TDS-SOURCE-DIR))
 	$(call cp,$(MAKEFILE),$(TDS-SOURCE-DIR))
 	$(call cp,$(DOC),$(TDS-DOC-DIR))
+	$(call cp,$(EXAMPLES),$(TDS-EXAMPLES-DIR))
 	$(call cp,$(README),$(TDS-DOC-DIR)/$(readme?md))
 	$(call cp,$(INSTALL),$(TDS-DOC-DIR)/$(install?md))
 	$(call cp,$(CHANGELOG),$(TDS-DOC-DIR)/$(changelog?md))
