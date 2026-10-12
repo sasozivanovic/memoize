@@ -67,9 +67,10 @@ end
 
 function utils.rmtree(dn)
     if on_windows then
+	assert(os.execute(('icacls "%s" /remove:d "%%USERNAME%%" /T /C'):format(dn))==0)
 	assert(os.execute(('rmdir /s/q "%s"'):format(dn))==0)
     else
-	os.execute(('chmod -R --quiet +rwx "%s"'):format(dn))
+	assert(os.execute(('chmod -R --quiet +rwx "%s"'):format(dn))==0)
 	assert(os.execute(('rm -rf "%s"'):format(dn))==0)
     end
 end  
@@ -84,11 +85,15 @@ function utils.create(fn, text)
     return fn
 end
 
+-- allow only removing permissions ... easier to translate from chmod to icacls
+allowed_modes = lpeg.P("-") * lpeg.S("rwx")^1
 function utils.chmod(mode, fn)
+    assert(lpeg.match(allowed_modes, mode))
     if on_windows then
-	error("Not yet implemented!")
+	assert(os.execute(('icacls "%s" /deny "%%USERNAME%%":(%s) ')
+		:format(fn, mode:sub(2):upper()))==0)
     else
-	os.execute(("chmod %s '%s'"):format(mode, fn))
+	assert(os.execute(("chmod %s '%s'"):format(mode, fn))==0)
     end
 end
 
@@ -113,9 +118,9 @@ busted.assert:register("assertion", "execute", assert_execute,
 
 function utils.cp(from, to)
     if on_windows then
-	error("Not yet implemented!")
+	os.execute(('copy "%s" "%s"'):format(from, to))
     else
-	os.execute(('cp -r "%s" "%s"'):format(from, to))
+	os.execute(('cp "%s" "%s"'):format(from, to))
     end
 end
 

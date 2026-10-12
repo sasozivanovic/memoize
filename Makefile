@@ -201,7 +201,7 @@ test: luatest
 
 luatest:
 	cd testing && LUA_PATH="$(LUA_PATH)" LUA_CPATH="$(LUA_CPATH)" \
-		./test-memoize-extract.lua
+		./test-memoize-extract.lua $(LUATESTFLAGS)
 
 test-clean:
 	rm -rf testing/build
