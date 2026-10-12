@@ -18,31 +18,9 @@
 -- The files belonging to this work and covered by LPPL are listed in
 -- <texmf>/doc/generic/memoize/FILES.
 
-package.path = table.concat(
-  {
-    package.path,
-    '/usr/share/lua/5.3/?.lua',                   --for busted
-    '/usr/share/lua/5.3/?/init.lua',
-    '/usr/lib/lua/5.3/?.lua',
-    '/usr/lib/lua/5.3/?/init.lua',
-    '/home/saso/.luarocks/share/lua/5.3/?.lua',                   --for busted
-    '/home/saso/.luarocks/share/lua/5.3/?/init.lua',
-    '/home/saso/.luarocks/lib/lua/5.3/?.lua',
-    '/home/saso/.luarocks/lib/lua/5.3/?/init.lua',
-    ';../?.lua'                                   --for memoize-extract
-  },
-  ';'
-)
-package.cpath = table.concat(
-  {
-    package.cpath,
-    '/usr/lib/lua/5.3/?.so',                    --for term, used by busted
-    '/usr/lib/lua/5.3/loadall.so',
-    '/home/saso/.luarocks/lib/lua/5.3/?.so',
-    '/home/saso/.luarocks/lib/lua/5.3/loadall.so'
-  },
-  ';'
-)
+-- In general, LUA_PATH and LUA_CPATH are set through the Makefile.  Here, we
+-- merely adapt LUA_PATH to load memoize-extract from the parent directory:
+package.path = package.path .. ';../?.lua'
 
 cfg = {
   quiet = true,

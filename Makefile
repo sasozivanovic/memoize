@@ -75,6 +75,22 @@ BIN.memoize-extract.pl = $(TDS-SCRIPTS-DIR)/memoize-extract.pl
 BIN.memoize-clean.py = $(TDS-SCRIPTS-DIR)/memoize-clean.py
 BIN.memoize-clean.pl = $(TDS-SCRIPTS-DIR)/memoize-clean.pl
 
+# For Lua tests
+LUA_VERSION := 5.3
+LUA_PREFIXES := /usr $(HOME)/.luarocks
+LUA_EXTRA_DIRS = \
+	$(LUA_PREFIXES:%=%/share/lua/$(LUA_VERSION)/?.lua) \
+	$(LUA_PREFIXES:%=%/share/lua/$(LUA_VERSION)/?/init.lua) \
+	$(LUA_PREFIXES:%=%/lib/lua/$(LUA_VERSION)/?.lua) \
+	$(LUA_PREFIXES:%=%/lib/lua/$(LUA_VERSION)/?/init.lua)
+LUA_EXTRA_CDIRS = \
+	$(LUA_PREFIXES:%=%/lib/lua/$(LUA_VERSION)/?.so) \
+	$(LUA_PREFIXES:%=%/lib/lua/$(LUA_VERSION)/loadall.so)
+noop =
+space = $(noop) $(noop)
+LUA_PATH = ;;$(subst $(space),;,$(LUA_EXTRA_DIRS))
+LUA_CPATH = ;;$(subst $(space),;,$(LUA_EXTRA_CDIRS))
+
 doc/examples-src.zip: $(examples-src)
 	$(MAKE) -C doc/examples ../examples-src.zip
 
@@ -179,10 +195,13 @@ test-venv:
 	testing/venv/bin/pip install --upgrade pip
 	testing/venv/bin/pip install -r testing/requirements.txt
 
-test:
+test: luatest
 	mkdir -p testing/{build,success}
 	cd testing && source venv/bin/activate && ./MakeTests.py
-	cd testing && ./test-memoize-extract.lua
+
+luatest:
+	cd testing && LUA_PATH="$(LUA_PATH)" LUA_CPATH="$(LUA_CPATH)" \
+		./test-memoize-extract.lua
 
 test-clean:
 	rm -rf testing/build
