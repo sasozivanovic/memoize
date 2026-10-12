@@ -93,8 +93,13 @@ push @generated_exts, 'mmz', 'mmz.log';
 # name of the mmz file; this is perhaps being too elaborate, since the
 # standard name of the mmz file can be determined
 
-add_hook( 'after_xlatex_analysis', \&mmz_analyze );
-add_hook( 'after_main_pdf', \&mmz_extract_new );
+###########################################################################
+# disable memoize-specific part for now, as this latexmkrc was written for
+# older extraction scripts relying on the .mmz file
+###########################################################################
+
+# add_hook( 'after_xlatex_analysis', \&mmz_analyze );
+# add_hook( 'after_main_pdf', \&mmz_extract_new );
 
 # !!!!!!!!!!!!!!!!!!!! Uncomment the following line **only** if you really
 # want latexmk's cleanup operations to delete Memoize's memoization
