@@ -3,7 +3,7 @@
 use strict;
 use File::Basename;
 use lib dirname (__FILE__);
-use memoize_extract;
+require "../memoize-extract.pl";
 use File::Path qw/remove_tree/;
 use Scalar::Util qw/reftype/;
 use Cwd qw/getcwd realpath/;
@@ -328,7 +328,7 @@ mychmod('+r', $od_od);
 END_TEST;
 
 
-sub paranoia_out {
+sub test_paranoia_out {
     my $f = shift;
     return _paranoia($f, $main::openout_any);
 }
@@ -340,135 +340,135 @@ my $slash = '';
 
 
 BEGIN_TEST($drive . '/home/user/tex/od' . $slash, $drive . '/tmp' . $slash, 'p', 'p');
-test('paranoia_out', $drive . '/foo/bar/baz.txt', '');
-test('paranoia_out', 'foo/bar/baz.txt', 1);
-test('paranoia_out', '../baz.txt', '');
-test('paranoia_out', 'baz.txt', 1);
+test('test_paranoia_out', $drive . '/foo/bar/baz.txt', '');
+test('test_paranoia_out', 'foo/bar/baz.txt', 1);
+test('test_paranoia_out', '../baz.txt', '');
+test('test_paranoia_out', 'baz.txt', 1);
 
-test('paranoia_out', $drive . '/foo/bar/.baz.txt', '');
-test('paranoia_out', 'foo/bar/.baz.txt', {unix => '', win => 1});
-test('paranoia_out', '../.baz.txt', '');
-test('paranoia_out', '../.baz.txt', '');
-test('paranoia_out', '.baz.txt', {unix => '', win => 1});
-test('paranoia_out', '.tex', 1);
-test('paranoia_out', 'foo/.tex', 1);
+test('test_paranoia_out', $drive . '/foo/bar/.baz.txt', '');
+test('test_paranoia_out', 'foo/bar/.baz.txt', {unix => '', win => 1});
+test('test_paranoia_out', '../.baz.txt', '');
+test('test_paranoia_out', '../.baz.txt', '');
+test('test_paranoia_out', '.baz.txt', {unix => '', win => 1});
+test('test_paranoia_out', '.tex', 1);
+test('test_paranoia_out', 'foo/.tex', 1);
 
-test('paranoia_out', $drive . '/home/user/tex/od/foo/bar/baz.txt', 1);
-test('paranoia_out', $drive . '/home/user/tex/od/baz.txt', 1);
-test('paranoia_out', $drive . '/home/user/tex/odbaz.txt', '');
-test('paranoia_out', $drive . '/home/user/tex/baz.txt', '');
-test('paranoia_out', $drive . '/home/user/tex/od///./baz.txt', 1);
-test('paranoia_out', $drive . '/home/user/tex/od/foo/../baz.txt', '');
+test('test_paranoia_out', $drive . '/home/user/tex/od/foo/bar/baz.txt', 1);
+test('test_paranoia_out', $drive . '/home/user/tex/od/baz.txt', 1);
+test('test_paranoia_out', $drive . '/home/user/tex/odbaz.txt', '');
+test('test_paranoia_out', $drive . '/home/user/tex/baz.txt', '');
+test('test_paranoia_out', $drive . '/home/user/tex/od///./baz.txt', 1);
+test('test_paranoia_out', $drive . '/home/user/tex/od/foo/../baz.txt', '');
 
-test('paranoia_out', $drive . '/tmp/foo/bar/baz.txt', 1);
-test('paranoia_out', $drive . '/tmp/baz.txt', 1);
-test('paranoia_out', $drive . '/home/user/tex/odbaz.txt', '');
-test('paranoia_out', $drive . '/home/user/tex/baz.txt', '');
-test('paranoia_out', $drive . '/tmp///./baz.txt', 1);
-test('paranoia_out', $drive . '/tmp/foo/../baz.txt', '');
-test('paranoia_out', $drive . '/tmpbaz.txt', '');
+test('test_paranoia_out', $drive . '/tmp/foo/bar/baz.txt', 1);
+test('test_paranoia_out', $drive . '/tmp/baz.txt', 1);
+test('test_paranoia_out', $drive . '/home/user/tex/odbaz.txt', '');
+test('test_paranoia_out', $drive . '/home/user/tex/baz.txt', '');
+test('test_paranoia_out', $drive . '/tmp///./baz.txt', 1);
+test('test_paranoia_out', $drive . '/tmp/foo/../baz.txt', '');
+test('test_paranoia_out', $drive . '/tmpbaz.txt', '');
 
-test('paranoia_out', join_paths(getcwd(), 'baz.txt'), '');
-test('paranoia_out', join_paths(getcwd(), 'foo/baz.txt'), '');
+test('test_paranoia_out', join_paths(getcwd(), 'baz.txt'), '');
+test('test_paranoia_out', join_paths(getcwd(), 'foo/baz.txt'), '');
 END_TEST;
 
 
 BEGIN_TEST('od' . $slash, 'tmp' . $slash, 'r', 'r');
-test('paranoia_out', $drive . '/foo/bar/baz.txt', 1);
-test('paranoia_out', 'foo/bar/baz.txt', 1);
-test('paranoia_out', '../baz.txt', 1);
-test('paranoia_out', 'baz.txt', 1);
+test('test_paranoia_out', $drive . '/foo/bar/baz.txt', 1);
+test('test_paranoia_out', 'foo/bar/baz.txt', 1);
+test('test_paranoia_out', '../baz.txt', 1);
+test('test_paranoia_out', 'baz.txt', 1);
 
-test('paranoia_out', $drive . '/foo/bar/.baz.txt', {unix => '', win => 1});
-test('paranoia_out', 'foo/bar/.baz.txt', {unix => '', win => 1});
-test('paranoia_out', '../.baz.txt', {unix => '', win => 1});
-test('paranoia_out', '.baz.txt', {unix => '', win => 1});
-test('paranoia_out', '.tex', 1);
-test('paranoia_out', 'foo/.tex', 1);
+test('test_paranoia_out', $drive . '/foo/bar/.baz.txt', {unix => '', win => 1});
+test('test_paranoia_out', 'foo/bar/.baz.txt', {unix => '', win => 1});
+test('test_paranoia_out', '../.baz.txt', {unix => '', win => 1});
+test('test_paranoia_out', '.baz.txt', {unix => '', win => 1});
+test('test_paranoia_out', '.tex', 1);
+test('test_paranoia_out', 'foo/.tex', 1);
 
-test('paranoia_out', $drive . '/home/user/tex/od/foo/bar/baz.txt', 1);
-test('paranoia_out', $drive . '/home/user/tex/od/baz.txt', 1);
-test('paranoia_out', $drive . '/home/user/tex/odbaz.txt', 1);
-test('paranoia_out', $drive . '/home/user/tex/baz.txt', 1);
-test('paranoia_out', $drive . '/home/user/tex/od///./baz.txt', 1);
-test('paranoia_out', $drive . '/home/user/tex/od/foo/../baz.txt', 1);
+test('test_paranoia_out', $drive . '/home/user/tex/od/foo/bar/baz.txt', 1);
+test('test_paranoia_out', $drive . '/home/user/tex/od/baz.txt', 1);
+test('test_paranoia_out', $drive . '/home/user/tex/odbaz.txt', 1);
+test('test_paranoia_out', $drive . '/home/user/tex/baz.txt', 1);
+test('test_paranoia_out', $drive . '/home/user/tex/od///./baz.txt', 1);
+test('test_paranoia_out', $drive . '/home/user/tex/od/foo/../baz.txt', 1);
 
-test('paranoia_out', $drive . '/tmp/foo/bar/baz.txt', 1);
-test('paranoia_out', $drive . '/tmp/baz.txt', 1);
-test('paranoia_out', $drive . '/home/user/tex/odbaz.txt', 1);
-test('paranoia_out', $drive . '/home/user/tex/baz.txt', 1);
-test('paranoia_out', $drive . '/tmp///./baz.txt', 1);
-test('paranoia_out', $drive . '/tmp/foo/../baz.txt', 1);
+test('test_paranoia_out', $drive . '/tmp/foo/bar/baz.txt', 1);
+test('test_paranoia_out', $drive . '/tmp/baz.txt', 1);
+test('test_paranoia_out', $drive . '/home/user/tex/odbaz.txt', 1);
+test('test_paranoia_out', $drive . '/home/user/tex/baz.txt', 1);
+test('test_paranoia_out', $drive . '/tmp///./baz.txt', 1);
+test('test_paranoia_out', $drive . '/tmp/foo/../baz.txt', 1);
 
-test('paranoia_out', join_paths(getcwd(), 'baz.txt'), 1);
-test('paranoia_out', join_paths(getcwd(), 'foo/baz.txt'), 1);
+test('test_paranoia_out', join_paths(getcwd(), 'baz.txt'), 1);
+test('test_paranoia_out', join_paths(getcwd(), 'foo/baz.txt'), 1);
 END_TEST;
 
 
 BEGIN_TEST('od' . $slash, 'tmp' . $slash, 'a', 'a');
-test('paranoia_out', $drive . '/foo/bar/baz.txt', 1);
-test('paranoia_out', 'foo/bar/baz.txt', 1);
-test('paranoia_out', '../baz.txt', 1);
-test('paranoia_out', '../baz.txt', 1);
-test('paranoia_out', 'baz.txt', 1);
-test('paranoia_out', $drive . '/foo/bar/.baz.txt', 1);
-test('paranoia_out', 'foo/bar/.baz.txt', 1);
-test('paranoia_out', '../.baz.txt', 1);
-test('paranoia_out', '../.baz.txt', 1);
-test('paranoia_out', '.baz.txt', 1);
-test('paranoia_out', '.tex', 1);
-test('paranoia_out', 'foo/.tex', 1);
+test('test_paranoia_out', $drive . '/foo/bar/baz.txt', 1);
+test('test_paranoia_out', 'foo/bar/baz.txt', 1);
+test('test_paranoia_out', '../baz.txt', 1);
+test('test_paranoia_out', '../baz.txt', 1);
+test('test_paranoia_out', 'baz.txt', 1);
+test('test_paranoia_out', $drive . '/foo/bar/.baz.txt', 1);
+test('test_paranoia_out', 'foo/bar/.baz.txt', 1);
+test('test_paranoia_out', '../.baz.txt', 1);
+test('test_paranoia_out', '../.baz.txt', 1);
+test('test_paranoia_out', '.baz.txt', 1);
+test('test_paranoia_out', '.tex', 1);
+test('test_paranoia_out', 'foo/.tex', 1);
 
-test('paranoia_out', $drive . '/home/user/tex/od/foo/bar/baz.txt', 1);
-test('paranoia_out', $drive . '/home/user/tex/od/baz.txt', 1);
-test('paranoia_out', $drive . '/home/user/tex/odbaz.txt', 1);
-test('paranoia_out', $drive . '/home/user/tex/baz.txt', 1);
-test('paranoia_out', $drive . '/home/user/tex/od///./baz.txt', 1);
-test('paranoia_out', $drive . '/home/user/tex/od/foo/../baz.txt', 1);
+test('test_paranoia_out', $drive . '/home/user/tex/od/foo/bar/baz.txt', 1);
+test('test_paranoia_out', $drive . '/home/user/tex/od/baz.txt', 1);
+test('test_paranoia_out', $drive . '/home/user/tex/odbaz.txt', 1);
+test('test_paranoia_out', $drive . '/home/user/tex/baz.txt', 1);
+test('test_paranoia_out', $drive . '/home/user/tex/od///./baz.txt', 1);
+test('test_paranoia_out', $drive . '/home/user/tex/od/foo/../baz.txt', 1);
 
-test('paranoia_out', $drive . '/tmp/foo/bar/baz.txt', 1);
-test('paranoia_out', $drive . '/tmp/baz.txt', 1);
-test('paranoia_out', $drive . '/home/user/tex/odbaz.txt', 1);
-test('paranoia_out', $drive . '/home/user/tex/baz.txt', 1);
-test('paranoia_out', $drive . '/tmp///./baz.txt', 1);
-test('paranoia_out', $drive . '/tmp/foo/../baz.txt', 1);
+test('test_paranoia_out', $drive . '/tmp/foo/bar/baz.txt', 1);
+test('test_paranoia_out', $drive . '/tmp/baz.txt', 1);
+test('test_paranoia_out', $drive . '/home/user/tex/odbaz.txt', 1);
+test('test_paranoia_out', $drive . '/home/user/tex/baz.txt', 1);
+test('test_paranoia_out', $drive . '/tmp///./baz.txt', 1);
+test('test_paranoia_out', $drive . '/tmp/foo/../baz.txt', 1);
 
-test('paranoia_out', join_paths(getcwd(), 'baz.txt'), 1);
-test('paranoia_out', join_paths(getcwd(), 'foo/baz.txt'), 1);
+test('test_paranoia_out', join_paths(getcwd(), 'baz.txt'), 1);
+test('test_paranoia_out', join_paths(getcwd(), 'foo/baz.txt'), 1);
 END_TEST;
 
 
 BEGIN_TEST('od' . $slash, '../tmp' . $slash, 'p', 'p');
-test('paranoia_out', $drive . '/foo/bar/baz.txt', '');
-test('paranoia_out', 'foo/bar/baz.txt', 1);
-test('paranoia_out', '../baz.txt', '');
-test('paranoia_out', 'baz.txt', 1);
+test('test_paranoia_out', $drive . '/foo/bar/baz.txt', '');
+test('test_paranoia_out', 'foo/bar/baz.txt', 1);
+test('test_paranoia_out', '../baz.txt', '');
+test('test_paranoia_out', 'baz.txt', 1);
 
-test('paranoia_out', $drive . '/foo/bar/.baz.txt', '');
-test('paranoia_out', 'foo/bar/.baz.txt', {unix => '', win => 1});
-test('paranoia_out', '../.baz.txt', '');
-test('paranoia_out', '../.baz.txt', '');
-test('paranoia_out', '.baz.txt', {unix => '', win => 1});
-test('paranoia_out', '.tex', 1);
-test('paranoia_out', 'foo/.tex', 1);
+test('test_paranoia_out', $drive . '/foo/bar/.baz.txt', '');
+test('test_paranoia_out', 'foo/bar/.baz.txt', {unix => '', win => 1});
+test('test_paranoia_out', '../.baz.txt', '');
+test('test_paranoia_out', '../.baz.txt', '');
+test('test_paranoia_out', '.baz.txt', {unix => '', win => 1});
+test('test_paranoia_out', '.tex', 1);
+test('test_paranoia_out', 'foo/.tex', 1);
 
-test('paranoia_out', 'od/foo/bar/baz.txt', 1);
-test('paranoia_out', 'od/baz.txt', 1);
-test('paranoia_out', 'odbaz.txt', 1); # in current dir
-test('paranoia_out', './//./baz.txt', 1);
-test('paranoia_out', 'foo/../baz.txt', '');
+test('test_paranoia_out', 'od/foo/bar/baz.txt', 1);
+test('test_paranoia_out', 'od/baz.txt', 1);
+test('test_paranoia_out', 'odbaz.txt', 1); # in current dir
+test('test_paranoia_out', './//./baz.txt', 1);
+test('test_paranoia_out', 'foo/../baz.txt', '');
 
-test('paranoia_out', '../tmp/foo/bar/baz.txt', '');
-test('paranoia_out', '../tmp/baz.txt', '');
-test('paranoia_out', $drive . '/home/user/tex/odbaz.txt', '');
-test('paranoia_out', $drive . '/home/user/tex/baz.txt', '');
-test('paranoia_out', '../tmp///./baz.txt', '');
-test('paranoia_out', '../tmp/foo/../baz.txt', '');
+test('test_paranoia_out', '../tmp/foo/bar/baz.txt', '');
+test('test_paranoia_out', '../tmp/baz.txt', '');
+test('test_paranoia_out', $drive . '/home/user/tex/odbaz.txt', '');
+test('test_paranoia_out', $drive . '/home/user/tex/baz.txt', '');
+test('test_paranoia_out', '../tmp///./baz.txt', '');
+test('test_paranoia_out', '../tmp/foo/../baz.txt', '');
 
-test('paranoia_out', join_paths(getcwd(), 'baz.txt'), '');
-test('paranoia_out', join_paths(getcwd(), 'foo/baz.txt'), '');
-test('paranoia_out', join_paths(realpath($main::texmfoutput), 'baz.txt'), '');
-test('paranoia_out', join_paths(realpath($main::texmf_output_directory), 'baz.txt'), '');
+test('test_paranoia_out', join_paths(getcwd(), 'baz.txt'), '');
+test('test_paranoia_out', join_paths(getcwd(), 'foo/baz.txt'), '');
+test('test_paranoia_out', join_paths(realpath($main::texmfoutput), 'baz.txt'), '');
+test('test_paranoia_out', join_paths(realpath($main::texmf_output_directory), 'baz.txt'), '');
 END_TEST;
 
 if ($on_windows) { # Directories don't have permissions on Windows.

@@ -1,7 +1,17 @@
 #!/bin/env python
 
+# a hack to import the script and all its variables from the parent directory
+# and with a "-" in the name:
+import importlib, importlib.util, sys
+def import_from_path(module_name, file_path):
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+memoize_extract = import_from_path("memoize_extract", "../memoize-extract.py")
 from memoize_extract import *
-import memoize_extract
+
 import shutil, stat, pathlib, platform
 
 on_windows = platform.system() == 'Windows'

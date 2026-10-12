@@ -152,7 +152,7 @@ args = parser.parse_args()
 for pyl in ('py', 'pl'):
     for test in Test(
             [f'unittest-memoize-extract.{pyl}'],
-            [f'unittest-memoize-extract.{pyl}', f'memoize-extract.{pyl}'],
+            [f'unittest-memoize-extract.{pyl}', f'../memoize-extract.{pyl}'],
             'Unit tests'):
         assert run(f'unittest-memoize-extract.{pyl}'.split())
             
@@ -195,97 +195,97 @@ for pyl in ('py', 'pl'):
     inexisting_absolute = ('C:\\' if platform.system() == 'Windows' else '/') + 'inexisting'
     
     for test in Test([f'extract-nomemodir.{pyl}'],
-                     [f'memoize-extract.{pyl}', f'build/nomemodir/doc.pdf'],
+                     [f'../memoize-extract.{pyl}', f'build/nomemodir/doc.pdf'],
                      'Extract from a [nomemodir] document'):
         cp('build/nomemodir', 'test')
-        assert run(f'memoize-extract.{pyl} doc.mmz'.split(), cwd = 'test')
+        assert run(f'../memoize-extract.{pyl} doc.mmz'.split(), cwd = 'test')
         assert diff('expected/extract-nomemodir/doc.mmz', 'test/doc.mmz')
         assert exists('test/doc.799CD96D5634EBEB7E30191285AF4082-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.pdf')
         assert exists('test/doc.7DBC7B29C0C49BCFD5C4A18740E06E80-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.pdf')
 
     for test in Test([f'extract-memodir.{pyl}'],
-                     [f'memoize-extract.{pyl}', f'build/memodir/doc.pdf'],
+                     [f'../memoize-extract.{pyl}', f'build/memodir/doc.pdf'],
                      'Extract from a [memodir] document',
                      "Also test that memoize-extract can be called without .mmz suffix"):
         cp('build/memodir', 'test')
-        assert run(f'memoize-extract.{pyl} doc.mmz'.split(), cwd = 'test')
+        assert run(f'../memoize-extract.{pyl} doc.mmz'.split(), cwd = 'test')
         assert diff('expected/extract-memodir/doc.mmz', 'test/doc.mmz')
         assert exists('test/doc.memo.dir/799CD96D5634EBEB7E30191285AF4082-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.pdf')
         assert exists('test/doc.memo.dir/7DBC7B29C0C49BCFD5C4A18740E06E80-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.pdf')
     
 
     for test in Test([f'extract-memodir-with-spaces.{pyl}'],
-                     [f'memoize-extract.{pyl}', f'build/memodir with spaces/doc with spaces.pdf'],
+                     [f'../memoize-extract.{pyl}', f'build/memodir with spaces/doc with spaces.pdf'],
                      'Extract from a [memodir] document with spaces in paths'):
         cp('build/memodir with spaces', 'test')
-        assert run([f'memoize-extract.{pyl}', 'doc with spaces.mmz'], cwd = 'test')
+        assert run([f'../memoize-extract.{pyl}', 'doc with spaces.mmz'], cwd = 'test')
         assert diff('expected/extract-memodir-with-spaces/doc with spaces.mmz', 'test/doc with spaces.mmz')
         assert exists('test/doc with spaces.memo.dir/prefix with spaces.799CD96D5634EBEB7E30191285AF4082-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.pdf')
         assert exists('test/doc with spaces.memo.dir/prefix with spaces.7DBC7B29C0C49BCFD5C4A18740E06E80-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.pdf')
     
     for test in Test([f'extract-from-subdir.{pyl}'],
-                     [f'memoize-extract.{pyl}', f'build/nomemodir/doc.pdf'],
+                     [f'../memoize-extract.{pyl}', f'build/nomemodir/doc.pdf'],
                      ".mmz in a parent directory without -k"):
         cp('build/nomemodir', 'test')
         mkdir('test/foo')
-        assert not run(f'memoize-extract.{pyl} ../doc.mmz'.split(), cwd = 'test/foo')
+        assert not run(f'../memoize-extract.{pyl} ../doc.mmz'.split(), cwd = 'test/foo')
     
         
     for test in Test([f'extract-from-subdir-no-memos.{pyl}'],
-                     [f'memoize-extract.{pyl}', f'build/nomemodir/doc.pdf'],
+                     [f'../memoize-extract.{pyl}', f'build/nomemodir/doc.pdf'],
                      ".mmz in a parent directory with -k",
                      "This fails because the associated .memo files don't exist"):
         cp('build/nomemodir', 'test')
         mkdir('test/foo')
-        assert not run(f'memoize-extract.{pyl} -k ../doc.mmz'.split(), cwd = 'test/foo',
+        assert not run(f'../memoize-extract.{pyl} -k ../doc.mmz'.split(), cwd = 'test/foo',
                        env = {'TEXMFOUTPUT': inexisting_absolute} # make sure the memos are not in the temp directory
                        )
         
     for test in Test([f'extract-from-subdir-memos.{pyl}'],
-                     [f'memoize-extract.{pyl}', f'build/nomemodir/doc.pdf'],
+                     [f'../memoize-extract.{pyl}', f'build/nomemodir/doc.pdf'],
                      ".mmz in a parent directory with -k",
                      "Successful because we first move the associated .memo files into 'foo'"):
         cp('build/nomemodir', 'test')
         mkdir('test/foo')
         mv('test/doc.*.memo', 'test/foo')
-        assert run(f'memoize-extract.{pyl} -k ../doc.mmz'.split(), cwd = 'test/foo',
+        assert run(f'../memoize-extract.{pyl} -k ../doc.mmz'.split(), cwd = 'test/foo',
                    env = {'TEXMFOUTPUT': inexisting_absolute} # make sure the memos are not in the temp directory
                    )
         
     for test in Test([f'extract-from-parallel-dir.{pyl}'],
-                     [f'memoize-extract.{pyl}', f'build/nomemodir/doc.pdf'],
+                     [f'../memoize-extract.{pyl}', f'build/nomemodir/doc.pdf'],
                      ".mmz in a parallel directory", "Fails without --keep"):
         cp('build/nomemodir', 'test')
-        assert not run(f'memoize-extract.{pyl} ../test/doc.mmz'.split(), cwd = 'tmp')
+        assert not run(f'../memoize-extract.{pyl} ../test/doc.mmz'.split(), cwd = 'tmp')
     
         
     for test in Test([f'extract-from-subdir-prune.{pyl}'],
-                     [f'memoize-extract.{pyl}', f'build/nomemodir/doc.pdf'],
+                     [f'../memoize-extract.{pyl}', f'build/nomemodir/doc.pdf'],
                      ".mmz in a parallel directory", "Fails due to --prune"):
         cp('build/nomemodir', 'test')
         mkdir('test/foo')
-        assert not run(f'memoize-extract.{pyl} -kp ../doc.mmz'.split(), cwd = 'test/foo')
+        assert not run(f'../memoize-extract.{pyl} -kp ../doc.mmz'.split(), cwd = 'test/foo')
     
     for test in Test([f'extract-to-tmp.{pyl}'],
-                     [f'memoize-extract.{pyl}', f'build/nomemodir/doc.pdf'],
+                     [f'../memoize-extract.{pyl}', f'build/nomemodir/doc.pdf'],
                      "Output to a temporary directory", "The current directory is non-writable"):
         cp('build/nomemodir', 'test')
         chmod('-w', 'test')
-        assert run(f'memoize-extract.{pyl} doc.mmz'.split(),
+        assert run(f'../memoize-extract.{pyl} doc.mmz'.split(),
                    cwd = 'test', env = {'TEXMFOUTPUT': str(Path.cwd() / 'tmp')})
     
     for test in Test([f'mkdir.{pyl}'],
-                     [f'memoize-extract.{pyl}'],
+                     [f'../memoize-extract.{pyl}'],
                      "--mkdir", "(a) Create a subdir .. OK; (b) create a parallel dir .. FAIL; (c) create a subsubdir .. OK; (d) create a subdir referred to using \"..\" .. FAIL"):
-        assert run(f'memoize-extract.{pyl} --mkdir foo'.split(), cwd = 'test')
-        assert not run(f'memoize-extract.{pyl} --mkdir ../bar'.split(), cwd = 'test/foo')
-        assert run(f'memoize-extract.{pyl} --mkdir tmp/foo'.split())
-        assert not run(f'memoize-extract.{pyl} --mkdir tmp/foo/../bar'.split())
+        assert run(f'../memoize-extract.{pyl} --mkdir foo'.split(), cwd = 'test')
+        assert not run(f'../memoize-extract.{pyl} --mkdir ../bar'.split(), cwd = 'test/foo')
+        assert run(f'../memoize-extract.{pyl} --mkdir tmp/foo'.split())
+        assert not run(f'../memoize-extract.{pyl} --mkdir tmp/foo/../bar'.split())
 
     # Skip this test for now, LaTeX does not find "doc.aux". Investigate.
     if False: # platform.system() != 'Windows': # no directory permissions
         for test in Test([f'compile-and-extract-to-tmp.{pyl}'],
-                         [f'memoize-extract.{pyl}', f'src/nomemodir/doc.tex'],
+                         [f'../memoize-extract.{pyl}', f'src/nomemodir/doc.tex'],
                          "Compile and extract to a temporary directory",
                          "Current directory is not writable; also test that memoize-extract can be called with .tex suffix"):
             cp('src/nomemodir/doc.tex', 'test')
@@ -298,14 +298,14 @@ for pyl in ('py', 'pl'):
             diff(f'{{expected/nomemodir,{cwd}/tmp}}/doc.799CD96D5634EBEB7E30191285AF4082-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo')
             diff(f'{{expected/nomemodir,{cwd}/tmp}}/doc.7DBC7B29C0C49BCFD5C4A18740E06E80.memo')
             diff(f'{{expected/nomemodir,{cwd}/tmp}}/doc.7DBC7B29C0C49BCFD5C4A18740E06E80-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo')
-            assert run(f'memoize-extract.{pyl} doc.tex'.split(), cwd = 'test',
+            assert run(f'../memoize-extract.{pyl} doc.tex'.split(), cwd = 'test',
                        env = {'TEXMFOUTPUT': str(Path.cwd() / 'tmp')})
             exists(f'{cwd}/tmp/doc.799CD96D5634EBEB7E30191285AF4082-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.pdf')
             exists(f'{cwd}/tmp/doc.7DBC7B29C0C49BCFD5C4A18740E06E80-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.pdf')
         
 
     for test in Test([f'compile-and-extract-to-od.{pyl}'],
-                     [f'memoize-extract.{pyl}', f'src/nomemodir/doc.tex'],
+                     [f'../memoize-extract.{pyl}', f'src/nomemodir/doc.tex'],
                      "Compile and extract to output directory"):
         cp('src/nomemodir/doc.tex', 'test')
         mkdir('test/od')
@@ -316,7 +316,7 @@ for pyl in ('py', 'pl'):
         diff('{expected/nomemodir,test/od}/doc.799CD96D5634EBEB7E30191285AF4082-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo')
         diff('{expected/nomemodir,test/od}/doc.7DBC7B29C0C49BCFD5C4A18740E06E80.memo')
         diff('{expected/nomemodir,test/od}/doc.7DBC7B29C0C49BCFD5C4A18740E06E80-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo')
-        assert run(f'memoize-extract.{pyl} doc.tex'.split(), cwd = 'test',
+        assert run(f'../memoize-extract.{pyl} doc.tex'.split(), cwd = 'test',
                    env = {'TEXMF_OUTPUT_DIRECTORY': 'od'})
         exists('test/od/doc.799CD96D5634EBEB7E30191285AF4082-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.pd')
         exists('test/od/doc.7DBC7B29C0C49BCFD5C4A18740E06E80-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.pd')
@@ -324,29 +324,29 @@ for pyl in ('py', 'pl'):
 
     if platform.system() != 'Windows': # no permissions on dirs, no TEXMFOUTPUT in MiKTeX
         for test in Test([f'extract-to-notmp.{pyl}'],
-                         [f'memoize-extract.{pyl}', f'build/nomemodir/doc.pdf'],
+                         [f'../memoize-extract.{pyl}', f'build/nomemodir/doc.pdf'],
                          "Output to a non-existing temporary directory",
                          "We end up attempting to write to a readonly current directory and get a permission error"):
             cp('build/nomemodir/*', 'test')
             chmod('-w', 'test')
-            assert not run(f'memoize-extract.{pyl} doc.mmz'.split(),
+            assert not run(f'../memoize-extract.{pyl} doc.mmz'.split(),
                            cwd = 'test',
                            env = {'TEXMFOUTPUT': str(Path.cwd() / 'tmp/does/not/exist')})
 
         for test in Test([f'extract-to-bad-relative-tmp.{pyl}'],
-                         [f'memoize-extract.{pyl}', f'build/nomemodir/doc.pdf'],
+                         [f'../memoize-extract.{pyl}', f'build/nomemodir/doc.pdf'],
                          'Output to a temporary directory involving ".."',
                          "Paranoia kicks in"):
             cp('build/nomemodir/*', 'test')
             chmod('-w', 'test')
-            assert not run(f'memoize-extract.{pyl} doc.mmz'.split(),
+            assert not run(f'../memoize-extract.{pyl} doc.mmz'.split(),
                            cwd = 'test', env = {'TEXMFOUTPUT': '../tmp'})
 
     for test in Test([f'mmz-log.{pyl}'],
-                     [f'memoize-extract.{pyl}', f'build/nomemodir/doc.pdf'],
+                     [f'../memoize-extract.{pyl}', f'build/nomemodir/doc.pdf'],
                      "Create .mmz.log for LaTeX"):
         cp('build/nomemodir/*', 'test')
-        assert run(f'memoize-extract.{pyl} -F latex doc.mmz'.split(), cwd = 'test')
+        assert run(f'../memoize-extract.{pyl} -F latex doc.mmz'.split(), cwd = 'test')
         assert exists('test/doc.mmz.log')
         print('Expecting 4 lines in: ', end = '')
         assert sum(1 for _ in grep(r'^\\PackageInfo', 'test/doc.mmz.log')) == 4
@@ -355,9 +355,9 @@ for pyl in ('py', 'pl'):
 
         
     for test in Test([f'extract-no-memos.{pyl}'],
-                     [f'memoize-extract.{pyl}', f'build/nomemodir/doc.pdf'],
+                     [f'../memoize-extract.{pyl}', f'build/nomemodir/doc.pdf'],
                      "Removed memo files"):
         cp('build/nomemodir/*', 'test')
         rm('test/doc.799CD96D5634EBEB7E30191285AF4082.memo', 'test/doc.7DBC7B29C0C49BCFD5C4A18740E06E80-E778DCCCB8AAB0BBD3F6CFEEFD2421F8.memo')
-        assert not run(f'memoize-extract.{pyl} doc'.split(), cwd = 'test',
+        assert not run(f'../memoize-extract.{pyl} doc'.split(), cwd = 'test',
                        env = {'TEXMFOUTPUT': str(Path.cwd() / 'tmp/does/not/exist')})
