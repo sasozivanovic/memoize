@@ -182,6 +182,7 @@ test-venv:
 test:
 	mkdir -p testing/{build,success}
 	cd testing && source venv/bin/activate && ./MakeTests.py
+	cd testing && ./test-memoize-extract.lua
 
 test-clean:
 	rm -rf testing/build
