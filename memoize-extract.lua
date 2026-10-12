@@ -34,7 +34,7 @@ if not debug.getinfo(2) then
 end
 
 --- Load ``our own'' PDF writer.
-local pdfrw = require 'luapdfrw'
+local pdfrw = require 'pdfrw'
 
 --- \subsubsection{Utilities}
 
