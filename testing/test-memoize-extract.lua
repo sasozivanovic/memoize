@@ -26,7 +26,6 @@ cfg = {
   quiet = true,
 }
 
-local process = require "environ.process"
 require 'busted.runner'()
 
 local say = require "say"
@@ -74,9 +73,9 @@ winme.exit.warn  = function() error("exited with warn") end
 winme.exit.succ  = function() error("exited with succ") end
 
 local function setenv(openout_any, TEXMFOUTPUT, TEXMF_OUTPUT_DIRECTORY)
-  process.setenv("openout_any", openout_any)
-  process.setenv("TEXMFOUTPUT", TEXMFOUTPUT)
-  process.setenv("TEXMF_OUTPUT_DIRECTORY", TEXMF_OUTPUT_DIRECTORY)
+  os.setenv("openout_any", openout_any)
+  os.setenv("TEXMFOUTPUT", TEXMFOUTPUT)
+  os.setenv("TEXMF_OUTPUT_DIRECTORY", TEXMF_OUTPUT_DIRECTORY)
 end
 
 
