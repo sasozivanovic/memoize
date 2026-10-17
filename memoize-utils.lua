@@ -1,6 +1,6 @@
 #!/usr/bin/env texlua
 
-local VERSION = '2026/10/11 v1.5.0-rc1'
+local VERSION = '2026/10/17 v1.5.0-rc1'
 
 -- luacheck: std lua53+texlua+lualibs
 

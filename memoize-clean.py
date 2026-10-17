@@ -18,7 +18,7 @@
 # The files belonging to this work and covered by LPPL are listed in
 # <texmf>/doc/generic/memoize/FILES.
 
-__version__ = '2026/10/11 v1.5.0-rc1'
+__version__ = '2026/10/17 v1.5.0-rc1'
 
 import argparse, re, sys, pathlib, os
 

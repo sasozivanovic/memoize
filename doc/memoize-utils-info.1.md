@@ -3,7 +3,7 @@ title: memoize-utils-info
 section: 1
 header: User Manual
 footer: memoize-utils-info of Memoize v1.5.0-rc1
-date: October 11, 2026
+date: October 17, 2026
 hyphenate: false
 ---
 

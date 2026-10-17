@@ -17,7 +17,7 @@ PACKAGE = memoize
 VERSION = 1.5.0-rc1
 YEAR = 2026
 MONTH = 10
-DAY = 11
+DAY = 17
 
 FORMAT = generic
 

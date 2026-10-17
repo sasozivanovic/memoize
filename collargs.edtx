@@ -46,14 +46,14 @@
 % 
 % 
 % \paragraph{Identification}
-%<latex>\ProvidesPackage{collargs}[2026/10/11 v1.2.1-rc1 Collect arguments of any command]
+%<latex>\ProvidesPackage{collargs}[2026/10/17 v1.2.1-rc1 Collect arguments of any command]
 %<context>%D \module[
 %<context>%D         file=t-collargs.tex,
 %<context>%D      version=1.2.1-rc1,
 %<context>%D        title=CollArgs,
 %<context>%D     subtitle=Collect arguments of any command,
 %<context>%D       author=Saso Zivanovic,
-%<context>%D         date=2026-10-11,
+%<context>%D         date=2026-10-17,
 %<context>%D    copyright=Saso Zivanovic,
 %<context>%D      license=LPPL,
 %<context>%D ]

@@ -3,7 +3,7 @@ title: memoize-clean
 section: 1
 header: User Manual
 footer: memoize-clean.pl of Memoize v1.5.0-rc1
-date: October 11, 2026
+date: October 17, 2026
 hyphenate: false
 ---
 

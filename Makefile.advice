@@ -7,7 +7,7 @@ PACKAGE = advice
 VERSION = 1.1.2-rc1
 YEAR = 2026
 MONTH = 10
-DAY = 11
+DAY = 17
 
 FORMAT = generic
 
