@@ -4,13 +4,24 @@ require 'lualibs-file' --defines global file
 require 'lualibs-dir'  --defines global dir
 
 local busted = require 'busted'
---local assert = busted.assert
 local say = require "say"
 
 local on_windows = os.type == 'windows'
 
 local utils = {}
-local cfg
+
+function utils.getenv(var)
+  local val = os.getenv(var)
+  if val == '' or val == ' ' then
+    return nil
+  else
+    return val
+  end
+end
+
+local cfg = {
+    verbose = utils.getenv("TEST_VERBOSE"),
+}
 
 --Require module "name", collecting into table "tbl" (a) its locals and (b) any
 --functions defined in the module executed during the loading of the module.
@@ -62,16 +73,18 @@ end
 
 function utils.mkdir(fn)
     assert(lfs.mkdir(fn), 'Cannot create directory ' .. fn)
-    return fn
+    assert(lfs.attributes(fn, "mode")=="directory")
 end
 
 function utils.rmtree(dn)
     if on_windows then
-	assert(os.execute(('icacls "%s" /remove:d "%%USERNAME%%" /T /C'):format(dn))==0)
-	assert(os.execute(('rmdir /s/q "%s"'):format(dn))==0)
+	utils.execute(('icacls "%s" /q /remove:d "%%USERDOMAIN%%\\%%USERNAME%%" /T /C')
+	    :format(dn),true)
+	utils.execute(('rmdir /s/q "%s"'):format(dn))
     else
-	assert(os.execute(('chmod -R --quiet +rwx "%s"'):format(dn))==0)
-	assert(os.execute(('rm -rf "%s"'):format(dn))==0)
+	utils.execute(('chmod -R %s +rwx "%s"'):format(
+		    cfg.verbose and '' or '--quiet', dn))
+	utils.execute(('rm -rf "%s"'):format(dn))
     end
 end  
 
@@ -85,25 +98,38 @@ function utils.create(fn, text)
     return fn
 end
 
--- allow only removing permissions ... easier to translate from chmod to icacls
-allowed_modes = lpeg.P("-") * lpeg.S("rwx")^1
-function utils.chmod(mode, fn)
-    assert(lpeg.match(allowed_modes, mode))
-    if on_windows then
-	assert(os.execute(('icacls "%s" /deny "%%USERNAME%%":(%s) ')
-		:format(fn, mode:sub(2):upper()))==0)
-    else
-	assert(os.execute(("chmod %s '%s'"):format(mode, fn))==0)
+do
+    local mode_to_icacls = {
+	['-rw'] = {
+	    'icacls "%s" /deny "%%COMPUTERNAME%%\\%%USERNAME%%":(RD,WD)',
+	},
+	['-w'] = {
+	    'icacls "%s" /deny "%%COMPUTERNAME%%\\%%USERNAME%%":(WD)',
+	},
+	['-r'] = {
+	    'icacls "%s" /deny "%%COMPUTERNAME%%\\%%USERNAME%%":(RD)',
+	},
+    }
+    function utils.chmod(mode, fn)
+	if on_windows then
+	    local cmds = assert(mode_to_icacls[mode])
+	    for _,cmd in ipairs(cmds) do
+		busted.assert.execute(cmd:format(fn))
+	    end
+	else
+	    busted.assert.execute(("chmod %s '%s'"):format(mode, fn))
+	end
     end
 end
 
 function utils.execute(cmd)
-    if cfg.quiet then
+    if cfg.verbose then
+	print(cmd)
+	return os.execute(cmd)
+    else
 	local proc = io.popen(cmd)
 	while proc:read() do end
 	return proc:close()
-    else
-	return os.execute(cmd)
     end
 end
 
@@ -118,7 +144,7 @@ busted.assert:register("assertion", "execute", assert_execute,
 
 function utils.cp(from, to)
     if on_windows then
-	os.execute(('copy "%s" "%s"'):format(from, to))
+	os.execute(('copy "%s" "%s"'):format(from, to):gsub("/","\\"))
     else
 	os.execute(('cp "%s" "%s"'):format(from, to))
     end
@@ -142,11 +168,13 @@ local function assert_content(state, args)
 	    if not lpeg.match(eline, line) then
 		args[2] = n
 		args[3] = line
+		fh:close()
 		return false
 	    end
 	else
 	    args[2] = 'missing'
 	    args[3] = ''
+	    fh:close()
 	    return false
 	end
     end
@@ -154,15 +182,14 @@ local function assert_content(state, args)
     if line then
 	args[2] = 'at the end'
 	args[3] = line
+	fh:close()
 	return false
     end
+    fh:close()
     return true
 end
 say:set("assertion.content.positive", "File %s, unexpected line %s:\n%s")
 busted.assert:register("assertion", "content", assert_content,
     "assertion.content.positive")
 
-return function(conf)
-    cfg = conf
-    return utils
-end
+return utils

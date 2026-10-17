@@ -86,6 +86,12 @@ LUA_EXTRA_DIRS = \
 LUA_EXTRA_CDIRS = \
 	$(LUA_PREFIXES:%=%/lib/lua/$(LUA_VERSION)/?.so) \
 	$(LUA_PREFIXES:%=%/lib/lua/$(LUA_VERSION)/loadall.so)
+# both .so and .dll, to simplify matters
+LUA_EXTRA_CDIRS = \
+	$(LUA_PREFIXES:%=%/lib/lua/$(LUA_VERSION)/?.so) \
+	$(LUA_PREFIXES:%=%/lib/lua/$(LUA_VERSION)/loadall.so) \
+	$(LUA_PREFIXES:%=%/lib/lua/$(LUA_VERSION)/?.dll) \
+	$(LUA_PREFIXES:%=%/lib/lua/$(LUA_VERSION)/loadall.dll)
 noop =
 space = $(noop) $(noop)
 LUA_PATH = ;;$(subst $(space),;,$(LUA_EXTRA_DIRS))
@@ -169,7 +175,7 @@ versions-show:
 	@${COLOR_VERSION} CHANGELOG.md doc/CHANGELOG.advice.md doc/CHANGELOG.collargs.md
 
 include Makefile.package
-include Makefile.runtimes
+include Makefile.runtimes # comment this out for luatestwin if using GnuWin32 make
 
 VERSION-MAN = of Memoize v$(VERSION)
 
@@ -199,9 +205,17 @@ test: luatest
 	mkdir -p testing/{build,success}
 	cd testing && source venv/bin/activate && ./MakeTests.py
 
+TEXLUA := texlua
+BUSTED := busted
+
 luatest:
 	cd testing && LUA_PATH="$(LUA_PATH)" LUA_CPATH="$(LUA_CPATH)" \
-		./test-memoize-extract.lua $(LUATESTFLAGS)
+		$(BUSTED) --lua $(TEXLUA) test-memoize-extract.lua $(LUATESTFLAGS)
+
+# make luatestwin BUSTED=Z:\win\luarocks\bin\busted.bat LUA_PREFIXES="Z:\win\luarocks"
+
+luatestwin: 
+	set LUA_PATH="$(LUA_PATH)" && set LUA_CPATH="$(LUA_CPATH)" && cd testing && $(BUSTED) --lua $(TEXLUA) -o plainTerminal test-memoize-extract.lua $(LUATESTFLAGS)
 
 test-clean:
 	rm -rf testing/build

@@ -20,13 +20,6 @@
 
 -- In general, LUA_PATH and LUA_CPATH are set through the Makefile.  Here, we
 -- merely adapt LUA_PATH to load memoize-extract from the parent directory:
-package.path = package.path .. ';../?.lua'
-
-cfg = {
-  quiet = true,
-}
-
-require 'busted.runner'()
 
 local say = require "say"
 local md5 = require 'md5'
@@ -37,7 +30,8 @@ kpse.set_program_name("luatex")
 --require 'lualibs-file' --defines global file
 --require 'lualibs-dir'  --defines global dir
 
-local utils = require'utils'(cfg)
+package.path = package.path .. ';../?.lua'
+local utils = require 'utils'
 local mkdir = utils.mkdir
 local rmtree = utils.rmtree
 local create = utils.create
@@ -46,7 +40,10 @@ local execute = utils.execute
 local cp = utils.cp
 local exists = utils.exists
 
-package.path = package.path .. ';../?.lua'
+local cfg = {
+  test_dir = utils.getenv("TEST_DIR") or 'test',
+}
+
 local real_os_type = os.type
 local on_windows = os.type == 'windows'
 os.type = 'unix'
@@ -83,9 +80,9 @@ local original_cwd = cwd()
 local src_dir = file.join(original_cwd, 'src')
 local function create_test_dir()
   lfs.chdir(original_cwd)
-  rmtree("test")
-  mkdir("test")
-  lfs.chdir("test")
+  rmtree(cfg.test_dir)
+  mkdir(cfg.test_dir)
+  lfs.chdir(cfg.test_dir)
 end
 
 describe("unit tests", function()
@@ -176,7 +173,7 @@ describe("unit tests", function()
               assert.same(expected, res)
             end
             
-            describe("#unix", function()
+            describe("unix", function()
                 it("basic", function()
                     unixsplit('/tmp/subdir/foo.memo.dir',
                       {'','/tmp/subdir/','foo.memo.dir'})
@@ -249,7 +246,7 @@ describe("unit tests", function()
         end)
     end)
     
-    describe("#permissions", function()
+    describe("permissions", function()
 
         it("These tests should be run without TEXMFOUTPUT set in texmf.cnf", function()
             assert(not kpse.var_value("TEXMFOUTPUT"))
@@ -293,7 +290,7 @@ describe("unit tests", function()
                 tmp_fn = 'tmp/file.txt'
             end)
             
-            describe('', function()
+            describe('nothing_is_set', function()
 
                 it('file does not exist', function()
                     assert.find_in(fn, nil)
@@ -425,11 +422,13 @@ describe("unit tests", function()
                         assert.find_in(fn, od_fn)
                         assert.find_out(fn, od_fn)
                     end)
-                    it('od=-x', function()
-			chmod('-x', 'od')
-			assert.find_in(fn, nil)
-			assert.find_out(fn, nil)
-                    end)
+		    if not on_windows then
+		      it('od=-x', function()
+			  chmod('-x', 'od')
+			  assert.find_in(fn, nil)
+			  assert.find_out(fn, nil)
+		      end)
+		    end
                     it('od=-r', function()
 			chmod('-r', od_fn)
 			assert.find_in(fn, nil)
@@ -449,11 +448,13 @@ describe("unit tests", function()
                         assert.find_in(fn, od_fn)
                         assert.find_out(fn, od_fn)
                     end)
-                    it('od=-x', function()
-			chmod('-x', 'od')
-			assert.find_in(fn, fn)
-			assert.find_out(fn, nil)
-                    end)
+		    if not on_windows then
+		      it('od=-x', function()
+			  chmod('-x', 'od')
+			  assert.find_in(fn, fn)
+			  assert.find_out(fn, nil)
+		      end)
+		    end
                 end)
                 
             end)
@@ -633,11 +634,31 @@ local function compile(opt)
   return ('%s.pdf'):format(target)
 end
 
+local function extract(state, args)
+  for i,arg in ipairs(args) do
+    if type(arg) == 'table' then
+      for _,a in ipairs(arg) do
+	table.insert(args, a)
+      end
+      args[i] = ''
+    elseif arg:find(' ', 1, true) then
+      args[i] = '"' .. arg .. '"'
+    end
+  end
+  local res = execute('texlua ' .. original_cwd
+    .. '/../memoize-extract.lua ' .. table.concat(args, " "))
+  return res == 0 or res == true
+end
+say:set("assertion.extract.positive", "Expected successful extraction: %s")
+say:set("assertion.extract.negative", "Expected unsuccessful extraction: %s")
+assert:register("assertion", "extract", extract,
+    "assertion.extract.positive", "assertion.extract.negative")
+
 local function compile_and_extract(opt)
   local pdf_fn = compile(opt)
   assert.memos_exist(opt.prefix, "extern", "")
   assert.memos_exist(opt.prefix, "another extern", "")
-  assert.execute(('memoize-extract %s "%s"'):format(opt.opts or '', pdf_fn))
+  assert.extract(opt.opts or '', pdf_fn)
   assert.extern_exists(opt.prefix, "extern", "")
   assert.extern_exists(opt.prefix, "another extern", "")
   return pdf_fn
@@ -687,7 +708,7 @@ describe('memoize-extract', function()
         setenv('p')
     end)
 
-    describe("#mkdir", function()
+    describe("mkdir", function()
         
         before_each(function()
             create_test_dir()
@@ -695,23 +716,23 @@ describe('memoize-extract', function()
         end)
 
         it('create a subdir', function()
-            assert.execute("memoize-extract --mkdir foo")
+            assert.extract("--mkdir", "foo")
             assert.exists("foo")
         end)
         
         it("don't create a parallel dir", function()
             mkdir("foo") lfs.chdir("foo")
-            assert.Not.execute("memoize-extract --mkdir ../bar")
+            assert.Not.extract("--mkdir", "../bar")
             assert.Not.exists("bar")
         end)
         
         it('create a subsubdir', function()
-            assert.execute("memoize-extract --mkdir foo/bar")
+            assert.extract("--mkdir", "foo/bar")
             assert.exists("foo/bar")
         end)
         
         it("don't create a subdir containing ..", function()
-            assert.Not.execute("memoize-extract --mkdir foo/bar/../baz")
+            assert.Not.extract("--mkdir", "foo/bar/../baz")
             assert.Not.exists("foo/baz")
         end)
 
@@ -801,19 +822,19 @@ describe('memoize-extract', function()
             end)
             
             it('refuse extraction', function()
-                assert.Not.execute('memoize-extract doc.pdf')
+                assert.Not.extract('doc.pdf')
                 assert.Not.extern_exists("doc.", "extern", "")
                 assert.Not.extern_exists("doc.", "another extern", "")
             end)
             
             it('forced extraction', function()
-                assert.execute('memoize-extract -f doc.pdf')
+                assert.extract('-f', 'doc.pdf')
                 assert.extern_exists("doc.", "extern", "")
                 assert.extern_exists("doc.", "another extern", "")
             end)
         end)
 
-        describe("#prune", function()
+        describe("prune", function()
             
             it("should remove extern pages from the pdf", function()
                 local pdf_fn = compile({src = 'doc_latex.tex', content_params = { 'no memo dir' }, cmd = 'pdflatex'})
@@ -821,18 +842,18 @@ describe('memoize-extract', function()
                 assert.memos_exist('doc.', "another extern", "")
                 assert.npages(pdf_fn, 3)
                 
-                assert.execute('memoize-extract -p doc.pdf')
+                assert.extract('-p', 'doc.pdf')
                 assert.extern_exists('doc.', "extern", "", true)
                 assert.extern_exists('doc.', "another extern", "", true)
                 assert.npages(pdf_fn, 1)
             end)
 
             it("another extraction after pruning is ok", function()
-                compile_and_extract({src = 'doc_latex.tex', content_params = { 'no memo dir' }, cmd = 'pdflatex', prefix = 'doc.', opts = '-p'})
+                compile_and_extract({src = 'doc_latex.tex', content_params = { 'no memo dir' }, cmd = 'pdflatex', prefix = 'doc.', opts = {'-p'}})
                 os.remove(('%s%s-%s.pdf'):format(prefix, md5.HEX("extern"), md5.HEX("")))
                 os.remove(('%s%s-%s.pdf'):format(prefix, md5.HEX("another extern"), md5.HEX("")))
                 assert.npages("doc.pdf", 1)
-                assert.execute('memoize-extract doc.pdf')
+                assert.extract('doc.pdf')
                 assert.extern_exists('doc.', "extern", "")
                 assert.extern_exists('doc.', "another extern", "")
             end)
@@ -853,13 +874,13 @@ describe('memoize-extract', function()
         end)
 
         it('fail because no memos', function()
-            assert.Not.execute('memoize-extract foo/doc.pdf')
+            assert.Not.extract('foo/doc.pdf')
             assert.Not.extern_exists("foo/doc.", "extern", "")
             assert.Not.extern_exists("foo/doc.", "another extern", "")
         end)
 
         it('ok because forced', function()
-            assert.execute('memoize-extract -f foo/doc.pdf')
+            assert.extract('-f', 'foo/doc.pdf')
         end)
 
         it('ok because we have memos now', function()
@@ -867,11 +888,11 @@ describe('memoize-extract', function()
             cp(('foo/doc.%s-%s.memo'):format(md5.HEX("extern"),md5.HEX("")), ".")
             cp(('foo/doc.%s.memo'):format(md5.HEX("another extern")), ".")
             cp(('foo/doc.%s-%s.memo'):format(md5.HEX("another extern"),md5.HEX("")), ".")
-            assert.execute('memoize-extract foo/doc.pdf')
+            assert.extract('foo/doc.pdf')
         end)
         
         it('pruning is fine', function()
-            assert.execute('memoize-extract -pf foo/doc.pdf')
+            assert.extract('-pf', 'foo/doc.pdf')
         end)
         
     end)
@@ -888,20 +909,20 @@ describe('memoize-extract', function()
         end)
 
         it("fail with pruning", function()
-            assert.Not.execute('memoize-extract -pf ../foo/doc.pdf')
+            assert.Not.extract('-pf', '../foo/doc.pdf')
             assert.Not.extern_exists("../foo/doc.", "extern", "")
             assert.Not.extern_exists("../foo/doc.", "another extern", "")
             assert.npages("../foo/doc.pdf", 3)
         end)
 
         it("fail without -f", function()
-            assert.Not.execute('memoize-extract ../foo/doc.pdf')
+            assert.Not.extract('../foo/doc.pdf')
             assert.Not.extern_exists("../foo/doc.", "extern", "")
             assert.Not.extern_exists("../foo/doc.", "another extern", "")
         end)
         
         it("succeed with -f", function()
-            assert.execute('memoize-extract -f ../foo/doc.pdf')
+            assert.extract('-f', '../foo/doc.pdf')
         end)
         
     end)
@@ -918,7 +939,7 @@ describe('memoize-extract', function()
             assert.execute('pdftex doc')
             assert.exists("tmp/doc.pdf")
             assert.exists("tmp/doc.log")
-            assert.execute('memoize-extract doc.pdf')
+            assert.extract('doc.pdf')
             assert.extern_exists('tmp/doc.', 'extern', '')
             assert.extern_exists('tmp/doc.', 'another extern', '')
         end)
@@ -928,7 +949,7 @@ describe('memoize-extract', function()
             setenv("p", "bad_tmp")
             compile({src = 'doc_plain.tex', content_params = { 'no memo dir' }, cmd = 'pdftex'})
             chmod("-w", ".")
-            assert.Not.execute('memoize-extract doc.pdf')
+            assert.Not.extract('doc.pdf')
             assert.Not.extern_exists("doc.", "extern", "")
             assert.Not.extern_exists("doc.", "another extern", "")
         end)
@@ -940,7 +961,7 @@ describe('memoize-extract', function()
             compile({src = 'doc_plain.tex', content_params = { 'no memo dir' }, cmd = 'pdftex'})
             setenv("p", "../tmp")
             chmod("-w", ".")
-            assert.Not.execute('memoize-extract doc.pdf')
+            assert.Not.extract('doc.pdf')
             assert.Not.extern_exists("doc.", "extern", "")
             assert.Not.extern_exists("doc.", "another extern", "")
         end)
@@ -961,11 +982,11 @@ describe('memoize-extract', function()
             assert.exists("od/doc.pdf")
             assert.exists("od/doc.log")
             assert.exists("od/doc.aux")
-            assert.execute('memoize-extract doc.pdf')
+            assert.extract('doc.pdf')
             assert.extern_exists('od/doc.', 'extern', '')
             assert.extern_exists('od/doc.', 'another extern', '')
             --pruning works too
-            assert.execute('memoize-extract -p doc.pdf')
+            assert.extract('-p', 'doc.pdf')
             assert.npages("od/doc.pdf", 1)
         end)
 
@@ -976,7 +997,7 @@ describe('memoize-extract', function()
             assert.exists("od/doc.log")
             assert.exists("od/doc.aux")
             chmod("-w", "od")
-            assert.Not.execute('memoize-extract doc.pdf')
+            assert.Not.extract('doc.pdf')
             assert.Not.extern_exists("od/doc.", "extern", "")
             assert.Not.extern_exists("od/doc.", "another extern", "")
         end)
@@ -992,7 +1013,7 @@ describe('memoize-extract', function()
         end)
         
         it("all good", function()
-            compile_and_extract({src = 'doc_latex.tex', content_params = { 'no memo dir' }, cmd = 'pdflatex', prefix = 'doc.', opts = '-F latex'})
+            compile_and_extract({src = 'doc_latex.tex', content_params = { 'no memo dir' }, cmd = 'pdflatex', prefix = 'doc.', opts = {'-F','latex'}})
             assert.content("doc.mmz.log", {
                 P"\\PackageInfo",
                 P"\\PackageInfo",
@@ -1003,7 +1024,7 @@ describe('memoize-extract', function()
         end)
 
         it("no doc", function()
-            execute("memoize-extract -F latex nodoc.pdf")
+            assert.extract("-F", "latex", "nodoc.pdf")
             assert.content("nodoc.mmz.log", {
                 P"\\PackageInfo",
                 P"\\endinput",
@@ -1014,7 +1035,7 @@ describe('memoize-extract', function()
             compile({src = 'doc_latex.tex', content_params = { 'no memo dir' }, cmd = 'pdflatex'})
             os.remove(('doc.%s.memo'):format(md5.HEX("extern")))
             os.remove(('doc.%s-%s.memo'):format(md5.HEX("extern"),md5.HEX("")))
-            execute("memoize-extract -F latex doc.pdf")
+            assert.Not.extract("-F", "latex", "doc.pdf")
             assert.content("doc.mmz.log", {
                 P"\\PackageInfo",
                 P"\\PackageWarning",
@@ -1027,7 +1048,7 @@ describe('memoize-extract', function()
         it("non-writable pdf", function()
             compile({src = 'doc_latex.tex', content_params = { 'no memo dir' }, cmd = 'pdflatex'})
             chmod('-w', 'doc.pdf')
-            execute("memoize-extract -F latex --prune doc.pdf")
+            assert.Not.extract("-F", "latex", "--prune", "doc.pdf")
             assert.content("doc.mmz.log", {
                 P"\\PackageError",
                 P"\\endinput",
