@@ -628,9 +628,10 @@ local function extract(args)
     --- Find the PDF file.  We only search the \emph{output} directories (thus
     --- |find_out|) because the file was presumably just produced by TeX under
     --- the same texmf configuration, but we check whether the file is
-    --- \emph{readable}.  We don't raise an error if we cannot find the file,
-    --- because we don't want to get an error in TeX every time we compile
-    --- without a pre-existing PDF.
+    --- \emph{readable}.  (This is an intentional difference from the Perl and
+    --- Python version of the extraction script.) We don't raise an error if we
+    --- cannot find the file, because we don't want to get an error in TeX
+    --- every time we compile without a pre-existing PDF.
     local pdf_path = find_out(args.pdf, 'r')
     if not pdf_path then
         logging:info(
