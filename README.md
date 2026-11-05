@@ -2,7 +2,7 @@ Memoize is a package for externalization of graphics and memoization of
 compilation results in general, allowing the author to reuse the results of
 compilation-intensive code. 
 
-Memoize (i) induces very little overhead, as all externalized graphics is
+Memoize (i) induces very little overhead, as all externalized graphics are
 produced in a single compilation. It features (ii) automatic recompilation upon
 the change of code or user-adjustable context, and (iii) automatic
 externalization of TikZ pictures and Forest trees, easily extensible to other
