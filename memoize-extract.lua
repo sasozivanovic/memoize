@@ -33,11 +33,9 @@ if not debug.getinfo(2) then
     require 'lualibs-dir'  --defines global dir
 end
 
---- Copy optionalrequire() function from lualibs-lua.lua.
-local dummy = function() end
-
+--- Use or create modified optionalrequire() function from lualibs-lua.lua.
 local optionalrequire = optionalrequire or function (...)
-    local ok, result = xpcall(require,dummy,...)
+    local ok, result = pcall(require,...)
     return ok and result or nil
 end
 
