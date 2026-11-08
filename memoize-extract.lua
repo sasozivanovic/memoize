@@ -33,8 +33,20 @@ if not debug.getinfo(2) then
     require 'lualibs-dir'  --defines global dir
 end
 
+--- Use or create modified optionalrequire() function from lualibs-lua.lua.
+local optionalrequire = optionalrequire or function (...)
+    local ok, result = pcall(require,...)
+    return ok and result or nil
+end
+
 --- Load ``our own'' PDF writer.
-local pdfrw = require 'pdfrw'
+local pdfrw = optionalrequire 'pdfrw'
+if not pdfrw then 
+  -- Do something nicer here.
+  -- Or put this later so you can use the functions below?
+  print("Error! memoize-extract.lua requires pdfrw.lua.")
+  return 1
+end
 
 --- \subsubsection{Utilities}
 
@@ -67,8 +79,10 @@ end
 do
     local absolute, semi_absolute, root, sep, drive
     local P, S, R, C = lpeg.P, lpeg.S, lpeg.R, lpeg.C
+    local patterns = lpeg.patterns
+    local p_nevermatched = P(false)
     if os.type == 'windows' then
-        drive = R("az","AZ") * P(":")
+        drive = patterns.letter * patterns.colon
         --- On Windows, we accept both |/| and |\| as path separators.
         sep = S("/\\")
         --- On Windows, an absolute path must start with the drive.
@@ -77,12 +91,12 @@ do
         --- an absolute directory without a drive.
         semi_absolute = drive * -sep + sep
         --- There is no concept of an absolute filesystem root on Windows.
-        root = P(false)
+        root = p_nevermatched
     else
-        drive = P(false)
-        sep = P'/'
+        drive = p_nevermatched
+        sep = patterns.rootbased
         absolute = sep
-        semi_absolute = P(false)
+        semi_absolute = p_nevermatched
         root = sep^1 * -1
     end
     local nosep = 1 - sep
@@ -522,6 +536,7 @@ end
 
 --- \function{unquote} This utility function removes pairs of quotes from the
 --- filename, which might contain a quoted jobname.
+--- You could use lpeg.patterns.undouble to remove paired double quotes.
 local function unquote(fn)
     if fn:sub(1,4) == '\\057' then --todo: fix pdfrw
         fn = '/' .. fn:sub(5)
@@ -533,7 +548,8 @@ end
 --- (from /NewExtern) into the directory prefix, filename prefix, code MD5 sum,
 --- context MD5 sum, and the local sequential number of the extern.
 local name_code_context_seq_pattern =
-    "^(.-)(" .. ("%x"):rep(32) .. ")%-(" .. ("%x"):rep(32) .. ")(.-).pdf$"
+    string.format("^(.-)(%s)%%-(%s)(.-).pdf$",
+    ("%x"):rep(32), ("%x"):rep(32))
 
 local function split_extern_path(path)
     local drive, dir_prefix, rest = pathlib.split(path)
@@ -558,10 +574,16 @@ local MMIZ_Record_Types = {
 
 --- \function{parse_args} This function parses a command-line-like argument
 --- table (such as the global |arg|) into a form used by function |extract|.
---- It uses module |argparse|, \url{https://github.com/mpeterv/argparse}.
+--- It uses module |argparse|, \url{https://github.com/luarocks/argparse}.
 local function parse_args(cmdline_args)
-    local argparse = require 'argparse'
     local script_name = file.basename(arg[0])
+    local argparse = optionalrequire 'argparse'
+    -- version check needed here?
+    if not argparse then
+        print(string.format("Error! %s requires the Lua argparse.lua library.",
+          script_name))
+        exit.error()
+    end
     local parser = argparse()
         :name(script_name)
         :description "Extract extern pages produced by package Memoize \z
@@ -701,6 +723,8 @@ local function extract(args)
     --- are prettier with page numbers than page references, and we will
     --- convert the latter into the former using the table constructed below.
     local pages = doc:get_pages()
+    -- This would require loading lualibs-util-tab.
+    -- pages = table.hashed(pages)
     for i, page in ipairs(pages) do
         pages[page] = i
     end
@@ -768,20 +792,24 @@ local function extract(args)
             -- is in effect.  In that case, don't raise the warning, but merely
             -- note (in the info message) that the extraction was forced.
             local forced = ''
-            for typ, memo_file in pairs({
-                    c = name_prefix .. code_md5sum .. ".memo",
-                    cc = name_prefix .. code_md5sum .. "-" .. context_md5sum .. ".memo"
-            }) do
-                if not find_in(file.join(pathlib.parent(extern_path), memo_file), 'r') then
-                    if args.force then
-                        forced = ' (forced)'
-                    else
-                        logging:warn(
-                            "Page %s will not be extracted \z
-                                because the associated %s-memo '%s' is not accessible",
-                                page_desc, typ, memo_file
-                        )
-                        goto next_item
+            do
+                for typ, memo_file in pairs({
+                    c = string.format("%s%s.memo", name_prefix, code_md5sum),
+                    cc = string.format("%s%s-%s.memo", name_prefix, code_md5sum,
+                        context_md5sum)
+                }) do
+                    if not find_in(file.join(pathlib.parent(extern_path), 
+                        memo_file), 'r') then
+                        if args.force then
+                            forced = ' (forced)'
+                        else
+                            logging:warn(
+                                "Page %s will not be extracted \z
+                                    because the associated %s-memo '%s' is not accessible",
+                                    page_desc, typ, memo_file
+                            )
+                            goto next_item
+                        end
                     end
                 end
             end
