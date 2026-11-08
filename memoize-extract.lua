@@ -36,25 +36,17 @@ end
 --- Copy optionalrequire() function from lualibs-lua.lua.
 local dummy = function() end
 
--- local function optionalrequire(...)
---     local ok, result = xpcall(require,dummy,...)
---     if ok then
---         return result
---     end
--- end
-
 local optionalrequire = optionalrequire or function (...)
     local ok, result = xpcall(require,dummy,...)
     return ok and result or nil
 end
-
 
 --- Load ``our own'' PDF writer.
 local pdfrw = optionalrequire 'pdfrw'
 if not pdfrw then 
   -- Do something nicer here.
   -- Or put this later so you can use the functions below?
-  print("Error! memoize-extract.lua requires luapdfrw.lua.")
+  print("Error! memoize-extract.lua requires pdfrw.lua.")
   return 1
 end
 
