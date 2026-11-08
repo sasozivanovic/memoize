@@ -135,7 +135,7 @@ do
         while i > 0 and lpeg.match(sep, dirname, i) do
             i = i - 1
         end
-        return string.format("%s%s", drive_str, dirname:sub(1,i))
+        return drive_str .. dirname:sub(1,i)
     end
 end
 
@@ -443,7 +443,7 @@ do
     function logging:_header()
         local result = ''
         for _, header in ipairs(self.headers) do
-            result = string.format("%s%s: ", result, header)
+            result = result .. header .. ': '
         end
         return result
     end
